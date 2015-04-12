@@ -192,16 +192,9 @@ namespace BrianSharp.Plugin
             {
                 var predE = E.GetPrediction(unit);
                 if (predE.Hitchance >= HitChance.High &&
-                    E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width), PacketCast))
+                    E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width), PacketCast) &&
+                    Q.Cast(predE.CastPosition, PacketCast))
                 {
-                    Utility.DelayAction.Add(
-                        100, () =>
-                        {
-                            if (!E.IsReady())
-                            {
-                                Q.Cast(predE.CastPosition, PacketCast);
-                            }
-                        });
                     return;
                 }
             }

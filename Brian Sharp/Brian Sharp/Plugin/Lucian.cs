@@ -16,8 +16,8 @@ namespace BrianSharp.Plugin
 
         public Lucian()
         {
-            Q = new Spell(SpellSlot.Q, 650);
-            Q2 = new Spell(SpellSlot.Q, 1300);
+            Q = new Spell(SpellSlot.Q, 675);
+            Q2 = new Spell(SpellSlot.Q, 1100);
             W = new Spell(SpellSlot.W, 1000, TargetSelector.DamageType.Magical);
             E = new Spell(SpellSlot.E, 445);
             R = new Spell(SpellSlot.R, 1400);

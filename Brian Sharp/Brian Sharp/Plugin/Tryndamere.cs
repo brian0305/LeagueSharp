@@ -14,9 +14,9 @@ namespace BrianSharp.Plugin
         {
             Q = new Spell(SpellSlot.Q);
             W = new Spell(SpellSlot.W, 830);
-            E = new Spell(SpellSlot.E, 830);
+            E = new Spell(SpellSlot.E, 750);
             R = new Spell(SpellSlot.R);
-            E.SetSkillshot(0, 225, 1300, false, SkillshotType.SkillshotLine);
+            E.SetSkillshot(0, 160, 1300, false, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -151,6 +151,15 @@ namespace BrianSharp.Plugin
                          (mode == "Harass" && Orbwalk.InAutoAttackRange(target, 50))))
                     {
                         E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width), PacketCast);
+                    }
+                }
+                else
+                {
+                    var sub = E.GetTarget(Orbwalk.GetAutoAttackRange());
+                    if (sub != null &&
+                        Orbwalk.InAutoAttackRange(sub, 20, Player.ServerPosition.Extend(sub.ServerPosition, E.Range)))
+                    {
+                        E.Cast(Player.ServerPosition.Extend(sub.ServerPosition, E.Range), PacketCast);
                     }
                 }
             }

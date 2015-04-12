@@ -11,7 +11,7 @@ namespace BrianSharp.Plugin
     internal class Shen : Helper
     {
         private Obj_AI_Hero _alertAlly;
-        private bool _eCasted, _alertCasted;
+        private bool _alertCasted;
 
         public Shen()
         {
@@ -106,7 +106,7 @@ namespace BrianSharp.Plugin
                         AddItem(ultiMenu, "SaveKey", "--> Key", "T");
                         miscMenu.AddSubMenu(ultiMenu);
                     }
-                    //AddItem(miscMenu, "EFlash", "E Flash", "Z");
+                    AddItem(miscMenu, "EFlash", "E Flash", "Z");
                     AddItem(miscMenu, "ETower", "Auto E If Enemy Under Tower");
                     champMenu.AddSubMenu(miscMenu);
                 }
@@ -152,10 +152,10 @@ namespace BrianSharp.Plugin
                     }
                     break;
             }
-            //if (GetValue<KeyBind>("Misc", "EFlash").Active)
-            //{
-            //    FlashTaunt();
-            //}
+            if (GetValue<KeyBind>("Misc", "EFlash").Active)
+            {
+                FlashTaunt();
+            }
             AutoQ();
             KillSteal();
             UltimateAlert();
@@ -312,6 +312,10 @@ namespace BrianSharp.Plugin
         private void FlashTaunt()
         {
             var target = E.GetTarget(Flash.IsReady() ? 380 : 0);
+            if (!E.IsReady() && Flash.IsReady())
+            {
+                target = TargetSelector.GetTarget(380, TargetSelector.DamageType.Magical);
+            }
             CustomOrbwalk(target);
             if (target == null)
             {
@@ -319,22 +323,23 @@ namespace BrianSharp.Plugin
             }
             if (!E.IsReady())
             {
-                if (Flash.IsReady() && _eCasted)
+                if (Player.IsDashing() && Flash.IsReady() && Player.GetDashInfo().EndPos.Distance(target) < 380)
                 {
                     CastFlash(target.ServerPosition.Extend(Player.ServerPosition, -100));
-                    _eCasted = false;
                 }
                 return;
             }
-            if (!E.IsInRange(target) && E.Cast(target.ServerPosition, PacketCast))
+            if (!E.IsInRange(target))
             {
-                Utility.DelayAction.Add(300, () => _eCasted = true);
-                return;
+                E.Cast(target.ServerPosition.Extend(Player.ServerPosition, -E.Range), PacketCast);
             }
-            var predE = E.GetPrediction(target);
-            if (predE.Hitchance >= HitChance.High)
+            else
             {
-                E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
+                var predE = E.GetPrediction(target);
+                if (predE.Hitchance >= HitChance.High)
+                {
+                    E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
+                }
             }
         }
 

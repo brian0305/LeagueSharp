@@ -15,6 +15,7 @@ namespace BrianSharp
         public static SpellSlot Flash, Smite, Ignite;
         public static Items.Item Tiamat, Hydra, Youmuu, Zhonya, Seraph, Sheen, Iceborn, Trinity;
         public static Menu MainMenu;
+        private static int _delay;
 
         public static Obj_AI_Hero Player
         {
@@ -36,31 +37,25 @@ namespace BrianSharp
 
         private static void OnCreateObjMissile(GameObject sender, EventArgs args)
         {
-            if (!sender.IsValid<Obj_SpellMissile>())
-            {
-                return;
-            }
             var missile = (Obj_SpellMissile) sender;
-            if (!missile.SpellCaster.IsMe || !missile.SpellCaster.IsValid<Obj_AI_Hero>() || missile.SData.IsAutoAttack())
+            if (!missile.SpellCaster.IsMe || missile.SData.IsAutoAttack())
             {
                 return;
             }
+            _delay = Utils.TickCount - _delay;
+            Game.PrintChat("{0}", (float) _delay / 1000);
             Game.PrintChat(
-                "(O) [{0}]{1}: Start[{2}]/End[{3}]/R[{4}|{5}|{6}]/D[{7}]/W[{8}|{9}]/S[{10}]",
-                ((Obj_AI_Hero) missile.SpellCaster).ChampionName, missile.SData.Name, missile.StartPosition,
-                missile.EndPosition, missile.StartPosition.Distance(missile.EndPosition), missile.SData.CastRange,
-                missile.SData.CastRangeDisplayOverride, missile.SData.DelayTotalTimePercent, missile.SData.CastRadius,
-                missile.SData.LineWidth, missile.SData.MissileSpeed);
+                "(O) {0}: Start[{1}]/End[{2}]/R[{3}|{4}|{5}]/D[{6}|{7}]/W[{8}|{9}]/S[{10}]", missile.SData.Name,
+                missile.StartPosition, missile.EndPosition, missile.StartPosition.Distance(missile.EndPosition),
+                missile.SData.CastRange, missile.SData.CastRangeDisplayOverride, missile.SData.CastFrame / 30,
+                missile.SData.CastFrame / 60, missile.SData.CastRadius, missile.SData.LineWidth,
+                missile.SData.MissileSpeed);
         }
 
         private static void OnDeleteObjMissile(GameObject sender, EventArgs args)
         {
-            if (!sender.IsValid<Obj_SpellMissile>())
-            {
-                return;
-            }
             var missile = (Obj_SpellMissile) sender;
-            if (!missile.SpellCaster.IsMe || !missile.SpellCaster.IsValid<Obj_AI_Hero>() || missile.SData.IsAutoAttack())
+            if (!missile.SpellCaster.IsMe || missile.SData.IsAutoAttack())
             {
                 return;
             }
@@ -69,22 +64,23 @@ namespace BrianSharp
 
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            if (!sender.IsMe || !sender.IsValid<Obj_AI_Hero>() || args.SData.IsAutoAttack())
+            if (!sender.IsMe)
             {
                 return;
             }
+            _delay = Utils.TickCount;
             Game.PrintChat(
-                "(S) [{0}]{1}: Start[{2}]/End[{3}]/R[{4}|{5}|{6}]/D[{7}]/W[{8}|{9}]/S[{10}]",
-                ((Obj_AI_Hero) sender).ChampionName, args.SData.Name, args.Start, args.End,
-                args.Start.Distance(args.End), args.SData.CastRange, args.SData.CastRangeDisplayOverride,
-                args.SData.DelayTotalTimePercent, args.SData.CastRadius, args.SData.LineWidth, args.SData.MissileSpeed);
+                "(S) {0}: Start[{1}]/End[{2}]/R[{3}|{4}|{5}]/D[{6}|{7}]/W[{8}|{9}]/S[{10}]", args.SData.Name, args.Start,
+                args.End, args.Start.Distance(args.End), args.SData.CastRange, args.SData.CastRangeDisplayOverride,
+                args.SData.CastFrame / 30, args.SData.CastFrame / 60, args.SData.CastRadius, args.SData.LineWidth,
+                args.SData.MissileSpeed);
         }
 
         private static void OnStart(EventArgs args)
         {
-            //GameObject.OnCreate += OnCreateObjMissile;
-            //GameObject.OnDelete += OnDeleteObjMissile;
-            //Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
+            //Obj_SpellMissile.OnCreate += OnCreateObjMissile;
+            //Obj_SpellMissile.OnDelete += OnDeleteObjMissile;
+            //Obj_AI_Hero.OnProcessSpellCast += OnProcessSpellCast;
             var plugin = Type.GetType("BrianSharp.Plugin." + Player.ChampionName);
             if (plugin == null)
             {

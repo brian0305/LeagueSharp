@@ -13,10 +13,10 @@ namespace BrianSharp.Plugin
         public Nasus()
         {
             Q = new Spell(SpellSlot.Q, Orbwalk.GetAutoAttackRange());
-            W = new Spell(SpellSlot.W, 600, TargetSelector.DamageType.Magical);
-            E = new Spell(SpellSlot.E, 650);
+            W = new Spell(SpellSlot.W, 600);
+            E = new Spell(SpellSlot.E, 650, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R);
-            E.SetSkillshot(0.5f, 380, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            E.SetSkillshot(0.2f, 380, float.MaxValue, false, SkillshotType.SkillshotCircle);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -164,7 +164,7 @@ namespace BrianSharp.Plugin
             {
                 var target = E.GetTarget(E.Width);
                 if (target != null && (mode == "Combo" || Orbwalk.InAutoAttackRange(target, 50)) &&
-                    E.CastIfWillHit(target, -1, PacketCast))
+                    E.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
                 {
                     return;
                 }
@@ -229,7 +229,7 @@ namespace BrianSharp.Plugin
                     var obj = minionObj.FirstOrDefault(i => i.MaxHealth >= 1200);
                     if (obj != null)
                     {
-                        E.CastIfWillHit(obj, -1, PacketCast);
+                        E.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast);
                     }
                 }
             }
@@ -297,7 +297,7 @@ namespace BrianSharp.Plugin
                 var target = E.GetTarget(E.Width);
                 if (target != null && E.IsKillable(target))
                 {
-                    E.CastIfWillHit(target, -1, PacketCast);
+                    E.CastIfHitchanceEquals(target, HitChance.High, PacketCast);
                 }
             }
         }

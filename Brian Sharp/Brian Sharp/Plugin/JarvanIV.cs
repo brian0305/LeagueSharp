@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using BrianSharp.Common;
@@ -16,18 +17,20 @@ namespace BrianSharp.Plugin
         public JarvanIV()
         {
             Q = new Spell(SpellSlot.Q, 770);
-            W = new Spell(SpellSlot.W, 525);
+            Q2 = new Spell(SpellSlot.Q, 860);
+            W = new Spell(SpellSlot.W, 520);
             E = new Spell(SpellSlot.E, 860, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 650);
-            Q.SetSkillshot(0.4f, 70, 1450, false, SkillshotType.SkillshotLine);
-            E.SetSkillshot(0.5f, 175, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            Q.SetSkillshot(0.235f, 70, float.MaxValue, false, SkillshotType.SkillshotLine);
+            Q2.SetSkillshot(0.235f, 180, 2000, false, SkillshotType.SkillshotLine);
+            E.SetSkillshot(0.15f, 175, float.MaxValue, false, SkillshotType.SkillshotCircle);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
                     AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "QFlagRange", "-> To Flag If Flag In", 500, 100, 880);
+                    AddItem(comboMenu, "QFlagRange", "-> To Flag If Flag In", 500, 100, 860);
                     AddItem(comboMenu, "W", "Use W");
                     AddItem(comboMenu, "WHpU", "-> If Player Hp Under", 40);
                     AddItem(comboMenu, "WCountA", "-> If Enemy Above", 2, 1, 5);
@@ -44,7 +47,7 @@ namespace BrianSharp.Plugin
                     AddItem(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
                     AddItem(harassMenu, "Q", "Use Q");
                     AddItem(harassMenu, "QHpA", "-> To Flag If Hp Above", 20);
-                    AddItem(harassMenu, "QFlagRange", "-> To Flag If Flag In", 500, 100, 880);
+                    AddItem(harassMenu, "QFlagRange", "-> To Flag If Flag In", 500, 100, 860);
                     AddItem(harassMenu, "E", "Use E");
                     AddItem(harassMenu, "EQ", "-> Save E For EQ");
                     champMenu.AddSubMenu(harassMenu);
@@ -111,13 +114,14 @@ namespace BrianSharp.Plugin
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
         }
 
-        private Obj_AI_Minion Flag
+        private IEnumerable<Obj_AI_Minion> Flag
         {
             get
             {
                 return
                     ObjectManager.Get<Obj_AI_Minion>()
-                        .FirstOrDefault(i => i.IsAlly && i.Name == "Beacon" && Q.IsInRange(i, 880));
+                        .Where(
+                            i => i.IsValidTarget(Q2.Range + i.BoundingRadius, false) && i.IsAlly && i.Name == "Beacon");
             }
         }
 
@@ -186,19 +190,27 @@ namespace BrianSharp.Plugin
             }
             if (E.CanCast(unit) && Player.Mana >= Q.Instance.ManaCost + E.Instance.ManaCost)
             {
-                var predE = E.GetPrediction(unit, true);
+                var predE = E.GetPrediction(unit);
                 if (predE.Hitchance >= HitChance.High &&
-                    E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width / 2), PacketCast) &&
-                    Q.Cast(predE.CastPosition, PacketCast))
+                    E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width), PacketCast))
                 {
+                    Utility.DelayAction.Add(
+                        100, () =>
+                        {
+                            if (!E.IsReady())
+                            {
+                                Q.Cast(predE.CastPosition, PacketCast);
+                            }
+                        });
                     return;
                 }
             }
-            if (Flag != null &&
-                (unit.Distance(Flag) <= 60 ||
-                 (Player.Distance(unit) >= 150 && Q.WillHit(unit, Flag.ServerPosition, 110))))
+            foreach (var flag in
+                Flag.Where(
+                    i => unit.Distance(i) <= 60 || (Player.Distance(unit) >= 150 && Q2.WillHit(unit, i.ServerPosition)))
+                )
             {
-                Q.Cast(Flag.ServerPosition, PacketCast);
+                Q.Cast(flag.ServerPosition, PacketCast);
             }
         }
 
@@ -227,9 +239,9 @@ namespace BrianSharp.Plugin
                 var target = E.GetTarget(E.Width);
                 if (target != null)
                 {
-                    var predE = E.GetPrediction(target, true);
+                    var predE = E.GetPrediction(target);
                     if (predE.Hitchance >= HitChance.High &&
-                        E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width / 2), PacketCast))
+                        E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width), PacketCast))
                     {
                         if (GetValue<bool>(mode, "Q") && Q.IsReady() &&
                             (mode == "Combo" || Player.HealthPercentage() >= GetValue<Slider>(mode, "QHpA").Value))
@@ -243,21 +255,20 @@ namespace BrianSharp.Plugin
             if ((!GetValue<bool>(mode, "E") || !E.IsReady()) && GetValue<bool>(mode, "Q") && Q.IsReady() &&
                 (mode == "Combo" || (Flag == null || Player.HealthPercentage() >= GetValue<Slider>(mode, "QHpA").Value)))
             {
-                var target = Q.GetTarget();
-                if (target != null)
+                var target = Q2.GetTarget();
+                if (GetValue<bool>(mode, "E") && Flag != null && target != null &&
+                    Flag.Where(
+                        i =>
+                            Player.Distance(i) <= GetValue<Slider>(mode, "QFlagRange").Value &&
+                            (target.Distance(i) <= 60 ||
+                             (Player.Distance(target) >= 150 && Q2.WillHit(target, i.ServerPosition))))
+                        .Any(i => Q.Cast(i.ServerPosition, PacketCast)))
                 {
-                    if (GetValue<bool>(mode, "E") && Flag != null &&
-                        Player.Distance(Flag) <= GetValue<Slider>(mode, "QFlagRange").Value &&
-                        (target.Distance(Flag) <= 60 ||
-                         (Player.Distance(target) >= 150 && Q.WillHit(target, Flag.ServerPosition, 110))) &&
-                        Q.Cast(Flag.ServerPosition, PacketCast))
-                    {
-                        return;
-                    }
-                    if (Q.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
-                    {
-                        return;
-                    }
+                    return;
+                }
+                if (Q.CastOnBestTarget(0, PacketCast).IsCasted())
+                {
+                    return;
                 }
             }
             if (mode != "Combo")
@@ -296,54 +307,80 @@ namespace BrianSharp.Plugin
         private void Clear()
         {
             SmiteMob();
-            var minionObj = MinionManager.GetMinions(
-                Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
-            if (!minionObj.Any())
+            if (GetValue<bool>("Clear", "E") && E.IsReady())
             {
-                return;
-            }
-            if (GetValue<bool>("Clear", "E") && E.IsReady() &&
-                (minionObj.Count > 1 || minionObj.Any(i => i.MaxHealth >= 1200)))
-            {
-                var pos = E.GetCircularFarmLocation(minionObj.Where(i => E.IsInRange(i, E.Range + E.Width)).ToList());
-                if (pos.MinionsHit > 0 && E.Cast(pos.Position, PacketCast))
+                var minionObj = MinionManager.GetMinions(
+                    E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+                if (minionObj.Any())
                 {
-                    if (GetValue<bool>("Clear", "Q") && Q.IsReady())
+                    var pos = E.GetCircularFarmLocation(minionObj);
+                    if (pos.MinionsHit > 1)
                     {
-                        Q.Cast(pos.Position, PacketCast);
+                        if (E.Cast(pos.Position, PacketCast))
+                        {
+                            if (GetValue<bool>("Clear", "Q") && Q.IsReady())
+                            {
+                                Q.Cast(pos.Position, PacketCast);
+                            }
+                            return;
+                        }
                     }
-                    return;
+                    else
+                    {
+                        var obj = minionObj.FirstOrDefault(i => i.MaxHealth >= 1200);
+                        if (obj != null && E.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast))
+                        {
+                            return;
+                        }
+                    }
                 }
             }
-            if ((!GetValue<bool>("Clear", "E") || !E.IsReady()) && GetValue<bool>("Clear", "Q") && Q.IsReady())
+            if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                if (GetValue<bool>("Clear", "E") && Flag != null &&
-                    (minionObj.Count(i => i.Distance(Flag) <= 60) > 1 ||
-                     minionObj.Count(i => Q.WillHit(i, Flag.ServerPosition, 110)) > 1) &&
-                    Q.Cast(Flag.ServerPosition, PacketCast))
+                var minionObj = MinionManager.GetMinions(
+                    Q2.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+                if (minionObj.Any() &&
+                    (!GetValue<bool>("Clear", "E") ||
+                     (!E.IsReady() || (E.IsReady() && E.GetCircularFarmLocation(minionObj).MinionsHit == 1))))
                 {
-                    return;
-                }
-                var pos = Q.GetLineFarmLocation(minionObj);
-                if (pos.MinionsHit > 0 && Q.Cast(pos.Position, PacketCast))
-                {
-                    return;
+                    if (GetValue<bool>("Clear", "E") && Flag != null &&
+                        Flag.Where(
+                            i =>
+                                minionObj.Count(a => a.Distance(i) <= 60) > 1 ||
+                                minionObj.Count(a => Q2.WillHit(a, i.ServerPosition)) > 1)
+                            .Any(i => Q.Cast(i.ServerPosition, PacketCast)))
+                    {
+                        return;
+                    }
+                    var pos = Q.GetLineFarmLocation(minionObj.Where(i => Q.IsInRange(i)).ToList());
+                    if (pos.MinionsHit > 0 && Q.Cast(pos.Position, PacketCast))
+                    {
+                        return;
+                    }
                 }
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady() &&
                 Player.HealthPercentage() < GetValue<Slider>("Clear", "WHpU").Value &&
-                minionObj.Any(i => W.IsInRange(i)) && W.Cast(PacketCast))
+                MinionManager.GetMinions(W.Range, MinionTypes.All, MinionTeam.NotAlly).Any() && W.Cast(PacketCast))
             {
                 return;
             }
-            if (GetValue<bool>("Clear", "Item"))
+            if (GetValue<bool>("Clear", "Item") && (Hydra.IsReady() || Tiamat.IsReady()))
             {
-                var item = Hydra.IsReady() ? Hydra : Tiamat;
-                if (item.IsReady() &&
-                    (minionObj.Count(i => item.IsInRange(i)) > 2 ||
-                     minionObj.Any(i => i.MaxHealth >= 1200 && i.Distance(Player) < item.Range - 80)))
+                var minionObj = MinionManager.GetMinions(
+                    (Hydra.IsReady() ? Hydra : Tiamat).Range, MinionTypes.All, MinionTeam.NotAlly);
+                if (minionObj.Count > 2 ||
+                    minionObj.Any(
+                        i => i.MaxHealth >= 1200 && i.Distance(Player) < (Hydra.IsReady() ? Hydra : Tiamat).Range - 80))
                 {
-                    item.Cast();
+                    if (Tiamat.IsReady())
+                    {
+                        Tiamat.Cast();
+                    }
+                    if (Hydra.IsReady())
+                    {
+                        Hydra.Cast();
+                    }
                 }
             }
         }

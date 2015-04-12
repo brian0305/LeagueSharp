@@ -19,7 +19,7 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W, 300, TargetSelector.DamageType.Magical);
             E = new Spell(SpellSlot.E, 350, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 550, TargetSelector.DamageType.Magical);
-            Q.SetSkillshot(0.25f, 90, 2000, true, SkillshotType.SkillshotLine);
+            Q.SetSkillshot(0.235f, 80, 2000, true, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -211,27 +211,6 @@ namespace BrianSharp.Plugin
                         {
                             return;
                         }
-                        //if (
-                        //    (from obj in
-                        //        ObjectManager.Get<Obj_AI_Base>()
-                        //            .Where(
-                        //                i =>
-                        //                    !(i is Obj_AI_Turret) && i.IsValidTarget(Q.Range) &&
-                        //                    Q.GetPrediction(i).Hitchance >= HitChance.High)
-                        //            .OrderByDescending(i => i.CountEnemiesInRange(R.Range))
-                        //        let sub =
-                        //            HeroManager.Enemies.Where(
-                        //                i => i.IsValidTarget(RWidth, true, obj.ServerPosition)).ToList()
-                        //        where
-                        //            ((sub.Count > 1 && sub.Any(i => CanKill(i, R))) ||
-                        //             (sub.Count > 1 &&
-                        //              sub.Any(i => i.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value)) ||
-                        //             sub.Count >= GetValue<Slider>(mode, "RCountA").Value) &&
-                        //            Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast)
-                        //        select obj).Any())
-                        //{
-                        //    return;
-                        //}
                     }
                     var target = Q.GetTarget();
                     if (target != null && !Orbwalk.InAutoAttackRange(target))

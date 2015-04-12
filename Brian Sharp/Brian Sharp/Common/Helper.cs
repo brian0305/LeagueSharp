@@ -42,6 +42,38 @@ namespace BrianSharp.Common
             get { return GetValue<bool>("Misc", "UsePacket"); }
         }
 
+        public static InventorySlot GetWardSlot
+        {
+            get
+            {
+                var ward = Items.GetWardSlot();
+                var wardPink = new[] { 3362, 2043 };
+                if (GetValue<bool>("Flee", "PinkWard") && ward == null)
+                {
+                    foreach (var item in
+                        wardPink.Where(Items.CanUseItem)
+                            .Select(i => Player.InventoryItems.FirstOrDefault(a => a.Id == (ItemId) i))
+                            .Where(i => i != null))
+                    {
+                        ward = item;
+                    }
+                }
+                return ward;
+            }
+        }
+
+        public static float GetWardRange
+        {
+            get
+            {
+                return 600 *
+                       (Player.HasMastery(MasteryData.Scout) && GetWardSlot != null &&
+                        new[] { 3340, 3361, 3362 }.Contains((int) GetWardSlot.Id)
+                           ? 1.15f
+                           : 1);
+            }
+        }
+
         public static void CustomOrbwalk(Obj_AI_Base target)
         {
             Orbwalker.Orbwalk(Orbwalker.InAutoAttackRange(target) ? target : null);
@@ -69,31 +101,6 @@ namespace BrianSharp.Common
             return Ignite.IsReady() && target.IsValidTarget(600) &&
                    target.Health + 5 < Player.GetSummonerSpellDamage(target, Damage.SummonerSpell.Ignite) &&
                    Player.Spellbook.CastSpell(Ignite, target);
-        }
-
-        public static InventorySlot GetWardSlot()
-        {
-            InventorySlot ward = null;
-            int[] wardPink = { 3362, 2043 };
-            int[] wardGreen = { 3340, 3361, 2049, 2045, 2044 };
-            if (GetValue<bool>("Flee", "PinkWard") && wardPink.Any(Items.CanUseItem))
-            {
-                ward = Player.InventoryItems.FirstOrDefault(i => i.Id == (ItemId) wardPink.First(Items.CanUseItem));
-            }
-            if (wardGreen.Any(Items.CanUseItem))
-            {
-                ward = Player.InventoryItems.FirstOrDefault(i => i.Id == (ItemId) wardGreen.First(Items.CanUseItem));
-            }
-            return ward;
-        }
-
-        public static float GetWardRange()
-        {
-            return 600 *
-                   (Player.HasMastery(MasteryData.Scout) && GetWardSlot() != null &&
-                    new[] { 3340, 3361, 3362 }.Contains((int) GetWardSlot().Id)
-                       ? 1.15f
-                       : 1);
         }
 
         public static void SmiteMob()

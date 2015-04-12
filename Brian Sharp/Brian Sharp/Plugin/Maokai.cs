@@ -10,14 +10,16 @@ namespace BrianSharp.Plugin
 {
     internal class Maokai : Helper
     {
+        private const int QKnockUpWidth = 250;
+
         public Maokai()
         {
             Q = new Spell(SpellSlot.Q, 600, TargetSelector.DamageType.Magical);
             W = new Spell(SpellSlot.W, 525, TargetSelector.DamageType.Magical);
             E = new Spell(SpellSlot.E, 1100, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 475, TargetSelector.DamageType.Magical);
-            Q.SetSkillshot(0.3333f, 110, 1100, false, SkillshotType.SkillshotLine);
-            E.SetSkillshot(0.25f, 225, 1750, false, SkillshotType.SkillshotCircle);
+            Q.SetSkillshot(0.35f, 110, 1800, false, SkillshotType.SkillshotLine);
+            E.SetSkillshot(0.35f, 225, 1500, false, SkillshotType.SkillshotCircle);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -177,12 +179,12 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if (Player.Distance(gapcloser.Sender) <= 100)
+            if (Player.Distance(gapcloser.Sender) <= QKnockUpWidth)
             {
                 Q.Cast(gapcloser.Sender.ServerPosition, PacketCast);
             }
             else if (GetValue<bool>("AntiGap", "QSlow") && gapcloser.SkillType == GapcloserType.Skillshot &&
-                     Player.Distance(gapcloser.End) > 100)
+                     Player.Distance(gapcloser.End) > QKnockUpWidth)
             {
                 Q.CastIfHitchanceEquals(gapcloser.Sender, HitChance.High, PacketCast);
             }
@@ -195,12 +197,12 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if (Player.Distance(unit) > 100 && W.CanCast(unit) &&
+            if (Player.Distance(unit) > QKnockUpWidth && W.CanCast(unit) &&
                 Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost && W.CastOnUnit(unit, PacketCast))
             {
                 return;
             }
-            if (Player.Distance(unit) <= 100)
+            if (Player.Distance(unit) <= QKnockUpWidth)
             {
                 Q.Cast(unit.ServerPosition, PacketCast);
             }
@@ -248,20 +250,20 @@ namespace BrianSharp.Plugin
                 }
                 if (W.IsReady())
                 {
-                    if (E.IsReady() && E.CastIfWillHit(target, -1, PacketCast))
+                    if (E.IsReady() && E.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
                     {
                         return;
                     }
                     W.CastOnUnit(target, PacketCast);
                 }
-                else if (Utils.TickCount - W.LastCastAttemptT <= 1500 && Q.IsReady())
+                else if (!Player.IsDashing() && Q.IsReady())
                 {
                     Q.CastIfHitchanceEquals(target, HitChance.High, PacketCast);
                 }
             }
             else
             {
-                if (GetValue<bool>(mode, "E") && E.CastOnBestTarget(E.Width, PacketCast, true).IsCasted())
+                if (GetValue<bool>(mode, "E") && E.CastOnBestTarget(E.Width, PacketCast).IsCasted())
                 {
                     return;
                 }
@@ -282,7 +284,7 @@ namespace BrianSharp.Plugin
         {
             SmiteMob();
             var minionObj = MinionManager.GetMinions(
-                E.Range + E.Width, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+                E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (!minionObj.Any())
             {
                 return;
@@ -322,12 +324,15 @@ namespace BrianSharp.Plugin
         {
             if (GetValue<bool>("Flee", "W") && W.IsReady())
             {
+                var pos = Player.Distance(Game.CursorPos) > W.Range
+                    ? Player.ServerPosition.Extend(Game.CursorPos, W.Range)
+                    : Game.CursorPos;
                 var obj =
-                    HeroManager.Enemies.Where(i => i.IsValidTarget(W.Range) && i.Distance(Game.CursorPos) < 200)
-                        .MinOrDefault(i => i.Distance(Game.CursorPos)) ??
+                    HeroManager.Enemies.Where(i => i.IsValidTarget(W.Range + i.BoundingRadius) && i.Distance(pos) < 200)
+                        .MinOrDefault(i => i.Distance(pos)) ??
                     MinionManager.GetMinions(W.Range, MinionTypes.All, MinionTeam.NotAlly)
-                        .Where(i => i.Distance(Game.CursorPos) < 200)
-                        .MinOrDefault(i => i.Distance(Game.CursorPos));
+                        .Where(i => i.Distance(pos) < 200)
+                        .MinOrDefault(i => i.Distance(pos));
                 if (obj != null && W.CastOnUnit(obj, PacketCast))
                 {
                     return;

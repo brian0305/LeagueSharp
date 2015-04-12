@@ -222,7 +222,7 @@ namespace BrianSharp.Common
             }
             if (Orbwalking.IsAutoAttackReset(args.SData.Name))
             {
-                Utility.DelayAction.Add(250, ResetAutoAttack);
+                Utility.DelayAction.Add(100, ResetAutoAttack);
             }
             if (!args.SData.IsAutoAttack())
             {
@@ -233,7 +233,7 @@ namespace BrianSharp.Common
                 _lastAttack = Utils.TickCount - Game.Ping / 2;
                 if (args.Target.IsValid<Obj_AI_Base>())
                 {
-                    var target = (Obj_AI_Base) args.Target;
+                    var target = (AttackableUnit) args.Target;
                     FireOnTargetSwitch(target);
                     _lastTarget = target;
                     if (sender.IsMelee())
@@ -290,7 +290,7 @@ namespace BrianSharp.Common
                 return;
             }
             Player.IssueOrder(
-                GameObjectOrder.MoveTo, Player.ServerPosition.Extend(pos, (RandomPos.NextFloat(0.6f, 1) + 0.2f) * 200));
+                GameObjectOrder.MoveTo, Player.ServerPosition.Extend(pos, (RandomPos.NextFloat(0.6f, 1) + 0.2f) * 400));
         }
 
         public static void Orbwalk(AttackableUnit target)

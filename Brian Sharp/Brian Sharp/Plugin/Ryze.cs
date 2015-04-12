@@ -102,7 +102,6 @@ namespace BrianSharp.Plugin
             Drawing.OnDraw += OnDraw;
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
-            //Orbwalk.BeforeAttack += BeforeAttack;
         }
 
         private void OnUpdate(EventArgs args)
@@ -174,27 +173,6 @@ namespace BrianSharp.Plugin
                 return;
             }
             W.CastOnUnit(unit, PacketCast);
-        }
-
-        private void BeforeAttack(Orbwalker.BeforeAttackEventArgs Args)
-        {
-            //var Target = (Obj_AI_Base) Args.Target;
-            //if (Orbwalk.CurrentMode == Orbwalk.Mode.Combo || Orbwalk.CurrentMode == Orbwalk.Mode.Harass)
-            //{
-            //    if ((ItemBool(Orbwalk.CurrentMode.ToString(), "Q") && Q.CanCast(Target)) ||
-            //        (ItemBool(Orbwalk.CurrentMode.ToString(), "W") && W.CanCast(Target)) ||
-            //        (ItemBool(Orbwalk.CurrentMode.ToString(), "E") && E.CanCast(Target)))
-            //        Args.Process = false;
-            //}
-            //else if (Orbwalk.CurrentMode == Orbwalk.Mode.LaneClear)
-            //{
-            //    if ((ItemBool("Clear", "Q") && Q.CanCast(Target)) || (ItemBool("Clear", "W") && W.CanCast(Target)) ||
-            //        (ItemBool("Clear", "E") && E.CanCast(Target)))
-            //        Args.Process = false;
-            //}
-            //else if (Orbwalk.CurrentMode == Orbwalk.Mode.LastHit && ItemBool("Misc", "QLastHit") && Q.CanCast(Target) &&
-            //         CanKill(Target, Q))
-            //    Args.Process = false;
         }
 
         private void Fight(string mode)

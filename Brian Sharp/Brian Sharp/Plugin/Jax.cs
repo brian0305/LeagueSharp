@@ -11,7 +11,6 @@ namespace BrianSharp.Plugin
 {
     internal class Jax : Helper
     {
-        private bool _wardCasted;
         private Vector3 _wardPlacePos;
 
         public Jax()
@@ -270,8 +269,7 @@ namespace BrianSharp.Plugin
         private void Clear()
         {
             SmiteMob();
-            var minionObj = MinionManager.GetMinions(
-                Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            var minionObj = GetMinion(Q.Range, MinionType.Minion, MinionTeam.NotAlly);
             if (!minionObj.Any())
             {
                 return;
@@ -282,9 +280,7 @@ namespace BrianSharp.Plugin
                 {
                     var obj =
                         minionObj.MaxOrDefault(
-                            i =>
-                                MinionManager.GetMinions(i.ServerPosition, E.Range, MinionTypes.All, MinionTeam.NotAlly)
-                                    .Count > 1);
+                            i => GetMinion(i.ServerPosition, E.Range, MinionType.Minion, MinionTeam.NotAlly).Count > 1);
                     if (obj != null && E.Cast(PacketCast) && Q.CastOnUnit(obj, PacketCast))
                     {
                         return;
@@ -302,8 +298,8 @@ namespace BrianSharp.Plugin
                     Player.Mana >= W.Instance.ManaCost + Q.Instance.ManaCost)
                 {
                     var obj =
-                        minionObj.Cast<Obj_AI_Minion>()
-                            .FirstOrDefault(i => i.MaxHealth >= 1200 && CanKill(i, GetBonusDmg(i) + Q.GetDamage(i)));
+                        minionObj.FirstOrDefault(
+                            i => i.MaxHealth >= 1200 && CanKill(i, GetBonusDmg(i) + Q.GetDamage(i)));
                     if (obj != null && W.Cast(PacketCast) && Q.CastOnUnit(obj, PacketCast))
                     {
                         return;
@@ -312,8 +308,7 @@ namespace BrianSharp.Plugin
                 if (W.IsReady() || Player.HasBuff("EmpowerTwo"))
                 {
                     var obj =
-                        minionObj.Cast<Obj_AI_Minion>()
-                            .Where(i => Orbwalk.InAutoAttackRange(i))
+                        minionObj.Where(i => Orbwalk.InAutoAttackRange(i))
                             .FirstOrDefault(i => CanKill(i, GetBonusDmg(i)));
                     if (obj != null)
                     {
@@ -322,8 +317,10 @@ namespace BrianSharp.Plugin
                             W.Cast(PacketCast);
                         }
                         Orbwalk.Move = false;
-                        Utility.DelayAction.Add(80, () => Orbwalk.Move = true);
+                        Orbwalk.Attack = false;
                         Player.IssueOrder(GameObjectOrder.AttackUnit, obj);
+                        Orbwalk.Move = true;
+                        Orbwalk.Attack = true;
                     }
                 }
             }
@@ -331,11 +328,10 @@ namespace BrianSharp.Plugin
             {
                 var obj =
                     (Obj_AI_Base)
-                        minionObj.Cast<Obj_AI_Minion>()
-                            .FirstOrDefault(
-                                i =>
-                                    i.MaxHealth >= 1200 &&
-                                    CanKill(i, Q.GetDamage(i) + (Player.HasBuff("EmpowerTwo") ? GetBonusDmg(i) : 0)));
+                        minionObj.FirstOrDefault(
+                            i =>
+                                i.MaxHealth >= 1200 &&
+                                CanKill(i, Q.GetDamage(i) + (Player.HasBuff("EmpowerTwo") ? GetBonusDmg(i) : 0)));
                 if (obj == null &&
                     (!minionObj.Any(i => Orbwalk.InAutoAttackRange(i, 40)) ||
                      (GetValue<bool>("Clear", "E") && E.IsReady() && Player.HasBuff("JaxEvasion") &&
@@ -367,8 +363,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             var obj =
-                MinionManager.GetMinions(W.Range + 100, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Cast<Obj_AI_Minion>()
+                GetMinion(W.Range + 100, MinionType.Minion, MinionTeam.NotAlly)
                     .Where(i => Orbwalk.InAutoAttackRange(i))
                     .FirstOrDefault(i => CanKill(i, GetBonusDmg(i)));
             if (obj == null)
@@ -380,8 +375,10 @@ namespace BrianSharp.Plugin
                 W.Cast(PacketCast);
             }
             Orbwalk.Move = false;
-            Utility.DelayAction.Add(80, () => Orbwalk.Move = true);
+            Orbwalk.Attack = false;
             Player.IssueOrder(GameObjectOrder.AttackUnit, obj);
+            Orbwalk.Move = true;
+            Orbwalk.Attack = true;
         }
 
         private void Flee(Vector3 pos)
@@ -390,48 +387,40 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            Obj_AI_Base obj;
+            Obj_AI_Base obj = null;
             var jumpPos = Player.Distance(pos) > Q.Range ? Player.ServerPosition.Extend(pos, Q.Range) : pos;
-            if (_wardCasted)
+            if (_wardPlacePos.IsValid())
             {
                 obj =
-                    ObjectManager.Get<Obj_AI_Minion>()
-                        .FirstOrDefault(
-                            i => i.IsAlly && i.Distance(_wardPlacePos) < 200 && i.Name.ToLower().Contains("ward"));
+                    GetMinion(Q.Range, MinionType.Ward, MinionTeam.All, true)
+                        .FirstOrDefault(i => i.Distance(_wardPlacePos) < 200);
             }
-            else
+            if (!_wardPlacePos.IsValid() || obj == null)
             {
                 obj =
-                    HeroManager.AllHeroes.Where(
-                        i => !i.IsMe && i.IsValidTarget(Q.Range + i.BoundingRadius, false) && i.Distance(jumpPos) < 200)
-                        .MinOrDefault(i => i.Distance(jumpPos)) ??
                     (Obj_AI_Base)
-                        ObjectManager.Get<Obj_AI_Minion>()
-                            .Where(
-                                i =>
-                                    i.IsValidTarget(Q.Range + i.BoundingRadius, false) && i.Distance(jumpPos) < 200 &&
-                                    MinionManager.IsMinion(i, true))
-                            .MinOrDefault(i => i.Distance(jumpPos));
+                        HeroManager.AllHeroes.Where(
+                            i =>
+                                !i.IsMe && i.IsValidTarget(Q.Range + i.BoundingRadius, false) &&
+                                i.Distance(jumpPos) < 200).MinOrDefault(i => i.Distance(jumpPos)) ??
+                    GetMinion(Q.Range, MinionType.All, MinionTeam.All, true)
+                        .Where(i => i.Distance(jumpPos) < 200)
+                        .MinOrDefault(i => i.Distance(jumpPos));
             }
-            if (obj != null && Q.CastOnUnit(obj, PacketCast))
+            if (obj != null)
             {
-                return;
+                Q.CastOnUnit(obj, PacketCast);
             }
-            if (GetWardSlot == null || _wardCasted)
+            else if (GetWardSlot != null)
             {
-                return;
-            }
-            var subPos = Player.Distance(pos) > GetWardRange ? Player.ServerPosition.Extend(pos, GetWardRange) : pos;
-            if (Player.Spellbook.CastSpell(GetWardSlot.SpellSlot, subPos))
-            {
-                _wardPlacePos = subPos;
-                _wardCasted = true;
-                Utility.DelayAction.Add(
-                    500, () =>
-                    {
-                        _wardPlacePos = new Vector3();
-                        _wardCasted = false;
-                    });
+                var subPos = Player.Distance(pos) > GetWardRange
+                    ? Player.ServerPosition.Extend(pos, GetWardRange - 20)
+                    : pos;
+                if (Player.Spellbook.CastSpell(GetWardSlot.SpellSlot, subPos))
+                {
+                    _wardPlacePos = subPos;
+                    Utility.DelayAction.Add(500, () => _wardPlacePos = new Vector3());
+                }
             }
         }
 
@@ -464,8 +453,10 @@ namespace BrianSharp.Plugin
                         W.Cast(PacketCast);
                     }
                     Orbwalk.Move = false;
-                    Utility.DelayAction.Add(80, () => Orbwalk.Move = true);
+                    Orbwalk.Attack = false;
                     Player.IssueOrder(GameObjectOrder.AttackUnit, target);
+                    Orbwalk.Move = true;
+                    Orbwalk.Attack = true;
                 }
             }
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())

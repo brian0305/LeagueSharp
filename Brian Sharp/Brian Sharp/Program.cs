@@ -64,7 +64,7 @@ namespace BrianSharp
 
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            if (!sender.IsMe)
+            if (!sender.IsMe || args.SData.Name != Q.Instance.SData.Name)
             {
                 return;
             }

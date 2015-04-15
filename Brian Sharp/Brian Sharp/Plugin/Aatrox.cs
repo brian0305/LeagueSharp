@@ -17,9 +17,9 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W);
             E = new Spell(SpellSlot.E, 1075, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 550, TargetSelector.DamageType.Magical);
-            Q.SetSkillshot(0, 250, 2000, false, SkillshotType.SkillshotCircle);
-            Q2.SetSkillshot(0, 150, 2000, false, SkillshotType.SkillshotCircle);
-            E.SetSkillshot(0.235f, 40, 1250, false, SkillshotType.SkillshotLine);
+            Q.SetSkillshot(0, 250, 2500, false, SkillshotType.SkillshotCircle);
+            Q2.SetSkillshot(0, 150, 2500, false, SkillshotType.SkillshotCircle);
+            E.SetSkillshot(0.25f, 40, 1250, false, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -183,7 +183,7 @@ namespace BrianSharp.Plugin
         {
             if (GetValue<bool>(mode, "Q") &&
                 (mode == "Combo" || Player.HealthPercentage() >= GetValue<Slider>(mode, "QHpA").Value) &&
-                Q2.CastOnBestTarget(Q2.Width, PacketCast).IsCasted())
+                Q2.CastOnBestTarget(Q2.Width / 2, PacketCast).IsCasted())
             {
                 return;
             }
@@ -232,7 +232,8 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var pos = Q.GetCircularFarmLocation(minionObj.Where(i => Q.IsInRange(i, Q.Range + Q.Width)).ToList());
+                var pos = Q.GetCircularFarmLocation(
+                    minionObj.Where(i => Q.IsInRange(i, Q.Range + Q.Width / 2)).ToList());
                 if (pos.MinionsHit > 1)
                 {
                     if (Q.Cast(pos.Position, PacketCast))
@@ -243,7 +244,7 @@ namespace BrianSharp.Plugin
                 else
                 {
                     var obj = minionObj.FirstOrDefault(i => i.MaxHealth >= 1200);
-                    if (obj != null && Q.IsInRange(obj, Q.Range + Q2.Width) &&
+                    if (obj != null && Q.IsInRange(obj, Q.Range + Q2.Width / 2) &&
                         Q2.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast))
                     {
                         return;
@@ -328,7 +329,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
-                var target = Q.GetTarget(Q.Width);
+                var target = Q.GetTarget(Q.Width / 2);
                 if (target != null && Q.IsKillable(target) &&
                     Q.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
                 {

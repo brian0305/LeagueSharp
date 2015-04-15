@@ -19,7 +19,7 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W, 300, TargetSelector.DamageType.Magical);
             E = new Spell(SpellSlot.E, 350, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 550, TargetSelector.DamageType.Magical);
-            Q.SetSkillshot(0.235f, 80, 2000, true, SkillshotType.SkillshotLine);
+            Q.SetSkillshot(0.25f, 80, 2000, true, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -191,7 +191,8 @@ namespace BrianSharp.Plugin
                     if (GetValue<bool>(mode, "R") && (R.IsReady() || R.IsReady(100)))
                     {
                         var nearObj = new List<Obj_AI_Base>();
-                        nearObj.AddRange(MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly));
+                        nearObj.AddRange(
+                            GetMinion(Q.Range, MinionType.Minion, MinionTeam.NotAlly).Where(i => i.Name != "Beacon"));
                         nearObj.AddRange(HeroManager.Enemies.Where(i => i.IsValidTarget(Q.Range)));
                         var obj =
                             nearObj.Where(
@@ -238,7 +239,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>(mode, "W") && W.IsReady())
             {
-                if (Player.ManaPercent >= GetValue<Slider>(mode, "WMpA").Value)
+                if (Player.ManaPercentage() >= GetValue<Slider>(mode, "WMpA").Value)
                 {
                     if (W.GetTarget(GetValue<Slider>("Misc", "WExtraRange").Value) != null)
                     {
@@ -278,7 +279,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady())
             {
-                if (Player.ManaPercent >= GetValue<Slider>("Clear", "WMpA").Value)
+                if (Player.ManaPercentage() >= GetValue<Slider>("Clear", "WMpA").Value)
                 {
                     if (minionObj.Count(i => W.IsInRange(i, W.Range + GetValue<Slider>("Misc", "WExtraRange").Value)) >
                         1 ||

@@ -184,8 +184,7 @@ namespace BrianSharp.Plugin
         private void Clear()
         {
             SmiteMob();
-            var minionObj = MinionManager.GetMinions(
-                E.Range + E.Width, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            var minionObj = GetMinion(E.Range + E.Width / 2, MinionType.Minion, MinionTeam.NotAlly);
             if (!minionObj.Any())
             {
                 return;
@@ -196,8 +195,7 @@ namespace BrianSharp.Plugin
                     ObjectManager.Get<Obj_AI_Turret>()
                         .FirstOrDefault(i => Orbwalk.InAutoAttackRange(i) && CanKill(i, GetBonusDmg(i))) ??
                     (Obj_AI_Base)
-                        minionObj.Cast<Obj_AI_Minion>()
-                            .Where(i => Orbwalk.InAutoAttackRange(i))
+                        minionObj.Where(i => Orbwalk.InAutoAttackRange(i))
                             .FirstOrDefault(
                                 i =>
                                     CanKill(i, GetBonusDmg(i)) ||
@@ -213,13 +211,15 @@ namespace BrianSharp.Plugin
                         Q.Cast(PacketCast);
                     }
                     Orbwalk.Move = false;
-                    Utility.DelayAction.Add(80, () => Orbwalk.Move = true);
+                    Orbwalk.Attack = false;
                     Player.IssueOrder(GameObjectOrder.AttackUnit, obj);
+                    Orbwalk.Move = true;
+                    Orbwalk.Attack = true;
                 }
             }
             if (GetValue<bool>("Clear", "E") && E.IsReady())
             {
-                var pos = E.GetCircularFarmLocation(minionObj);
+                var pos = E.GetCircularFarmLocation(minionObj.Cast<Obj_AI_Base>().ToList());
                 if (pos.MinionsHit > 1)
                 {
                     E.Cast(pos.Position, PacketCast);
@@ -242,8 +242,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             var obj =
-                MinionManager.GetMinions(Q.Range + 100, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Cast<Obj_AI_Minion>()
+                GetMinion(Q.Range + 100, MinionType.Minion, MinionTeam.NotAlly)
                     .Where(i => Orbwalk.InAutoAttackRange(i))
                     .FirstOrDefault(i => CanKill(i, GetBonusDmg(i)));
             if (obj == null)
@@ -255,8 +254,10 @@ namespace BrianSharp.Plugin
                 Q.Cast(PacketCast);
             }
             Orbwalk.Move = false;
-            Utility.DelayAction.Add(80, () => Orbwalk.Move = true);
+            Orbwalk.Attack = false;
             Player.IssueOrder(GameObjectOrder.AttackUnit, obj);
+            Orbwalk.Move = true;
+            Orbwalk.Attack = true;
         }
 
         private void KillSteal()
@@ -288,8 +289,10 @@ namespace BrianSharp.Plugin
                         Q.Cast(PacketCast);
                     }
                     Orbwalk.Move = false;
-                    Utility.DelayAction.Add(80, () => Orbwalk.Move = true);
+                    Orbwalk.Attack = false;
                     Player.IssueOrder(GameObjectOrder.AttackUnit, target);
+                    Orbwalk.Move = true;
+                    Orbwalk.Attack = true;
                 }
             }
             if (GetValue<bool>("KillSteal", "E") && E.IsReady())

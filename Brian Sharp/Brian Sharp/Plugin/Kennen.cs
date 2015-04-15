@@ -164,7 +164,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>(mode, "W") && W.IsReady() &&
                 HeroManager.Enemies.Any(i => i.IsValidTarget(W.Range) && i.HasBuff("KennenMarkOfStorm")) &&
-                (mode == "Combo" || Player.ManaPercent >= GetValue<Slider>(mode, "WMpA").Value))
+                (mode == "Combo" || Player.ManaPercentage() >= GetValue<Slider>(mode, "WMpA").Value))
             {
                 if (Player.HasBuff("KennenShurikenStorm"))
                 {
@@ -247,7 +247,7 @@ namespace BrianSharp.Plugin
 
         private void Flee()
         {
-            if (GetValue<bool>("Flee", "E") && E.IsReady() && E.Instance.Name == "KennenLightningRush" &&
+            if (GetValue<bool>("Flee", "E") && E.IsReady() && !Player.HasBuff("KennenLightningRush") &&
                 E.Cast(PacketCast))
             {
                 return;
@@ -262,7 +262,7 @@ namespace BrianSharp.Plugin
         private void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
-                Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
+                Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
             {
                 return;
             }

@@ -222,7 +222,7 @@ namespace BrianSharp.Common
             }
             if (Orbwalking.IsAutoAttackReset(args.SData.Name))
             {
-                Utility.DelayAction.Add(100, ResetAutoAttack);
+                ResetAutoAttack();
             }
             if (!args.SData.IsAutoAttack())
             {
@@ -290,7 +290,7 @@ namespace BrianSharp.Common
                 return;
             }
             Player.IssueOrder(
-                GameObjectOrder.MoveTo, Player.ServerPosition.Extend(pos, (RandomPos.NextFloat(0.6f, 1) + 0.2f) * 400));
+                GameObjectOrder.MoveTo, Player.ServerPosition.Extend(pos, (RandomPos.NextFloat(0.6f, 1) + 0.2f) * 200));
         }
 
         public static void Orbwalk(AttackableUnit target)

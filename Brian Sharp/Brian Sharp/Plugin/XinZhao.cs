@@ -143,11 +143,12 @@ namespace BrianSharp.Plugin
             if (!R.IsInRange(unit) && E.IsReady() && Player.Mana >= E.Instance.ManaCost + R.Instance.ManaCost)
             {
                 var obj =
-                    HeroManager.Enemies.Where(
-                        i =>
-                            i.IsValidTarget(E.Range) && i.Distance(unit) < R.Range - 20 && i.NetworkId != unit.NetworkId)
-                        .MinOrDefault(i => i.Distance(unit)) ??
-                    MinionManager.GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly)
+                    (Obj_AI_Base)
+                        HeroManager.Enemies.Where(
+                            i =>
+                                i.IsValidTarget(E.Range) && i.Distance(unit) < R.Range - 20 &&
+                                i.NetworkId != unit.NetworkId).MinOrDefault(i => i.Distance(unit)) ??
+                    GetMinion(E.Range, MinionType.Minion, MinionTeam.NotAlly)
                         .Where(i => i.Distance(unit) < R.Range - 20)
                         .MinOrDefault(i => i.Distance(unit));
                 if (obj != null)
@@ -230,15 +231,14 @@ namespace BrianSharp.Plugin
         private void Clear()
         {
             SmiteMob();
-            var minionObj = MinionManager.GetMinions(
-                E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            var minionObj = GetMinion(E.Range, MinionType.Minion, MinionTeam.NotAlly);
             if (!minionObj.Any())
             {
                 return;
             }
             if (GetValue<bool>("Clear", "E") && E.IsReady())
             {
-                var obj = (Obj_AI_Base) minionObj.Cast<Obj_AI_Minion>().FirstOrDefault(i => E.IsKillable(i));
+                var obj = (Obj_AI_Base) minionObj.FirstOrDefault(i => E.IsKillable(i));
                 if (obj == null && !minionObj.Any(i => Orbwalk.InAutoAttackRange(i, 30)))
                 {
                     obj = minionObj.MinOrDefault(i => i.Health);

@@ -16,7 +16,7 @@ namespace BrianSharp.Plugin
 
         public Yasuo()
         {
-            Q = new Spell(SpellSlot.Q, 485);
+            Q = new Spell(SpellSlot.Q, 495);
             Q2 = new Spell(SpellSlot.Q, 1100);
             W = new Spell(SpellSlot.W, 400);
             E = new Spell(SpellSlot.E, 475, TargetSelector.DamageType.Magical);
@@ -129,7 +129,7 @@ namespace BrianSharp.Plugin
         {
             get
             {
-                return 0.235f *
+                return 0.4f *
                        (1 -
                         ((((float) Math.Round(1 / Player.AttackDelay, 3) > 1.4f ? 1.4f / 0.658f : Player.AttackSpeedMod) -
                           1) / 0.0172f) / 100);
@@ -140,7 +140,7 @@ namespace BrianSharp.Plugin
         {
             get
             {
-                return 0.3f *
+                return 0.5f *
                        (1 -
                         ((((float) Math.Round(1 / Player.AttackDelay, 3) > 1.4f ? 1.4f / 0.658f : Player.AttackSpeedMod) -
                           1) / 0.0172f) / 100);
@@ -357,8 +357,7 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("Clear", "E") && E.IsReady())
             {
                 var minionObj =
-                    MinionManager.GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                        .Cast<Obj_AI_Minion>()
+                    GetMinion(E.Range, MinionType.Minion, MinionTeam.NotAlly)
                         .Where(i => CanCastE(i) && (!UnderTower(PosAfterE(i)) || GetValue<bool>("Clear", "ETower")))
                         .ToList();
                 var obj = minionObj.Where(i => CanKill(i, GetEDmg(i))).MaxOrDefault(i => i.Distance(Player));
@@ -370,13 +369,10 @@ namespace BrianSharp.Plugin
                             i =>
                                 i.Team == GameObjectTeam.Neutral ||
                                 (i.Distance(PosAfterE(i)) < QCirWidth && CanKill(i, GetEDmg(i) + Q.GetDamage(i))) ||
-                                MinionManager.GetMinions(PosAfterE(i), QCirWidth, MinionTypes.All, MinionTeam.NotAlly)
-                                    .Cast<Obj_AI_Minion>()
+                                GetMinion(PosAfterE(i), QCirWidth, MinionType.Minion, MinionTeam.NotAlly)
                                     .Any(a => Q.IsKillable(a)))
                             .MaxOrDefault(
-                                i =>
-                                    MinionManager.GetMinions(
-                                        PosAfterE(i), QCirWidth, MinionTypes.All, MinionTeam.NotAlly).Count);
+                                i => GetMinion(PosAfterE(i), QCirWidth, MinionType.Minion, MinionTeam.NotAlly).Count);
                 }
                 if (obj != null && E.CastOnUnit(obj, PacketCast))
                 {
@@ -398,20 +394,14 @@ namespace BrianSharp.Plugin
                 }
                 else
                 {
-                    var minionObj = MinionManager.GetMinions(
-                        (HaveQ3 ? Q2 : Q).Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
-                    if (minionObj.Any())
+                    var minionObj = GetMinion((!HaveQ3 ? Q : Q2).Range, MinionType.Minion, MinionTeam.NotAlly);
+                    var obj =
+                        minionObj.Where(
+                            i => (MinionManager.IsMinion(i) || i.Team == GameObjectTeam.Neutral) && Q.IsKillable(i))
+                            .MaxOrDefault(i => Player.Distance(i)) ?? minionObj.MinOrDefault(i => Player.Distance(i));
+                    if (obj != null && (HaveQ3 ? Q2 : Q).CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast))
                     {
-                        var pos = (HaveQ3 ? Q2 : Q).GetLineFarmLocation(minionObj);
-                        var obj = minionObj.Cast<Obj_AI_Minion>().FirstOrDefault(i => Q.IsInRange(i) && Q.IsKillable(i));
-                        if (obj != null && !HaveQ3 && Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast))
-                        {
-                            return;
-                        }
-                        if (pos.MinionsHit > 0 && (HaveQ3 ? Q2 : Q).Cast(pos.Position, PacketCast))
-                        {
-                            return;
-                        }
+                        return;
                     }
                 }
             }
@@ -562,10 +552,10 @@ namespace BrianSharp.Plugin
             }
             else
             {
-                var minionObj = MinionManager.GetMinions(
-                    Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
-                var obj = minionObj.Cast<Obj_AI_Minion>().FirstOrDefault(i => Q.IsKillable(i)) ??
-                          minionObj.MinOrDefault(i => i.Distance(Player));
+                var minionObj = GetMinion(Q.Range, MinionType.Minion, MinionTeam.NotAlly);
+                var obj =
+                    minionObj.Where(i => MinionManager.IsMinion(i) || i.Team == GameObjectTeam.Neutral)
+                        .FirstOrDefault(i => Q.IsKillable(i)) ?? minionObj.MinOrDefault(i => i.Distance(Player));
                 if (obj != null)
                 {
                     Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast);
@@ -603,24 +593,24 @@ namespace BrianSharp.Plugin
         {
             var pos = target != null ? target.ServerPosition : Game.CursorPos;
             var obj = new List<Obj_AI_Base>();
-            obj.AddRange(MinionManager.GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly));
+            obj.AddRange(GetMinion(E.Range, MinionType.Minion, MinionTeam.NotAlly));
             obj.AddRange(HeroManager.Enemies.Where(i => i.IsValidTarget(E.Range)));
             return
                 obj.Where(i => CanCastE(i) && pos.Distance(PosAfterE(i)) < (inQCir ? QCirWidth : Player.Distance(pos)))
                     .MinOrDefault(i => i.Distance(Player));
         }
 
-        private List<Obj_AI_Base> GetQCirObj(bool onlyHero = false)
+        private IEnumerable<Obj_AI_Base> GetQCirObj(bool onlyHero = false)
         {
-            if (Player.Distance(Player.GetDashInfo().EndPos) > 100)
+            if (Player.Distance(Player.GetDashInfo().EndPos) > 150)
             {
-                return new List<Obj_AI_Base>();
+                return null;
             }
             var obj = new List<Obj_AI_Base>();
             obj.AddRange(HeroManager.Enemies.Where(i => i.IsValidTarget(QCirWidth)));
             if (!onlyHero)
             {
-                obj.AddRange(MinionManager.GetMinions(QCirWidth, MinionTypes.All, MinionTeam.NotAlly));
+                obj.AddRange(GetMinion(QCirWidth, MinionType.Minion, MinionTeam.NotAlly));
             }
             return obj;
         }

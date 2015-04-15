@@ -246,14 +246,8 @@ namespace BrianSharp.Plugin
 
         private void Clear()
         {
-            var minionObjQ =
-                MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Cast<Obj_AI_Minion>()
-                    .ToList();
-            var minionObjW =
-                MinionManager.GetMinions(W.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Cast<Obj_AI_Minion>()
-                    .ToList();
+            var minionObjQ = GetMinion(Q.Range, MinionType.Minion, MinionTeam.NotAlly);
+            var minionObjW = GetMinion(W.Range, MinionType.Minion, MinionTeam.NotAlly);
             if (!minionObjQ.Any())
             {
                 return;
@@ -279,9 +273,7 @@ namespace BrianSharp.Plugin
             {
                 var obj = minionObjW.FirstOrDefault(i => E.IsKillable(i)) ??
                           minionObjW.MaxOrDefault(
-                              i =>
-                                  MinionManager.GetMinions(i.ServerPosition, 200, MinionTypes.All, MinionTeam.NotAlly)
-                                      .Count);
+                              i => GetMinion(i.ServerPosition, 200, MinionType.Minion, MinionTeam.NotAlly).Count);
                 if (obj != null)
                 {
                     E.CastOnUnit(obj, PacketCast);
@@ -295,10 +287,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            var obj =
-                MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Cast<Obj_AI_Minion>()
-                    .FirstOrDefault(i => Q.IsKillable(i));
+            var obj = GetMinion(Q.Range, MinionType.Minion, MinionTeam.NotAlly).FirstOrDefault(i => Q.IsKillable(i));
             if (obj == null)
             {
                 return;
@@ -309,7 +298,7 @@ namespace BrianSharp.Plugin
         private void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
-                Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
+                Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
             {
                 return;
             }

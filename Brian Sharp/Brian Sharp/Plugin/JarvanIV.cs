@@ -21,9 +21,9 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W, 520);
             E = new Spell(SpellSlot.E, 860, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 650);
-            Q.SetSkillshot(0.235f, 70, float.MaxValue, false, SkillshotType.SkillshotLine);
-            Q2.SetSkillshot(0.235f, 180, 2000, false, SkillshotType.SkillshotLine);
-            E.SetSkillshot(0.15f, 175, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            Q.SetSkillshot(0.25f, 70, 2000, false, SkillshotType.SkillshotLine);
+            Q2.SetSkillshot(0.25f, 180, 2450, false, SkillshotType.SkillshotLine);
+            E.SetSkillshot(0.5f, 175, float.MaxValue, false, SkillshotType.SkillshotCircle);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -46,10 +46,6 @@ namespace BrianSharp.Plugin
                     AddItem(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
                     AddItem(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
                     AddItem(harassMenu, "Q", "Use Q");
-                    AddItem(harassMenu, "QHpA", "-> To Flag If Hp Above", 20);
-                    AddItem(harassMenu, "QFlagRange", "-> To Flag If Flag In", 500, 100, 860);
-                    AddItem(harassMenu, "E", "Use E");
-                    AddItem(harassMenu, "EQ", "-> Save E For EQ");
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
@@ -78,6 +74,7 @@ namespace BrianSharp.Plugin
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
                         AddItem(killStealMenu, "Q", "Use Q");
+                        AddItem(killStealMenu, "E", "Use E");
                         AddItem(killStealMenu, "R", "Use R");
                         AddItem(killStealMenu, "Ignite", "Use Ignite");
                         AddItem(killStealMenu, "Smite", "Use Smite");
@@ -121,7 +118,9 @@ namespace BrianSharp.Plugin
                 return
                     ObjectManager.Get<Obj_AI_Minion>()
                         .Where(
-                            i => i.IsValidTarget(Q2.Range + i.BoundingRadius, false) && i.IsAlly && i.Name == "Beacon");
+                            i =>
+                                i.IsValidTarget(Q2.Range + i.BoundingRadius, false) && i.IsAlly && i.Name == "Beacon" &&
+                                Player.Distance(i) > 1);
             }
         }
 
@@ -199,9 +198,7 @@ namespace BrianSharp.Plugin
                 }
             }
             foreach (var flag in
-                Flag.Where(
-                    i => unit.Distance(i) <= 60 || (Player.Distance(unit) >= 150 && Q2.WillHit(unit, i.ServerPosition)))
-                )
+                Flag.Where(i => unit.Distance(i) <= 60 || Q2.WillHit(unit, i.ServerPosition)))
             {
                 Q.Cast(flag.ServerPosition, PacketCast);
             }
@@ -222,22 +219,21 @@ namespace BrianSharp.Plugin
 
         private void Fight(string mode)
         {
-            if (GetValue<bool>(mode, "E") && E.IsReady())
+            if (mode == "Combo" && GetValue<bool>(mode, "E") && E.IsReady())
             {
                 if (GetValue<bool>(mode, "EQ") &&
-                    (Player.Mana < E.Instance.ManaCost + Q.Instance.ManaCost || !Q.IsReady()))
+                    (Player.Mana < E.Instance.ManaCost + Q.Instance.ManaCost || (!Q.IsReady() && Q.IsReady(4000))))
                 {
                     return;
                 }
-                var target = E.GetTarget(E.Width);
+                var target = E.GetTarget(E.Width / 2);
                 if (target != null)
                 {
                     var predE = E.GetPrediction(target);
                     if (predE.Hitchance >= HitChance.High &&
                         E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width), PacketCast))
                     {
-                        if (GetValue<bool>(mode, "Q") && Q.IsReady() &&
-                            (mode == "Combo" || Player.HealthPercentage() >= GetValue<Slider>(mode, "QHpA").Value))
+                        if (GetValue<bool>(mode, "Q") && Q.IsReady())
                         {
                             Q.Cast(predE.CastPosition, PacketCast);
                         }
@@ -245,19 +241,25 @@ namespace BrianSharp.Plugin
                     }
                 }
             }
-            if ((!GetValue<bool>(mode, "E") || !E.IsReady()) && GetValue<bool>(mode, "Q") && Q.IsReady() &&
-                (mode == "Combo" || (Flag == null || Player.HealthPercentage() >= GetValue<Slider>(mode, "QHpA").Value)))
+            if (GetValue<bool>(mode, "Q") && Q.IsReady())
             {
-                var target = Q2.GetTarget();
-                if (GetValue<bool>(mode, "E") && Flag != null && target != null &&
-                    Flag.Where(
-                        i =>
-                            Player.Distance(i) <= GetValue<Slider>(mode, "QFlagRange").Value &&
-                            (target.Distance(i) <= 60 ||
-                             (Player.Distance(target) >= 150 && Q2.WillHit(target, i.ServerPosition))))
-                        .Any(i => Q.Cast(i.ServerPosition, PacketCast)))
+                if (mode == "Combo")
                 {
-                    return;
+                    if (GetValue<bool>(mode, "E") && Player.Mana >= E.Instance.ManaCost + Q.Instance.ManaCost &&
+                        E.IsReady(2000))
+                    {
+                        return;
+                    }
+                    var target = Q2.GetTarget(50);
+                    if (GetValue<bool>(mode, "E") && target != null &&
+                        Flag.Where(
+                            i =>
+                                Player.Distance(i) <= GetValue<Slider>(mode, "QFlagRange").Value + i.BoundingRadius &&
+                                (target.Distance(i) <= 60 || Q2.WillHit(target, i.ServerPosition)))
+                            .Any(i => Q.Cast(i.ServerPosition, PacketCast)))
+                    {
+                        return;
+                    }
                 }
                 if (Q.CastOnBestTarget(0, PacketCast).IsCasted())
                 {
@@ -336,7 +338,7 @@ namespace BrianSharp.Plugin
                     (!GetValue<bool>("Clear", "E") ||
                      (!E.IsReady() || (E.IsReady() && E.GetCircularFarmLocation(minionObj).MinionsHit == 1))))
                 {
-                    if (GetValue<bool>("Clear", "E") && Flag != null &&
+                    if (GetValue<bool>("Clear", "E") &&
                         Flag.Where(
                             i =>
                                 minionObj.Count(a => a.Distance(i) <= 60) > 1 ||
@@ -412,7 +414,7 @@ namespace BrianSharp.Plugin
         private void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
-                Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
+                Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
             {
                 return;
             }
@@ -443,6 +445,15 @@ namespace BrianSharp.Plugin
                 var target = Q.GetTarget();
                 if (target != null && Q.IsKillable(target) &&
                     Q.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
+                {
+                    return;
+                }
+            }
+            if (GetValue<bool>("KillSteal", "E") && E.IsReady())
+            {
+                var target = E.GetTarget(E.Width / 2);
+                if (target != null && E.IsKillable(target) &&
+                    E.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
                 {
                     return;
                 }

@@ -19,7 +19,7 @@ namespace BrianSharp.Plugin
             E = new Spell(SpellSlot.E, 1100, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 475, TargetSelector.DamageType.Magical);
             Q.SetSkillshot(0.35f, 110, 1800, false, SkillshotType.SkillshotLine);
-            E.SetSkillshot(0.35f, 225, 1500, false, SkillshotType.SkillshotCircle);
+            E.SetSkillshot(0.5f, 225, 1500, false, SkillshotType.SkillshotCircle);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -213,9 +213,9 @@ namespace BrianSharp.Plugin
             if (mode == "Combo" && GetValue<bool>(mode, "R") && R.IsReady())
             {
                 var obj = HeroManager.Enemies.Where(i => i.IsValidTarget(R.Range)).ToList();
-                if (!Player.HasBuff("MaokaiDrain"))
+                if (!Player.HasBuff("MaokaiDrain3"))
                 {
-                    if (Player.ManaPercent >= GetValue<Slider>(mode, "RMpU").Value &&
+                    if (Player.ManaPercentage() >= GetValue<Slider>(mode, "RMpU").Value &&
                         (GetValue<Slider>(mode, "RCountA").Value > 1
                             ? (obj.Count > 1 &&
                                obj.Any(i => i.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value)) ||
@@ -234,7 +234,7 @@ namespace BrianSharp.Plugin
                     {
                         return;
                     }
-                    if (Player.ManaPercent < GetValue<Slider>(mode, "RMpU").Value && R.Cast(PacketCast))
+                    if (Player.ManaPercentage() < GetValue<Slider>(mode, "RMpU").Value && R.Cast(PacketCast))
                     {
                         return;
                     }
@@ -328,9 +328,11 @@ namespace BrianSharp.Plugin
                     ? Player.ServerPosition.Extend(Game.CursorPos, W.Range)
                     : Game.CursorPos;
                 var obj =
-                    HeroManager.Enemies.Where(i => i.IsValidTarget(W.Range + i.BoundingRadius) && i.Distance(pos) < 200)
-                        .MinOrDefault(i => i.Distance(pos)) ??
-                    MinionManager.GetMinions(W.Range, MinionTypes.All, MinionTeam.NotAlly)
+                    (Obj_AI_Base)
+                        HeroManager.Enemies.Where(
+                            i => i.IsValidTarget(W.Range + i.BoundingRadius) && i.Distance(pos) < 200)
+                            .MinOrDefault(i => i.Distance(pos)) ??
+                    GetMinion(W.Range, MinionType.Minion, MinionTeam.NotAlly, true)
                         .Where(i => i.Distance(pos) < 200)
                         .MinOrDefault(i => i.Distance(pos));
                 if (obj != null && W.CastOnUnit(obj, PacketCast))
@@ -347,7 +349,7 @@ namespace BrianSharp.Plugin
         private void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
-                Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
+                Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
             {
                 return;
             }

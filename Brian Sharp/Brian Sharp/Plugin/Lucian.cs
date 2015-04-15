@@ -21,8 +21,8 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W, 1000, TargetSelector.DamageType.Magical);
             E = new Spell(SpellSlot.E, 445);
             R = new Spell(SpellSlot.R, 1400);
-            Q2.SetSkillshot(0.235f, 65, float.MaxValue, false, SkillshotType.SkillshotLine);
-            W.SetSkillshot(0.3f, 55, 1600, true, SkillshotType.SkillshotLine);
+            Q2.SetSkillshot(0.25f, 65, float.MaxValue, false, SkillshotType.SkillshotLine);
+            W.SetSkillshot(0.25f, 55, 1600, true, SkillshotType.SkillshotLine);
             R.SetSkillshot(0.05f, 110, 2800, true, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
@@ -331,8 +331,7 @@ namespace BrianSharp.Plugin
 
         private void Clear()
         {
-            var minionObj = MinionManager.GetMinions(
-                Q2.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            var minionObj = GetMinion(Q2.Range, MinionType.Minion, MinionTeam.NotAlly).Cast<Obj_AI_Base>().ToList();
             if (!minionObj.Any())
             {
                 return;
@@ -374,7 +373,7 @@ namespace BrianSharp.Plugin
         private void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
-                Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
+                Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
             {
                 return;
             }
@@ -455,7 +454,7 @@ namespace BrianSharp.Plugin
         private bool CastExtendQ(Obj_AI_Hero target, bool cancelR = false)
         {
             var obj =
-                MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly)
+                GetMinion(Q.Range, MinionType.Minion, MinionTeam.NotAlly, true)
                     .FirstOrDefault(i => Q2.WillHit(target, i.ServerPosition.Extend(Player.ServerPosition, -Q2.Range)));
             return obj != null && (!cancelR || R.Cast(PacketCast)) && Q.CastOnUnit(obj, PacketCast);
         }

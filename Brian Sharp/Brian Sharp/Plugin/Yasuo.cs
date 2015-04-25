@@ -395,8 +395,15 @@ namespace BrianSharp.Plugin
                 else
                 {
                     var minionObj = GetMinion((!HaveQ3 ? Q : Q2).Range, MinionType.Minion, MinionTeam.NotAlly);
-                    var obj = minionObj.Where(i => !HaveQ3 && Q.IsKillable(i)).MaxOrDefault(i => Player.Distance(i)) ??
-                              minionObj.MinOrDefault(i => i.Distance(Player));
+                    Obj_AI_Minion obj = null;
+                    if (!HaveQ3)
+                    {
+                        obj = minionObj.Where(i => Q.IsKillable(i)).MaxOrDefault(i => Player.Distance(i));
+                    }
+                    if (obj == null)
+                    {
+                        obj = minionObj.MaxOrDefault(i => i.Distance(Player));
+                    }
                     if (obj != null && (HaveQ3 ? Q2 : Q).CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast))
                     {
                         return;

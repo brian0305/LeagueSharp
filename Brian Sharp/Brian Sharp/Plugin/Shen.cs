@@ -11,7 +11,7 @@ namespace BrianSharp.Plugin
     internal class Shen : Helper
     {
         private Obj_AI_Hero _alertAlly;
-        private bool _fCasted, _alertCasted;
+        private bool _alertCasted;
 
         public Shen()
         {

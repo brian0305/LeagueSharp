@@ -12,7 +12,7 @@ namespace BrianSharp.Plugin
     internal class JarvanIV : Helper
     {
         private const int RWidth = 325;
-        private bool _rCasted, _fCasted;
+        private bool _rCasted;
 
         public JarvanIV()
         {

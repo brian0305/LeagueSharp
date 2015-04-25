@@ -25,60 +25,60 @@ namespace BrianSharp.Plugin
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "W", "Use W");
-                    AddItem(comboMenu, "E", "Use E");
-                    AddItem(comboMenu, "R", "Use R");
-                    AddItem(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
-                    AddItem(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
-                    AddItem(comboMenu, "RKill", "-> Cancel When Killable");
-                    AddItem(comboMenu, "RKillCountA", "--> If Can Kill Above", 2, 1, 5);
-                    AddItem(comboMenu, "RMpU", "-> Cancel If Mp Under", 20);
+                    AddBool(comboMenu, "Q", "Use Q");
+                    AddBool(comboMenu, "W", "Use W");
+                    AddBool(comboMenu, "E", "Use E");
+                    AddBool(comboMenu, "R", "Use R");
+                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
+                    AddSlider(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
+                    AddBool(comboMenu, "RKill", "-> Cancel When Killable");
+                    AddSlider(comboMenu, "RKillCountA", "--> If Can Kill Above", 2, 1, 5);
+                    AddSlider(comboMenu, "RMpU", "-> Cancel If Mp Under", 20);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
-                    AddItem(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
-                    AddItem(harassMenu, "Q", "Use Q");
-                    AddItem(harassMenu, "W", "Use W");
-                    AddItem(harassMenu, "WHpA", "-> If Hp Above", 20);
-                    AddItem(harassMenu, "E", "Use E");
+                    AddKeybind(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
+                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddBool(harassMenu, "Q", "Use Q");
+                    AddBool(harassMenu, "W", "Use W");
+                    AddSlider(harassMenu, "WHpA", "-> If Hp Above", 20);
+                    AddBool(harassMenu, "E", "Use E");
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddSmiteMobMenu(clearMenu);
-                    AddItem(clearMenu, "Q", "Use Q");
-                    AddItem(clearMenu, "W", "Use W");
-                    AddItem(clearMenu, "E", "Use E");
+                    AddSmiteMob(clearMenu);
+                    AddBool(clearMenu, "Q", "Use Q");
+                    AddBool(clearMenu, "W", "Use W");
+                    AddBool(clearMenu, "E", "Use E");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var fleeMenu = new Menu("Flee", "Flee");
                 {
-                    AddItem(fleeMenu, "W", "Use W");
-                    AddItem(fleeMenu, "Q", "Use Q To Slow Enemy");
+                    AddBool(fleeMenu, "W", "Use W");
+                    AddBool(fleeMenu, "Q", "Use Q To Slow Enemy");
                     champMenu.AddSubMenu(fleeMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "Q", "Use Q");
-                        AddItem(killStealMenu, "W", "Use W");
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
-                        AddItem(killStealMenu, "Smite", "Use Smite");
+                        AddBool(killStealMenu, "Q", "Use Q");
+                        AddBool(killStealMenu, "W", "Use W");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "Smite", "Use Smite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
                     var antiGapMenu = new Menu("Anti Gap Closer", "AntiGap");
                     {
-                        AddItem(antiGapMenu, "Q", "Use Q");
-                        AddItem(antiGapMenu, "QSlow", "-> Slow If Cant Knockback (Skillshot)");
+                        AddBool(antiGapMenu, "Q", "Use Q");
+                        AddBool(antiGapMenu, "QSlow", "-> Slow If Cant Knockback (Skillshot)");
                         foreach (var spell in
                             AntiGapcloser.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 antiGapMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
@@ -86,27 +86,27 @@ namespace BrianSharp.Plugin
                     }
                     var interruptMenu = new Menu("Interrupt", "Interrupt");
                     {
-                        AddItem(interruptMenu, "Q", "Use Q");
+                        AddBool(interruptMenu, "Q", "Use Q");
                         foreach (var spell in
                             Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 interruptMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
                         miscMenu.AddSubMenu(interruptMenu);
                     }
-                    AddItem(miscMenu, "Gank", "Gank", "Z");
-                    AddItem(miscMenu, "WTower", "Auto W If Enemy Under Tower");
+                    AddKeybind(miscMenu, "Gank", "Gank", "Z");
+                    AddBool(miscMenu, "WTower", "Auto W If Enemy Under Tower");
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(drawMenu, "Q", "Q Range", false);
-                    AddItem(drawMenu, "W", "W Range", false);
-                    AddItem(drawMenu, "E", "E Range", false);
-                    AddItem(drawMenu, "R", "R Range", false);
+                    AddBool(drawMenu, "Q", "Q Range", false);
+                    AddBool(drawMenu, "W", "W Range", false);
+                    AddBool(drawMenu, "E", "E Range", false);
+                    AddBool(drawMenu, "R", "R Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);

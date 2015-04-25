@@ -25,51 +25,51 @@ namespace BrianSharp.Plugin
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "QCol", "-> Smite Collision");
-                    AddItem(comboMenu, "W", "Use W");
-                    AddItem(comboMenu, "WMpA", "-> If Mp Above", 20);
-                    AddItem(comboMenu, "E", "Use E");
-                    AddItem(comboMenu, "R", "Use R");
-                    AddItem(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
-                    AddItem(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
+                    AddBool(comboMenu, "Q", "Use Q");
+                    AddBool(comboMenu, "QCol", "-> Smite Collision");
+                    AddBool(comboMenu, "W", "Use W");
+                    AddSlider(comboMenu, "WMpA", "-> If Mp Above", 20);
+                    AddBool(comboMenu, "E", "Use E");
+                    AddBool(comboMenu, "R", "Use R");
+                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
+                    AddSlider(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(harassMenu, "W", "Use W");
-                    AddItem(harassMenu, "WMpA", "-> If Mp Above", 20);
-                    AddItem(harassMenu, "E", "Use E");
+                    AddBool(harassMenu, "W", "Use W");
+                    AddSlider(harassMenu, "WMpA", "-> If Mp Above", 20);
+                    AddBool(harassMenu, "E", "Use E");
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddSmiteMobMenu(clearMenu);
-                    AddItem(clearMenu, "Q", "Use Q");
-                    AddItem(clearMenu, "W", "Use W");
-                    AddItem(clearMenu, "WMpA", "-> If Mp Above", 20);
-                    AddItem(clearMenu, "E", "Use E");
+                    AddSmiteMob(clearMenu);
+                    AddBool(clearMenu, "Q", "Use Q");
+                    AddBool(clearMenu, "W", "Use W");
+                    AddSlider(clearMenu, "WMpA", "-> If Mp Above", 20);
+                    AddBool(clearMenu, "E", "Use E");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "Q", "Use Q");
-                        AddItem(killStealMenu, "E", "Use E");
-                        AddItem(killStealMenu, "R", "Use R");
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
-                        AddItem(killStealMenu, "Smite", "Use Smite");
+                        AddBool(killStealMenu, "Q", "Use Q");
+                        AddBool(killStealMenu, "E", "Use E");
+                        AddBool(killStealMenu, "R", "Use R");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "Smite", "Use Smite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
                     var antiGapMenu = new Menu("Anti Gap Closer", "AntiGap");
                     {
-                        AddItem(antiGapMenu, "Q", "Use Q");
+                        AddBool(antiGapMenu, "Q", "Use Q");
                         foreach (var spell in
                             AntiGapcloser.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 antiGapMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
@@ -77,26 +77,26 @@ namespace BrianSharp.Plugin
                     }
                     var interruptMenu = new Menu("Interrupt", "Interrupt");
                     {
-                        AddItem(interruptMenu, "Q", "Use Q");
+                        AddBool(interruptMenu, "Q", "Use Q");
                         foreach (var spell in
                             Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 interruptMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
                         miscMenu.AddSubMenu(interruptMenu);
                     }
-                    AddItem(miscMenu, "WExtraRange", "W Extra Range Before Cancel", 60, 0, 200);
+                    AddSlider(miscMenu, "WExtraRange", "W Extra Range Before Cancel", 60, 0, 200);
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(drawMenu, "Q", "Q Range", false);
-                    AddItem(drawMenu, "W", "W Range", false);
-                    AddItem(drawMenu, "E", "E Range", false);
-                    AddItem(drawMenu, "R", "R Range", false);
+                    AddBool(drawMenu, "Q", "Q Range", false);
+                    AddBool(drawMenu, "W", "W Range", false);
+                    AddBool(drawMenu, "E", "E Range", false);
+                    AddBool(drawMenu, "R", "R Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);
@@ -105,6 +105,11 @@ namespace BrianSharp.Plugin
             Drawing.OnDraw += OnDraw;
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
+        }
+
+        private bool HaveW
+        {
+            get { return Player.HasBuff("AuraofDespair"); }
         }
 
         private void OnUpdate(EventArgs args)
@@ -239,21 +244,15 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>(mode, "W") && W.IsReady())
             {
-                if (Player.ManaPercentage() >= GetValue<Slider>(mode, "WMpA").Value)
+                if (Player.ManaPercentage() >= GetValue<Slider>(mode, "WMpA").Value &&
+                    W.GetTarget(GetValue<Slider>("Misc", "WExtraRange").Value) != null)
                 {
-                    if (W.GetTarget(GetValue<Slider>("Misc", "WExtraRange").Value) != null)
-                    {
-                        if (!Player.HasBuff("AuraofDespair"))
-                        {
-                            W.Cast(PacketCast);
-                        }
-                    }
-                    else if (Player.HasBuff("AuraofDespair"))
+                    if (!HaveW)
                     {
                         W.Cast(PacketCast);
                     }
                 }
-                else if (Player.HasBuff("AuraofDespair"))
+                else if (HaveW)
                 {
                     W.Cast(PacketCast);
                 }
@@ -267,7 +266,7 @@ namespace BrianSharp.Plugin
                 Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (!minionObj.Any())
             {
-                if (GetValue<bool>("Clear", "W") && W.IsReady() && Player.HasBuff("AuraofDespair"))
+                if (GetValue<bool>("Clear", "W") && W.IsReady() && HaveW)
                 {
                     W.Cast(PacketCast);
                 }
@@ -279,26 +278,19 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady())
             {
-                if (Player.ManaPercentage() >= GetValue<Slider>("Clear", "WMpA").Value)
+                if (Player.ManaPercentage() >= GetValue<Slider>("Clear", "WMpA").Value &&
+                    (minionObj.Count(i => W.IsInRange(i, W.Range + GetValue<Slider>("Misc", "WExtraRange").Value)) > 1 ||
+                     minionObj.Any(
+                         i =>
+                             i.MaxHealth >= 1200 &&
+                             W.IsInRange(i, W.Range + GetValue<Slider>("Misc", "WExtraRange").Value))))
                 {
-                    if (minionObj.Count(i => W.IsInRange(i, W.Range + GetValue<Slider>("Misc", "WExtraRange").Value)) >
-                        1 ||
-                        minionObj.Any(
-                            i =>
-                                i.MaxHealth >= 1200 &&
-                                W.IsInRange(i, W.Range + GetValue<Slider>("Misc", "WExtraRange").Value)))
-                    {
-                        if (!Player.HasBuff("AuraofDespair") && W.Cast(PacketCast))
-                        {
-                            return;
-                        }
-                    }
-                    else if (Player.HasBuff("AuraofDespair") && W.Cast(PacketCast))
+                    if (!HaveW && W.Cast(PacketCast))
                     {
                         return;
                     }
                 }
-                else if (Player.HasBuff("AuraofDespair") && W.Cast(PacketCast))
+                else if (HaveW && W.Cast(PacketCast))
                 {
                     return;
                 }

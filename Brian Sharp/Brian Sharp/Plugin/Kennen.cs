@@ -22,60 +22,60 @@ namespace BrianSharp.Plugin
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "W", "Use W");
-                    AddItem(comboMenu, "R", "Use R");
-                    AddItem(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
-                    AddItem(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
-                    AddItem(comboMenu, "RItem", "-> Use Zhonya When R Active");
-                    AddItem(comboMenu, "RItemHpU", "--> If Hp Under", 60);
+                    AddBool(comboMenu, "Q", "Use Q");
+                    AddBool(comboMenu, "W", "Use W");
+                    AddBool(comboMenu, "R", "Use R");
+                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
+                    AddSlider(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
+                    AddBool(comboMenu, "RItem", "-> Use Zhonya When R Active");
+                    AddSlider(comboMenu, "RItemHpU", "--> If Hp Under", 60);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
-                    AddItem(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
-                    AddItem(harassMenu, "Q", "Use Q");
-                    AddItem(harassMenu, "W", "Use W");
-                    AddItem(harassMenu, "WMpA", "-> If Mp Above", 50);
+                    AddKeybind(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
+                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddBool(harassMenu, "Q", "Use Q");
+                    AddBool(harassMenu, "W", "Use W");
+                    AddSlider(harassMenu, "WMpA", "-> If Mp Above", 50);
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddItem(clearMenu, "Q", "Use Q");
-                    AddItem(clearMenu, "W", "Use W");
-                    AddItem(clearMenu, "WHitA", "-> If Hit Above", 2, 1, 5);
+                    AddBool(clearMenu, "Q", "Use Q");
+                    AddBool(clearMenu, "W", "Use W");
+                    AddSlider(clearMenu, "WHitA", "-> If Hit Above", 2, 1, 5);
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var lastHitMenu = new Menu("Last Hit", "LastHit");
                 {
-                    AddItem(lastHitMenu, "Q", "Use Q");
+                    AddBool(lastHitMenu, "Q", "Use Q");
                     champMenu.AddSubMenu(lastHitMenu);
                 }
                 var fleeMenu = new Menu("Flee", "Flee");
                 {
-                    AddItem(fleeMenu, "E", "Use E");
-                    AddItem(fleeMenu, "W", "Use W To Stun Enemy");
+                    AddBool(fleeMenu, "E", "Use E");
+                    AddBool(fleeMenu, "W", "Use W To Stun Enemy");
                     champMenu.AddSubMenu(fleeMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "Q", "Use Q");
-                        AddItem(killStealMenu, "W", "Use W");
-                        AddItem(killStealMenu, "R", "Use R");
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "Q", "Use Q");
+                        AddBool(killStealMenu, "W", "Use W");
+                        AddBool(killStealMenu, "R", "Use R");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
                     var interruptMenu = new Menu("Interrupt", "Interrupt");
                     {
-                        AddItem(interruptMenu, "W", "Use W");
+                        AddBool(interruptMenu, "W", "Use W");
                         foreach (var spell in
                             Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 interruptMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
@@ -85,9 +85,9 @@ namespace BrianSharp.Plugin
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(drawMenu, "Q", "Q Range", false);
-                    AddItem(drawMenu, "W", "W Range", false);
-                    AddItem(drawMenu, "R", "R Range", false);
+                    AddBool(drawMenu, "Q", "Q Range", false);
+                    AddBool(drawMenu, "W", "W Range", false);
+                    AddBool(drawMenu, "R", "R Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);
@@ -95,6 +95,11 @@ namespace BrianSharp.Plugin
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
+        }
+
+        private bool HaveR
+        {
+            get { return Player.HasBuff("KennenShurikenStorm"); }
         }
 
         private void OnUpdate(EventArgs args)
@@ -149,7 +154,7 @@ namespace BrianSharp.Plugin
         {
             if (Player.IsDead || !GetValue<bool>("Interrupt", "W") ||
                 !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !W.CanCast(unit) ||
-                !HaveWStun(unit))
+                !HaveW(unit, true))
             {
                 return;
             }
@@ -163,16 +168,14 @@ namespace BrianSharp.Plugin
                 return;
             }
             if (GetValue<bool>(mode, "W") && W.IsReady() &&
-                HeroManager.Enemies.Any(i => i.IsValidTarget(W.Range) && i.HasBuff("KennenMarkOfStorm")) &&
+                HeroManager.Enemies.Any(i => i.IsValidTarget(W.Range) && HaveW(i)) &&
                 (mode == "Combo" || Player.ManaPercentage() >= GetValue<Slider>(mode, "WMpA").Value))
             {
-                if (Player.HasBuff("KennenShurikenStorm"))
+                if (HaveR)
                 {
-                    var obj =
-                        HeroManager.Enemies.Where(i => i.IsValidTarget(W.Range) && i.HasBuff("KennenMarkOfStorm"))
-                            .ToList();
-                    if ((obj.Count(HaveWStun) > 1 || obj.Any(i => W.IsKillable(i, 1)) || obj.Count > 2 ||
-                         (obj.Count(HaveWStun) == 1 && obj.Any(i => !HaveWStun(i)))) && W.Cast(PacketCast))
+                    var obj = HeroManager.Enemies.Where(i => i.IsValidTarget(W.Range) && HaveW(i)).ToList();
+                    if ((obj.Count(i => HaveW(i, true)) > 1 || obj.Any(i => W.IsKillable(i, 1)) || obj.Count > 2 ||
+                         (obj.Count(i => HaveW(i, true)) == 1 && obj.Any(i => !HaveW(i, true)))) && W.Cast(PacketCast))
                     {
                         return;
                     }
@@ -194,7 +197,7 @@ namespace BrianSharp.Plugin
                         R.Cast(PacketCast);
                     }
                 }
-                else if (Player.HasBuff("KennenShurikenStorm") && GetValue<bool>(mode, "RItem") &&
+                else if (HaveR && GetValue<bool>(mode, "RItem") &&
                          Player.HealthPercentage() < GetValue<Slider>(mode, "RItemHpU").Value &&
                          Player.CountEnemiesInRange(R.Range) > 0 && Zhonya.IsReady())
                 {
@@ -221,8 +224,7 @@ namespace BrianSharp.Plugin
                 }
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady() &&
-                minionObj.Count(i => W.IsInRange(i) && i.HasBuff("KennenMarkOfStorm")) >=
-                GetValue<Slider>("Clear", "WHitA").Value)
+                minionObj.Count(i => W.IsInRange(i) && HaveW(i)) >= GetValue<Slider>("Clear", "WHitA").Value)
             {
                 W.Cast(PacketCast);
             }
@@ -253,7 +255,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             if (GetValue<bool>("Flee", "W") && W.IsReady() &&
-                HeroManager.Enemies.Any(i => i.IsValidTarget(W.Range) && HaveWStun(i)))
+                HeroManager.Enemies.Any(i => i.IsValidTarget(W.Range) && HaveW(i, true)))
             {
                 W.Cast(PacketCast);
             }
@@ -290,9 +292,8 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("KillSteal", "W") && W.IsReady())
             {
-                var target = W.GetTarget();
-                if (target != null && target.HasBuff("KennenMarkOfStorm") && W.IsKillable(target, 1) &&
-                    W.Cast(PacketCast))
+                var target = W.GetTarget(0, HeroManager.Enemies.Where(i => !HaveW(i)));
+                if (target != null && W.IsKillable(target, 1) && W.Cast(PacketCast))
                 {
                     return;
                 }
@@ -314,10 +315,10 @@ namespace BrianSharp.Plugin
                 (new double[] { 80, 145, 210 }[R.Level - 1] + 0.4 * Player.FlatMagicDamageMod) * 3);
         }
 
-        private bool HaveWStun(Obj_AI_Base target)
+        private bool HaveW(Obj_AI_Base target, bool onlyStun = false)
         {
             return target.HasBuff("KennenMarkOfStorm") &&
-                   target.Buffs.First(i => i.DisplayName == "KennenMarkOfStorm").Count == 2;
+                   (!onlyStun || target.Buffs.First(i => i.DisplayName == "KennenMarkOfStorm").Count == 2);
         }
     }
 }

@@ -23,38 +23,38 @@ namespace BrianSharp.Plugin
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "W", "Use W");
-                    AddItem(comboMenu, "WHpU", "-> If Hp Under", 70);
-                    AddItem(comboMenu, "E", "Use E");
-                    AddItem(comboMenu, "R", "Use R");
+                    AddBool(comboMenu, "Q", "Use Q");
+                    AddBool(comboMenu, "W", "Use W");
+                    AddSlider(comboMenu, "WHpU", "-> If Hp Under", 70);
+                    AddBool(comboMenu, "E", "Use E");
+                    AddBool(comboMenu, "R", "Use R");
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddSmiteMobMenu(clearMenu);
-                    AddItem(clearMenu, "Q", "Use Q");
-                    AddItem(clearMenu, "W", "Use W");
-                    AddItem(clearMenu, "WHpU", "-> If Hp Under", 70);
-                    AddItem(clearMenu, "R", "Use R");
-                    AddItem(clearMenu, "Item", "Use Tiamat/Hydra Item");
+                    AddSmiteMob(clearMenu);
+                    AddBool(clearMenu, "Q", "Use Q");
+                    AddBool(clearMenu, "W", "Use W");
+                    AddSlider(clearMenu, "WHpU", "-> If Hp Under", 70);
+                    AddBool(clearMenu, "R", "Use R");
+                    AddBool(clearMenu, "Item", "Use Tiamat/Hydra Item");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var fleeMenu = new Menu("Flee", "Flee");
                 {
-                    AddItem(fleeMenu, "E", "Use E");
-                    AddItem(fleeMenu, "Stack", "-> Passive Stack");
+                    AddBool(fleeMenu, "E", "Use E");
+                    AddBool(fleeMenu, "Stack", "-> Passive Stack");
                     champMenu.AddSubMenu(fleeMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
-                        AddItem(killStealMenu, "Smite", "Use Smite");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "Smite", "Use Smite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
-                    AddItem(miscMenu, "StunCycle", "Stun Cycle", "Z");
+                    AddKeybind(miscMenu, "StunCycle", "Stun Cycle", "Z");
                     champMenu.AddSubMenu(miscMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);
@@ -159,13 +159,12 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if (GetValue<bool>("Combo", "E") && E.IsReady() && !target.HasBuff("UdyrBearStunCheck") &&
-                E.Cast(PacketCast))
+            if (GetValue<bool>("Combo", "E") && E.IsReady() && CanCastE(target) && E.Cast(PacketCast))
             {
                 return;
             }
             if (Orbwalk.InAutoAttackRange(target, 100) &&
-                (!GetValue<bool>("Combo", "E") || E.Level == 0 || target.HasBuff("UdyrBearStunCheck")))
+                (!GetValue<bool>("Combo", "E") || E.Level == 0 || !CanCastE(target)))
             {
                 if (GetValue<bool>("Combo", "Q") && Q.Cast(PacketCast))
                 {
@@ -265,7 +264,7 @@ namespace BrianSharp.Plugin
         private void StunCycle()
         {
             var obj =
-                HeroManager.Enemies.Where(i => i.IsValidTarget(E.Range) && !i.HasBuff("UdyrBearStunCheck"))
+                HeroManager.Enemies.Where(i => i.IsValidTarget(E.Range) && CanCastE(i))
                     .MinOrDefault(i => i.Distance(Player));
             if (obj == null)
             {
@@ -305,6 +304,11 @@ namespace BrianSharp.Plugin
                     CastSmite(target);
                 }
             }
+        }
+
+        private bool CanCastE(Obj_AI_Base target)
+        {
+            return !target.HasBuff("UdyrBearStunCheck");
         }
 
         private enum Stance

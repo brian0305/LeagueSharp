@@ -21,46 +21,46 @@ namespace BrianSharp.Plugin
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "W", "Use W");
-                    AddItem(comboMenu, "E", "Use E");
-                    AddItem(comboMenu, "EW", "-> Only Have W");
-                    AddItem(comboMenu, "R", "Use R");
-                    AddItem(comboMenu, "RMode", "-> Mode", new[] { "Always", "# Enemy" });
-                    AddItem(comboMenu, "RCountA", "--> If Enemy Above", 2, 1, 5);
+                    AddBool(comboMenu, "Q", "Use Q");
+                    AddBool(comboMenu, "W", "Use W");
+                    AddBool(comboMenu, "E", "Use E");
+                    AddBool(comboMenu, "EW", "-> Only Have W");
+                    AddBool(comboMenu, "R", "Use R");
+                    AddList(comboMenu, "RMode", "-> Mode", new[] { "Always", "# Enemy" });
+                    AddSlider(comboMenu, "RCountA", "--> If Enemy Above", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddSmiteMobMenu(clearMenu);
-                    AddItem(clearMenu, "Q", "Use Q");
-                    AddItem(clearMenu, "W", "Use W");
-                    AddItem(clearMenu, "E", "Use E");
-                    AddItem(clearMenu, "EHpA", "-> If Hp Above", 50);
-                    AddItem(comboMenu, "EW", "-> Only Have W");
+                    AddSmiteMob(clearMenu);
+                    AddBool(clearMenu, "Q", "Use Q");
+                    AddBool(clearMenu, "W", "Use W");
+                    AddBool(clearMenu, "E", "Use E");
+                    AddSlider(clearMenu, "EHpA", "-> If Hp Above", 50);
+                    AddBool(comboMenu, "EW", "-> Only Have W");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var fleeMenu = new Menu("Flee", "Flee");
                 {
-                    AddItem(fleeMenu, "Q", "Use Q");
+                    AddBool(fleeMenu, "Q", "Use Q");
                     champMenu.AddSubMenu(fleeMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
-                        AddItem(killStealMenu, "Smite", "Use Smite");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "Smite", "Use Smite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
                     var antiGapMenu = new Menu("Anti Gap Closer", "AntiGap");
                     {
-                        AddItem(antiGapMenu, "Q", "Use Q");
+                        AddBool(antiGapMenu, "Q", "Use Q");
                         foreach (var spell in
                             AntiGapcloser.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 antiGapMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
@@ -68,12 +68,12 @@ namespace BrianSharp.Plugin
                     }
                     var interruptMenu = new Menu("Interrupt", "Interrupt");
                     {
-                        AddItem(interruptMenu, "E", "Use E");
+                        AddBool(interruptMenu, "E", "Use E");
                         foreach (var spell in
                             Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 interruptMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
@@ -83,8 +83,8 @@ namespace BrianSharp.Plugin
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(drawMenu, "E", "E Range", false);
-                    AddItem(drawMenu, "R", "R Range", false);
+                    AddBool(drawMenu, "E", "E Range", false);
+                    AddBool(drawMenu, "R", "R Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);
@@ -93,6 +93,16 @@ namespace BrianSharp.Plugin
             Drawing.OnDraw += OnDraw;
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
+        }
+
+        private bool HaveQ
+        {
+            get { return Player.HasBuff("PowerBall"); }
+        }
+
+        private bool HaveW
+        {
+            get { return Player.HasBuff("DefensiveBallCurl"); }
         }
 
         private void OnUpdate(EventArgs args)
@@ -110,7 +120,7 @@ namespace BrianSharp.Plugin
                     Clear();
                     break;
                 case Orbwalker.Mode.Flee:
-                    if (GetValue<bool>("Flee", "Q") && !Player.HasBuff("PowerBall") && Q.Cast(PacketCast))
+                    if (GetValue<bool>("Flee", "Q") && !HaveQ && Q.Cast(PacketCast))
                     {
                         return;
                     }
@@ -142,7 +152,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if (!Player.HasBuff("PowerBall"))
+            if (!HaveQ)
             {
                 Q.Cast(PacketCast);
             }
@@ -152,8 +162,7 @@ namespace BrianSharp.Plugin
         private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
         {
             if (Player.IsDead || !GetValue<bool>("Interrupt", "E") ||
-                !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !E.CanCast(unit) ||
-                Player.HasBuff("PowerBall"))
+                !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !E.CanCast(unit) || HaveQ)
             {
                 return;
             }
@@ -181,18 +190,16 @@ namespace BrianSharp.Plugin
                         break;
                 }
             }
-            if (Player.HasBuff("PowerBall"))
+            if (HaveQ)
             {
                 return;
             }
             if (GetValue<bool>("Combo", "Q") && Q.IsReady() && Q.GetTarget(600) != null &&
-                ((GetValue<bool>("Combo", "E") && E.IsReady() && E.GetTarget() == null) ||
-                 !Player.HasBuff("DefensiveBallCurl")) && Q.Cast(PacketCast))
+                ((GetValue<bool>("Combo", "E") && E.IsReady() && E.GetTarget() == null) || !HaveW) && Q.Cast(PacketCast))
             {
                 return;
             }
-            if (GetValue<bool>("Combo", "E") && E.IsReady() &&
-                (!GetValue<bool>("Combo", "EW") || Player.HasBuff("DefensiveBallCurl")) &&
+            if (GetValue<bool>("Combo", "E") && E.IsReady() && (!GetValue<bool>("Combo", "EW") || HaveW) &&
                 E.CastOnBestTarget(0, PacketCast).IsCasted())
             {
                 return;
@@ -208,11 +215,11 @@ namespace BrianSharp.Plugin
             SmiteMob();
             var minionObj = MinionManager.GetMinions(
                 600, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
-            if (!minionObj.Any() || Player.HasBuff("PowerBall"))
+            if (!minionObj.Any() || HaveQ)
             {
                 return;
             }
-            if (GetValue<bool>("Clear", "Q") && Q.IsReady() && !Player.HasBuff("DefensiveBallCurl") &&
+            if (GetValue<bool>("Clear", "Q") && Q.IsReady() && !HaveW &&
                 (minionObj.Count(i => Q.IsInRange(i)) > 2 || minionObj.Any(i => i.MaxHealth >= 1200 && Q.IsInRange(i)) ||
                  !minionObj.Any(i => Orbwalk.InAutoAttackRange(i, 40))) && Q.Cast(PacketCast))
             {
@@ -220,7 +227,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "E") && E.IsReady() &&
                 Player.HealthPercentage() >= GetValue<Slider>("Clear", "EHpA").Value &&
-                (!GetValue<bool>("Clear", "EW") || Player.HasBuff("DefensiveBallCurl")))
+                (!GetValue<bool>("Clear", "EW") || HaveW))
             {
                 var obj = minionObj.FirstOrDefault(i => E.IsInRange(i) && i.Team == GameObjectTeam.Neutral);
                 if (obj != null && E.CastOnUnit(obj, PacketCast))

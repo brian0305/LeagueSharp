@@ -17,7 +17,7 @@ namespace BrianSharp.Plugin
         {
             Q = new Spell(SpellSlot.Q, 650, TargetSelector.DamageType.Magical);
             W = new Spell(SpellSlot.W, 900);
-            E = new Spell(SpellSlot.E, 525, TargetSelector.DamageType.Magical);
+            E = new Spell(SpellSlot.E, 525);
             R = new Spell(SpellSlot.R, 900);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
@@ -28,8 +28,8 @@ namespace BrianSharp.Plugin
                     {
                         foreach (var name in HeroManager.Allies.Select(MenuName))
                         {
-                            AddItem(healMenu, name, name);
-                            AddItem(healMenu, name + "HpU", "-> If Hp Under", 40);
+                            AddBool(healMenu, name, name, false);
+                            AddSlider(healMenu, name + "HpU", "-> If Hp Under", 40);
                         }
                         comboMenu.AddSubMenu(healMenu);
                     }
@@ -37,79 +37,84 @@ namespace BrianSharp.Plugin
                     {
                         foreach (var name in HeroManager.Allies.Select(MenuName))
                         {
-                            AddItem(saveMenu, name, name);
-                            AddItem(saveMenu, name + "HpU", "-> If Hp Under", 30);
+                            AddBool(saveMenu, name, name, false);
+                            AddSlider(saveMenu, name + "HpU", "-> If Hp Under", 30);
                         }
                         comboMenu.AddSubMenu(saveMenu);
                     }
                     var antiMenu = new Menu("Anti (R)", "Anti");
                     {
-                        AddItem(antiMenu, "Fizz", "Fizz");
-                        AddItem(antiMenu, "Karthus", "Karthus");
-                        AddItem(antiMenu, "Vlad", "Vladimir");
-                        AddItem(antiMenu, "Zed", "Zed");
+                        AddBool(antiMenu, "Fizz", "Fizz", false);
+                        AddBool(antiMenu, "Karthus", "Karthus", false);
+                        AddBool(antiMenu, "Vlad", "Vladimir", false);
+                        AddBool(antiMenu, "Zed", "Zed", false);
                         comboMenu.AddSubMenu(antiMenu);
                     }
-                    AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "W", "Use W");
-                    AddItem(comboMenu, "WSpeed", "-> Speed");
-                    AddItem(comboMenu, "WHeal", "-> Heal");
-                    AddItem(comboMenu, "E", "Use E");
-                    AddItem(comboMenu, "EAoE", "-> Focus Most AoE Target");
-                    AddItem(comboMenu, "R", "Use R");
-                    AddItem(comboMenu, "RSave", "-> Save");
-                    AddItem(
+                    AddBool(comboMenu, "Q", "Use Q");
+                    AddBool(comboMenu, "W", "Use W");
+                    AddBool(comboMenu, "WSpeed", "-> Speed");
+                    AddBool(comboMenu, "WHeal", "-> Heal");
+                    AddBool(comboMenu, "E", "Use E");
+                    AddBool(comboMenu, "EAoE", "-> Focus Most AoE Target");
+                    AddBool(comboMenu, "R", "Use R");
+                    AddBool(comboMenu, "RSave", "-> Save");
+                    AddList(
                         comboMenu, "RAnti", "-> Anti Dangerous Ultimate", new[] { "Off", "Self", "Ally", "Both" }, 3);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
-                    AddItem(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
-                    AddItem(harassMenu, "Q", "Use Q");
-                    AddItem(harassMenu, "E", "Use E");
+                    AddKeybind(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
+                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddBool(harassMenu, "Q", "Use Q");
+                    AddBool(harassMenu, "E", "Use E");
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddSmiteMobMenu(clearMenu);
-                    AddItem(clearMenu, "Q", "Use Q");
-                    AddItem(clearMenu, "E", "Use E");
+                    AddSmiteMob(clearMenu);
+                    AddBool(clearMenu, "Q", "Use Q");
+                    AddBool(clearMenu, "E", "Use E");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var lastHitMenu = new Menu("Last Hit", "LastHit");
                 {
-                    AddItem(lastHitMenu, "Q", "Use Q");
+                    AddBool(lastHitMenu, "Q", "Use Q");
                     champMenu.AddSubMenu(lastHitMenu);
                 }
                 var fleeMenu = new Menu("Flee", "Flee");
                 {
-                    AddItem(fleeMenu, "Q", "Use Q To Slow Enemy");
-                    AddItem(fleeMenu, "W", "Use W");
+                    AddBool(fleeMenu, "Q", "Use Q To Slow Enemy");
+                    AddBool(fleeMenu, "W", "Use W");
                     champMenu.AddSubMenu(fleeMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "Q", "Use Q");
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
-                        AddItem(killStealMenu, "Smite", "Use Smite");
+                        AddBool(killStealMenu, "Q", "Use Q");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "Smite", "Use Smite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(drawMenu, "Q", "Q Range", false);
-                    AddItem(drawMenu, "W", "W Range", false);
-                    AddItem(drawMenu, "R", "R Range", false);
+                    AddBool(drawMenu, "Q", "Q Range", false);
+                    AddBool(drawMenu, "W", "W Range", false);
+                    AddBool(drawMenu, "R", "R Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);
             }
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
+        }
+
+        private bool HaveE
+        {
+            get { return Player.HasBuff("JudicatorRighteousFury"); }
         }
 
         private void OnUpdate(EventArgs args)
@@ -163,8 +168,7 @@ namespace BrianSharp.Plugin
 
         private void Fight(string mode)
         {
-            if (mode == "Combo" && GetValue<bool>(mode, "E") && GetValue<bool>(mode, "EAoE") &&
-                Player.HasBuff("JudicatorRighteousFury"))
+            if (mode == "Combo" && GetValue<bool>(mode, "E") && GetValue<bool>(mode, "EAoE") && HaveE)
             {
                 var target =
                     HeroManager.Enemies.Where(i => Orbwalk.InAutoAttackRange(i))
@@ -183,7 +187,8 @@ namespace BrianSharp.Plugin
                 var target = Q.GetTarget();
                 if (target != null &&
                     ((Player.Distance(target) > Q.Range - 100 && !target.IsFacing(Player) && Player.IsFacing(target)) ||
-                     target.HealthPercentage() > 60) && Q.CastOnUnit(target, PacketCast))
+                     target.HealthPercentage() > 60 || Player.CountEnemiesInRange(Q.Range) == 1) &&
+                    Q.CastOnUnit(target, PacketCast))
                 {
                     return;
                 }
@@ -206,7 +211,7 @@ namespace BrianSharp.Plugin
                                 i.IsValidTarget(W.Range, false) && GetValue<bool>("Heal", MenuName(i)) &&
                                 i.HealthPercentage() < GetValue<Slider>("Heal", MenuName(i) + "HpU").Value &&
                                 !i.InFountain() && !i.IsRecalling() && i.CountEnemiesInRange(W.Range) > 0 &&
-                                !i.HasBuff("JudicatorIntervention") && !i.HasBuff("Undying Rage"))
+                                !i.HasBuff("JudicatorIntervention") && !i.HasBuff("UndyingRage"))
                             .MinOrDefault(i => i.Health);
                     if (obj != null && W.CastOnUnit(obj, PacketCast))
                     {
@@ -216,9 +221,7 @@ namespace BrianSharp.Plugin
                 if (GetValue<bool>(mode, "WSpeed"))
                 {
                     var target = Q.GetTarget(200);
-                    if (target != null && !target.IsFacing(Player) &&
-                        (!Player.HasBuff("JudicatorRighteousFury") ||
-                         (Player.HasBuff("JudicatorRighteousFury") && !Orbwalk.InAutoAttackRange(target))) &&
+                    if (target != null && !target.IsFacing(Player) && (!HaveE || !Orbwalk.InAutoAttackRange(target)) &&
                         (!GetValue<bool>(mode, "Q") ||
                          (GetValue<bool>(mode, "Q") && Q.IsReady() && !Q.IsInRange(target))) && W.Cast(PacketCast))
                     {
@@ -236,7 +239,7 @@ namespace BrianSharp.Plugin
                                 i.IsValidTarget(R.Range, false) && GetValue<bool>("Save", MenuName(i)) &&
                                 i.HealthPercentage() < GetValue<Slider>("Save", MenuName(i) + "HpU").Value &&
                                 !i.InFountain() && !i.IsRecalling() && i.CountEnemiesInRange(R.Range) > 0 &&
-                                !i.HasBuff("Undying Rage")).MinOrDefault(i => i.Health);
+                                !i.HasBuff("UndyingRage")).MinOrDefault(i => i.Health);
                     if (obj != null && R.CastOnUnit(obj, PacketCast))
                     {
                         return;
@@ -248,7 +251,7 @@ namespace BrianSharp.Plugin
                         HeroManager.Allies.Where(
                             i =>
                                 i.IsValidTarget(R.Range, false) && _rAntiDetected.ContainsKey(i.NetworkId) &&
-                                Game.Time > _rAntiDetected[i.NetworkId].StartTick && !i.HasBuff("Undying Rage"))
+                                Game.Time > _rAntiDetected[i.NetworkId].StartTick && !i.HasBuff("UndyingRage"))
                             .MinOrDefault(i => i.Health);
                     if (obj != null)
                     {

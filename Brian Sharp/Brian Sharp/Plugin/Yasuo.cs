@@ -16,63 +16,63 @@ namespace BrianSharp.Plugin
 
         public Yasuo()
         {
-            Q = new Spell(SpellSlot.Q, 495);
+            Q = new Spell(SpellSlot.Q, 475);
             Q2 = new Spell(SpellSlot.Q, 1100);
             W = new Spell(SpellSlot.W, 400);
             E = new Spell(SpellSlot.E, 475, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 1200);
             Q.SetSkillshot(GetQDelay, 55, float.MaxValue, false, SkillshotType.SkillshotLine);
-            Q2.SetSkillshot(GetQ2Delay, 90, 1200, false, SkillshotType.SkillshotLine);
+            Q2.SetSkillshot(GetQ2Delay, 90, 1500, false, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "E", "Use E");
-                    AddItem(comboMenu, "EDmg", "-> Deal Damage (Q Must On)");
-                    AddItem(comboMenu, "EGap", "-> Gap Closer");
-                    AddItem(comboMenu, "EGapRange", "-> If Enemy Not In", 300, 1, 475);
-                    AddItem(comboMenu, "EGapTower", "-> Under Tower", false);
-                    AddItem(comboMenu, "R", "Use R");
-                    AddItem(comboMenu, "RDelay", "-> Delay");
-                    AddItem(comboMenu, "RDelayTime", "--> Time (ms)", 200, 150, 400);
-                    AddItem(comboMenu, "RHpU", "-> If Enemy Hp Under", 50);
-                    AddItem(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
+                    AddBool(comboMenu, "Q", "Use Q");
+                    AddBool(comboMenu, "E", "Use E");
+                    AddBool(comboMenu, "EDmg", "-> Deal Damage (Q Must On)");
+                    AddBool(comboMenu, "EGap", "-> Gap Closer");
+                    AddSlider(comboMenu, "EGapRange", "-> If Enemy Not In", 300, 1, 475);
+                    AddBool(comboMenu, "EGapTower", "-> Under Tower", false);
+                    AddBool(comboMenu, "R", "Use R");
+                    AddBool(comboMenu, "RDelay", "-> Delay");
+                    AddSlider(comboMenu, "RDelayTime", "--> Time (ms)", 200, 150, 400);
+                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 50);
+                    AddSlider(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle, true);
-                    AddItem(harassMenu, "AutoQ3", "-> Use Q3", false);
-                    AddItem(harassMenu, "AutoQTower", "-> Under Tower", false);
-                    AddItem(harassMenu, "Q", "Use Q");
-                    AddItem(harassMenu, "Q3", "-> Use Q3");
-                    AddItem(harassMenu, "QTower", "-> Under Tower", false);
-                    AddItem(harassMenu, "QLastHit", "-> Last Hit (Q1/Q2)");
+                    AddKeybind(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle, true);
+                    AddBool(harassMenu, "AutoQ3", "-> Use Q3", false);
+                    AddBool(harassMenu, "AutoQTower", "-> Under Tower", false);
+                    AddBool(harassMenu, "Q", "Use Q");
+                    AddBool(harassMenu, "Q3", "-> Use Q3");
+                    AddBool(harassMenu, "QTower", "-> Under Tower", false);
+                    AddBool(harassMenu, "QLastHit", "-> Last Hit (Q1/Q2)");
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddItem(clearMenu, "Q", "Use Q");
-                    AddItem(clearMenu, "Q3", "-> Use Q3");
-                    AddItem(clearMenu, "E", "Use E");
-                    AddItem(clearMenu, "ETower", "-> Under Tower", false);
-                    AddItem(clearMenu, "Item", "Use Tiamat/Hydra Item");
+                    AddBool(clearMenu, "Q", "Use Q");
+                    AddBool(clearMenu, "Q3", "-> Use Q3");
+                    AddBool(clearMenu, "E", "Use E");
+                    AddBool(clearMenu, "ETower", "-> Under Tower", false);
+                    AddBool(clearMenu, "Item", "Use Tiamat/Hydra Item");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var lastHitMenu = new Menu("Last Hit", "LastHit");
                 {
-                    AddItem(lastHitMenu, "Q", "Use Q");
-                    AddItem(lastHitMenu, "Q3", "-> Use Q3");
-                    AddItem(lastHitMenu, "E", "Use E");
-                    AddItem(lastHitMenu, "ETower", "-> Under Tower", false);
+                    AddBool(lastHitMenu, "Q", "Use Q");
+                    AddBool(lastHitMenu, "Q3", "-> Use Q3");
+                    AddBool(lastHitMenu, "E", "Use E");
+                    AddBool(lastHitMenu, "ETower", "-> Under Tower", false);
                     champMenu.AddSubMenu(lastHitMenu);
                 }
                 var fleeMenu = new Menu("Flee", "Flee");
                 {
-                    AddItem(fleeMenu, "E", "Use E");
-                    AddItem(fleeMenu, "EStackQ", "-> Stack Q");
+                    AddBool(fleeMenu, "E", "Use E");
+                    AddBool(fleeMenu, "EStackQ", "-> Stack Q");
                     champMenu.AddSubMenu(fleeMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
@@ -83,34 +83,34 @@ namespace BrianSharp.Plugin
                     }
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "Q", "Use Q");
-                        AddItem(killStealMenu, "E", "Use E");
-                        AddItem(killStealMenu, "R", "Use R");
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "Q", "Use Q");
+                        AddBool(killStealMenu, "E", "Use E");
+                        AddBool(killStealMenu, "R", "Use R");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
                     var interruptMenu = new Menu("Interrupt", "Interrupt");
                     {
-                        AddItem(interruptMenu, "Q", "Use Q3");
+                        AddBool(interruptMenu, "Q", "Use Q3");
                         foreach (var spell in
                             Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 interruptMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
                         miscMenu.AddSubMenu(interruptMenu);
                     }
-                    AddItem(miscMenu, "StackQ", "Auto Stack Q", "Z", KeyBindType.Toggle);
-                    AddItem(miscMenu, "StackQDraw", "-> Draw Text");
+                    AddKeybind(miscMenu, "StackQ", "Auto Stack Q", "Z", KeyBindType.Toggle);
+                    AddBool(miscMenu, "StackQDraw", "-> Draw Text");
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(drawMenu, "Q", "Q Range", false);
-                    AddItem(drawMenu, "E", "E Range", false);
-                    AddItem(drawMenu, "R", "R Range", false);
+                    AddBool(drawMenu, "Q", "Q Range", false);
+                    AddBool(drawMenu, "E", "E Range", false);
+                    AddBool(drawMenu, "R", "R Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);
@@ -322,7 +322,7 @@ namespace BrianSharp.Plugin
                     {
                         if (mode == "Harass")
                         {
-                            if ((!HaveQ3 ? Q : Q2).CastOnBestTarget(0, PacketCast).IsCasted())
+                            if ((!HaveQ3 ? Q : Q2).CastOnBestTarget(20, PacketCast).IsCasted())
                             {
                                 return;
                             }
@@ -330,7 +330,7 @@ namespace BrianSharp.Plugin
                         else if ((!HaveQ3 ||
                                   (!GetValue<bool>(mode, "E") ||
                                    (Q2.GetTarget() != null && GetNearObj(Q2.GetTarget(), true) == null))) &&
-                                 (!HaveQ3 ? Q : Q2).CastOnBestTarget(0, PacketCast).IsCasted())
+                                 (!HaveQ3 ? Q : Q2).CastOnBestTarget(20, PacketCast).IsCasted())
                         {
                             return;
                         }
@@ -395,10 +395,8 @@ namespace BrianSharp.Plugin
                 else
                 {
                     var minionObj = GetMinion((!HaveQ3 ? Q : Q2).Range, MinionType.Minion, MinionTeam.NotAlly);
-                    var obj =
-                        minionObj.Where(
-                            i => (MinionManager.IsMinion(i) || i.Team == GameObjectTeam.Neutral) && Q.IsKillable(i))
-                            .MaxOrDefault(i => Player.Distance(i)) ?? minionObj.MinOrDefault(i => Player.Distance(i));
+                    var obj = minionObj.Where(i => !HaveQ3 && Q.IsKillable(i)).MaxOrDefault(i => Player.Distance(i)) ??
+                              minionObj.MinOrDefault(i => i.Distance(Player));
                     if (obj != null && (HaveQ3 ? Q2 : Q).CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast))
                     {
                         return;
@@ -485,7 +483,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            (HaveQ3 ? Q2 : Q).CastOnBestTarget(0, PacketCast);
+            (HaveQ3 ? Q2 : Q).CastOnBestTarget(20, PacketCast);
         }
 
         private void KillSteal()
@@ -510,7 +508,7 @@ namespace BrianSharp.Plugin
                 }
                 else
                 {
-                    var target = (HaveQ3 ? Q2 : Q).GetTarget();
+                    var target = (HaveQ3 ? Q2 : Q).GetTarget(20);
                     if (target != null && Q.IsKillable(target) &&
                         (HaveQ3 ? Q2 : Q).CastIfHitchanceEquals(target, HitChance.High, PacketCast))
                     {
@@ -602,7 +600,7 @@ namespace BrianSharp.Plugin
 
         private IEnumerable<Obj_AI_Base> GetQCirObj(bool onlyHero = false)
         {
-            if (Player.Distance(Player.GetDashInfo().EndPos) > 150)
+            if (Player.Distance(Player.GetDashInfo().EndPos) > 175)
             {
                 return null;
             }
@@ -637,11 +635,11 @@ namespace BrianSharp.Plugin
                 LoadWindWallData();
                 var windMenu = new Menu("Wind Wall", "WindWall");
                 {
-                    AddItem(windMenu, "W", "Use W");
-                    AddItem(windMenu, "BAttack", "-> Basic Attack");
-                    AddItem(windMenu, "BAttackHpU", "--> If Hp Under", 20);
-                    AddItem(windMenu, "CAttack", "-> Crit Attack");
-                    AddItem(windMenu, "CAttackHpU", "--> If Hp Under", 30);
+                    AddBool(windMenu, "W", "Use W");
+                    AddBool(windMenu, "BAttack", "-> Basic Attack");
+                    AddSlider(windMenu, "BAttackHpU", "--> If Hp Under", 20);
+                    AddBool(windMenu, "CAttack", "-> Crit Attack");
+                    AddSlider(windMenu, "CAttackHpU", "--> If Hp Under", 30);
                     foreach (var obj in
                         HeroManager.Enemies.Where(i => _spells.Any(a => a.ChampName == i.ChampionName)))
                     {
@@ -655,7 +653,7 @@ namespace BrianSharp.Plugin
                                 .GetSpell(wwData.Slot)
                                 .SData.Name
                             : wwData.SpellName;
-                        AddItem(
+                        AddBool(
                             windMenu.SubMenu("WW_" + wwData.ChampName), name,
                             string.Format("{0} ({1})", name, wwData.Slot), false);
                     }
@@ -1035,9 +1033,6 @@ namespace BrianSharp.Plugin
                 _spells.Add(new Spells("Talon", SpellSlot.W, SpellType.Line, 700, 75, 2300, "talonrakemissileone"));
                 _spells.Add(
                     new Spells("Talon", SpellSlot.R, SpellType.Line, 575, 125, 2300, "talonshadowassaultmisone"));
-                //_spells.Add(
-                //    new Spells("Talon", SpellSlot.R, SpellType.LinePoint, 20000, 250, 1850, "TalonShadowAssaultMisTwo"));
-                //Todo Improve
                 _spells.Add(new Spells("Taric", SpellSlot.E));
                 _spells.Add(new Spells("Teemo", SpellSlot.Q));
                 _spells.Add(new Spells("Thresh", SpellSlot.Q, SpellType.Line, 1100, 70, 1900, "ThreshQMissile"));
@@ -1067,7 +1062,7 @@ namespace BrianSharp.Plugin
                 _spells.Add(new Spells("Viktor", SpellSlot.E, SpellType.Line, 700, 80, 780, "viktoreaugmissile"));
                 _spells.Add(new Spells("Vladimir", SpellSlot.E, SpellType.Target, 0, 0, 0, "vladimirtidesofbloodnuke"));
                 _spells.Add(new Spells("Xerath", SpellSlot.E, SpellType.Line, 1150, 60, 1400, "XerathMageSpearMissile"));
-                _spells.Add(new Spells("Yasuo", SpellSlot.Q, SpellType.Line, 1100, 90, 1200, "yasuoq3mis"));
+                _spells.Add(new Spells("Yasuo", SpellSlot.Q, SpellType.Line, 1100, 90, 1500, "yasuoq3mis"));
                 _spells.Add(new Spells("Zed", SpellSlot.Q, SpellType.Line, 925, 50, 1700, "zedshurikenmisone"));
                 _spells.Add(new Spells("Zed", SpellSlot.Q, SpellType.Line, 925, 50, 1700, "zedshurikenmistwo"));
                 _spells.Add(new Spells("Ziggs", SpellSlot.Q, SpellType.AoE, 850, 225, 1700, "ZiggsQSpell"));

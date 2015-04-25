@@ -22,51 +22,51 @@ namespace BrianSharp.Plugin
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(comboMenu, "W", "Use W");
-                    AddItem(comboMenu, "WSolo", "-> Both Facing", false);
-                    AddItem(comboMenu, "E", "Use E");
+                    AddBool(comboMenu, "W", "Use W");
+                    AddBool(comboMenu, "WSolo", "-> Both Facing", false);
+                    AddBool(comboMenu, "E", "Use E");
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(harassMenu, "E", "Use E");
-                    AddItem(harassMenu, "EHpA", "-> If Hp Above", 20);
+                    AddBool(harassMenu, "E", "Use E");
+                    AddSlider(harassMenu, "EHpA", "-> If Hp Above", 20);
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddSmiteMobMenu(clearMenu);
-                    AddItem(clearMenu, "E", "Use E");
-                    AddItem(clearMenu, "Item", "Use Tiamat/Hydra");
+                    AddSmiteMob(clearMenu);
+                    AddBool(clearMenu, "E", "Use E");
+                    AddBool(clearMenu, "Item", "Use Tiamat/Hydra");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var fleeMenu = new Menu("Flee", "Flee");
                 {
-                    AddItem(fleeMenu, "E", "Use E");
+                    AddBool(fleeMenu, "E", "Use E");
                     champMenu.AddSubMenu(fleeMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "E", "Use E");
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
-                        AddItem(killStealMenu, "Smite", "Use Smite");
+                        AddBool(killStealMenu, "E", "Use E");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "Smite", "Use Smite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
                     var surviveMenu = new Menu("Survive", "Survive");
                     {
-                        AddItem(surviveMenu, "Q", "Use Q");
-                        AddItem(surviveMenu, "QHpU", "-> If Hp Under", 40);
-                        AddItem(surviveMenu, "R", "Use R");
+                        AddBool(surviveMenu, "Q", "Use Q");
+                        AddSlider(surviveMenu, "QHpU", "-> If Hp Under", 40);
+                        AddBool(surviveMenu, "R", "Use R");
                         miscMenu.AddSubMenu(surviveMenu);
                     }
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(drawMenu, "W", "W Range", false);
-                    AddItem(drawMenu, "E", "E Range", false);
+                    AddBool(drawMenu, "W", "W Range", false);
+                    AddBool(drawMenu, "E", "E Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);
@@ -239,7 +239,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if (GetValue<bool>("Survive", "Q") && Q.IsReady() && !Player.HasBuff("Undying Rage") &&
+            if (GetValue<bool>("Survive", "Q") && Q.IsReady() && !Player.HasBuff("UndyingRage") &&
                 Player.CountEnemiesInRange(1000) > 0 &&
                 Player.HealthPercentage() < GetValue<Slider>("Survive", "QHpU").Value)
             {

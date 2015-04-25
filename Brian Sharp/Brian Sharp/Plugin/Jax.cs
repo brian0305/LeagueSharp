@@ -24,61 +24,61 @@ namespace BrianSharp.Plugin
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "W", "Use W");
-                    AddItem(comboMenu, "E", "Use E");
-                    AddItem(comboMenu, "ECountA", "-> Cancel If Enemy Above", 2, 1, 5);
-                    AddItem(comboMenu, "R", "Use R");
-                    AddItem(comboMenu, "RHpU", "-> If Player Hp Under", 60);
-                    AddItem(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
+                    AddBool(comboMenu, "Q", "Use Q");
+                    AddBool(comboMenu, "W", "Use W");
+                    AddBool(comboMenu, "E", "Use E");
+                    AddSlider(comboMenu, "ECountA", "-> Cancel If Enemy Above", 2, 1, 5);
+                    AddBool(comboMenu, "R", "Use R");
+                    AddSlider(comboMenu, "RHpU", "-> If Player Hp Under", 60);
+                    AddSlider(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(harassMenu, "Q", "Use Q");
-                    AddItem(harassMenu, "QHpA", "-> If Hp Above", 20);
-                    AddItem(harassMenu, "W", "Use W");
-                    AddItem(harassMenu, "E", "Use E");
+                    AddBool(harassMenu, "Q", "Use Q");
+                    AddSlider(harassMenu, "QHpA", "-> If Hp Above", 20);
+                    AddBool(harassMenu, "W", "Use W");
+                    AddBool(harassMenu, "E", "Use E");
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddSmiteMobMenu(clearMenu);
-                    AddItem(clearMenu, "Q", "Use Q");
-                    AddItem(clearMenu, "W", "Use W");
-                    AddItem(clearMenu, "E", "Use E");
-                    AddItem(clearMenu, "Item", "Use Tiamat/Hydra");
+                    AddSmiteMob(clearMenu);
+                    AddBool(clearMenu, "Q", "Use Q");
+                    AddBool(clearMenu, "W", "Use W");
+                    AddBool(clearMenu, "E", "Use E");
+                    AddBool(clearMenu, "Item", "Use Tiamat/Hydra");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var lastHitMenu = new Menu("Last Hit", "LastHit");
                 {
-                    AddItem(lastHitMenu, "W", "Use W");
+                    AddBool(lastHitMenu, "W", "Use W");
                     champMenu.AddSubMenu(lastHitMenu);
                 }
                 var fleeMenu = new Menu("Flee", "Flee");
                 {
-                    AddItem(fleeMenu, "Q", "Use Q");
-                    AddItem(fleeMenu, "PinkWard", "-> Ward Jump Use Pink Ward", false);
+                    AddBool(fleeMenu, "Q", "Use Q");
+                    AddBool(fleeMenu, "PinkWard", "-> Ward Jump Use Pink Ward", false);
                     champMenu.AddSubMenu(fleeMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "Q", "Use Q");
-                        AddItem(killStealMenu, "W", "Use W");
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
-                        AddItem(killStealMenu, "Smite", "Use Smite");
+                        AddBool(killStealMenu, "Q", "Use Q");
+                        AddBool(killStealMenu, "W", "Use W");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "Smite", "Use Smite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
                     var antiGapMenu = new Menu("Anti Gap Closer", "AntiGap");
                     {
-                        AddItem(antiGapMenu, "E", "Use E");
+                        AddBool(antiGapMenu, "E", "Use E");
                         foreach (var spell in
                             AntiGapcloser.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 antiGapMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
@@ -86,12 +86,12 @@ namespace BrianSharp.Plugin
                     }
                     var interruptMenu = new Menu("Interrupt", "Interrupt");
                     {
-                        AddItem(interruptMenu, "E", "Use E");
+                        AddBool(interruptMenu, "E", "Use E");
                         foreach (var spell in
                             Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 interruptMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
@@ -101,8 +101,8 @@ namespace BrianSharp.Plugin
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(drawMenu, "Q", "Q Range", false);
-                    AddItem(drawMenu, "E", "E Range", false);
+                    AddBool(drawMenu, "Q", "Q Range", false);
+                    AddBool(drawMenu, "E", "E Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);
@@ -112,6 +112,16 @@ namespace BrianSharp.Plugin
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
             Orbwalk.AfterAttack += AfterAttack;
+        }
+
+        private bool HaveW
+        {
+            get { return Player.HasBuff("JaxEmpowerTwo"); }
+        }
+
+        private bool HaveE
+        {
+            get { return Player.HasBuff("JaxCounterStrike"); }
         }
 
         private void OnUpdate(EventArgs args)
@@ -179,8 +189,7 @@ namespace BrianSharp.Plugin
             {
                 E.Cast(PacketCast);
             }
-            else if (Q.CanCast(unit) &&
-                     Player.Mana >= Q.Instance.ManaCost + (Player.HasBuff("JaxEvasion") ? 0 : E.Instance.ManaCost))
+            else if (Q.CanCast(unit) && Player.Mana >= Q.Instance.ManaCost + (HaveE ? 0 : E.Instance.ManaCost))
             {
                 Q.CastOnUnit(unit, PacketCast);
             }
@@ -204,7 +213,7 @@ namespace BrianSharp.Plugin
         {
             if (GetValue<bool>(mode, "E") && E.IsReady())
             {
-                if (!Player.HasBuff("JaxEvasion"))
+                if (!HaveE)
                 {
                     if (GetValue<bool>(mode, "Q") && Q.IsReady() && E.GetTarget() == null)
                     {
@@ -241,8 +250,7 @@ namespace BrianSharp.Plugin
                 var target = Q.GetTarget();
                 if (target != null)
                 {
-                    if (
-                        CanKill(target, Q.GetDamage(target) + (Player.HasBuff("EmpowerTwo") ? GetBonusDmg(target) : 0)) &&
+                    if (CanKill(target, Q.GetDamage(target) + (HaveW ? GetBonusDmg(target) : 0)) &&
                         Q.CastOnUnit(target, PacketCast))
                     {
                         return;
@@ -250,8 +258,8 @@ namespace BrianSharp.Plugin
                     if (mode == "Combo" || Player.HealthPercentage() >= GetValue<Slider>(mode, "QHpA").Value)
                     {
                         if ((!Orbwalk.InAutoAttackRange(target, 30) ||
-                             (GetValue<bool>(mode, "E") && E.IsReady() && Player.HasBuff("JaxEvasion") &&
-                              !E.IsInRange(target))) && Q.CastOnUnit(target, PacketCast))
+                             (GetValue<bool>(mode, "E") && E.IsReady() && HaveE && !E.IsInRange(target))) &&
+                            Q.CastOnUnit(target, PacketCast))
                         {
                             return;
                         }
@@ -274,7 +282,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if (GetValue<bool>("Clear", "E") && E.IsReady() && !Player.HasBuff("JaxEvasion"))
+            if (GetValue<bool>("Clear", "E") && E.IsReady() && !HaveE)
             {
                 if (GetValue<bool>("Clear", "Q") && Q.IsReady() && !minionObj.Any(i => E.IsInRange(i)))
                 {
@@ -305,14 +313,14 @@ namespace BrianSharp.Plugin
                         return;
                     }
                 }
-                if (W.IsReady() || Player.HasBuff("EmpowerTwo"))
+                if (W.IsReady() || HaveW)
                 {
                     var obj =
                         minionObj.Where(i => Orbwalk.InAutoAttackRange(i))
                             .FirstOrDefault(i => CanKill(i, GetBonusDmg(i)));
                     if (obj != null)
                     {
-                        if (!Player.HasBuff("EmpowerTwo"))
+                        if (!HaveW)
                         {
                             W.Cast(PacketCast);
                         }
@@ -329,13 +337,10 @@ namespace BrianSharp.Plugin
                 var obj =
                     (Obj_AI_Base)
                         minionObj.FirstOrDefault(
-                            i =>
-                                i.MaxHealth >= 1200 &&
-                                CanKill(i, Q.GetDamage(i) + (Player.HasBuff("EmpowerTwo") ? GetBonusDmg(i) : 0)));
+                            i => i.MaxHealth >= 1200 && CanKill(i, Q.GetDamage(i) + (HaveW ? GetBonusDmg(i) : 0)));
                 if (obj == null &&
                     (!minionObj.Any(i => Orbwalk.InAutoAttackRange(i, 40)) ||
-                     (GetValue<bool>("Clear", "E") && E.IsReady() && Player.HasBuff("JaxEvasion") &&
-                      !minionObj.Any(i => E.IsInRange(i)))))
+                     (GetValue<bool>("Clear", "E") && E.IsReady() && HaveE && !minionObj.Any(i => E.IsInRange(i)))))
                 {
                     obj = minionObj.MinOrDefault(i => i.Health);
                 }
@@ -358,7 +363,7 @@ namespace BrianSharp.Plugin
 
         private void LastHit()
         {
-            if (!GetValue<bool>("LastHit", "W") || (!W.IsReady() && !Player.HasBuff("EmpowerTwo")))
+            if (!GetValue<bool>("LastHit", "W") || (!W.IsReady() && !HaveW))
             {
                 return;
             }
@@ -370,7 +375,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if (!Player.HasBuff("EmpowerTwo"))
+            if (!HaveW)
             {
                 W.Cast(PacketCast);
             }
@@ -443,12 +448,12 @@ namespace BrianSharp.Plugin
                     return;
                 }
             }
-            if (GetValue<bool>("KillSteal", "W") && (W.IsReady() || Player.HasBuff("EmpowerTwo")))
+            if (GetValue<bool>("KillSteal", "W") && (W.IsReady() || HaveW))
             {
                 var target = W.GetTarget();
                 if (target != null && CanKill(target, GetBonusDmg(target)))
                 {
-                    if (!Player.HasBuff("EmpowerTwo"))
+                    if (!HaveW)
                     {
                         W.Cast(PacketCast);
                     }
@@ -470,7 +475,7 @@ namespace BrianSharp.Plugin
                     {
                         return;
                     }
-                    if (CanKill(target, Q.GetDamage(target) + (Player.HasBuff("EmpowerTwo") ? GetBonusDmg(target) : 0)))
+                    if (CanKill(target, Q.GetDamage(target) + (HaveW ? GetBonusDmg(target) : 0)))
                     {
                         Q.CastOnUnit(target, PacketCast);
                     }
@@ -490,8 +495,13 @@ namespace BrianSharp.Plugin
             {
                 dmgItem = Player.BaseAttackDamage * 2;
             }
-            return (W.IsReady() || Player.HasBuff("EmpowerTwo") ? W.GetDamage(target) : 0) +
-                   Player.GetAutoAttackDamage(target, true) +
+            double dmgR = 0;
+            var pBuff = Player.Buffs.FirstOrDefault(i => i.DisplayName == "JaxRelentlessAssaultAS");
+            if (R.Level > 0 && !(target is Obj_AI_Turret) && pBuff != null && (pBuff.Count == 2 || pBuff.Count >= 5))
+            {
+                dmgR = R.GetDamage(target);
+            }
+            return dmgR + (W.IsReady() || HaveW ? W.GetDamage(target) : 0) + Player.GetAutoAttackDamage(target, true) +
                    (dmgItem > 0 ? Player.CalcDamage(target, Damage.DamageType.Physical, dmgItem) : 0);
         }
     }

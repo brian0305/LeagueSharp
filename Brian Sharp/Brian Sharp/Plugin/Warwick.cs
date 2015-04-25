@@ -24,53 +24,53 @@ namespace BrianSharp.Plugin
                     {
                         foreach (var obj in HeroManager.Enemies)
                         {
-                            AddItem(lockMenu, obj.ChampionName, obj.ChampionName);
+                            AddBool(lockMenu, obj.ChampionName, obj.ChampionName);
                         }
                         comboMenu.AddSubMenu(lockMenu);
                     }
-                    AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "W", "Use W");
-                    AddItem(comboMenu, "R", "Use R");
-                    AddItem(comboMenu, "RSmite", "-> Use Red Smite");
+                    AddBool(comboMenu, "Q", "Use Q");
+                    AddBool(comboMenu, "W", "Use W");
+                    AddBool(comboMenu, "R", "Use R");
+                    AddBool(comboMenu, "RSmite", "-> Use Red Smite");
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
-                    AddItem(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
-                    AddItem(harassMenu, "Q", "Use Q");
-                    AddItem(harassMenu, "W", "Use W");
+                    AddKeybind(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
+                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddBool(harassMenu, "Q", "Use Q");
+                    AddBool(harassMenu, "W", "Use W");
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddSmiteMobMenu(clearMenu);
-                    AddItem(clearMenu, "Q", "Use Q");
-                    AddItem(clearMenu, "W", "Use W");
+                    AddSmiteMob(clearMenu);
+                    AddBool(clearMenu, "Q", "Use Q");
+                    AddBool(clearMenu, "W", "Use W");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var lastHitMenu = new Menu("Last Hit", "LastHit");
                 {
-                    AddItem(lastHitMenu, "Q", "Use Q");
+                    AddBool(lastHitMenu, "Q", "Use Q");
                     champMenu.AddSubMenu(lastHitMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "Q", "Use Q");
-                        AddItem(killStealMenu, "R", "Use R");
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
-                        AddItem(killStealMenu, "Smite", "Use Smite");
+                        AddBool(killStealMenu, "Q", "Use Q");
+                        AddBool(killStealMenu, "R", "Use R");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "Smite", "Use Smite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
-                    AddItem(miscMenu, "RTower", "Auto R If Enemy Under Tower");
+                    AddBool(miscMenu, "RTower", "Auto R If Enemy Under Tower");
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(drawMenu, "Q", "Q Range", false);
-                    AddItem(drawMenu, "R", "R Range", false);
+                    AddBool(drawMenu, "Q", "Q Range", false);
+                    AddBool(drawMenu, "R", "R Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);

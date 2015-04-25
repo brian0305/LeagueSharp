@@ -29,67 +29,67 @@ namespace BrianSharp.Plugin
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(comboMenu, "P", "Use Passive");
-                    AddItem(comboMenu, "PSave", "-> Always Save", false);
-                    AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "QExtend", "-> Extend");
-                    AddItem(comboMenu, "W", "Use W");
-                    AddItem(comboMenu, "WPred", "-> Prediction", false);
-                    AddItem(comboMenu, "E", "Use E");
-                    AddItem(comboMenu, "EGap", "-> Gap Closer");
-                    AddItem(comboMenu, "EDelay", "-> Stop Q/W If E Will Ready In (ms)", 500, 100, 1000);
-                    AddItem(comboMenu, "EMode", "-> Mode", new[] { "Safe", "Mouse", "Chase" });
-                    AddItem(comboMenu, "EModeKey", "--> Key Switch", "Z", KeyBindType.Toggle).ValueChanged +=
+                    AddBool(comboMenu, "P", "Use Passive");
+                    AddBool(comboMenu, "PSave", "-> Always Save", false);
+                    AddBool(comboMenu, "Q", "Use Q");
+                    AddBool(comboMenu, "QExtend", "-> Extend");
+                    AddBool(comboMenu, "W", "Use W");
+                    AddBool(comboMenu, "WPred", "-> Prediction", false);
+                    AddBool(comboMenu, "E", "Use E");
+                    AddBool(comboMenu, "EGap", "-> Gap Closer");
+                    AddSlider(comboMenu, "EDelay", "-> Stop Q/W If E Will Ready In (ms)", 500, 100, 1000);
+                    AddList(comboMenu, "EMode", "-> Mode", new[] { "Safe", "Mouse", "Chase" });
+                    AddKeybind(comboMenu, "EModeKey", "--> Key Switch", "Z", KeyBindType.Toggle).ValueChanged +=
                         ComboEModeChanged;
-                    AddItem(comboMenu, "EModeDraw", "--> Draw Text", false);
-                    AddItem(comboMenu, "R", "Use R If Killable");
-                    AddItem(comboMenu, "RItem", "-> Use Youmuu For More Damage");
+                    AddBool(comboMenu, "EModeDraw", "--> Draw Text", false);
+                    AddBool(comboMenu, "R", "Use R If Killable");
+                    AddBool(comboMenu, "RItem", "-> Use Youmuu For More Damage");
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(harassMenu, "AutoQ", "Auto Q (Only Extend)", "H", KeyBindType.Toggle);
-                    AddItem(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
-                    AddItem(harassMenu, "P", "Use Passive");
-                    AddItem(harassMenu, "PSave", "-> Always Save", false);
-                    AddItem(harassMenu, "Q", "Use Q");
-                    AddItem(harassMenu, "W", "Use W");
-                    AddItem(harassMenu, "E", "Use E");
-                    AddItem(harassMenu, "EHpA", "-> If Hp Above", 20);
+                    AddKeybind(harassMenu, "AutoQ", "Auto Q (Only Extend)", "H", KeyBindType.Toggle);
+                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddBool(harassMenu, "P", "Use Passive");
+                    AddBool(harassMenu, "PSave", "-> Always Save", false);
+                    AddBool(harassMenu, "Q", "Use Q");
+                    AddBool(harassMenu, "W", "Use W");
+                    AddBool(harassMenu, "E", "Use E");
+                    AddSlider(harassMenu, "EHpA", "-> If Hp Above", 20);
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddItem(clearMenu, "Q", "Use Q");
-                    AddItem(clearMenu, "W", "Use W");
-                    AddItem(clearMenu, "E", "Use E");
-                    AddItem(clearMenu, "EDelay", "-> Stop Q/W If E Will Ready In (ms)", 500, 100, 1000);
+                    AddBool(clearMenu, "Q", "Use Q");
+                    AddBool(clearMenu, "W", "Use W");
+                    AddBool(clearMenu, "E", "Use E");
+                    AddSlider(clearMenu, "EDelay", "-> Stop Q/W If E Will Ready In (ms)", 500, 100, 1000);
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var fleeMenu = new Menu("Flee", "Flee");
                 {
-                    AddItem(fleeMenu, "E", "Use E");
+                    AddBool(fleeMenu, "E", "Use E");
                     champMenu.AddSubMenu(fleeMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "RStop", "Stop R For Kill Steal");
-                        AddItem(killStealMenu, "Q", "Use Q");
-                        AddItem(killStealMenu, "W", "Use W");
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "RStop", "Stop R For Kill Steal");
+                        AddBool(killStealMenu, "Q", "Use Q");
+                        AddBool(killStealMenu, "W", "Use W");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
-                    AddItem(miscMenu, "LockR", "Lock R On Target");
+                    AddBool(miscMenu, "LockR", "Lock R On Target");
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(drawMenu, "Q", "Q Range", false);
-                    AddItem(drawMenu, "W", "W Range", false);
-                    AddItem(drawMenu, "E", "E Range", false);
-                    AddItem(drawMenu, "R", "R Range", false);
+                    AddBool(drawMenu, "Q", "Q Range", false);
+                    AddBool(drawMenu, "W", "W Range", false);
+                    AddBool(drawMenu, "E", "E Range", false);
+                    AddBool(drawMenu, "R", "R Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);
@@ -144,8 +144,7 @@ namespace BrianSharp.Plugin
                     Clear();
                     break;
                 case Orbwalker.Mode.Flee:
-                    if (GetValue<bool>("Flee", "E") && E.IsReady() &&
-                        E.Cast(Player.ServerPosition.Extend(Game.CursorPos, E.Range), PacketCast))
+                    if (GetValue<bool>("Flee", "E") && E.IsReady() && E.Cast(Game.CursorPos, PacketCast))
                     {
                         return;
                     }

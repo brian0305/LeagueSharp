@@ -21,52 +21,52 @@ namespace BrianSharp.Plugin
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(comboMenu, "QDelay", "Stop W/E If Q Will Ready In (ms)", 500, 100, 1000);
-                    AddItem(comboMenu, "R", "Use R");
-                    AddItem(comboMenu, "RHpU", "-> If Enemy Hp Under", 70);
-                    AddItem(comboMenu, "Seraph", "Use Seraph's Embrace");
-                    AddItem(comboMenu, "SeraphHpU", "-> If Hp Under", 50);
+                    AddSlider(comboMenu, "QDelay", "Stop W/E If Q Will Ready In (ms)", 500, 100, 1000);
+                    AddBool(comboMenu, "R", "Use R");
+                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 70);
+                    AddBool(comboMenu, "Seraph", "Use Seraph's Embrace");
+                    AddSlider(comboMenu, "SeraphHpU", "-> If Hp Under", 50);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
-                    AddItem(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
-                    AddItem(harassMenu, "Q", "Use Q");
-                    AddItem(harassMenu, "W", "Use W");
-                    AddItem(harassMenu, "E", "Use E");
+                    AddKeybind(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
+                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddBool(harassMenu, "Q", "Use Q");
+                    AddBool(harassMenu, "W", "Use W");
+                    AddBool(harassMenu, "E", "Use E");
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddItem(clearMenu, "Q", "Use Q");
-                    AddItem(clearMenu, "W", "Use W");
-                    AddItem(clearMenu, "E", "Use E");
+                    AddBool(clearMenu, "Q", "Use Q");
+                    AddBool(clearMenu, "W", "Use W");
+                    AddBool(clearMenu, "E", "Use E");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var lastHitMenu = new Menu("Last Hit", "LastHit");
                 {
-                    AddItem(lastHitMenu, "Q", "Use Q");
+                    AddBool(lastHitMenu, "Q", "Use Q");
                     champMenu.AddSubMenu(lastHitMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "Q", "Use Q");
-                        AddItem(killStealMenu, "W", "Use W");
-                        AddItem(killStealMenu, "E", "Use E");
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "Q", "Use Q");
+                        AddBool(killStealMenu, "W", "Use W");
+                        AddBool(killStealMenu, "E", "Use E");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
                     var antiGapMenu = new Menu("Anti Gap Closer", "AntiGap");
                     {
-                        AddItem(antiGapMenu, "W", "Use W");
+                        AddBool(antiGapMenu, "W", "Use W");
                         foreach (var spell in
                             AntiGapcloser.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 antiGapMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
@@ -74,26 +74,26 @@ namespace BrianSharp.Plugin
                     }
                     var interruptMenu = new Menu("Interrupt", "Interrupt");
                     {
-                        AddItem(interruptMenu, "W", "Use W");
+                        AddBool(interruptMenu, "W", "Use W");
                         foreach (var spell in
                             Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 interruptMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
                         miscMenu.AddSubMenu(interruptMenu);
                     }
-                    AddItem(miscMenu, "Chase", "Chase", "Z");
-                    AddItem(miscMenu, "WTower", "Auto W If Enemy Under Tower");
+                    AddKeybind(miscMenu, "Chase", "Chase", "Z");
+                    AddBool(miscMenu, "WTower", "Auto W If Enemy Under Tower");
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(drawMenu, "Q", "Q Range", false);
-                    AddItem(drawMenu, "W", "W Range", false);
-                    AddItem(drawMenu, "E", "E Range", false);
+                    AddBool(drawMenu, "Q", "Q Range", false);
+                    AddBool(drawMenu, "W", "W Range", false);
+                    AddBool(drawMenu, "E", "E Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);
@@ -231,7 +231,7 @@ namespace BrianSharp.Plugin
                     {
                         return;
                     }
-                    if (W.CastOnUnit(target, PacketCast) || W.IsReady() || !target.HasBuff("Rune Prison"))
+                    if (W.CastOnUnit(target, PacketCast) || W.IsReady() || !target.HasBuff("RunePrison"))
                     {
                         return;
                     }

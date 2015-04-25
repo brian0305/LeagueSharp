@@ -25,50 +25,50 @@ namespace BrianSharp.Plugin
                     {
                         foreach (var obj in HeroManager.Enemies)
                         {
-                            AddItem(killableMenu, obj.ChampionName, obj.ChampionName);
+                            AddBool(killableMenu, obj.ChampionName, obj.ChampionName);
                         }
                         comboMenu.AddSubMenu(killableMenu);
                     }
-                    AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "W", "Use W");
-                    AddItem(comboMenu, "E", "Use E");
-                    AddItem(comboMenu, "R", "Use R If Killable");
+                    AddBool(comboMenu, "Q", "Use Q");
+                    AddBool(comboMenu, "W", "Use W");
+                    AddBool(comboMenu, "E", "Use E");
+                    AddBool(comboMenu, "R", "Use R If Killable");
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(harassMenu, "Q", "Use Q");
-                    AddItem(harassMenu, "W", "Use W");
-                    AddItem(harassMenu, "E", "Use E");
+                    AddBool(harassMenu, "Q", "Use Q");
+                    AddBool(harassMenu, "W", "Use W");
+                    AddBool(harassMenu, "E", "Use E");
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddSmiteMobMenu(clearMenu);
-                    AddItem(clearMenu, "Q", "Use Q");
-                    AddItem(clearMenu, "W", "Use W");
-                    AddItem(clearMenu, "E", "Use E");
-                    AddItem(clearMenu, "Item", "Use Tiamat/Hydra Item");
+                    AddSmiteMob(clearMenu);
+                    AddBool(clearMenu, "Q", "Use Q");
+                    AddBool(clearMenu, "W", "Use W");
+                    AddBool(clearMenu, "E", "Use E");
+                    AddBool(clearMenu, "Item", "Use Tiamat/Hydra Item");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "E", "Use E");
-                        AddItem(killStealMenu, "R", "Use R");
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
-                        AddItem(killStealMenu, "Smite", "Use Smite");
+                        AddBool(killStealMenu, "E", "Use E");
+                        AddBool(killStealMenu, "R", "Use R");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "Smite", "Use Smite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
                     var interruptMenu = new Menu("Interrupt", "Interrupt");
                     {
-                        AddItem(interruptMenu, "R", "Use R");
+                        AddBool(interruptMenu, "R", "Use R");
                         foreach (var spell in
                             Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 interruptMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
@@ -78,8 +78,8 @@ namespace BrianSharp.Plugin
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(drawMenu, "E", "E Range", false);
-                    AddItem(drawMenu, "R", "R Range", false);
+                    AddBool(drawMenu, "E", "E Range", false);
+                    AddBool(drawMenu, "R", "R Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);
@@ -132,7 +132,7 @@ namespace BrianSharp.Plugin
         {
             if (Player.IsDead || !GetValue<bool>("Interrupt", "R") ||
                 !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !R.IsReady() ||
-                unit.HasBuff("XinZhaoIntimidate"))
+                unit.HasBuff("xenzhaointimidate"))
             {
                 return;
             }

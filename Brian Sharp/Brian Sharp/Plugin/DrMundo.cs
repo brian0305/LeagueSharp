@@ -22,55 +22,55 @@ namespace BrianSharp.Plugin
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "QCol", "-> Smite Collision");
-                    AddItem(comboMenu, "W", "Use W");
-                    AddItem(comboMenu, "WHpA", "-> If Hp Above", 20);
-                    AddItem(comboMenu, "E", "Use E");
-                    AddItem(comboMenu, "R", "Use R");
-                    AddItem(comboMenu, "RHpU", "-> If Hp Under", 50);
+                    AddBool(comboMenu, "Q", "Use Q");
+                    AddBool(comboMenu, "QCol", "-> Smite Collision");
+                    AddBool(comboMenu, "W", "Use W");
+                    AddSlider(comboMenu, "WHpA", "-> If Hp Above", 20);
+                    AddBool(comboMenu, "E", "Use E");
+                    AddBool(comboMenu, "R", "Use R");
+                    AddSlider(comboMenu, "RHpU", "-> If Hp Under", 50);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
-                    AddItem(harassMenu, "AutoQHpA", "-> If Hp Above", 30);
-                    AddItem(harassMenu, "Q", "Use Q");
-                    AddItem(harassMenu, "W", "Use W");
-                    AddItem(harassMenu, "WHpA", "-> If Hp Above", 20);
-                    AddItem(harassMenu, "E", "Use E");
+                    AddKeybind(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
+                    AddSlider(harassMenu, "AutoQHpA", "-> If Hp Above", 30);
+                    AddBool(harassMenu, "Q", "Use Q");
+                    AddBool(harassMenu, "W", "Use W");
+                    AddSlider(harassMenu, "WHpA", "-> If Hp Above", 20);
+                    AddBool(harassMenu, "E", "Use E");
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddSmiteMobMenu(clearMenu);
-                    AddItem(clearMenu, "Q", "Use Q");
-                    AddItem(clearMenu, "W", "Use W");
-                    AddItem(clearMenu, "WHpA", "-> If Hp Above", 20);
-                    AddItem(clearMenu, "E", "Use E");
+                    AddSmiteMob(clearMenu);
+                    AddBool(clearMenu, "Q", "Use Q");
+                    AddBool(clearMenu, "W", "Use W");
+                    AddSlider(clearMenu, "WHpA", "-> If Hp Above", 20);
+                    AddBool(clearMenu, "E", "Use E");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var lastHitMenu = new Menu("Last Hit", "LastHit");
                 {
-                    AddItem(lastHitMenu, "Q", "Use Q");
+                    AddBool(lastHitMenu, "Q", "Use Q");
                     champMenu.AddSubMenu(lastHitMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "Q", "Use Q");
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
-                        AddItem(killStealMenu, "Smite", "Use Smite");
+                        AddBool(killStealMenu, "Q", "Use Q");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "Smite", "Use Smite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
-                    AddItem(miscMenu, "WExtraRange", "W Extra Range Before Cancel", 60, 0, 200);
+                    AddSlider(miscMenu, "WExtraRange", "W Extra Range Before Cancel", 60, 0, 200);
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(drawMenu, "Q", "Q Range", false);
-                    AddItem(drawMenu, "W", "W Range", false);
+                    AddBool(drawMenu, "Q", "Q Range", false);
+                    AddBool(drawMenu, "W", "W Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);
@@ -78,6 +78,11 @@ namespace BrianSharp.Plugin
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
             Orbwalk.OnAttack += OnAttack;
+        }
+
+        private bool HaveW
+        {
+            get { return Player.HasBuff("BurningAgony"); }
         }
 
         private void OnUpdate(EventArgs args)
@@ -156,21 +161,15 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>(mode, "W") && W.IsReady())
             {
-                if (Player.HealthPercentage() >= GetValue<Slider>(mode, "WHpA").Value)
+                if (Player.HealthPercentage() >= GetValue<Slider>(mode, "WHpA").Value &&
+                    W.GetTarget(GetValue<Slider>("Misc", "WExtraRange").Value) != null)
                 {
-                    if (W.GetTarget(GetValue<Slider>("Misc", "WExtraRange").Value) != null)
-                    {
-                        if (!Player.HasBuff("BurningAgony") && W.Cast(PacketCast))
-                        {
-                            return;
-                        }
-                    }
-                    else if (Player.HasBuff("BurningAgony") && W.Cast(PacketCast))
+                    if (!HaveW && W.Cast(PacketCast))
                     {
                         return;
                     }
                 }
-                else if (Player.HasBuff("BurningAgony") && W.Cast(PacketCast))
+                else if (HaveW && W.Cast(PacketCast))
                 {
                     return;
                 }
@@ -190,7 +189,7 @@ namespace BrianSharp.Plugin
                 Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (!minionObj.Any())
             {
-                if (GetValue<bool>("Clear", "W") && W.IsReady() && Player.HasBuff("BurningAgony"))
+                if (GetValue<bool>("Clear", "W") && W.IsReady() && HaveW)
                 {
                     W.Cast(PacketCast);
                 }
@@ -198,26 +197,19 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady())
             {
-                if (Player.HealthPercentage() >= GetValue<Slider>("Clear", "WHpA").Value)
+                if (Player.HealthPercentage() >= GetValue<Slider>("Clear", "WHpA").Value &&
+                    (minionObj.Count(i => W.IsInRange(i, W.Range + GetValue<Slider>("Misc", "WExtraRange").Value)) > 1 ||
+                     minionObj.Any(
+                         i =>
+                             i.MaxHealth >= 1200 &&
+                             W.IsInRange(i, W.Range + GetValue<Slider>("Misc", "WExtraRange").Value))))
                 {
-                    if (minionObj.Count(i => W.IsInRange(i, W.Range + GetValue<Slider>("Misc", "WExtraRange").Value)) >
-                        1 ||
-                        minionObj.Any(
-                            i =>
-                                i.MaxHealth >= 1200 &&
-                                W.IsInRange(i, W.Range + GetValue<Slider>("Misc", "WExtraRange").Value)))
-                    {
-                        if (!Player.HasBuff("BurningAgony") && W.Cast(PacketCast))
-                        {
-                            return;
-                        }
-                    }
-                    else if (Player.HasBuff("BurningAgony") && W.Cast(PacketCast))
+                    if (!HaveW && W.Cast(PacketCast))
                     {
                         return;
                     }
                 }
-                else if (Player.HasBuff("BurningAgony") && W.Cast(PacketCast))
+                else if (HaveW && W.Cast(PacketCast))
                 {
                     return;
                 }

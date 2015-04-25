@@ -11,7 +11,7 @@ namespace BrianSharp.Plugin
     internal class Shen : Helper
     {
         private Obj_AI_Hero _alertAlly;
-        private bool _alertCasted;
+        private bool _fCasted, _alertCasted;
 
         public Shen()
         {
@@ -25,53 +25,53 @@ namespace BrianSharp.Plugin
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "W", "Use W");
-                    AddItem(comboMenu, "WHpU", "-> If Hp Under", 20);
-                    AddItem(comboMenu, "E", "Use E");
+                    AddBool(comboMenu, "Q", "Use Q");
+                    AddBool(comboMenu, "W", "Use W");
+                    AddSlider(comboMenu, "WHpU", "-> If Hp Under", 20);
+                    AddBool(comboMenu, "E", "Use E");
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
-                    AddItem(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
-                    AddItem(harassMenu, "Q", "Use Q");
-                    AddItem(harassMenu, "E", "Use E");
-                    AddItem(harassMenu, "EHpA", "-> If Hp Above", 20);
+                    AddKeybind(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
+                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddBool(harassMenu, "Q", "Use Q");
+                    AddBool(harassMenu, "E", "Use E");
+                    AddSlider(harassMenu, "EHpA", "-> If Hp Above", 20);
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddItem(clearMenu, "Q", "Use Q");
-                    AddItem(clearMenu, "W", "Use W");
+                    AddBool(clearMenu, "Q", "Use Q");
+                    AddBool(clearMenu, "W", "Use W");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var lastHitMenu = new Menu("Last Hit", "LastHit");
                 {
-                    AddItem(lastHitMenu, "Q", "Use Q");
+                    AddBool(lastHitMenu, "Q", "Use Q");
                     champMenu.AddSubMenu(lastHitMenu);
                 }
                 var fleeMenu = new Menu("Flee", "Flee");
                 {
-                    AddItem(fleeMenu, "E", "Use E");
+                    AddBool(fleeMenu, "E", "Use E");
                     champMenu.AddSubMenu(fleeMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "Q", "Use Q");
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "Q", "Use Q");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
                     var antiGapMenu = new Menu("Anti Gap Closer", "AntiGap");
                     {
-                        AddItem(antiGapMenu, "E", "Use E");
+                        AddBool(antiGapMenu, "E", "Use E");
                         foreach (var spell in
                             AntiGapcloser.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 antiGapMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
@@ -79,12 +79,12 @@ namespace BrianSharp.Plugin
                     }
                     var interruptMenu = new Menu("Interrupt", "Interrupt");
                     {
-                        AddItem(interruptMenu, "E", "Use E");
+                        AddBool(interruptMenu, "E", "Use E");
                         foreach (var spell in
                             Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 interruptMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
@@ -96,24 +96,23 @@ namespace BrianSharp.Plugin
                         {
                             foreach (var obj in HeroManager.Allies.Where(i => !i.IsMe))
                             {
-                                AddItem(saveMenu, obj.ChampionName, obj.ChampionName);
+                                AddBool(saveMenu, obj.ChampionName, obj.ChampionName, false);
                             }
                             ultiMenu.AddSubMenu(saveMenu);
                         }
-                        AddItem(ultiMenu, "Alert", "Alert Ally");
-                        AddItem(ultiMenu, "AlertHpU", "-> If Hp Under", 30);
-                        AddItem(ultiMenu, "Save", "-> Save Ally");
-                        AddItem(ultiMenu, "SaveKey", "--> Key", "T");
+                        AddBool(ultiMenu, "Alert", "Alert Ally");
+                        AddSlider(ultiMenu, "AlertHpU", "-> If Hp Under", 30);
+                        AddBool(ultiMenu, "Save", "-> Save Ally");
+                        AddKeybind(ultiMenu, "SaveKey", "--> Key", "T");
                         miscMenu.AddSubMenu(ultiMenu);
                     }
-                    AddItem(miscMenu, "EFlash", "E Flash", "Z");
-                    AddItem(miscMenu, "ETower", "Auto E If Enemy Under Tower");
+                    AddBool(miscMenu, "ETower", "Auto E If Enemy Under Tower");
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(drawMenu, "Q", "Q Range", false);
-                    AddItem(drawMenu, "E", "E Range", false);
+                    AddBool(drawMenu, "Q", "Q Range", false);
+                    AddBool(drawMenu, "E", "E Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);
@@ -145,16 +144,11 @@ namespace BrianSharp.Plugin
                     LastHit();
                     break;
                 case Orbwalker.Mode.Flee:
-                    if (GetValue<bool>("Flee", "E") && E.IsReady() &&
-                        E.Cast(Player.ServerPosition.Extend(Game.CursorPos, E.Range), PacketCast))
+                    if (GetValue<bool>("Flee", "E") && E.IsReady() && E.Cast(Game.CursorPos, PacketCast))
                     {
                         return;
                     }
                     break;
-            }
-            if (GetValue<KeyBind>("Misc", "EFlash").Active)
-            {
-                FlashTaunt();
             }
             AutoQ();
             KillSteal();
@@ -309,40 +303,6 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void FlashTaunt()
-        {
-            var target = E.GetTarget(Flash.IsReady() ? 380 : 0);
-            if (!E.IsReady() && Flash.IsReady())
-            {
-                target = TargetSelector.GetTarget(380, TargetSelector.DamageType.Magical);
-            }
-            CustomOrbwalk(target);
-            if (target == null)
-            {
-                return;
-            }
-            if (!E.IsReady())
-            {
-                if (Player.IsDashing() && Flash.IsReady() && Player.GetDashInfo().EndPos.Distance(target) < 380)
-                {
-                    CastFlash(target.ServerPosition.Extend(Player.ServerPosition, -100));
-                }
-                return;
-            }
-            if (!E.IsInRange(target))
-            {
-                E.Cast(target.ServerPosition.Extend(Player.ServerPosition, -E.Range), PacketCast);
-            }
-            else
-            {
-                var predE = E.GetPrediction(target);
-                if (predE.Hitchance >= HitChance.High)
-                {
-                    E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
-                }
-            }
-        }
-
         private void UltimateAlert()
         {
             if (!GetValue<bool>("Ultimate", "Alert") || !R.IsReady())
@@ -357,8 +317,7 @@ namespace BrianSharp.Plugin
                         i =>
                             !i.IsMe && i.IsValidTarget(R.Range, false) && GetValue<bool>("Ally", i.ChampionName) &&
                             i.HealthPercentage() < GetValue<Slider>("Ultimate", "AlertHpU").Value &&
-                            i.CountEnemiesInRange(E.Range) > 0 && !i.HasBuff("Undying Rage"))
-                        .MinOrDefault(i => i.Health);
+                            i.CountEnemiesInRange(E.Range) > 0).MinOrDefault(i => i.Health);
                 if (obj != null)
                 {
                     Game.PrintChat("[Brian Sharp] - {0}: In Dangerous", obj.ChampionName);

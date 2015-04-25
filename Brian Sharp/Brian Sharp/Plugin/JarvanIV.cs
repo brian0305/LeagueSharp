@@ -12,7 +12,7 @@ namespace BrianSharp.Plugin
     internal class JarvanIV : Helper
     {
         private const int RWidth = 325;
-        private bool _rCasted;
+        private bool _rCasted, _fCasted;
 
         public JarvanIV()
         {
@@ -23,71 +23,71 @@ namespace BrianSharp.Plugin
             R = new Spell(SpellSlot.R, 650);
             Q.SetSkillshot(0.25f, 70, 2000, false, SkillshotType.SkillshotLine);
             Q2.SetSkillshot(0.25f, 180, 2450, false, SkillshotType.SkillshotLine);
-            E.SetSkillshot(0.5f, 175, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            E.SetSkillshot(0.5f, 175, 1450, false, SkillshotType.SkillshotCircle);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddItem(comboMenu, "Q", "Use Q");
-                    AddItem(comboMenu, "QFlagRange", "-> To Flag If Flag In", 500, 100, 860);
-                    AddItem(comboMenu, "W", "Use W");
-                    AddItem(comboMenu, "WHpU", "-> If Player Hp Under", 40);
-                    AddItem(comboMenu, "WCountA", "-> If Enemy Above", 2, 1, 5);
-                    AddItem(comboMenu, "E", "Use E");
-                    AddItem(comboMenu, "EQ", "-> Save E For EQ");
-                    AddItem(comboMenu, "R", "Use R");
-                    AddItem(comboMenu, "RHpU", "-> If Enemy Hp Under", 40);
-                    AddItem(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
+                    AddBool(comboMenu, "Q", "Use Q");
+                    AddSlider(comboMenu, "QFlagRange", "-> To Flag If Flag In", 500, 100, 860);
+                    AddBool(comboMenu, "W", "Use W");
+                    AddSlider(comboMenu, "WHpU", "-> If Player Hp Under", 40);
+                    AddSlider(comboMenu, "WCountA", "-> If Enemy Above", 2, 1, 5);
+                    AddBool(comboMenu, "E", "Use E");
+                    AddBool(comboMenu, "EQ", "-> Save E For EQ");
+                    AddBool(comboMenu, "R", "Use R");
+                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 40);
+                    AddSlider(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
-                    AddItem(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
-                    AddItem(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
-                    AddItem(harassMenu, "Q", "Use Q");
+                    AddKeybind(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
+                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddBool(harassMenu, "Q", "Use Q");
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
-                    AddSmiteMobMenu(clearMenu);
-                    AddItem(clearMenu, "Q", "Use Q");
-                    AddItem(clearMenu, "W", "Use W");
-                    AddItem(clearMenu, "WHpU", "-> If Hp Under", 40);
-                    AddItem(clearMenu, "E", "Use E");
-                    AddItem(clearMenu, "Item", "Use Tiamat/Hydra Item");
+                    AddSmiteMob(clearMenu);
+                    AddBool(clearMenu, "Q", "Use Q");
+                    AddBool(clearMenu, "W", "Use W");
+                    AddSlider(clearMenu, "WHpU", "-> If Hp Under", 40);
+                    AddBool(clearMenu, "E", "Use E");
+                    AddBool(clearMenu, "Item", "Use Tiamat/Hydra Item");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var lastHitMenu = new Menu("Last Hit", "LastHit");
                 {
-                    AddItem(lastHitMenu, "Q", "Use Q");
+                    AddBool(lastHitMenu, "Q", "Use Q");
                     champMenu.AddSubMenu(lastHitMenu);
                 }
                 var fleeMenu = new Menu("Flee", "Flee");
                 {
-                    AddItem(fleeMenu, "EQ", "Use EQ");
-                    AddItem(fleeMenu, "W", "Use W To Slow Enemy");
+                    AddBool(fleeMenu, "EQ", "Use EQ");
+                    AddBool(fleeMenu, "W", "Use W To Slow Enemy");
                     champMenu.AddSubMenu(fleeMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
-                        AddItem(killStealMenu, "Q", "Use Q");
-                        AddItem(killStealMenu, "E", "Use E");
-                        AddItem(killStealMenu, "R", "Use R");
-                        AddItem(killStealMenu, "Ignite", "Use Ignite");
-                        AddItem(killStealMenu, "Smite", "Use Smite");
+                        AddBool(killStealMenu, "Q", "Use Q");
+                        AddBool(killStealMenu, "E", "Use E");
+                        AddBool(killStealMenu, "R", "Use R");
+                        AddBool(killStealMenu, "Ignite", "Use Ignite");
+                        AddBool(killStealMenu, "Smite", "Use Smite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
                     var interruptMenu = new Menu("Interrupt", "Interrupt");
                     {
-                        AddItem(interruptMenu, "EQ", "Use EQ");
+                        AddBool(interruptMenu, "EQ", "Use EQ");
                         foreach (var spell in
                             Interrupter.Spells.Where(
                                 i => HeroManager.Enemies.Any(a => i.ChampionName == a.ChampionName)))
                         {
-                            AddItem(
+                            AddBool(
                                 interruptMenu, spell.ChampionName + "_" + spell.Slot,
                                 "-> Skill " + spell.Slot + " Of " + spell.ChampionName);
                         }
@@ -97,10 +97,10 @@ namespace BrianSharp.Plugin
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
-                    AddItem(drawMenu, "Q", "Q Range", false);
-                    AddItem(drawMenu, "W", "W Range", false);
-                    AddItem(drawMenu, "E", "E Range", false);
-                    AddItem(drawMenu, "R", "R Range", false);
+                    AddBool(drawMenu, "Q", "Q Range", false);
+                    AddBool(drawMenu, "W", "W Range", false);
+                    AddBool(drawMenu, "E", "E Range", false);
+                    AddBool(drawMenu, "R", "R Range", false);
                     champMenu.AddSubMenu(drawMenu);
                 }
                 MainMenu.AddSubMenu(champMenu);

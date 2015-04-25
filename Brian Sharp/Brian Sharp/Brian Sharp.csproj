@@ -82,7 +82,6 @@
     <Compile Include="Plugin\Lucian.cs" />
     <Compile Include="Plugin\Maokai.cs" />
     <Compile Include="Plugin\Nasus.cs" />
-    <Compile Include="Plugin\Nidalee.cs" />
     <Compile Include="Plugin\Rammus.cs" />
     <Compile Include="Plugin\Ryze.cs" />
     <Compile Include="Plugin\Shen.cs" />

@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using LeagueSharp;
 using LeagueSharp.Common;
 using LeagueSharp.Common.Data;
@@ -82,41 +81,15 @@ namespace BrianSharp.Common
             }
         }
 
-        public static List<Obj_AI_Minion> GetMinion(Vector3 pos,
-            float range,
-            MinionType type,
-            MinionTeam team,
-            bool addHitBox = false)
+        public static bool IsMinion(Obj_AI_Base obj)
         {
-            return (from obj in ObjectManager.Get<Obj_AI_Minion>()
-                where obj.IsValidTarget(range + (addHitBox ? obj.BoundingRadius : 0), false, pos)
-                let objTeam = obj.Team
-                let isWard =
-                    obj.BaseSkinName.ToLower().Contains("ward") || obj.BaseSkinName.ToLower().Contains("trinket")
-                where
-                    team == MinionTeam.Neutral && objTeam == GameObjectTeam.Neutral ||
-                    team == MinionTeam.Ally &&
-                    objTeam ==
-                    (ObjectManager.Player.Team == GameObjectTeam.Chaos ? GameObjectTeam.Chaos : GameObjectTeam.Order) ||
-                    team == MinionTeam.Enemy &&
-                    objTeam ==
-                    (ObjectManager.Player.Team == GameObjectTeam.Chaos ? GameObjectTeam.Order : GameObjectTeam.Chaos) ||
-                    team == MinionTeam.NotAlly && objTeam != ObjectManager.Player.Team ||
-                    team == MinionTeam.NotAllyForEnemy &&
-                    (objTeam == ObjectManager.Player.Team || objTeam == GameObjectTeam.Neutral) ||
-                    team == MinionTeam.All
-                where
-                    (type == MinionType.Minion && !isWard) || (type == MinionType.Ward && isWard) ||
-                    type == MinionType.All
-                select obj).OrderBy(i => i.MaxHealth).Reverse().ToList();
+            return obj.IsValid<Obj_AI_Minion>() && MinionManager.IsMinion((Obj_AI_Minion) obj);
         }
 
-        public static List<Obj_AI_Minion> GetMinion(float range,
-            MinionType type,
-            MinionTeam team,
-            bool addHitBox = false)
+        public static bool IsWard(Obj_AI_Minion obj)
         {
-            return GetMinion(Player.ServerPosition, range, type, team, addHitBox);
+            return !MinionManager.IsMinion(obj) &&
+                   (obj.BaseSkinName.ToLower().Contains("ward") || obj.BaseSkinName.ToLower().Contains("trinket"));
         }
 
         public static void CustomOrbwalk(Obj_AI_Base target)
@@ -207,6 +180,7 @@ namespace BrianSharp.Common
         {
             var smiteMob = new Menu("Smite Mob If Killable", "SmiteMob");
             AddBool(smiteMob, "Smite", "Use Smite");
+            AddBool(smiteMob, "Auto", "-> Auto Smite");
             AddBool(smiteMob, "Baron", "-> Baron Nashor");
             AddBool(smiteMob, "Dragon", "-> Dragon");
             AddBool(smiteMob, "Red", "-> Red Brambleback");

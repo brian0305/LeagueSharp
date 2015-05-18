@@ -110,6 +110,10 @@ namespace BrianSharp.Plugin
             {
                 StunCycle();
             }
+            if (GetValue<bool>("SmiteMob", "Auto") && Orbwalk.CurrentMode != Orbwalker.Mode.Clear)
+            {
+                SmiteMob();
+            }
             KillSteal();
         }
 
@@ -177,7 +181,7 @@ namespace BrianSharp.Plugin
                     return;
                 }
                 if (GetValue<bool>("Combo", "W") && W.IsReady() &&
-                    Player.HealthPercentage() < GetValue<Slider>("Combo", "WHpU").Value &&
+                    Player.HealthPercent < GetValue<Slider>("Combo", "WHpU").Value &&
                     ((CurStance == Stance.Tiger && _aaCount > 1) ||
                      (CurStance == Stance.Phoenix && (_aaCount > 2 || _phoenixActive)) || (Q.Level == 0 && R.Level == 0)))
                 {
@@ -189,7 +193,7 @@ namespace BrianSharp.Plugin
         private void Clear()
         {
             SmiteMob();
-            var obj = Orbwalk.GetPossibleTarget();
+            var obj = Orbwalk.GetPossibleTarget;
             if (obj == null)
             {
                 return;
@@ -205,7 +209,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady() &&
-                Player.HealthPercentage() < GetValue<Slider>("Clear", "WHpU").Value &&
+                Player.HealthPercent < GetValue<Slider>("Clear", "WHpU").Value &&
                 ((CurStance == Stance.Tiger && _aaCount > 1) ||
                  (CurStance == Stance.Phoenix && (_aaCount > 2 || _phoenixActive)) || (Q.Level == 0 && R.Level == 0)) &&
                 W.Cast(PacketCast))

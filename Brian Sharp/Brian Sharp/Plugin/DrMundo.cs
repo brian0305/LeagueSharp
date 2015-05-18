@@ -77,6 +77,7 @@ namespace BrianSharp.Plugin
             }
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
+            AttackableUnit.OnDamage += OnDamage;
             Orbwalk.OnAttack += OnAttack;
         }
 
@@ -106,6 +107,10 @@ namespace BrianSharp.Plugin
                     LastHit();
                     break;
             }
+            if (GetValue<bool>("SmiteMob", "Auto") && Orbwalk.CurrentMode != Orbwalker.Mode.Clear)
+            {
+                SmiteMob();
+            }
             AutoQ();
             KillSteal();
         }
@@ -123,6 +128,19 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("Draw", "W") && W.Level > 0)
             {
                 Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
+            }
+        }
+
+        private void OnDamage(AttackableUnit sender, AttackableUnitDamageEventArgs args)
+        {
+            if (args.TargetNetworkId != Player.NetworkId || Orbwalk.CurrentMode != Orbwalker.Mode.Combo)
+            {
+                return;
+            }
+            if (GetValue<bool>("Combo", "R") && R.IsReady() &&
+                Player.HealthPercent < GetValue<Slider>("Combo", "RHpU").Value)
+            {
+                R.Cast(PacketCast);
             }
         }
 
@@ -144,15 +162,16 @@ namespace BrianSharp.Plugin
         {
             if (GetValue<bool>(mode, "Q") && Q.IsReady())
             {
-                var state = Q.CastOnBestTarget(0, PacketCast);
-                if (state.IsCasted())
+                var target = Q.GetTarget();
+                if (target != null)
                 {
-                    return;
-                }
-                if (mode == "Combo" && state == Spell.CastStates.Collision && GetValue<bool>(mode, "QCol"))
-                {
-                    var pred = Q.GetPrediction(Q.GetTarget());
-                    if (pred.CollisionObjects.Count(i => i.IsMinion) == 1 && CastSmite(pred.CollisionObjects.First()) &&
+                    var pred = Q.GetPrediction(target);
+                    if (pred.Hitchance >= HitChance.High && Q.Cast(pred.CastPosition, PacketCast))
+                    {
+                        return;
+                    }
+                    if (GetValue<bool>(mode, "QCol") && pred.Hitchance == HitChance.Collision &&
+                        pred.CollisionObjects.Count(IsMinion) == 1 && CastSmite(pred.CollisionObjects.First()) &&
                         Q.Cast(pred.CastPosition, PacketCast))
                     {
                         return;
@@ -161,24 +180,18 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>(mode, "W") && W.IsReady())
             {
-                if (Player.HealthPercentage() >= GetValue<Slider>(mode, "WHpA").Value &&
+                if (Player.HealthPercent >= GetValue<Slider>(mode, "WHpA").Value &&
                     W.GetTarget(GetValue<Slider>("Misc", "WExtraRange").Value) != null)
                 {
-                    if (!HaveW && W.Cast(PacketCast))
+                    if (!HaveW)
                     {
-                        return;
+                        W.Cast(PacketCast);
                     }
                 }
-                else if (HaveW && W.Cast(PacketCast))
+                else if (HaveW)
                 {
-                    return;
+                    W.Cast(PacketCast);
                 }
-            }
-            if (mode == "Combo" && GetValue<bool>(mode, "R") &&
-                Player.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value && !Player.InFountain() &&
-                Q.GetTarget() != null)
-            {
-                R.Cast(PacketCast);
             }
         }
 
@@ -197,7 +210,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady())
             {
-                if (Player.HealthPercentage() >= GetValue<Slider>("Clear", "WHpA").Value &&
+                if (Player.HealthPercent >= GetValue<Slider>("Clear", "WHpA").Value &&
                     (minionObj.Count(i => W.IsInRange(i, W.Range + GetValue<Slider>("Misc", "WExtraRange").Value)) > 1 ||
                      minionObj.Any(
                          i =>
@@ -216,8 +229,9 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var obj = minionObj.Cast<Obj_AI_Minion>().FirstOrDefault(i => Q.IsKillable(i)) ??
-                          minionObj.FirstOrDefault(i => i.MaxHealth >= 1200);
+                var list = minionObj.Where(i => Q.GetPrediction(i).Hitchance >= HitChance.Medium).ToList();
+                var obj = list.Cast<Obj_AI_Minion>().FirstOrDefault(i => Q.IsKillable(i)) ??
+                          list.MinOrDefault(i => i.Distance(Player));
                 if (obj != null)
                 {
                     Q.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast);
@@ -234,6 +248,7 @@ namespace BrianSharp.Plugin
             var obj =
                 MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                     .Cast<Obj_AI_Minion>()
+                    .Where(i => Q.GetPrediction(i).Hitchance >= HitChance.High)
                     .FirstOrDefault(i => Q.IsKillable(i));
             if (obj == null)
             {
@@ -245,7 +260,7 @@ namespace BrianSharp.Plugin
         private void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
-                Player.HealthPercentage() < GetValue<Slider>("Harass", "AutoQHpA").Value || !Q.IsReady())
+                Player.HealthPercent < GetValue<Slider>("Harass", "AutoQHpA").Value)
             {
                 return;
             }

@@ -61,6 +61,7 @@ namespace BrianSharp.Plugin
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
                         AddBool(killStealMenu, "Q", "Use Q");
+                        AddBool(killStealMenu, "E", "Use E");
                         AddBool(killStealMenu, "Ignite", "Use Ignite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
@@ -204,7 +205,7 @@ namespace BrianSharp.Plugin
         private void Fight(string mode)
         {
             if (GetValue<bool>(mode, "E") &&
-                (mode == "Combo" || Player.HealthPercentage() >= GetValue<Slider>(mode, "EHpA").Value))
+                (mode == "Combo" || Player.HealthPercent >= GetValue<Slider>(mode, "EHpA").Value))
             {
                 var target = E.GetTarget();
                 if (target != null)
@@ -226,7 +227,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             if (mode == "Combo" && GetValue<bool>(mode, "W") && W.IsReady() && Q.GetTarget() != null &&
-                Player.HealthPercentage() < GetValue<Slider>(mode, "WHpU").Value)
+                Player.HealthPercent < GetValue<Slider>(mode, "WHpU").Value)
             {
                 W.Cast(PacketCast);
             }
@@ -276,7 +277,7 @@ namespace BrianSharp.Plugin
         private void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
-                Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
+                Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value)
             {
                 return;
             }
@@ -296,9 +297,21 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
                 var target = Q.GetTarget();
-                if (target != null && Q.IsKillable(target))
+                if (target != null && Q.IsKillable(target) && Q.CastOnUnit(target, PacketCast))
                 {
-                    Q.CastOnUnit(target, PacketCast);
+                    return;
+                }
+            }
+            if (GetValue<bool>("KillSteal", "E") && E.IsReady())
+            {
+                var target = E.GetTarget();
+                if (target != null && E.IsKillable(target))
+                {
+                    var predE = E.GetPrediction(target);
+                    if (predE.Hitchance >= HitChance.High)
+                    {
+                        E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
+                    }
                 }
             }
         }
@@ -316,11 +329,11 @@ namespace BrianSharp.Plugin
                     HeroManager.Allies.Where(
                         i =>
                             !i.IsMe && i.IsValidTarget(R.Range, false) && GetValue<bool>("Ally", i.ChampionName) &&
-                            i.HealthPercentage() < GetValue<Slider>("Ultimate", "AlertHpU").Value &&
+                            i.HealthPercent < GetValue<Slider>("Ultimate", "AlertHpU").Value &&
                             i.CountEnemiesInRange(E.Range) > 0).MinOrDefault(i => i.Health);
                 if (obj != null)
                 {
-                    Game.PrintChat("[Brian Sharp] - {0}: In Dangerous", obj.ChampionName);
+                    AddNotif(string.Format("[Brian Sharp] - {0}: In Dangerous", obj.ChampionName), 5000);
                     _alertAlly = obj;
                     _alertCasted = true;
                     Utility.DelayAction.Add(

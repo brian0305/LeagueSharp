@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using BrianSharp.Common;
@@ -15,24 +16,18 @@ namespace BrianSharp.Plugin
             Q = new Spell(SpellSlot.Q);
             W = new Spell(SpellSlot.W);
             E = new Spell(SpellSlot.E, 650, TargetSelector.DamageType.Magical);
-            R = new Spell(SpellSlot.R, 510);
+            R = new Spell(SpellSlot.R, 500);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    var killableMenu = new Menu("Killable (R)", "Killable");
-                    {
-                        foreach (var obj in HeroManager.Enemies)
-                        {
-                            AddBool(killableMenu, obj.ChampionName, obj.ChampionName);
-                        }
-                        comboMenu.AddSubMenu(killableMenu);
-                    }
                     AddBool(comboMenu, "Q", "Use Q");
                     AddBool(comboMenu, "W", "Use W");
                     AddBool(comboMenu, "E", "Use E");
-                    AddBool(comboMenu, "R", "Use R If Killable");
+                    AddBool(comboMenu, "R", "Use R");
+                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
+                    AddSlider(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
@@ -91,6 +86,18 @@ namespace BrianSharp.Plugin
             Orbwalk.AfterAttack += AfterAttack;
         }
 
+        private List<Obj_AI_Hero> GetRTarget
+        {
+            get
+            {
+                return
+                    HeroManager.Enemies.Where(
+                        i =>
+                            i.IsValidTarget() &&
+                            Player.Distance(Prediction.GetPrediction(i, 0.25f).UnitPosition) <= R.Range).ToList();
+            }
+        }
+
         private void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
@@ -108,6 +115,10 @@ namespace BrianSharp.Plugin
                 case Orbwalker.Mode.Clear:
                     Clear();
                     break;
+            }
+            if (GetValue<bool>("SmiteMob", "Auto") && Orbwalk.CurrentMode != Orbwalker.Mode.Clear)
+            {
+                SmiteMob();
             }
             KillSteal();
         }
@@ -136,20 +147,19 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if (R.IsInRange(unit) && R.Cast(PacketCast))
+            var pos = Prediction.GetPrediction(unit, 0.25f).UnitPosition;
+            if (R.IsInRange(pos) && R.Cast(PacketCast))
             {
                 return;
             }
-            if (!R.IsInRange(unit) && E.IsReady() && Player.Mana >= E.Instance.ManaCost + R.Instance.ManaCost)
+            if (!R.IsInRange(pos) && E.IsReady() && Player.Mana >= E.Instance.ManaCost + R.Instance.ManaCost)
             {
                 var obj =
-                    (Obj_AI_Base)
-                        HeroManager.Enemies.Where(
-                            i =>
-                                i.IsValidTarget(E.Range) && i.Distance(unit) < R.Range - 20 &&
-                                i.NetworkId != unit.NetworkId).MinOrDefault(i => i.Distance(unit)) ??
-                    GetMinion(E.Range, MinionType.Minion, MinionTeam.NotAlly)
-                        .Where(i => i.Distance(unit) < R.Range - 20)
+                    HeroManager.Enemies.Where(
+                        i => i.IsValidTarget(E.Range) && i.Distance(pos) <= R.Range && i.NetworkId != unit.NetworkId)
+                        .MinOrDefault(i => i.Distance(unit)) ??
+                    MinionManager.GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly)
+                        .Where(i => i.Distance(pos) <= R.Range)
                         .MinOrDefault(i => i.Distance(unit));
                 if (obj != null)
                 {
@@ -188,21 +198,22 @@ namespace BrianSharp.Plugin
 
         private void Fight(string mode)
         {
-            if (mode == "Combo" && GetValue<bool>(mode, "R") && R.IsReady())
+            if (mode == "Combo" && GetValue<bool>(mode, "R") && R.IsReady() && !Player.IsDashing())
             {
-                var target = R.GetTarget(0, HeroManager.Enemies.Where(i => !GetValue<bool>("Killable", i.ChampionName)));
-                if (target != null)
+                var obj = GetRTarget;
+                if ((obj.Count > 1 && obj.Any(i => R.IsKillable(i))) ||
+                    (obj.Count > 1 && obj.Any(i => i.HealthPercent < GetValue<Slider>(mode, "RHpU").Value)) ||
+                    obj.Count >= GetValue<Slider>(mode, "RCountA").Value)
                 {
-                    if (R.IsKillable(target) && R.Cast(PacketCast))
-                    {
-                        return;
-                    }
-                    if (
-                        CanKill(
-                            target, R.GetDamage(target) + E.GetDamage(target) + Player.GetAutoAttackDamage(target, true)) &&
-                        GetValue<bool>(mode, "E") && E.IsReady() &&
-                        Player.Mana >= E.Instance.ManaCost + R.Instance.ManaCost && R.Cast(PacketCast) &&
-                        E.CastOnUnit(target, PacketCast))
+                    R.Cast(PacketCast);
+                }
+                if (GetValue<bool>(mode, "E") && E.IsReady() && Player.Mana >= E.Instance.ManaCost + R.Instance.ManaCost)
+                {
+                    var target =
+                        obj.Where(
+                            i => CanKill(i, R.GetDamage(i) + E.GetDamage(i) + Player.GetAutoAttackDamage(i, true)))
+                            .MinOrDefault(i => i.Health);
+                    if (target != null && R.Cast(PacketCast) && E.CastOnUnit(target, PacketCast))
                     {
                         return;
                     }
@@ -231,14 +242,15 @@ namespace BrianSharp.Plugin
         private void Clear()
         {
             SmiteMob();
-            var minionObj = GetMinion(E.Range, MinionType.Minion, MinionTeam.NotAlly);
+            var minionObj = MinionManager.GetMinions(
+                E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (!minionObj.Any())
             {
                 return;
             }
             if (GetValue<bool>("Clear", "E") && E.IsReady())
             {
-                var obj = (Obj_AI_Base) minionObj.FirstOrDefault(i => E.IsKillable(i));
+                var obj = minionObj.FirstOrDefault(i => E.IsKillable(i));
                 if (obj == null && !minionObj.Any(i => Orbwalk.InAutoAttackRange(i, 30)))
                 {
                     obj = minionObj.MinOrDefault(i => i.Health);
@@ -289,8 +301,8 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("KillSteal", "R") && R.IsReady())
             {
-                var target = R.GetTarget();
-                if (target != null && R.IsKillable(target))
+                var target = GetRTarget.FirstOrDefault(i => R.IsKillable(i));
+                if (target != null)
                 {
                     R.Cast(PacketCast);
                 }

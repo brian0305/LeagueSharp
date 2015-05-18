@@ -14,17 +14,20 @@ namespace BrianSharp.Plugin
         {
             Q = new Spell(SpellSlot.Q);
             W = new Spell(SpellSlot.W, 830);
-            E = new Spell(SpellSlot.E, 750);
+            E = new Spell(SpellSlot.E, 660);
             R = new Spell(SpellSlot.R);
-            E.SetSkillshot(0, 160, 1300, false, SkillshotType.SkillshotLine);
+            E.SetSkillshot(0, 93, 1300, false, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
+                    AddBool(comboMenu, "Q", "Use Q");
+                    AddSlider(comboMenu, "QHpU", "-> If Hp Under", 40);
                     AddBool(comboMenu, "W", "Use W");
                     AddBool(comboMenu, "WSolo", "-> Both Facing", false);
                     AddBool(comboMenu, "E", "Use E");
+                    AddBool(comboMenu, "R", "Use R");
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
@@ -54,13 +57,6 @@ namespace BrianSharp.Plugin
                         AddBool(killStealMenu, "Smite", "Use Smite");
                         miscMenu.AddSubMenu(killStealMenu);
                     }
-                    var surviveMenu = new Menu("Survive", "Survive");
-                    {
-                        AddBool(surviveMenu, "Q", "Use Q");
-                        AddSlider(surviveMenu, "QHpU", "-> If Hp Under", 40);
-                        AddBool(surviveMenu, "R", "Use R");
-                        miscMenu.AddSubMenu(surviveMenu);
-                    }
                     champMenu.AddSubMenu(miscMenu);
                 }
                 var drawMenu = new Menu("Draw", "Draw");
@@ -73,6 +69,7 @@ namespace BrianSharp.Plugin
             }
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
+            AttackableUnit.OnDamage += OnDamage;
         }
 
         private void OnUpdate(EventArgs args)
@@ -99,8 +96,11 @@ namespace BrianSharp.Plugin
                     }
                     break;
             }
+            if (GetValue<bool>("SmiteMob", "Auto") && Orbwalk.CurrentMode != Orbwalker.Mode.Clear)
+            {
+                SmiteMob();
+            }
             KillSteal();
-            Survive();
         }
 
         private void OnDraw(EventArgs args)
@@ -116,6 +116,23 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("Draw", "E") && E.Level > 0)
             {
                 Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.Green : Color.Red);
+            }
+        }
+
+        private void OnDamage(AttackableUnit sender, AttackableUnitDamageEventArgs args)
+        {
+            if (args.TargetNetworkId != Player.NetworkId || Orbwalk.CurrentMode != Orbwalker.Mode.Combo)
+            {
+                return;
+            }
+            if (GetValue<bool>("Combo", "R") && R.IsReady() && Player.HealthPercent < 5 && R.Cast(PacketCast))
+            {
+                return;
+            }
+            if (GetValue<bool>("Combo", "Q") && Q.IsReady() && !Player.HasBuff("UndyingRage") &&
+                Player.HealthPercent < GetValue<Slider>("Survive", "QHpU").Value)
+            {
+                Q.Cast(PacketCast);
             }
         }
 
@@ -140,7 +157,7 @@ namespace BrianSharp.Plugin
                 }
             }
             if (GetValue<bool>(mode, "E") && E.IsReady() &&
-                (mode == "Combo" || Player.HealthPercentage() >= GetValue<Slider>(mode, "EHpA").Value))
+                (mode == "Combo" || Player.HealthPercent >= GetValue<Slider>(mode, "EHpA").Value))
             {
                 var target = E.GetTarget();
                 if (target != null)
@@ -225,25 +242,6 @@ namespace BrianSharp.Plugin
                         E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width), PacketCast);
                     }
                 }
-            }
-        }
-
-        private void Survive()
-        {
-            if (Player.InFountain())
-            {
-                return;
-            }
-            if (GetValue<bool>("Survive", "R") && R.IsReady() && Player.HealthPercentage() < 5 &&
-                Player.GetEnemiesInRange(1000).Any(i => !i.IsDead) && R.Cast(PacketCast))
-            {
-                return;
-            }
-            if (GetValue<bool>("Survive", "Q") && Q.IsReady() && !Player.HasBuff("UndyingRage") &&
-                Player.CountEnemiesInRange(1000) > 0 &&
-                Player.HealthPercentage() < GetValue<Slider>("Survive", "QHpU").Value)
-            {
-                Q.Cast(PacketCast);
             }
         }
     }

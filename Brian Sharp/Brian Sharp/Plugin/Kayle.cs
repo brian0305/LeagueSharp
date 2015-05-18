@@ -110,6 +110,7 @@ namespace BrianSharp.Plugin
             }
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
+            AttackableUnit.OnDamage += OnDamage;
         }
 
         private bool HaveE
@@ -142,6 +143,10 @@ namespace BrianSharp.Plugin
                     Flee();
                     break;
             }
+            if (GetValue<bool>("SmiteMob", "Auto") && Orbwalk.CurrentMode != Orbwalker.Mode.Clear)
+            {
+                SmiteMob();
+            }
             AutoQ();
             KillSteal();
         }
@@ -166,6 +171,35 @@ namespace BrianSharp.Plugin
             }
         }
 
+        private void OnDamage(AttackableUnit sender, AttackableUnitDamageEventArgs args)
+        {
+            if (Orbwalk.CurrentMode != Orbwalker.Mode.Combo)
+            {
+                return;
+            }
+            if (GetValue<bool>("Combo", "W") && GetValue<bool>("Combo", "WHeal") && W.IsReady())
+            {
+                var obj = ObjectManager.GetUnitByNetworkId<Obj_AI_Hero>(args.TargetNetworkId);
+                if (obj.IsValidTarget(W.Range, false) && obj.IsAlly && GetValue<bool>("Heal", MenuName(obj)) &&
+                    obj.HealthPercent < GetValue<Slider>("Heal", MenuName(obj) + "HpU").Value && !obj.InFountain() &&
+                    !obj.HasBuff("JudicatorIntervention") && !obj.HasBuff("UndyingRage") &&
+                    W.CastOnUnit(obj, PacketCast))
+                {
+                    return;
+                }
+            }
+            if (GetValue<bool>("Combo", "R") && GetValue<bool>("Combo", "RSave") && R.IsReady())
+            {
+                var obj = ObjectManager.GetUnitByNetworkId<Obj_AI_Hero>(args.TargetNetworkId);
+                if (obj.IsValidTarget(R.Range, false) && obj.IsAlly && GetValue<bool>("Save", MenuName(obj)) &&
+                    obj.HealthPercent < GetValue<Slider>("Save", MenuName(obj) + "HpU").Value && !obj.InFountain() &&
+                    !obj.HasBuff("UndyingRage"))
+                {
+                    R.CastOnUnit(obj, PacketCast);
+                }
+            }
+        }
+
         private void Fight(string mode)
         {
             if (mode == "Combo" && GetValue<bool>(mode, "E") && GetValue<bool>(mode, "EAoE") && HaveE)
@@ -187,7 +221,7 @@ namespace BrianSharp.Plugin
                 var target = Q.GetTarget();
                 if (target != null &&
                     ((Player.Distance(target) > Q.Range - 100 && !target.IsFacing(Player) && Player.IsFacing(target)) ||
-                     target.HealthPercentage() > 60 || Player.CountEnemiesInRange(Q.Range) == 1) &&
+                     target.HealthPercent > 60 || Player.CountEnemiesInRange(Q.Range) == 1) &&
                     Q.CastOnUnit(target, PacketCast))
                 {
                     return;
@@ -201,62 +235,26 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if (GetValue<bool>(mode, "W") && W.IsReady())
+            if (GetValue<bool>(mode, "W") && GetValue<bool>(mode, "WSpeed") && W.IsReady())
             {
-                if (GetValue<bool>(mode, "WHeal"))
+                var target = Q.GetTarget(200);
+                if (target != null && !target.IsFacing(Player) && (!HaveE || !Orbwalk.InAutoAttackRange(target)) &&
+                    (!GetValue<bool>(mode, "Q") || (Q.IsReady() && !Q.IsInRange(target))) && W.Cast(PacketCast))
                 {
-                    var obj =
-                        HeroManager.Allies.Where(
-                            i =>
-                                i.IsValidTarget(W.Range, false) && GetValue<bool>("Heal", MenuName(i)) &&
-                                i.HealthPercentage() < GetValue<Slider>("Heal", MenuName(i) + "HpU").Value &&
-                                !i.InFountain() && !i.IsRecalling() && i.CountEnemiesInRange(W.Range) > 0 &&
-                                !i.HasBuff("JudicatorIntervention") && !i.HasBuff("UndyingRage"))
-                            .MinOrDefault(i => i.Health);
-                    if (obj != null && W.CastOnUnit(obj, PacketCast))
-                    {
-                        return;
-                    }
-                }
-                if (GetValue<bool>(mode, "WSpeed"))
-                {
-                    var target = Q.GetTarget(200);
-                    if (target != null && !target.IsFacing(Player) && (!HaveE || !Orbwalk.InAutoAttackRange(target)) &&
-                        (!GetValue<bool>(mode, "Q") ||
-                         (GetValue<bool>(mode, "Q") && Q.IsReady() && !Q.IsInRange(target))) && W.Cast(PacketCast))
-                    {
-                        return;
-                    }
+                    return;
                 }
             }
-            if (GetValue<bool>(mode, "R") && R.IsReady())
+            if (GetValue<bool>(mode, "R") && GetValue<StringList>(mode, "RAnti").SelectedIndex > 0 && R.IsReady())
             {
-                if (GetValue<bool>(mode, "RSave"))
+                var obj =
+                    HeroManager.Allies.Where(
+                        i =>
+                            i.IsValidTarget(R.Range, false) && _rAntiDetected.ContainsKey(i.NetworkId) &&
+                            Game.Time > _rAntiDetected[i.NetworkId].StartTick && !i.HasBuff("UndyingRage"))
+                        .MinOrDefault(i => i.Health);
+                if (obj != null)
                 {
-                    var obj =
-                        HeroManager.Allies.Where(
-                            i =>
-                                i.IsValidTarget(R.Range, false) && GetValue<bool>("Save", MenuName(i)) &&
-                                i.HealthPercentage() < GetValue<Slider>("Save", MenuName(i) + "HpU").Value &&
-                                !i.InFountain() && !i.IsRecalling() && i.CountEnemiesInRange(R.Range) > 0 &&
-                                !i.HasBuff("UndyingRage")).MinOrDefault(i => i.Health);
-                    if (obj != null && R.CastOnUnit(obj, PacketCast))
-                    {
-                        return;
-                    }
-                }
-                if (GetValue<StringList>(mode, "RAnti").SelectedIndex > 0)
-                {
-                    var obj =
-                        HeroManager.Allies.Where(
-                            i =>
-                                i.IsValidTarget(R.Range, false) && _rAntiDetected.ContainsKey(i.NetworkId) &&
-                                Game.Time > _rAntiDetected[i.NetworkId].StartTick && !i.HasBuff("UndyingRage"))
-                            .MinOrDefault(i => i.Health);
-                    if (obj != null)
-                    {
-                        R.CastOnUnit(obj, PacketCast);
-                    }
+                    R.CastOnUnit(obj, PacketCast);
                 }
             }
         }
@@ -309,7 +307,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if (GetValue<bool>("Flee", "Q") && Q.IsReady())
+            if (GetValue<bool>("Flee", "Q"))
             {
                 Q.CastOnBestTarget(0, PacketCast);
             }
@@ -318,7 +316,7 @@ namespace BrianSharp.Plugin
         private void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
-                Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
+                Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value)
             {
                 return;
             }

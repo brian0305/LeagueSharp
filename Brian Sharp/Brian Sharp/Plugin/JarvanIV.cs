@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using BrianSharp.Common;
 using LeagueSharp;
 using LeagueSharp.Common;
+using SharpDX;
+using Color = System.Drawing.Color;
 using Orbwalk = BrianSharp.Common.Orbwalker;
 
 namespace BrianSharp.Plugin
@@ -17,20 +18,20 @@ namespace BrianSharp.Plugin
         public JarvanIV()
         {
             Q = new Spell(SpellSlot.Q, 770);
-            Q2 = new Spell(SpellSlot.Q, 860);
+            Q2 = new Spell(SpellSlot.Q, 880);
             W = new Spell(SpellSlot.W, 520);
             E = new Spell(SpellSlot.E, 860, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 650);
-            Q.SetSkillshot(0.25f, 70, 2000, false, SkillshotType.SkillshotLine);
-            Q2.SetSkillshot(0.25f, 180, 2450, false, SkillshotType.SkillshotLine);
-            E.SetSkillshot(0.5f, 175, 1450, false, SkillshotType.SkillshotCircle);
+            Q.SetSkillshot(0.6f, 70, float.MaxValue, false, SkillshotType.SkillshotLine);
+            Q2.SetSkillshot(0.25f, 180, 1450, false, SkillshotType.SkillshotLine);
+            E.SetSkillshot(0.5f, 175, float.MaxValue, false, SkillshotType.SkillshotCircle);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
                     AddBool(comboMenu, "Q", "Use Q");
-                    AddSlider(comboMenu, "QFlagRange", "-> To Flag If Flag In", 500, 100, 860);
+                    AddSlider(comboMenu, "QFlagRange", "-> To Flag If Flag In", 500, 100, 880);
                     AddBool(comboMenu, "W", "Use W");
                     AddSlider(comboMenu, "WHpU", "-> If Player Hp Under", 40);
                     AddSlider(comboMenu, "WCountA", "-> If Enemy Above", 2, 1, 5);
@@ -119,7 +120,7 @@ namespace BrianSharp.Plugin
                     ObjectManager.Get<Obj_AI_Minion>()
                         .Where(
                             i =>
-                                i.IsValidTarget(Q2.Range + i.BoundingRadius, false) && i.IsAlly && i.Name == "Beacon" &&
+                                i.IsValidTarget(Q2.Range, false) && i.IsAlly && i.Name == "Beacon" &&
                                 Player.Distance(i) > 1);
             }
         }
@@ -151,6 +152,10 @@ namespace BrianSharp.Plugin
                 case Orbwalker.Mode.Flee:
                     Flee();
                     break;
+            }
+            if (GetValue<bool>("SmiteMob", "Auto") && Orbwalk.CurrentMode != Orbwalker.Mode.Clear)
+            {
+                SmiteMob();
             }
             AutoQ();
             KillSteal();
@@ -250,11 +255,11 @@ namespace BrianSharp.Plugin
                     {
                         return;
                     }
-                    var target = Q2.GetTarget(50);
+                    var target = Q2.GetTarget();
                     if (GetValue<bool>(mode, "E") && target != null &&
                         Flag.Where(
                             i =>
-                                Player.Distance(i) <= GetValue<Slider>(mode, "QFlagRange").Value + i.BoundingRadius &&
+                                Player.Distance(i) <= GetValue<Slider>(mode, "QFlagRange").Value &&
                                 (target.Distance(i) <= 60 || Q2.WillHit(target, i.ServerPosition)))
                             .Any(i => Q.Cast(i.ServerPosition, PacketCast)))
                     {
@@ -272,20 +277,13 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>(mode, "R") && R.IsReady() && !_rCasted)
             {
-                var obj =
-                    HeroManager.Enemies.Where(
-                        i =>
-                            i.IsValidTarget(R.Range) &&
-                            ((i.CountEnemiesInRange(RWidth) > 1 && R.IsKillable(i)) ||
-                             (i.CountEnemiesInRange(RWidth) > 1 &&
-                              i.GetEnemiesInRange(RWidth)
-                                  .Any(
-                                      a =>
-                                          a.IsValidTarget() &&
-                                          a.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value)) ||
-                             (i.CountEnemiesInRange(RWidth) >= GetValue<Slider>(mode, "RCountA").Value)))
-                        .MaxOrDefault(i => i.CountEnemiesInRange(RWidth));
-
+                var obj = (from i in HeroManager.Enemies.Where(i => i.IsValidTarget(R.Range))
+                    let enemy = GetRTarget(i.ServerPosition)
+                    where
+                        (enemy.Count > 1 && R.IsKillable(i)) ||
+                        (enemy.Count > 1 && enemy.Any(a => a.HealthPercent < GetValue<Slider>(mode, "RHpU").Value)) ||
+                        enemy.Count >= GetValue<Slider>(mode, "RCountA").Value
+                    select i).MaxOrDefault(i => GetRTarget(i.ServerPosition).Count);
                 if (obj != null && R.CastOnUnit(obj, PacketCast))
                 {
                     return;
@@ -293,7 +291,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>(mode, "W") && W.IsReady() &&
                 Player.CountEnemiesInRange(W.Range) >= GetValue<Slider>(mode, "WCountA").Value &&
-                Player.HealthPercentage() < GetValue<Slider>(mode, "WHpU").Value)
+                Player.HealthPercent < GetValue<Slider>(mode, "WHpU").Value)
             {
                 W.Cast(PacketCast);
             }
@@ -355,7 +353,7 @@ namespace BrianSharp.Plugin
                 }
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady() &&
-                Player.HealthPercentage() < GetValue<Slider>("Clear", "WHpU").Value &&
+                Player.HealthPercent < GetValue<Slider>("Clear", "WHpU").Value &&
                 MinionManager.GetMinions(W.Range, MinionTypes.All, MinionTeam.NotAlly).Any() && W.Cast(PacketCast))
             {
                 return;
@@ -414,7 +412,7 @@ namespace BrianSharp.Plugin
         private void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
-                Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
+                Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value)
             {
                 return;
             }
@@ -466,6 +464,14 @@ namespace BrianSharp.Plugin
                     R.CastOnUnit(target, PacketCast);
                 }
             }
+        }
+
+        private List<Obj_AI_Hero> GetRTarget(Vector3 pos)
+        {
+            return
+                HeroManager.Enemies.Where(
+                    i => i.IsValidTarget() && Prediction.GetPrediction(i, 0.25f).UnitPosition.Distance(pos) <= RWidth)
+                    .ToList();
         }
     }
 }

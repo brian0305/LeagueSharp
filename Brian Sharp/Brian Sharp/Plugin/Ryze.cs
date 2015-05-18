@@ -12,16 +12,16 @@ namespace BrianSharp.Plugin
     {
         public Ryze()
         {
-            Q = new Spell(SpellSlot.Q, 625, TargetSelector.DamageType.Magical);
+            Q = new Spell(SpellSlot.Q, 900, TargetSelector.DamageType.Magical);
             W = new Spell(SpellSlot.W, 600, TargetSelector.DamageType.Magical);
             E = new Spell(SpellSlot.E, 600, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R);
+            Q.SetSkillshot(0.25f, 50, 1700, true, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddSlider(comboMenu, "QDelay", "Stop W/E If Q Will Ready In (ms)", 500, 100, 1000);
                     AddBool(comboMenu, "R", "Use R");
                     AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 70);
                     AddBool(comboMenu, "Seraph", "Use Seraph's Embrace");
@@ -102,6 +102,7 @@ namespace BrianSharp.Plugin
             Drawing.OnDraw += OnDraw;
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
+            AttackableUnit.OnDamage += OnDamage;
         }
 
         private void OnUpdate(EventArgs args)
@@ -175,6 +176,19 @@ namespace BrianSharp.Plugin
             W.CastOnUnit(unit, PacketCast);
         }
 
+        private void OnDamage(AttackableUnit sender, AttackableUnitDamageEventArgs args)
+        {
+            if (args.TargetNetworkId != Player.NetworkId || Orbwalk.CurrentMode != Orbwalker.Mode.Combo)
+            {
+                return;
+            }
+            if (GetValue<bool>("Combo", "Seraph") && Seraph.IsReady() &&
+                Player.HealthPercent < GetValue<Slider>("Combo", "SeraphHpU").Value)
+            {
+                Seraph.Cast();
+            }
+        }
+
         private void Fight(string mode)
         {
             switch (mode)
@@ -194,35 +208,20 @@ namespace BrianSharp.Plugin
                     }
                     break;
                 case "Combo":
-                    if (GetValue<bool>(mode, "Seraph") && Seraph.IsReady() &&
-                        Player.HealthPercentage() < GetValue<Slider>(mode, "SeraphHpU").Value &&
-                        Q.GetTarget(200) != null && !Player.InFountain() && Seraph.Cast())
-                    {
-                        return;
-                    }
-                    var fastCd = Math.Abs(Player.PercentCooldownMod) >= 0.2;
                     if (GetValue<bool>(mode, "R") && Q.GetTarget(100) != null &&
-                        Q.GetTarget().HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value &&
-                        (!fastCd || Player.LastCastedSpellName() == "Overload") && R.Cast(PacketCast))
+                        Q.GetTarget(100).HealthPercent < GetValue<Slider>(mode, "RHpU").Value && R.Cast(PacketCast))
                     {
                         return;
                     }
-                    if (Q.CastOnBestTarget(0, PacketCast).IsCasted() || Q.IsReady() ||
-                        (Q.IsReady(GetValue<Slider>(mode, "QDelay").Value) && fastCd))
+                    if (Q.CastOnBestTarget(0, PacketCast).IsCasted())
                     {
                         return;
                     }
-                    if ((!fastCd ||
-                         (Player.LastCastedSpellName() == "Overload" ||
-                          (GetValue<bool>(mode, "R") && Player.LastCastedSpellName() == "DesperatePower" &&
-                           Player.HasBuff("DesperatePower")))) && W.CastOnBestTarget(0, PacketCast).IsCasted())
+                    if (W.IsReady() && !E.IsReady() && W.CastOnBestTarget(0, PacketCast).IsCasted())
                     {
                         return;
                     }
-                    if (!W.IsReady() && (!fastCd || Player.LastCastedSpellName() == "Overload"))
-                    {
-                        E.CastOnBestTarget(0, PacketCast);
-                    }
+                    E.CastOnBestTarget(0, PacketCast);
                     break;
                 case "Chase":
                     var target = W.GetTarget();
@@ -239,27 +238,33 @@ namespace BrianSharp.Plugin
                     {
                         return;
                     }
-                    Q.CastOnUnit(target, PacketCast);
+                    Q.CastIfHitchanceEquals(target, HitChance.High, PacketCast);
                     break;
             }
         }
 
         private void Clear()
         {
-            var minionObjQ = GetMinion(Q.Range, MinionType.Minion, MinionTeam.NotAlly);
-            var minionObjW = GetMinion(W.Range, MinionType.Minion, MinionTeam.NotAlly);
-            if (!minionObjQ.Any())
-            {
-                return;
-            }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var obj = minionObjQ.FirstOrDefault(i => Q.IsKillable(i)) ??
-                          minionObjQ.MaxOrDefault(i => i.Health >= 1200);
-                if (obj != null && Q.CastOnUnit(obj, PacketCast))
+                var minionObjQ =
+                    MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
+                        .Where(i => Q.GetPrediction(i).Hitchance >= HitChance.Medium)
+                        .ToList();
+                var obj = minionObjQ.Cast<Obj_AI_Minion>().FirstOrDefault(i => Q.IsKillable(i)) ??
+                          minionObjQ.MinOrDefault(i => i.Distance(Player));
+                if (obj != null)
                 {
-                    return;
+                    Q.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast);
                 }
+            }
+            var minionObjW =
+                MinionManager.GetMinions(W.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
+                    .Cast<Obj_AI_Minion>()
+                    .ToList();
+            if (!minionObjW.Any())
+            {
+                return;
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady())
             {
@@ -273,7 +278,9 @@ namespace BrianSharp.Plugin
             {
                 var obj = minionObjW.FirstOrDefault(i => E.IsKillable(i)) ??
                           minionObjW.MaxOrDefault(
-                              i => GetMinion(i.ServerPosition, 200, MinionType.Minion, MinionTeam.NotAlly).Count);
+                              i =>
+                                  MinionManager.GetMinions(i.ServerPosition, 200, MinionTypes.All, MinionTeam.NotAlly)
+                                      .Count);
                 if (obj != null)
                 {
                     E.CastOnUnit(obj, PacketCast);
@@ -287,18 +294,22 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            var obj = GetMinion(Q.Range, MinionType.Minion, MinionTeam.NotAlly).FirstOrDefault(i => Q.IsKillable(i));
+            var obj =
+                MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
+                    .Cast<Obj_AI_Minion>()
+                    .Where(i => Q.GetPrediction(i).Hitchance >= HitChance.High)
+                    .FirstOrDefault(i => Q.IsKillable(i));
             if (obj == null)
             {
                 return;
             }
-            Q.CastOnUnit(obj, PacketCast);
+            Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast);
         }
 
         private void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
-                Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
+                Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value)
             {
                 return;
             }
@@ -318,7 +329,8 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
                 var target = Q.GetTarget();
-                if (target != null && Q.IsKillable(target) && Q.CastOnUnit(target, PacketCast))
+                if (target != null && Q.IsKillable(target) &&
+                    Q.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
                 {
                     return;
                 }

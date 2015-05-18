@@ -15,7 +15,6 @@ namespace BrianSharp
         public static SpellSlot Flash, Smite, Ignite;
         public static Items.Item Tiamat, Hydra, Youmuu, Zhonya, Seraph, Sheen, Iceborn, Trinity;
         public static Menu MainMenu;
-        private static int _delay;
 
         public static Obj_AI_Hero Player
         {
@@ -35,56 +34,12 @@ namespace BrianSharp
             Game.OnStart += OnStart;
         }
 
-        private static void OnCreateObjMissile(GameObject sender, EventArgs args)
-        {
-            var missile = (Obj_SpellMissile) sender;
-            if (!missile.SpellCaster.IsMe || missile.SData.IsAutoAttack())
-            {
-                return;
-            }
-            _delay = Utils.TickCount - _delay;
-            Game.PrintChat("{0}", (float) _delay / 1000);
-            Game.PrintChat(
-                "(O) {0}: Start[{1}]/End[{2}]/R[{3}|{4}|{5}]/D[{6}|{7}]/W[{8}|{9}]/S[{10}]", missile.SData.Name,
-                missile.StartPosition, missile.EndPosition, missile.StartPosition.Distance(missile.EndPosition),
-                missile.SData.CastRange, missile.SData.CastRangeDisplayOverride, missile.SData.CastFrame / 30,
-                missile.SData.CastFrame / 60, missile.SData.CastRadius, missile.SData.LineWidth,
-                missile.SData.MissileSpeed);
-        }
-
-        private static void OnDeleteObjMissile(GameObject sender, EventArgs args)
-        {
-            var missile = (Obj_SpellMissile) sender;
-            if (!missile.SpellCaster.IsMe || missile.SData.IsAutoAttack())
-            {
-                return;
-            }
-            Game.PrintChat("{0}: {1}", missile.SData.Name, Player.Distance(missile.Position));
-        }
-
-        private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
-        {
-            if (!sender.IsMe || args.SData.Name != Q.Instance.SData.Name)
-            {
-                return;
-            }
-            _delay = Utils.TickCount;
-            Game.PrintChat(
-                "(S) {0}: Start[{1}]/End[{2}]/R[{3}|{4}|{5}]/D[{6}|{7}]/W[{8}|{9}]/S[{10}]", args.SData.Name, args.Start,
-                args.End, args.Start.Distance(args.End), args.SData.CastRange, args.SData.CastRangeDisplayOverride,
-                args.SData.CastFrame / 30, args.SData.CastFrame / 60, args.SData.CastRadius, args.SData.LineWidth,
-                args.SData.MissileSpeed);
-        }
-
         private static void OnStart(EventArgs args)
         {
-            //Obj_SpellMissile.OnCreate += OnCreateObjMissile;
-            //Obj_SpellMissile.OnDelete += OnDeleteObjMissile;
-            //Obj_AI_Hero.OnProcessSpellCast += OnProcessSpellCast;
             var plugin = Type.GetType("BrianSharp.Plugin." + Player.ChampionName);
             if (plugin == null)
             {
-                Game.PrintChat("[Brian Sharp] - {0}: Not Load !", Player.ChampionName);
+                Helper.AddNotif(string.Format("[Brian Sharp] - {0}: Not Load !", Player.ChampionName), 3000);
                 return;
             }
             MainMenu = new Menu("Brian Sharp", "BrianSharp", true);
@@ -118,7 +73,7 @@ namespace BrianSharp
             }
             Ignite = Player.GetSpellSlot("summonerdot");
             MainMenu.AddToMainMenu();
-            Game.PrintChat("[Brian Sharp] - {0}: Loaded !", Player.ChampionName);
+            Helper.AddNotif(string.Format("[Brian Sharp] - {0}: Loaded !", Player.ChampionName), 3000);
         }
 
         private static void NewInstance(Type type)

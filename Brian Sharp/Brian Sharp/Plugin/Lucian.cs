@@ -17,13 +17,13 @@ namespace BrianSharp.Plugin
         public Lucian()
         {
             Q = new Spell(SpellSlot.Q, 675);
-            Q2 = new Spell(SpellSlot.Q, 1100);
+            Q2 = new Spell(SpellSlot.Q, 1300);
             W = new Spell(SpellSlot.W, 1000, TargetSelector.DamageType.Magical);
             E = new Spell(SpellSlot.E, 445);
             R = new Spell(SpellSlot.R, 1400);
-            Q2.SetSkillshot(0.25f, 65, float.MaxValue, false, SkillshotType.SkillshotLine);
-            W.SetSkillshot(0.25f, 55, 1600, true, SkillshotType.SkillshotLine);
-            R.SetSkillshot(0.05f, 110, 2800, true, SkillshotType.SkillshotLine);
+            Q2.SetSkillshot(0.5f, 65, float.MaxValue, true, SkillshotType.SkillshotLine);
+            W.SetSkillshot(0.25f, 25, 1600, true, SkillshotType.SkillshotLine); //Width: 55
+            R.SetSkillshot(0.5f, 110, 2800, true, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -214,7 +214,7 @@ namespace BrianSharp.Plugin
             if (((Orbwalk.CurrentMode == Orbwalker.Mode.Clear && target is Obj_AI_Minion) ||
                  ((Orbwalk.CurrentMode == Orbwalker.Mode.Combo ||
                    (Orbwalk.CurrentMode == Orbwalker.Mode.Harass &&
-                    Player.HealthPercentage() >= GetValue<Slider>("Harass", "EHpA").Value)) && target is Obj_AI_Hero)) &&
+                    Player.HealthPercent >= GetValue<Slider>("Harass", "EHpA").Value)) && target is Obj_AI_Hero)) &&
                 GetValue<bool>(Orbwalk.CurrentMode.ToString(), "E") && !HavePassive)
             {
                 var obj = (Obj_AI_Base) target;
@@ -223,7 +223,7 @@ namespace BrianSharp.Plugin
                      GetValue<StringList>("Combo", "EMode").SelectedIndex == 0))
                 {
                     var pos = Geometry.CircleCircleIntersection(
-                        Player.ServerPosition.To2D(), obj.ServerPosition.To2D(), E.Range,
+                        Player.ServerPosition.To2D(), Prediction.GetPrediction(obj, 0.25f).UnitPosition.To2D(), E.Range,
                         Orbwalk.GetAutoAttackRange(obj));
                     if (pos.Count() > 0)
                     {
@@ -320,7 +320,7 @@ namespace BrianSharp.Plugin
                     {
                         W.CastIfHitchanceEquals(target, HitChance.High, PacketCast);
                     }
-                    else if (mode == "Combo" && !GetValue<bool>(mode, "WPred"))
+                    else
                     {
                         W.Cast(W.GetPrediction(target).CastPosition, PacketCast);
                     }
@@ -330,12 +330,13 @@ namespace BrianSharp.Plugin
 
         private void Clear()
         {
-            var minionObj = GetMinion(Q2.Range, MinionType.Minion, MinionTeam.NotAlly).Cast<Obj_AI_Base>().ToList();
+            var minionObj = MinionManager.GetMinions(
+                Q2.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (!minionObj.Any())
             {
                 return;
             }
-            if (GetValue<bool>("Clear", "E") && (E.IsReady() || E.IsReady(GetValue<Slider>("Clear", "EDelay").Value)))
+            if (GetValue<bool>("Clear", "E") && E.IsReady(GetValue<Slider>("Clear", "EDelay").Value))
             {
                 return;
             }
@@ -360,7 +361,9 @@ namespace BrianSharp.Plugin
                 }
                 else
                 {
-                    var obj = minionObj.FirstOrDefault(i => i.MaxHealth >= 1200 && W.IsInRange(i));
+                    var obj =
+                        minionObj.Where(i => W.GetPrediction(i).Hitchance >= HitChance.High)
+                            .MinOrDefault(i => i.Distance(Player));
                     if (obj != null)
                     {
                         W.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast);
@@ -372,7 +375,7 @@ namespace BrianSharp.Plugin
         private void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
-                Player.ManaPercentage() < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
+                Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value || !Q.IsReady())
             {
                 return;
             }
@@ -452,9 +455,10 @@ namespace BrianSharp.Plugin
 
         private bool CastExtendQ(Obj_AI_Hero target, bool cancelR = false)
         {
-            var obj =
-                GetMinion(Q.Range, MinionType.Minion, MinionTeam.NotAlly, true)
-                    .FirstOrDefault(i => Q2.WillHit(target, i.ServerPosition.Extend(Player.ServerPosition, -Q2.Range)));
+            //var obj =
+            //    GetMinion(Q.Range, MinionType.Minion, MinionTeam.NotAlly)
+            //        .FirstOrDefault(i => Q2.WillHit(target, i.ServerPosition.Extend(Player.ServerPosition, -Q2.Range)));
+            var obj = Q2.GetPrediction(target).CollisionObjects.FirstOrDefault();
             return obj != null && (!cancelR || R.Cast(PacketCast)) && Q.CastOnUnit(obj, PacketCast);
         }
 

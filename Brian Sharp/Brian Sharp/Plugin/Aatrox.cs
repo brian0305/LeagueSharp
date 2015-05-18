@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using BrianSharp.Common;
@@ -17,8 +18,8 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W);
             E = new Spell(SpellSlot.E, 1075, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 550, TargetSelector.DamageType.Magical);
-            Q.SetSkillshot(0, 250, 2500, false, SkillshotType.SkillshotCircle);
-            Q2.SetSkillshot(0, 150, 2500, false, SkillshotType.SkillshotCircle);
+            Q.SetSkillshot(0.6f, 250, 2000, false, SkillshotType.SkillshotCircle);
+            Q2.SetSkillshot(0.6f, 150, 2000, false, SkillshotType.SkillshotCircle);
             E.SetSkillshot(0.25f, 40, 1250, false, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
@@ -119,6 +120,18 @@ namespace BrianSharp.Plugin
             get { return Player.HasBuff("AatroxWPower"); }
         }
 
+        private List<Obj_AI_Hero> GetRTarget
+        {
+            get
+            {
+                return
+                    HeroManager.Enemies.Where(
+                        i =>
+                            i.IsValidTarget() &&
+                            Player.Distance(Prediction.GetPrediction(i, 0.25f).UnitPosition) <= R.Range).ToList();
+            }
+        }
+
         private void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
@@ -139,6 +152,10 @@ namespace BrianSharp.Plugin
                 case Orbwalker.Mode.Flee:
                     Flee();
                     break;
+            }
+            if (GetValue<bool>("SmiteMob", "Auto") && Orbwalk.CurrentMode != Orbwalker.Mode.Clear)
+            {
+                SmiteMob();
             }
             AutoE();
             KillSteal();
@@ -187,7 +204,7 @@ namespace BrianSharp.Plugin
         private void Fight(string mode)
         {
             if (GetValue<bool>(mode, "Q") &&
-                (mode == "Combo" || Player.HealthPercentage() >= GetValue<Slider>(mode, "QHpA").Value) &&
+                (mode == "Combo" || Player.HealthPercent >= GetValue<Slider>(mode, "QHpA").Value) &&
                 Q2.CastOnBestTarget(Q2.Width / 2, PacketCast).IsCasted())
             {
                 return;
@@ -202,7 +219,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>(mode, "W") && W.IsReady())
             {
-                if (Player.HealthPercentage() >= GetValue<Slider>(mode, "WHpU").Value)
+                if (Player.HealthPercent >= GetValue<Slider>(mode, "WHpU").Value)
                 {
                     if (!HaveWDmg && W.Cast(PacketCast))
                     {
@@ -214,11 +231,11 @@ namespace BrianSharp.Plugin
                     return;
                 }
             }
-            if (GetValue<bool>(mode, "R") && R.IsReady())
+            if (GetValue<bool>(mode, "R") && R.IsReady() && !Player.IsDashing())
             {
-                var obj = HeroManager.Enemies.Where(i => i.IsValidTarget(R.Range)).ToList();
+                var obj = GetRTarget;
                 if ((obj.Count > 1 && obj.Any(i => R.IsKillable(i))) ||
-                    (obj.Count > 1 && obj.Any(i => i.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value)) ||
+                    (obj.Count > 1 && obj.Any(i => i.HealthPercent < GetValue<Slider>(mode, "RHpU").Value)) ||
                     obj.Count >= GetValue<Slider>(mode, "RCountA").Value)
                 {
                     R.Cast(PacketCast);
@@ -266,7 +283,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady())
             {
-                if (Player.HealthPercentage() >=
+                if (Player.HealthPercent >=
                     (GetValue<bool>("Clear", "WPriority") ? 85 : GetValue<Slider>("Clear", "WHpU").Value))
                 {
                     if (!HaveWDmg && W.Cast(PacketCast))
@@ -297,7 +314,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if (GetValue<bool>("Flee", "E") && E.IsReady())
+            if (GetValue<bool>("Flee", "E"))
             {
                 E.CastOnBestTarget(0, PacketCast);
             }
@@ -306,7 +323,7 @@ namespace BrianSharp.Plugin
         private void AutoE()
         {
             if (!GetValue<KeyBind>("Harass", "AutoE").Active ||
-                Player.HealthPercentage() < GetValue<Slider>("Harass", "AutoEHpA").Value || !E.IsReady())
+                Player.HealthPercent < GetValue<Slider>("Harass", "AutoEHpA").Value)
             {
                 return;
             }
@@ -352,8 +369,8 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("KillSteal", "R") && R.IsReady())
             {
-                var target = R.GetTarget();
-                if (target != null && R.IsKillable(target))
+                var target = GetRTarget.FirstOrDefault(i => R.IsKillable(i));
+                if (target != null)
                 {
                     R.Cast(PacketCast);
                 }

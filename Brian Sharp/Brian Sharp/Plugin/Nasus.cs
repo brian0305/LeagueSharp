@@ -16,7 +16,7 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W, 600);
             E = new Spell(SpellSlot.E, 650, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R);
-            E.SetSkillshot(0.2f, 380, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            E.SetSkillshot(0.125f, 380, float.MaxValue, false, SkillshotType.SkillshotCircle);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -114,6 +114,10 @@ namespace BrianSharp.Plugin
                     LastHit();
                     break;
             }
+            if (GetValue<bool>("SmiteMob", "Auto") && Orbwalk.CurrentMode != Orbwalker.Mode.Clear)
+            {
+                SmiteMob();
+            }
             KillSteal();
         }
 
@@ -161,13 +165,13 @@ namespace BrianSharp.Plugin
         {
             if (mode == "Combo" && GetValue<bool>(mode, "R") && R.IsReady() && !Player.InFountain() &&
                 Player.CountEnemiesInRange(1000) >= GetValue<Slider>(mode, "RCountA").Value &&
-                Player.HealthPercentage() < GetValue<Slider>(mode, "RHpU").Value)
+                Player.HealthPercent < GetValue<Slider>(mode, "RHpU").Value)
             {
                 R.Cast(PacketCast);
             }
             if (GetValue<bool>(mode, "E") && E.IsReady())
             {
-                var target = E.GetTarget(E.Width);
+                var target = E.GetTarget(E.Width / 2);
                 if (target != null && (mode == "Combo" || Orbwalk.InAutoAttackRange(target, 50)) &&
                     E.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
                 {
@@ -178,7 +182,7 @@ namespace BrianSharp.Plugin
             {
                 var target = W.GetTarget();
                 if (target != null &&
-                    ((mode == "Combo" && (!Orbwalk.InAutoAttackRange(target, 50) || target.HealthPercentage() > 30)) ||
+                    ((mode == "Combo" && (!Orbwalk.InAutoAttackRange(target, 50) || target.HealthPercent > 30)) ||
                      (mode == "Harass" && Orbwalk.InAutoAttackRange(target, 50))))
                 {
                     W.CastOnUnit(target, PacketCast);
@@ -189,7 +193,8 @@ namespace BrianSharp.Plugin
         private void Clear()
         {
             SmiteMob();
-            var minionObj = GetMinion(E.Range + E.Width / 2, MinionType.Minion, MinionTeam.NotAlly);
+            var minionObj = MinionManager.GetMinions(
+                E.Range + E.Width / 2, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (!minionObj.Any())
             {
                 return;
@@ -199,16 +204,15 @@ namespace BrianSharp.Plugin
                 var obj =
                     ObjectManager.Get<Obj_AI_Turret>()
                         .FirstOrDefault(i => Orbwalk.InAutoAttackRange(i) && CanKill(i, GetBonusDmg(i))) ??
-                    (Obj_AI_Base)
-                        minionObj.Where(i => Orbwalk.InAutoAttackRange(i))
-                            .FirstOrDefault(
-                                i =>
-                                    CanKill(i, GetBonusDmg(i)) ||
-                                    !CanKill(
-                                        i,
-                                        GetBonusDmg(i) +
-                                        Player.GetAutoAttackDamage(i, true) *
-                                        Math.Floor(Q.Instance.Cooldown / 1 / Player.AttackDelay)));
+                    minionObj.Where(i => Orbwalk.InAutoAttackRange(i))
+                        .FirstOrDefault(
+                            i =>
+                                CanKill(i, GetBonusDmg(i)) ||
+                                !CanKill(
+                                    i,
+                                    GetBonusDmg(i) +
+                                    Player.GetAutoAttackDamage(i, true) *
+                                    Math.Floor(Q.Instance.Cooldown / 1 / Player.AttackDelay)));
                 if (obj != null)
                 {
                     if (!HaveQ)
@@ -224,7 +228,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "E") && E.IsReady())
             {
-                var pos = E.GetCircularFarmLocation(minionObj.Cast<Obj_AI_Base>().ToList());
+                var pos = E.GetCircularFarmLocation(minionObj);
                 if (pos.MinionsHit > 1)
                 {
                     E.Cast(pos.Position, PacketCast);
@@ -247,7 +251,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             var obj =
-                GetMinion(Q.Range + 100, MinionType.Minion, MinionTeam.NotAlly)
+                MinionManager.GetMinions(Q.Range + 100, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                     .Where(i => Orbwalk.InAutoAttackRange(i))
                     .FirstOrDefault(i => CanKill(i, GetBonusDmg(i)));
             if (obj == null)
@@ -286,7 +290,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("KillSteal", "Q") && (Q.IsReady() || HaveQ))
             {
-                var target = Orbwalk.GetBestHeroTarget();
+                var target = Orbwalk.GetBestHeroTarget;
                 if (target != null && CanKill(target, GetBonusDmg(target)))
                 {
                     if (!HaveQ)

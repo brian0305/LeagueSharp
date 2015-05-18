@@ -79,6 +79,7 @@
     <Compile Include="Plugin\Jax.cs" />
     <Compile Include="Plugin\Kayle.cs" />
     <Compile Include="Plugin\Kennen.cs" />
+    <Compile Include="Plugin\LeeSin.cs" />
     <Compile Include="Plugin\Lucian.cs" />
     <Compile Include="Plugin\Maokai.cs" />
     <Compile Include="Plugin\Nasus.cs" />

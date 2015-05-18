@@ -126,6 +126,10 @@ namespace BrianSharp.Plugin
                     }
                     break;
             }
+            if (GetValue<bool>("SmiteMob", "Auto") && Orbwalk.CurrentMode != Orbwalker.Mode.Clear)
+            {
+                SmiteMob();
+            }
             KillSteal();
         }
 
@@ -199,7 +203,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if (GetValue<bool>("Combo", "E") && E.IsReady() && (!GetValue<bool>("Combo", "EW") || HaveW) &&
+            if (GetValue<bool>("Combo", "E") && (!GetValue<bool>("Combo", "EW") || HaveW) &&
                 E.CastOnBestTarget(0, PacketCast).IsCasted())
             {
                 return;
@@ -226,7 +230,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             if (GetValue<bool>("Clear", "E") && E.IsReady() &&
-                Player.HealthPercentage() >= GetValue<Slider>("Clear", "EHpA").Value &&
+                Player.HealthPercent >= GetValue<Slider>("Clear", "EHpA").Value &&
                 (!GetValue<bool>("Clear", "EW") || HaveW))
             {
                 var obj = minionObj.FirstOrDefault(i => E.IsInRange(i) && i.Team == GameObjectTeam.Neutral);

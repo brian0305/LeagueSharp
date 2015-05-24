@@ -76,6 +76,7 @@ namespace BrianSharp.Plugin
                 }
                 var drawMenu = new Menu("Draw", "Draw");
                 {
+                    AddBool(drawMenu, "QKillObj", "Minion Killable By Q", false);
                     AddBool(drawMenu, "W", "W Range", false);
                     AddBool(drawMenu, "E", "E Range", false);
                     champMenu.AddSubMenu(drawMenu);
@@ -127,6 +128,14 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
+            if (GetValue<bool>("Draw", "QKillObj") && Q.Level > 0)
+            {
+                var minionObj = MinionManager.GetMinions(Q.Range + 300, MinionTypes.All, MinionTeam.NotAlly);
+                foreach (var obj in minionObj.Cast<Obj_AI_Minion>().Where(i => CanKill(i, GetBonusDmg(i))))
+                {
+                    Render.Circle.DrawCircle(obj.Position, obj.BoundingRadius, Color.MediumPurple);
+                }
+            }
             if (GetValue<bool>("Draw", "W") && W.Level > 0)
             {
                 Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
@@ -154,8 +163,8 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if ((Orbwalk.CurrentMode == Orbwalker.Mode.Combo || Orbwalk.CurrentMode == Orbwalker.Mode.Harass) &&
-                GetValue<bool>(Orbwalk.CurrentMode.ToString(), "Q") && target is Obj_AI_Hero && Q.Cast(PacketCast))
+            if (Orbwalk.CurrentMode == Orbwalker.Mode.Harass && GetValue<bool>("Harass", "Q") && target is Obj_AI_Hero &&
+                Q.Cast(PacketCast))
             {
                 Player.IssueOrder(GameObjectOrder.AttackUnit, target);
             }
@@ -163,11 +172,30 @@ namespace BrianSharp.Plugin
 
         private void Fight(string mode)
         {
-            if (mode == "Combo" && GetValue<bool>(mode, "R") && R.IsReady() && !Player.InFountain() &&
-                Player.CountEnemiesInRange(1000) >= GetValue<Slider>(mode, "RCountA").Value &&
-                Player.HealthPercent < GetValue<Slider>(mode, "RHpU").Value)
+            if (mode == "Combo")
             {
-                R.Cast(PacketCast);
+                if (GetValue<bool>(mode, "R") && R.IsReady() && !Player.InFountain() &&
+                    Player.CountEnemiesInRange(1000) >= GetValue<Slider>(mode, "RCountA").Value &&
+                    Player.HealthPercent < GetValue<Slider>(mode, "RHpU").Value && R.Cast(PacketCast))
+                {
+                    return;
+                }
+                if (GetValue<bool>(mode, "Q") && (Q.IsReady() || HaveQ))
+                {
+                    var target = Orbwalk.GetBestHeroTarget;
+                    if (target != null)
+                    {
+                        if (!HaveQ)
+                        {
+                            Q.Cast(PacketCast);
+                        }
+                        Orbwalk.Move = false;
+                        Orbwalk.Attack = false;
+                        Player.IssueOrder(GameObjectOrder.AttackUnit, target);
+                        Orbwalk.Move = true;
+                        Orbwalk.Attack = true;
+                    }
+                }
             }
             if (GetValue<bool>(mode, "E") && E.IsReady())
             {

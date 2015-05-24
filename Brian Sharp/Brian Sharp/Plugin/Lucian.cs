@@ -19,7 +19,7 @@ namespace BrianSharp.Plugin
             Q = new Spell(SpellSlot.Q, 675);
             Q2 = new Spell(SpellSlot.Q, 1100);
             W = new Spell(SpellSlot.W, 1000, TargetSelector.DamageType.Magical);
-            E = new Spell(SpellSlot.E, 445);
+            E = new Spell(SpellSlot.E, 425);
             R = new Spell(SpellSlot.R, 1400);
             Q2.SetSkillshot(0.5f, 65, float.MaxValue, true, SkillshotType.SkillshotLine);
             W.SetSkillshot(0.25f, 25, 1600, true, SkillshotType.SkillshotLine); //Width: 55

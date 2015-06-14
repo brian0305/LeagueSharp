@@ -27,7 +27,7 @@ namespace BrianSharp.Plugin
                     AddBool(comboMenu, "W", "Use W");
                     AddBool(comboMenu, "R", "Use R");
                     AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
-                    AddSlider(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
+                    AddSlider(comboMenu, "RCountA", "-> Or Enemy Above", 2, 1, 5);
                     AddBool(comboMenu, "RItem", "-> Use Zhonya When R Active");
                     AddSlider(comboMenu, "RItemHpU", "--> If Hp Under", 60);
                     champMenu.AddSubMenu(comboMenu);
@@ -111,7 +111,7 @@ namespace BrianSharp.Plugin
                     HeroManager.Enemies.Where(
                         i =>
                             i.IsValidTarget() &&
-                            Player.Distance(Prediction.GetPrediction(i, 0.25f).UnitPosition) <= R.Range).ToList();
+                            Player.Distance(Prediction.GetPrediction(i, 0.25f).UnitPosition) < R.Range).ToList();
             }
         }
 
@@ -204,7 +204,7 @@ namespace BrianSharp.Plugin
                 {
                     var obj = GetRTarget;
                     if ((obj.Count > 1 && obj.Any(i => CanKill(i, GetRDmg(i)))) ||
-                        (obj.Count > 1 && obj.Any(i => i.HealthPercent < GetValue<Slider>(mode, "RHpU").Value)) ||
+                        obj.Any(i => i.HealthPercent < GetValue<Slider>(mode, "RHpU").Value) ||
                         obj.Count >= GetValue<Slider>(mode, "RCountA").Value)
                     {
                         R.Cast(PacketCast);
@@ -332,8 +332,7 @@ namespace BrianSharp.Plugin
 
         private bool HaveW(Obj_AI_Base target, bool onlyStun = false)
         {
-            return target.HasBuff("KennenMarkOfStorm") &&
-                   (!onlyStun || target.Buffs.First(i => i.DisplayName == "KennenMarkOfStorm").Count == 2);
+            return target.HasBuff("KennenMarkOfStorm") && (!onlyStun || target.GetBuffCount("KennenMarkOfStorm") == 2);
         }
     }
 }

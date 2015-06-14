@@ -30,7 +30,7 @@ namespace BrianSharp.Plugin
                     AddSlider(comboMenu, "ECountA", "-> Cancel If Enemy Above", 2, 1, 5);
                     AddBool(comboMenu, "R", "Use R");
                     AddSlider(comboMenu, "RHpU", "-> If Player Hp Under", 60);
-                    AddSlider(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
+                    AddSlider(comboMenu, "RCountA", "-> Or Enemy Above", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
@@ -271,8 +271,8 @@ namespace BrianSharp.Plugin
                 }
             }
             if (mode == "Combo" && GetValue<bool>(mode, "R") && R.IsReady() && !Player.InFountain() &&
-                Player.CountEnemiesInRange(1000) >= GetValue<Slider>(mode, "RCountA").Value &&
-                Player.HealthPercent < GetValue<Slider>(mode, "RHpU").Value)
+                (Player.HealthPercent < GetValue<Slider>(mode, "RHpU").Value ||
+                 Player.CountEnemiesInRange(Q.Range) >= GetValue<Slider>(mode, "RCountA").Value))
             {
                 R.Cast(PacketCast);
             }
@@ -490,19 +490,18 @@ namespace BrianSharp.Plugin
 
         private double GetBonusDmg(Obj_AI_Base target)
         {
-            double dmgItem = 0;
-            if (Sheen.IsOwned() && (Sheen.IsReady() || Player.HasBuff("Sheen")) && Player.BaseAttackDamage > dmgItem)
+            var dmgItem = 0d;
+            if (Sheen.IsOwned() && (Sheen.IsReady() || Player.HasBuff("Sheen")))
             {
                 dmgItem = Player.BaseAttackDamage;
             }
-            if (Trinity.IsOwned() && (Trinity.IsReady() || Player.HasBuff("Sheen")) &&
-                Player.BaseAttackDamage * 2 > dmgItem)
+            if (Trinity.IsOwned() && (Trinity.IsReady() || Player.HasBuff("Sheen")))
             {
                 dmgItem = Player.BaseAttackDamage * 2;
             }
-            double dmgR = 0;
-            var pBuff = Player.Buffs.FirstOrDefault(i => i.DisplayName == "JaxRelentlessAssaultAS");
-            if (R.Level > 0 && !(target is Obj_AI_Turret) && pBuff != null && (pBuff.Count == 2 || pBuff.Count >= 5))
+            var dmgR = 0d;
+            var pBuff = Player.GetBuffCount("JaxRelentlessAssaultAS");
+            if (R.Level > 0 && !(target is Obj_AI_Turret) && (pBuff == 2 || pBuff >= 5))
             {
                 dmgR = R.GetDamage(target);
             }

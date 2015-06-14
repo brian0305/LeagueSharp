@@ -150,7 +150,7 @@ namespace BrianSharp.Common
             get
             {
                 AttackableUnit target = null;
-                if (_config.Item("OW_Misc_PriorityUnit").GetValue<StringList>().SelectedIndex == 1 &&
+                if (!_config.Item("OW_Misc_PriorityFarm").IsActive() &&
                     (CurrentMode == Mode.Harass || CurrentMode == Mode.Clear))
                 {
                     target = GetBestHeroTarget;
@@ -285,6 +285,7 @@ namespace BrianSharp.Common
                     {
                         comboMenu.AddItem(
                             new MenuItem("OW_Combo_Key", "Key").SetValue(new KeyBind(32, KeyBindType.Press)));
+                        comboMenu.AddItem(new MenuItem("OW_Combo_MeleeMagnet", "Melee Movement Magnet").SetValue(true));
                         comboMenu.AddItem(new MenuItem("OW_Combo_Move", "Movement").SetValue(true));
                         comboMenu.AddItem(new MenuItem("OW_Combo_Attack", "Attack").SetValue(true));
                         modeMenu.AddSubMenu(comboMenu);
@@ -333,10 +334,7 @@ namespace BrianSharp.Common
                         new MenuItem("OW_Misc_MoveDelay", "Movement Delay").SetValue(new Slider(30, 0, 250)));
                     miscMenu.AddItem(
                         new MenuItem("OW_Misc_ExtraWindUp", "Extra WindUp Time").SetValue(new Slider(60, 0, 200)));
-                    miscMenu.AddItem(
-                        new MenuItem("OW_Misc_PriorityUnit", "Priority Unit").SetValue(
-                            new StringList(new[] { "Minion", "Hero" }, 1)));
-                    miscMenu.AddItem(new MenuItem("OW_Misc_MeleeMagnet", "Melee Movement Magnet").SetValue(true));
+                    miscMenu.AddItem(new MenuItem("OW_Misc_PriorityFarm", "Priorize Farm Over Harass").SetValue(true));
                     miscMenu.AddItem(
                         new MenuItem("OW_Misc_AllMovementDisabled", "Disable All Movement").SetValue(false));
                     miscMenu.AddItem(new MenuItem("OW_Misc_AllAttackDisabled", "Disable All Attack").SetValue(false));
@@ -503,8 +501,9 @@ namespace BrianSharp.Common
             {
                 return;
             }
-            if (Player.IsMelee() && Player.AttackRange < 200 && InAutoAttackRange(target) && target is Obj_AI_Hero &&
-                _config.Item("OW_Misc_MeleeMagnet").IsActive() && ((Obj_AI_Hero) target).Distance(Game.CursorPos) < 200)
+            if (_config.Item("OW_Combo_MeleeMagnet").IsActive() && CurrentMode == Mode.Combo && Player.IsMelee() &&
+                Player.AttackRange < 200 && InAutoAttackRange(target) && target is Obj_AI_Hero &&
+                ((Obj_AI_Hero) target).Distance(Game.CursorPos) < 200)
             {
                 _movePrediction.Delay = Player.BasicAttack.SpellCastTime;
                 _movePrediction.Speed = Player.BasicAttack.MissileSpeed;

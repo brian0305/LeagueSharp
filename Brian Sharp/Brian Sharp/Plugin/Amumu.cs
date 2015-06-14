@@ -31,7 +31,7 @@ namespace BrianSharp.Plugin
                     AddBool(comboMenu, "E", "Use E");
                     AddBool(comboMenu, "R", "Use R");
                     AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
-                    AddSlider(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
+                    AddSlider(comboMenu, "RCountA", "-> Or Enemy Above", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
@@ -188,7 +188,7 @@ namespace BrianSharp.Plugin
                 {
                     var obj = GetRTarget();
                     if (((obj.Count > 1 && obj.Any(i => R.IsKillable(i))) ||
-                         (obj.Count > 1 && obj.Any(i => i.HealthPercent < GetValue<Slider>(mode, "RHpU").Value)) ||
+                         obj.Any(i => i.HealthPercent < GetValue<Slider>(mode, "RHpU").Value) ||
                          obj.Count >= GetValue<Slider>(mode, "RCountA").Value) && R.Cast(PacketCast))
                     {
                         return;
@@ -206,8 +206,7 @@ namespace BrianSharp.Plugin
                             let enemy = GetRTarget(i.ServerPosition)
                             where
                                 (enemy.Count > 1 && enemy.Any(a => R.IsKillable(a))) ||
-                                (enemy.Count > 1 &&
-                                 enemy.Any(a => a.HealthPercent < GetValue<Slider>(mode, "RHpU").Value)) ||
+                                enemy.Any(a => a.HealthPercent < GetValue<Slider>(mode, "RHpU").Value) ||
                                 enemy.Count >= GetValue<Slider>(mode, "RCountA").Value
                             select i).MaxOrDefault(i => GetRTarget(i.ServerPosition).Count);
                         if (obj != null && Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast))
@@ -352,7 +351,7 @@ namespace BrianSharp.Plugin
             var pos = from.IsValid() ? from : Player.ServerPosition;
             return
                 HeroManager.Enemies.Where(
-                    i => i.IsValidTarget() && Prediction.GetPrediction(i, 0.25f).UnitPosition.Distance(pos) <= R.Range)
+                    i => i.IsValidTarget() && pos.Distance(Prediction.GetPrediction(i, 0.25f).UnitPosition) < R.Range)
                     .ToList();
         }
     }

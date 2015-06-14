@@ -34,12 +34,12 @@ namespace BrianSharp.Plugin
                     AddSlider(comboMenu, "QFlagRange", "-> To Flag If Flag In", 500, 100, 880);
                     AddBool(comboMenu, "W", "Use W");
                     AddSlider(comboMenu, "WHpU", "-> If Player Hp Under", 40);
-                    AddSlider(comboMenu, "WCountA", "-> If Enemy Above", 2, 1, 5);
+                    AddSlider(comboMenu, "WCountA", "-> Or Enemy Above", 2, 1, 5);
                     AddBool(comboMenu, "E", "Use E");
                     AddBool(comboMenu, "EQ", "-> Save E For EQ");
                     AddBool(comboMenu, "R", "Use R");
                     AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 40);
-                    AddSlider(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
+                    AddSlider(comboMenu, "RCountA", "-> Or Enemy Above", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
@@ -118,10 +118,7 @@ namespace BrianSharp.Plugin
             {
                 return
                     ObjectManager.Get<Obj_AI_Minion>()
-                        .Where(
-                            i =>
-                                i.IsValidTarget(Q2.Range, false) && i.IsAlly && i.Name == "Beacon" &&
-                                Player.Distance(i) > 1);
+                        .Where(i => i.IsValidTarget(Q2.Range, false) && i.IsAlly && i.Name == "Beacon");
             }
         }
 
@@ -281,7 +278,7 @@ namespace BrianSharp.Plugin
                     let enemy = GetRTarget(i.ServerPosition)
                     where
                         (enemy.Count > 1 && R.IsKillable(i)) ||
-                        (enemy.Count > 1 && enemy.Any(a => a.HealthPercent < GetValue<Slider>(mode, "RHpU").Value)) ||
+                        enemy.Any(a => a.HealthPercent < GetValue<Slider>(mode, "RHpU").Value) ||
                         enemy.Count >= GetValue<Slider>(mode, "RCountA").Value
                     select i).MaxOrDefault(i => GetRTarget(i.ServerPosition).Count);
                 if (obj != null && R.CastOnUnit(obj, PacketCast))
@@ -290,8 +287,8 @@ namespace BrianSharp.Plugin
                 }
             }
             if (GetValue<bool>(mode, "W") && W.IsReady() &&
-                Player.CountEnemiesInRange(W.Range) >= GetValue<Slider>(mode, "WCountA").Value &&
-                Player.HealthPercent < GetValue<Slider>(mode, "WHpU").Value)
+                (Player.HealthPercent < GetValue<Slider>(mode, "WHpU").Value ||
+                 Player.CountEnemiesInRange(W.Range) >= GetValue<Slider>(mode, "WCountA").Value))
             {
                 W.Cast(PacketCast);
             }
@@ -470,7 +467,7 @@ namespace BrianSharp.Plugin
         {
             return
                 HeroManager.Enemies.Where(
-                    i => i.IsValidTarget() && Prediction.GetPrediction(i, 0.25f).UnitPosition.Distance(pos) <= RWidth)
+                    i => i.IsValidTarget() && pos.Distance(Prediction.GetPrediction(i, 0.25f).UnitPosition) < RWidth)
                     .ToList();
         }
     }

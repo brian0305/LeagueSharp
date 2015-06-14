@@ -99,7 +99,7 @@ namespace BrianSharp.Common
 
         public static bool CanKill(Obj_AI_Base target, double subDmg)
         {
-            return target.Health + 5 < subDmg;
+            return target.Health < subDmg;
         }
 
         public static bool CastFlash(Vector3 pos)

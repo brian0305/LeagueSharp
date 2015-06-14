@@ -142,7 +142,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             _aaCount += 1;
-            if (CurStance == Stance.Phoenix && Player.Buffs.First(i => i.DisplayName == "UdyrPhoenixStance").Count == 1)
+            if (CurStance == Stance.Phoenix && Player.GetBuffCount("UdyrPhoenixStance") == 1)
             {
                 _phoenixActive = true;
                 Utility.DelayAction.Add(
@@ -238,8 +238,8 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            var passive = Player.Buffs.FirstOrDefault(i => i.DisplayName == "UdyrMonkeyAgilityBuff");
-            if (passive == null || passive.Count == 3)
+            var passive = Player.GetBuffCount("UdyrMonkeyAgilityBuff");
+            if (passive == -1 || passive == 3)
             {
                 return;
             }

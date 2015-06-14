@@ -4,6 +4,7 @@ using System.Linq;
 using BrianSharp.Common;
 using LeagueSharp;
 using LeagueSharp.Common;
+using LeagueSharp.Common.Data;
 using SharpDX;
 using Color = System.Drawing.Color;
 using Orbwalk = BrianSharp.Common.Orbwalker;
@@ -20,11 +21,9 @@ namespace BrianSharp.Plugin
             Q2 = new Spell(SpellSlot.Q, 1100);
             W = new Spell(SpellSlot.W, 400);
             E = new Spell(SpellSlot.E, 475, TargetSelector.DamageType.Magical);
-            R = new Spell(SpellSlot.R, 1300);
+            R = new Spell(SpellSlot.R, 1200);
             Q.SetSkillshot(GetQDelay, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
             Q2.SetSkillshot(GetQ2Delay, 90, 1500, false, SkillshotType.SkillshotLine);
-            Q.MinHitChance = HitChance.High;
-            Q2.MinHitChance = HitChance.High;
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -39,8 +38,8 @@ namespace BrianSharp.Plugin
                     AddBool(comboMenu, "R", "Use R");
                     AddBool(comboMenu, "RDelay", "-> Delay");
                     AddSlider(comboMenu, "RDelayTime", "--> Time (ms)", 200, 200, 400);
-                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 50);
-                    AddSlider(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
+                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
+                    AddSlider(comboMenu, "RCountA", "-> Or Enemy Above", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
@@ -50,7 +49,7 @@ namespace BrianSharp.Plugin
                     AddBool(harassMenu, "AutoQTower", "-> Under Tower", false);
                     AddBool(harassMenu, "Q", "Use Q");
                     AddBool(harassMenu, "Q3", "-> Use Q3");
-                    AddBool(harassMenu, "QTower", "-> Under Tower", false);
+                    AddBool(harassMenu, "QTower", "-> Under Tower");
                     AddBool(harassMenu, "QLastHit", "-> Last Hit (Q1/Q2)");
                     champMenu.AddSubMenu(harassMenu);
                 }
@@ -74,7 +73,7 @@ namespace BrianSharp.Plugin
                 var fleeMenu = new Menu("Flee", "Flee");
                 {
                     AddBool(fleeMenu, "E", "Use E");
-                    AddBool(fleeMenu, "EStackQ", "-> Stack Q");
+                    AddBool(fleeMenu, "EStackQ", "-> Stack Q While Dashing");
                     champMenu.AddSubMenu(fleeMenu);
                 }
                 var miscMenu = new Menu("Misc", "Misc");
@@ -141,10 +140,9 @@ namespace BrianSharp.Plugin
         {
             get
             {
-                var pos = Player.GetDashInfo().EndPos.To3D();
-                return Player.Distance(pos) < 50
-                    ? TargetSelector.GetTarget(QCirWidth, TargetSelector.DamageType.Physical, true, null, pos)
-                    : null;
+                var target = TargetSelector.GetTarget(
+                    QCirWidth, TargetSelector.DamageType.Physical, true, null, Player.GetDashInfo().EndPos.To3D());
+                return target != null && Player.Distance(target) < QCirWidth ? target : null;
             }
         }
 
@@ -153,9 +151,6 @@ namespace BrianSharp.Plugin
             if (!Equals(Q.Delay, GetQDelay))
             {
                 Q.Delay = GetQDelay;
-            }
-            if (!Equals(Q2.Delay, GetQ2Delay))
-            {
                 Q2.Delay = GetQ2Delay;
             }
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
@@ -242,9 +237,9 @@ namespace BrianSharp.Plugin
             if (Player.IsDashing())
             {
                 var pos = Player.GetDashInfo().EndPos;
-                if (Player.Distance(pos) < 50 && unit.Distance(pos) <= QCirWidth)
+                if (Player.Distance(pos) < 40 && unit.Distance(pos) <= QCirWidth)
                 {
-                    Q.Cast(unit.ServerPosition, PacketCast);
+                    CastQCir(unit);
                 }
             }
             else
@@ -263,7 +258,7 @@ namespace BrianSharp.Plugin
                         let sub = enemy.GetEnemiesInRange(RWidth).Where(CanCastR).ToList()
                         where
                             (sub.Count > 1 && R.IsKillable(enemy)) ||
-                            (sub.Count > 1 && sub.Any(i => i.HealthPercent < GetValue<Slider>(mode, "RHpU").Value)) ||
+                            sub.Any(i => i.HealthPercent < GetValue<Slider>(mode, "RHpU").Value) ||
                             sub.Count >= GetValue<Slider>(mode, "RCountA").Value
                         select enemy).ToList();
                     if (obj.Any())
@@ -284,7 +279,7 @@ namespace BrianSharp.Plugin
                 {
                     if (GetValue<bool>(mode, "EDmg") && GetValue<bool>(mode, "Q") && Q.IsReady(50))
                     {
-                        var target = Q2.GetTarget();
+                        var target = Q.GetTarget();
                         if (target != null)
                         {
                             var obj = GetNearObj(target, true);
@@ -296,7 +291,7 @@ namespace BrianSharp.Plugin
                     }
                     if (GetValue<bool>(mode, "EGap"))
                     {
-                        var target = Q2.GetTarget();
+                        var target = Q.GetTarget() ?? Q2.GetTarget();
                         if (target != null)
                         {
                             var obj = GetNearObj(target);
@@ -321,7 +316,7 @@ namespace BrianSharp.Plugin
                 {
                     if (Player.IsDashing())
                     {
-                        if (QCirTarget != null && Q.Cast(QCirTarget.ServerPosition, PacketCast))
+                        if (QCirTarget != null && CastQCir(QCirTarget))
                         {
                             return;
                         }
@@ -348,9 +343,9 @@ namespace BrianSharp.Plugin
                 {
                     var obj =
                         MinionManager.GetMinions(
-                            Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
+                            E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                             .Cast<Obj_AI_Minion>()
-                            .FirstOrDefault(i => Q.IsKillable(i));
+                            .FirstOrDefault(i => CanKill(i, GetQDmg(i)));
                     if (obj != null)
                     {
                         Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast);
@@ -377,12 +372,10 @@ namespace BrianSharp.Plugin
                         obj = (from i in minionObj
                             let sub =
                                 MinionManager.GetMinions(PosAfterE(i), QCirWidth, MinionTypes.All, MinionTeam.NotAlly)
-                                    .Cast<Obj_AI_Minion>()
-                                    .ToList()
                             where
                                 i.Team == GameObjectTeam.Neutral ||
-                                (i.Distance(PosAfterE(i)) < QCirWidth && CanKill(i, GetEDmg(i) + Q.GetDamage(i))) ||
-                                sub.Any(a => Q.IsKillable(a)) || sub.Count(a => MinionManager.IsMinion(a)) > 1
+                                (i.Distance(PosAfterE(i)) < QCirWidth && CanKill(i, GetEDmg(i) + GetQDmg(i))) ||
+                                sub.Cast<Obj_AI_Minion>().Any(a => CanKill(a, GetQDmg(a))) || sub.Count > 1
                             select i).MaxOrDefault(
                                 i =>
                                     MinionManager.GetMinions(
@@ -400,14 +393,12 @@ namespace BrianSharp.Plugin
                 {
                     if (Player.Distance(Player.GetDashInfo().EndPos) < 100)
                     {
-                        var minionObj =
-                            MinionManager.GetMinions(
-                                Player.GetDashInfo().EndPos.To3D(), QCirWidth, MinionTypes.All, MinionTeam.NotAlly)
-                                .Cast<Obj_AI_Minion>()
-                                .ToList();
-                        if ((minionObj.Any(i => i.Team == GameObjectTeam.Neutral || Q.IsKillable(i)) ||
-                             minionObj.Count(i => MinionManager.IsMinion(i)) > 1) &&
-                            Q.Cast(minionObj.First().ServerPosition, PacketCast))
+                        var minionObj = MinionManager.GetMinions(
+                            Player.GetDashInfo().EndPos.To3D(), QCirWidth, MinionTypes.All, MinionTeam.NotAlly);
+                        if (
+                            (minionObj.Cast<Obj_AI_Minion>()
+                                .Any(i => i.Team == GameObjectTeam.Neutral || CanKill(i, GetQDmg(i))) ||
+                             minionObj.Count > 1) && CastQCir(minionObj.First()))
                         {
                             return;
                         }
@@ -416,18 +407,23 @@ namespace BrianSharp.Plugin
                 else
                 {
                     var minionObj = MinionManager.GetMinions(
-                        (!HaveQ3 ? Q : Q2).Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+                        (!HaveQ3 ? E : Q2).Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
                     if (minionObj.Any())
                     {
                         if (!HaveQ3)
                         {
-                            var obj = minionObj.Cast<Obj_AI_Minion>().FirstOrDefault(i => Q.IsKillable(i));
+                            var obj = minionObj.Cast<Obj_AI_Minion>().FirstOrDefault(i => CanKill(i, GetQDmg(i)));
                             if (obj != null && Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast))
                             {
                                 return;
                             }
                         }
-                        var pos = (!HaveQ3 ? Q : Q2).GetLineFarmLocation(minionObj, 20);
+                        var pos =
+                            (!HaveQ3 ? Q : Q2).GetLineFarmLocation(
+                                minionObj.Select(i => (!HaveQ3 ? Q : Q2).GetPrediction(i))
+                                    .Where(i => i.Hitchance >= HitChance.High)
+                                    .Select(i => i.CastPosition.To2D())
+                                    .ToList());
                         if (pos.MinionsHit > 0 && (!HaveQ3 ? Q : Q2).Cast(pos.Position, PacketCast))
                         {
                             return;
@@ -462,9 +458,9 @@ namespace BrianSharp.Plugin
             {
                 var obj =
                     MinionManager.GetMinions(
-                        (!HaveQ3 ? Q : Q2).Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
+                        (!HaveQ3 ? E : Q2).Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                         .Cast<Obj_AI_Minion>()
-                        .FirstOrDefault(i => Q.IsKillable(i));
+                        .FirstOrDefault(i => CanKill(i, GetQDmg(i)));
                 if (obj != null && (!HaveQ3 ? Q : Q2).CastIfHitchanceEquals(obj, HitChance.High, PacketCast))
                 {
                     return;
@@ -496,7 +492,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Flee", "EStackQ") && Q.IsReady() && !HaveQ3 && Player.IsDashing())
             {
-                if (QCirTarget != null && Q.Cast(QCirTarget.ServerPosition, PacketCast))
+                if (QCirTarget != null && CastQCir(QCirTarget))
                 {
                     return;
                 }
@@ -504,7 +500,7 @@ namespace BrianSharp.Plugin
                 {
                     var minionObj = MinionManager.GetMinions(
                         Player.GetDashInfo().EndPos.To3D(), QCirWidth, MinionTypes.All, MinionTeam.NotAlly);
-                    if (minionObj.Any() && Q.Cast(minionObj.First().ServerPosition, PacketCast))
+                    if (minionObj.Any() && CastQCir(minionObj.First()))
                     {
                         return;
                     }
@@ -544,7 +540,7 @@ namespace BrianSharp.Plugin
                 if (Player.IsDashing())
                 {
                     var target = QCirTarget;
-                    if (target != null && Q.IsKillable(target) && Q.Cast(target.ServerPosition, PacketCast))
+                    if (target != null && CanKill(target, GetQDmg(target)) && CastQCir(target))
                     {
                         return;
                     }
@@ -552,7 +548,7 @@ namespace BrianSharp.Plugin
                 else
                 {
                     var target = (!HaveQ3 ? Q : Q2).GetTarget();
-                    if (target != null && Q.IsKillable(target) &&
+                    if (target != null && CanKill(target, GetQDmg(target)) &&
                         (!HaveQ3 ? Q : Q2).CastIfHitchanceEquals(target, HitChance.High, PacketCast))
                     {
                         return;
@@ -565,7 +561,7 @@ namespace BrianSharp.Plugin
                 if (target != null &&
                     (CanKill(target, GetEDmg(target)) ||
                      (GetValue<bool>("KillSteal", "Q") && Q.IsReady(50) &&
-                      CanKill(target, GetEDmg(target) + Q.GetDamage(target)))) && E.CastOnUnit(target, PacketCast))
+                      CanKill(target, GetEDmg(target) + GetQDmg(target)))) && E.CastOnUnit(target, PacketCast))
                 {
                     return;
                 }
@@ -593,21 +589,24 @@ namespace BrianSharp.Plugin
             }
             else
             {
-                var minionObj =
-                    MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly)
-                        .Cast<Obj_AI_Minion>()
-                        .ToList();
+                var minionObj = MinionManager.GetMinions(
+                    E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
                 if (!minionObj.Any())
                 {
                     return;
                 }
-                var obj = minionObj.FirstOrDefault(i => Q.IsKillable(i)) ??
+                var obj = minionObj.Cast<Obj_AI_Minion>().FirstOrDefault(i => CanKill(i, GetQDmg(i))) ??
                           minionObj.MinOrDefault(i => i.Distance(Player));
                 if (obj != null)
                 {
                     Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast);
                 }
             }
+        }
+
+        private bool CastQCir(Obj_AI_Base target)
+        {
+            return Q.Cast((!HaveQ3 ? Q : Q2).GetPrediction(target).CastPosition, PacketCast);
         }
 
         private bool CanCastE(Obj_AI_Base target)
@@ -623,17 +622,45 @@ namespace BrianSharp.Plugin
         private float TimeLeftR(Obj_AI_Hero target)
         {
             var buff = target.Buffs.FirstOrDefault(i => i.Type == BuffType.Knockup || i.Type == BuffType.Knockback);
-            return buff != null ? buff.EndTime - Game.Time : 0;
+            return buff != null ? buff.EndTime - Game.Time : -1;
+        }
+
+        public double GetQDmg(Obj_AI_Base target)
+        {
+            var dmgItem = 0d;
+            if (Sheen.IsOwned() && (Sheen.IsReady() || Player.HasBuff("Sheen")))
+            {
+                dmgItem = Player.BaseAttackDamage;
+            }
+            if (Trinity.IsOwned() && (Trinity.IsReady() || Player.HasBuff("Sheen")))
+            {
+                dmgItem = Player.BaseAttackDamage * 2;
+            }
+            var haveInfinity = ItemData.Infinity_Edge.GetItem().IsOwned();
+            var maxCrit = Player.Crit >= 0.85f;
+            var dmg = 20 * Q.Level + Player.TotalAttackDamage * (maxCrit ? (haveInfinity ? 1.875 : 1.5) : 1) + dmgItem;
+            if (ItemData.Blade_of_the_Ruined_King.GetItem().IsOwned())
+            {
+                var dmgBotrk = Math.Max(0.08 * target.Health, 10);
+                if (target.IsValid<Obj_AI_Minion>())
+                {
+                    dmgBotrk = Math.Min(dmgBotrk, 60);
+                }
+                dmg += dmgBotrk;
+            }
+            return Player.CalcDamage(target, Damage.DamageType.Physical, dmg) +
+                   (Player.GetBuffCount("ItemStatikShankCharge") == 100
+                       ? Player.CalcDamage(
+                           target, Damage.DamageType.Magical, 100 * (maxCrit ? (haveInfinity ? 2.25 : 1.8) : 1))
+                       : 0);
         }
 
         private double GetEDmg(Obj_AI_Base target)
         {
-            var eBuff = Player.Buffs.FirstOrDefault(i => i.DisplayName == "YasuoDashScalar");
-            return
-                Player.CalcDamage(
-                    target, Damage.DamageType.Magical,
-                    new[] { 70, 90, 110, 130, 150 }[E.Level - 1] * (1 + 0.25 * (eBuff != null ? eBuff.Count : 0)) +
-                    0.6 * Player.FlatMagicDamageMod) + 5;
+            return Player.CalcDamage(
+                target, Damage.DamageType.Magical,
+                (50 + 20 * E.Level) * (1 + Math.Max(0, Player.GetBuffCount("YasuoDashScalar") * 0.25)) +
+                0.6 * Player.FlatMagicDamageMod);
         }
 
         private Obj_AI_Base GetNearObj(Obj_AI_Base target = null, bool inQCir = false)
@@ -649,7 +676,8 @@ namespace BrianSharp.Plugin
 
         private Vector3 PosAfterE(Obj_AI_Base target)
         {
-            return Player.ServerPosition.Extend(target.ServerPosition, E.Range + target.BoundingRadius);
+            return Player.ServerPosition.Extend(
+                target.ServerPosition, Player.Distance(target) < 410 ? E.Range : Player.Distance(target) + 65);
         }
 
         private bool UnderTower(Vector3 pos)
@@ -955,6 +983,7 @@ namespace BrianSharp.Plugin
                 _spells.Add(
                     new Spells("Draven", SpellSlot.E, SpellType.Line, 1100, 130, 1400, "DravenDoubleShotMissile"));
                 _spells.Add(new Spells("Draven", SpellSlot.R, SpellType.Global, 25000, 160, 2000, "DravenR"));
+                _spells.Add(new Spells("Ekko", SpellSlot.Q, SpellType.Line, 950, 60, 1650, "ekkoqmis"));
                 _spells.Add(new Spells("Elise", SpellSlot.Q, SpellType.Target, 0, 0, 0, "EliseHumanQ"));
                 _spells.Add(new Spells("Elise", SpellSlot.E, SpellType.Line, 1100, 55, 1600, "EliseHumanE"));
                 _spells.Add(new Spells("Evelynn", SpellSlot.Q, SpellType.Line, 650, 80, 2200, "HateSpikeLineMissile"));
@@ -977,9 +1006,10 @@ namespace BrianSharp.Plugin
                 _spells.Add(new Spells("Gnar", SpellSlot.Q, SpellType.Line, 1125, 55, 2500, "gnarqmissile"));
                 _spells.Add(new Spells("Gnar", SpellSlot.Q, SpellType.Line, 2500, 75, 60, "GnarQMissileReturn"));
                 _spells.Add(new Spells("Gnar", SpellSlot.Q, SpellType.Line, 1150, 90, 2100, "GnarBigQMissile"));
-                _spells.Add(new Spells("Gragas", SpellSlot.Q, SpellType.AoE, 850, 250, 1000, "GragasQMissile"));
-                _spells.Add(new Spells("Gragas", SpellSlot.R, SpellType.AoE, 1050, 350, 1800, "GragasRBoom"));
-                _spells.Add(new Spells("Graves", SpellSlot.Q, SpellType.Line, 950, 50, 2000, "GravesClusterShotAttack"));
+                _spells.Add(new Spells("Gragas", SpellSlot.Q, SpellType.AoE, 1100, 275, 1300, "GragasQMissile"));
+                _spells.Add(new Spells("Gragas", SpellSlot.R, SpellType.AoE, 1050, 375, 1800, "GragasRBoom"));
+                _spells.Add(
+                    new Spells("Graves", SpellSlot.Q, SpellType.Line, 1000, 50, 2000, "GravesClusterShotAttack"));
                 _spells.Add(new Spells("Graves", SpellSlot.W, SpellType.AoE, 900, 250, 1500, "gravessmokegrenadeboom"));
                 _spells.Add(new Spells("Graves", SpellSlot.R, SpellType.Line, 1000, 100, 2100, "GravesChargeShotShot"));
                 _spells.Add(
@@ -1022,7 +1052,7 @@ namespace BrianSharp.Plugin
                 _spells.Add(new Spells("Leblanc", SpellSlot.R, SpellType.Target, 0, 0, 0, "LeblancChaosOrbM"));
                 _spells.Add(new Spells("Leblanc", SpellSlot.R, SpellType.Line, 950, 70, 1600, "LeblancSoulShackleM"));
                 _spells.Add(new Spells("LeeSin", SpellSlot.Q, SpellType.Line, 1100, 60, 1800, "BlindMonkQOne"));
-                _spells.Add(new Spells("Leona", SpellSlot.E, SpellType.Line, 900, 90, 2000, "LeonaZenithBladeMissile"));
+                _spells.Add(new Spells("Leona", SpellSlot.E, SpellType.Line, 905, 70, 2000, "LeonaZenithBladeMissile"));
                 _spells.Add(new Spells("Lissandra", SpellSlot.Q, SpellType.Line, 700, 75, 2200, "LissandraQMissile"));
                 _spells.Add(
                     new Spells("Lissandra", SpellSlot.Q, SpellType.LinePoint, 1000, 90, 2200, "lissandraqshards"));
@@ -1038,7 +1068,6 @@ namespace BrianSharp.Plugin
                 _spells.Add(new Spells("Lux", SpellSlot.Q, SpellType.Line, 1300, 70, 1200, "LuxLightBindingMis"));
                 _spells.Add(new Spells("Lux", SpellSlot.E, SpellType.AoE, 1100, 275, 1300, "LuxLightStrikeKugel"));
                 _spells.Add(new Spells("Malphite", SpellSlot.Q));
-                _spells.Add(new Spells("Maokai", SpellSlot.E, SpellType.AoE, 1100, 225, 1500, "MaokaiSapling2Boom"));
                 _spells.Add(new Spells("MissFortune", SpellSlot.Q));
                 _spells.Add(new Spells("MissFortune", SpellSlot.Q, SpellType.Target, 0, 0, 0, "MissFortuneRShotExtra"));
                 _spells.Add(
@@ -1059,7 +1088,7 @@ namespace BrianSharp.Plugin
                 _spells.Add(new Spells("Nidalee", SpellSlot.Q, SpellType.Line, 1500, 40, 1300, "JavelinToss"));
                 _spells.Add(new Spells("Nocturne", SpellSlot.Q, SpellType.Line, 1200, 60, 1400, "NocturneDuskbringer"));
                 _spells.Add(new Spells("Nunu", SpellSlot.E));
-                _spells.Add(new Spells("Olaf", SpellSlot.Q, SpellType.LinePoint, 1000, 90, 1600, "olafaxethrow"));
+                _spells.Add(new Spells("Olaf", SpellSlot.Q, SpellType.LinePoint, 1000, 105, 1600, "olafaxethrow"));
                 _spells.Add(new Spells("Orianna", SpellSlot.Q, SpellType.LinePoint, 0, 80, 1200, "orianaizuna")); //Test
                 _spells.Add(new Spells("Orianna", SpellSlot.E, SpellType.LinePoint, 0, 80, 1850, "orianaredact"));
                 //Test

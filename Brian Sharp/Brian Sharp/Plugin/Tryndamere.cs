@@ -125,7 +125,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if (GetValue<bool>("Combo", "R") && R.IsReady() && Player.HealthPercent < 5 && R.Cast(PacketCast))
+            if (GetValue<bool>("Combo", "R") && R.IsReady() && Player.HealthPercent < 10 && R.Cast(PacketCast))
             {
                 return;
             }

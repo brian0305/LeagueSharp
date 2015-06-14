@@ -299,7 +299,6 @@ namespace BrianSharp.Plugin
                          (!Orbwalk.InAutoAttackRange(target, 20) && Q.IsInRange(target))) &&
                         Q.CastOnUnit(target, PacketCast))
                     {
-                        Utility.DelayAction.Add(300, () => Player.IssueOrder(GameObjectOrder.AttackUnit, target));
                         return;
                     }
                     if ((mode == "Harass" || GetValue<bool>(mode, "QExtend")) && !Q.IsInRange(target) &&
@@ -348,7 +347,6 @@ namespace BrianSharp.Plugin
                             i => Q2.CountHits(minionObj, i.ServerPosition.Extend(Player.ServerPosition, -Q2.Range)));
                 if (obj != null && Q.CastOnUnit(obj, PacketCast))
                 {
-                    Utility.DelayAction.Add(300, () => Player.IssueOrder(GameObjectOrder.AttackUnit, obj));
                     return;
                 }
             }

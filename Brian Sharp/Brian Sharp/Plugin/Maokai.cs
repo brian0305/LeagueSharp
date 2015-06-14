@@ -30,7 +30,7 @@ namespace BrianSharp.Plugin
                     AddBool(comboMenu, "E", "Use E");
                     AddBool(comboMenu, "R", "Use R");
                     AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
-                    AddSlider(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
+                    AddSlider(comboMenu, "RCountA", "-> Or Enemy Above", 2, 1, 5);
                     AddBool(comboMenu, "RKill", "-> Cancel When Killable");
                     AddSlider(comboMenu, "RKillCountA", "--> If Can Kill Above", 2, 1, 5);
                     AddSlider(comboMenu, "RMpU", "-> Cancel If Mp Under", 20);
@@ -220,11 +220,8 @@ namespace BrianSharp.Plugin
                 if (!Player.HasBuff("MaokaiDrain3"))
                 {
                     if (Player.ManaPercent >= GetValue<Slider>(mode, "RMpU").Value &&
-                        (GetValue<Slider>(mode, "RCountA").Value > 1
-                            ? (obj.Count > 1 && obj.Any(i => i.HealthPercent < GetValue<Slider>(mode, "RHpU").Value)) ||
-                              obj.Count >= GetValue<Slider>(mode, "RCountA").Value
-                            : obj.Any(i => i.HealthPercent < GetValue<Slider>(mode, "RHpU").Value)) &&
-                        R.Cast(PacketCast))
+                        (obj.Any(i => i.HealthPercent < GetValue<Slider>(mode, "RHpU").Value) ||
+                         obj.Count >= GetValue<Slider>(mode, "RCountA").Value) && R.Cast(PacketCast))
                     {
                         return;
                     }

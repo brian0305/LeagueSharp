@@ -37,7 +37,7 @@ namespace BrianSharp.Plugin
                     AddBool(clearMenu, "W", "Use W");
                     AddBool(clearMenu, "E", "Use E");
                     AddSlider(clearMenu, "EHpA", "-> If Hp Above", 50);
-                    AddBool(comboMenu, "EW", "-> Only Have W");
+                    AddBool(clearMenu, "EW", "-> Only Have W");
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var fleeMenu = new Menu("Flee", "Flee");

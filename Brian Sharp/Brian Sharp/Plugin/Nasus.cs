@@ -16,7 +16,7 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W, 600);
             E = new Spell(SpellSlot.E, 650, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R);
-            E.SetSkillshot(0.125f, 380, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            E.SetSkillshot(0.25f, 190, float.MaxValue, false, SkillshotType.SkillshotCircle);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -27,7 +27,7 @@ namespace BrianSharp.Plugin
                     AddBool(comboMenu, "E", "Use E");
                     AddBool(comboMenu, "R", "Use R");
                     AddSlider(comboMenu, "RHpU", "-> If Player Hp Under", 60);
-                    AddSlider(comboMenu, "RCountA", "-> If Enemy Above", 2, 1, 5);
+                    AddSlider(comboMenu, "RCountA", "-> Or Enemy Above", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
@@ -175,8 +175,9 @@ namespace BrianSharp.Plugin
             if (mode == "Combo")
             {
                 if (GetValue<bool>(mode, "R") && R.IsReady() && !Player.InFountain() &&
-                    Player.CountEnemiesInRange(1000) >= GetValue<Slider>(mode, "RCountA").Value &&
-                    Player.HealthPercent < GetValue<Slider>(mode, "RHpU").Value && R.Cast(PacketCast))
+                    (Player.HealthPercent < GetValue<Slider>(mode, "RHpU").Value ||
+                     Player.CountEnemiesInRange(E.Range) >= GetValue<Slider>(mode, "RCountA").Value) &&
+                    R.Cast(PacketCast))
                 {
                     return;
                 }
@@ -344,23 +345,21 @@ namespace BrianSharp.Plugin
 
         private double GetBonusDmg(Obj_AI_Base target)
         {
-            double dmgItem = 0;
-            if (Sheen.IsOwned() && (Sheen.IsReady() || Player.HasBuff("Sheen")) && Player.BaseAttackDamage > dmgItem)
+            var dmgItem = 0d;
+            if (Sheen.IsOwned() && (Sheen.IsReady() || Player.HasBuff("Sheen")))
             {
                 dmgItem = Player.BaseAttackDamage;
             }
-            if (Iceborn.IsOwned() && (Iceborn.IsReady() || Player.HasBuff("ItemFrozenFist")) &&
-                Player.BaseAttackDamage * 1.25 > dmgItem)
+            if (Iceborn.IsOwned() && (Iceborn.IsReady() || Player.HasBuff("ItemFrozenFist")))
             {
                 dmgItem = Player.BaseAttackDamage * 1.25;
             }
-            if (Trinity.IsOwned() && (Trinity.IsReady() || Player.HasBuff("Sheen")) &&
-                Player.BaseAttackDamage * 2 > dmgItem)
+            if (Trinity.IsOwned() && (Trinity.IsReady() || Player.HasBuff("Sheen")))
             {
                 dmgItem = Player.BaseAttackDamage * 2;
             }
             return (Q.IsReady() ? Q.GetDamage(target) : 0) + Player.GetAutoAttackDamage(target, true) +
-                   (dmgItem > 0 ? Player.CalcDamage(target, Damage.DamageType.Physical, dmgItem) : 0) + 5;
+                   (dmgItem > 0 ? Player.CalcDamage(target, Damage.DamageType.Physical, dmgItem) : 0);
         }
     }
 }

@@ -423,11 +423,10 @@ namespace BrianSharp.Plugin
         {
             var dmg = new[] { 50, 80, 110, 140, 170 }[Q.Level - 1] + 0.9 * Player.FlatPhysicalDamageMod +
                       0.08 * (target.MaxHealth - (target.Health - subHp));
-            if (target.IsValid<Obj_AI_Minion>() && dmg > 400)
-            {
-                return Player.CalcDamage(target, Damage.DamageType.Physical, 400);
-            }
-            return Player.CalcDamage(target, Damage.DamageType.Physical, dmg) + subHp;
+            return
+                Player.CalcDamage(
+                    target, Damage.DamageType.Physical, target.IsValid<Obj_AI_Minion>() ? Math.Min(dmg, 400) : dmg) +
+                subHp;
         }
 
         private bool HaveQ(Obj_AI_Base target)
@@ -442,13 +441,13 @@ namespace BrianSharp.Plugin
 
         private bool QAgain(Obj_AI_Base target)
         {
-            var buff = target.Buffs.FirstOrDefault(i => i.DisplayName == "BlindMonkSonicWave");
+            var buff = target.GetBuff("BlindMonkSonicWave");
             return buff != null && buff.EndTime - Game.Time < 0.5f;
         }
 
         private bool EAgain(Obj_AI_Base target)
         {
-            var buff = target.Buffs.FirstOrDefault(i => i.DisplayName == "BlindMonkTempest");
+            var buff = target.GetBuff("BlindMonkTempest");
             return buff != null && buff.EndTime - Game.Time < 0.5f;
         }
     }

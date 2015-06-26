@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using BrianSharp.Common;
+using BrianSharp.Evade;
 using LeagueSharp;
 using LeagueSharp.Common;
 using LeagueSharp.Common.Data;
@@ -80,7 +81,8 @@ namespace BrianSharp.Plugin
                 {
                     if (HeroManager.Enemies.Any())
                     {
-                        new WindWall(miscMenu);
+                        new Evade(miscMenu);
+                        new Target(miscMenu);
                     }
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
@@ -140,9 +142,11 @@ namespace BrianSharp.Plugin
         {
             get
             {
-                var target = TargetSelector.GetTarget(
-                    QCirWidth, TargetSelector.DamageType.Physical, true, null, Player.GetDashInfo().EndPos.To3D());
-                return target != null && Player.Distance(target) < QCirWidth ? target : null;
+                var pos = Player.GetDashInfo().EndPos.To3D();
+                var target = TargetSelector.GetTarget(QCirWidth, TargetSelector.DamageType.Physical, true, null, pos);
+                return target != null && Player.Distance(target) < QCirWidth && Player.Distance(pos) < 150
+                    ? target
+                    : null;
             }
         }
 
@@ -237,7 +241,7 @@ namespace BrianSharp.Plugin
             if (Player.IsDashing())
             {
                 var pos = Player.GetDashInfo().EndPos;
-                if (Player.Distance(pos) < 40 && unit.Distance(pos) <= QCirWidth)
+                if (Player.Distance(pos) < 40 && unit.Distance(pos) < QCirWidth)
                 {
                     CastQCir(unit);
                 }
@@ -331,7 +335,7 @@ namespace BrianSharp.Plugin
                             {
                                 return;
                             }
-                            if ((!HaveQ3 ? Q : Q2).Cast(target, PacketCast).IsCasted())
+                            if ((!HaveQ3 ? Q : Q2).Cast(target, PacketCast, true).IsCasted())
                             {
                                 return;
                             }
@@ -391,17 +395,14 @@ namespace BrianSharp.Plugin
             {
                 if (Player.IsDashing())
                 {
-                    if (Player.Distance(Player.GetDashInfo().EndPos) < 100)
+                    var minionObj = MinionManager.GetMinions(
+                        Player.GetDashInfo().EndPos.To3D(), QCirWidth, MinionTypes.All, MinionTeam.NotAlly);
+                    if (
+                        (minionObj.Cast<Obj_AI_Minion>()
+                            .Any(i => CanKill(i, GetQDmg(i)) || i.Team == GameObjectTeam.Neutral) || minionObj.Count > 1) &&
+                        Player.Distance(Player.GetDashInfo().EndPos) < 50 && CastQCir(minionObj.First()))
                     {
-                        var minionObj = MinionManager.GetMinions(
-                            Player.GetDashInfo().EndPos.To3D(), QCirWidth, MinionTypes.All, MinionTeam.NotAlly);
-                        if (
-                            (minionObj.Cast<Obj_AI_Minion>()
-                                .Any(i => i.Team == GameObjectTeam.Neutral || CanKill(i, GetQDmg(i))) ||
-                             minionObj.Count > 1) && CastQCir(minionObj.First()))
-                        {
-                            return;
-                        }
+                        return;
                     }
                 }
                 else
@@ -418,12 +419,7 @@ namespace BrianSharp.Plugin
                                 return;
                             }
                         }
-                        var pos =
-                            (!HaveQ3 ? Q : Q2).GetLineFarmLocation(
-                                minionObj.Select(i => (!HaveQ3 ? Q : Q2).GetPrediction(i))
-                                    .Where(i => i.Hitchance >= HitChance.High)
-                                    .Select(i => i.CastPosition.To2D())
-                                    .ToList());
+                        var pos = (!HaveQ3 ? Q : Q2).GetLineFarmLocation(minionObj);
                         if (pos.MinionsHit > 0 && (!HaveQ3 ? Q : Q2).Cast(pos.Position, PacketCast))
                         {
                             return;
@@ -522,7 +518,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            (!HaveQ3 ? Q : Q2).CastOnBestTarget(0, PacketCast);
+            (!HaveQ3 ? Q : Q2).CastOnBestTarget(0, PacketCast, true);
         }
 
         private void KillSteal()
@@ -638,7 +634,11 @@ namespace BrianSharp.Plugin
             }
             var haveInfinity = ItemData.Infinity_Edge.GetItem().IsOwned();
             var maxCrit = Player.Crit >= 0.85f;
-            var dmg = 20 * Q.Level + Player.TotalAttackDamage * (maxCrit ? (haveInfinity ? 1.875 : 1.5) : 1) + dmgItem;
+            var dmg = 20 * Q.Level + Player.TotalAttackDamage * (maxCrit ? (haveInfinity ? 1.875 : 1.5) : 1);
+            if (!HaveQ3 || Player.IsDashing())
+            {
+                dmg += dmgItem;
+            }
             if (ItemData.Blade_of_the_Ruined_King.GetItem().IsOwned())
             {
                 var dmgBotrk = Math.Max(0.08 * target.Health, 10);
@@ -687,555 +687,759 @@ namespace BrianSharp.Plugin
                     .Any(i => i.IsEnemy && !i.IsDead && i.Distance(pos) < 850 + Player.BoundingRadius);
         }
 
-        private class WindWall
+        private class Evade
         {
-            private readonly List<Spells> _spells = new List<Spells>();
-            private readonly List<Skills> _spellsDetected = new List<Skills>();
-
-            public WindWall(Menu menu)
+            public Evade(Menu menu)
             {
-                LoadWindWallData();
-                var windMenu = new Menu("Wind Wall", "WindWall");
+                var evadeMenu = new Menu("Evade", "Evade");
                 {
-                    AddBool(windMenu, "W", "Use W");
-                    AddBool(windMenu, "BAttack", "-> Basic Attack");
-                    AddSlider(windMenu, "BAttackHpU", "--> If Hp Under", 20);
-                    AddBool(windMenu, "CAttack", "-> Crit Attack");
-                    AddSlider(windMenu, "CAttackHpU", "--> If Hp Under", 30);
-                    foreach (var obj in
-                        HeroManager.Enemies.Where(i => _spells.Any(a => a.ChampName == i.ChampionName)))
+					evadeMenu.AddItem(new MenuItem("Credit", "Credit: Evade#"));
+                    var evadeSpells = new Menu("Spells", "Spells");
                     {
-                        windMenu.AddSubMenu(new Menu("-> " + obj.ChampionName, "WW_" + obj.ChampionName));
+                        foreach (var spell in EvadeSpellDatabase.Spells)
+                        {
+                            var sub = new Menu(spell.Name, "ES_" + spell.Name);
+                            {
+                                AddSlider(sub, "DangerLevel", "Danger Level", spell.DangerLevel, 1, 5);
+                                AddBool(sub, "Enabled", "Enabled", false);
+                                evadeSpells.AddSubMenu(sub);
+                            }
+                        }
+                        evadeMenu.AddSubMenu(evadeSpells);
+                    }
+                    foreach (var hero in
+                        HeroManager.Enemies.Where(i => SpellDatabase.Spells.Any(a => a.ChampionName == i.ChampionName)))
+                    {
+                        evadeMenu.AddSubMenu(new Menu("-> " + hero.ChampionName, "Evade_" + hero.ChampionName));
+                    }
+                    foreach (var spell in
+                        SpellDatabase.Spells.Where(i => HeroManager.Enemies.Any(a => a.ChampionName == i.ChampionName)))
+                    {
+                        var sub = new Menu(spell.SpellName, "SS_" + spell.MenuItemName);
+                        {
+                            AddSlider(sub, "DangerLevel", "Danger Level", spell.DangerValue, 1, 5);
+                            AddBool(sub, "Enabled", "Enabled", !spell.DisabledByDefault);
+                            evadeMenu.SubMenu("Evade_" + spell.ChampionName).AddSubMenu(sub);
+                        }
+                    }
+                }
+                menu.AddSubMenu(evadeMenu);
+                Collisions.Init();
+                Game.OnUpdate += OnUpdate;
+                SkillshotDetector.OnDetectSkillshot += OnDetectSkillshot;
+                SkillshotDetector.OnDeleteMissile += OnDeleteMissile;
+            }
+
+            private static void OnUpdate(EventArgs args)
+            {
+                SkillshotDetector.DetectedSkillshots.RemoveAll(i => !i.IsActive());
+                foreach (var skillshot in SkillshotDetector.DetectedSkillshots)
+                {
+                    skillshot.OnUpdate();
+                }
+                if (Player.IsDead)
+                {
+                    return;
+                }
+                if (Player.HasBuffOfType(BuffType.SpellImmunity) || Player.HasBuffOfType(BuffType.SpellShield))
+                {
+                    return;
+                }
+                var currentPath = Player.GetWaypoints();
+                var safeResult = IsSafe(Player.ServerPosition.To2D());
+                var safePath = IsSafePath(currentPath, 100);
+                if (!safePath.IsSafe && !safeResult.Safe)
+                {
+                    TryToEvade(safeResult.SkillshotList, Game.CursorPos.To2D());
+                }
+            }
+
+            private static void OnDetectSkillshot(Skillshot skillshot)
+            {
+                var alreadyAdded =
+                    SkillshotDetector.DetectedSkillshots.Any(
+                        i =>
+                            i.SpellData.SpellName == skillshot.SpellData.SpellName &&
+                            i.Unit.NetworkId == skillshot.Unit.NetworkId &&
+                            skillshot.Direction.AngleBetween(i.Direction) < 5 &&
+                            (skillshot.Start.Distance(i.Start) < 100 || skillshot.SpellData.FromObjects.Length == 0));
+                if (skillshot.Unit.Team == Player.Team)
+                {
+                    return;
+                }
+                if (skillshot.Start.Distance(Player.ServerPosition.To2D()) >
+                    (skillshot.SpellData.Range + skillshot.SpellData.Radius + 1000) * 1.5)
+                {
+                    return;
+                }
+                if (alreadyAdded && !skillshot.SpellData.DontCheckForDuplicates)
+                {
+                    return;
+                }
+                if (skillshot.DetectionType == DetectionType.ProcessSpell)
+                {
+                    if (skillshot.SpellData.MultipleNumber != -1)
+                    {
+                        var originalDirection = skillshot.Direction;
+                        for (var i = -(skillshot.SpellData.MultipleNumber - 1) / 2;
+                            i <= (skillshot.SpellData.MultipleNumber - 1) / 2;
+                            i++)
+                        {
+                            var end = skillshot.Start +
+                                      skillshot.SpellData.Range *
+                                      originalDirection.Rotated(skillshot.SpellData.MultipleAngle * i);
+                            var skillshotToAdd = new Skillshot(
+                                skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick, skillshot.Start, end,
+                                skillshot.Unit);
+                            SkillshotDetector.DetectedSkillshots.Add(skillshotToAdd);
+                        }
+                        return;
+                    }
+                    if (skillshot.SpellData.SpellName == "UFSlash")
+                    {
+                        skillshot.SpellData.MissileSpeed = 1600 + (int) skillshot.Unit.MoveSpeed;
+                    }
+                    if (skillshot.SpellData.SpellName == "SionR")
+                    {
+                        skillshot.SpellData.MissileSpeed = (int) skillshot.Unit.MoveSpeed;
+                    }
+                    if (skillshot.SpellData.Invert)
+                    {
+                        var newDirection = -(skillshot.End - skillshot.Start).Normalized();
+                        var end = skillshot.Start + newDirection * skillshot.Start.Distance(skillshot.End);
+                        var skillshotToAdd = new Skillshot(
+                            skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick, skillshot.Start, end,
+                            skillshot.Unit);
+                        SkillshotDetector.DetectedSkillshots.Add(skillshotToAdd);
+                        return;
+                    }
+                    if (skillshot.SpellData.Centered)
+                    {
+                        var start = skillshot.Start - skillshot.Direction * skillshot.SpellData.Range;
+                        var end = skillshot.Start + skillshot.Direction * skillshot.SpellData.Range;
+                        var skillshotToAdd = new Skillshot(
+                            skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick, start, end,
+                            skillshot.Unit);
+                        SkillshotDetector.DetectedSkillshots.Add(skillshotToAdd);
+                        return;
+                    }
+                    if (skillshot.SpellData.SpellName == "SyndraE" || skillshot.SpellData.SpellName == "syndrae5")
+                    {
+                        const int angle = 60;
+                        const int subangle = -angle / 2;
+                        var edge1 =
+                            (skillshot.End - skillshot.Unit.ServerPosition.To2D()).Rotated(
+                                subangle * (float) Math.PI / 180);
+                        var edge2 = edge1.Rotated(angle * (float) Math.PI / 180);
+                        foreach (var skillshotToAdd in from minion in ObjectManager.Get<Obj_AI_Minion>()
+                            let v = (minion.ServerPosition - skillshot.Unit.ServerPosition).To2D()
+                            where
+                                minion.Name == "Seed" && edge1.CrossProduct(v) > 0 && v.CrossProduct(edge2) > 0 &&
+                                minion.Distance(skillshot.Unit) < 800 && minion.Team != Player.Team
+                            let start = minion.ServerPosition.To2D()
+                            let end =
+                                skillshot.Unit.ServerPosition.Extend(
+                                    minion.ServerPosition, skillshot.Unit.Distance(minion) > 200 ? 1300 : 1000).To2D()
+                            select
+                                new Skillshot(
+                                    skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick, start, end,
+                                    skillshot.Unit))
+                        {
+                            SkillshotDetector.DetectedSkillshots.Add(skillshotToAdd);
+                        }
+                        return;
+                    }
+                    if (skillshot.SpellData.SpellName == "AlZaharCalloftheVoid")
+                    {
+                        var start = skillshot.End - skillshot.Perpendicular * 400;
+                        var end = skillshot.End + skillshot.Perpendicular * 400;
+                        var skillshotToAdd = new Skillshot(
+                            skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick, start, end,
+                            skillshot.Unit);
+                        SkillshotDetector.DetectedSkillshots.Add(skillshotToAdd);
+                        return;
+                    }
+                    if (skillshot.SpellData.SpellName == "ZiggsQ")
+                    {
+                        var d1 = skillshot.Start.Distance(skillshot.End);
+                        var d2 = d1 * 0.4f;
+                        var d3 = d2 * 0.69f;
+                        var bounce1SpellData = SpellDatabase.GetByName("ZiggsQBounce1");
+                        var bounce2SpellData = SpellDatabase.GetByName("ZiggsQBounce2");
+                        var bounce1Pos = skillshot.End + skillshot.Direction * d2;
+                        var bounce2Pos = bounce1Pos + skillshot.Direction * d3;
+                        bounce1SpellData.Delay =
+                            (int) (skillshot.SpellData.Delay + d1 * 1000f / skillshot.SpellData.MissileSpeed + 500);
+                        bounce2SpellData.Delay =
+                            (int) (bounce1SpellData.Delay + d2 * 1000f / bounce1SpellData.MissileSpeed + 500);
+                        var bounce1 = new Skillshot(
+                            skillshot.DetectionType, bounce1SpellData, skillshot.StartTick, skillshot.End, bounce1Pos,
+                            skillshot.Unit);
+                        var bounce2 = new Skillshot(
+                            skillshot.DetectionType, bounce2SpellData, skillshot.StartTick, bounce1Pos, bounce2Pos,
+                            skillshot.Unit);
+                        SkillshotDetector.DetectedSkillshots.Add(bounce1);
+                        SkillshotDetector.DetectedSkillshots.Add(bounce2);
+                    }
+                    if (skillshot.SpellData.SpellName == "ZiggsR")
+                    {
+                        skillshot.SpellData.Delay =
+                            (int) (1500 + 1500 * skillshot.End.Distance(skillshot.Start) / skillshot.SpellData.Range);
+                    }
+                    if (skillshot.SpellData.SpellName == "JarvanIVDragonStrike")
+                    {
+                        var endPos = new Vector2();
+                        foreach (var s in SkillshotDetector.DetectedSkillshots)
+                        {
+                            if (s.Unit.NetworkId == skillshot.Unit.NetworkId && s.SpellData.Slot == SpellSlot.E)
+                            {
+                                var extendedE = new Skillshot(
+                                    skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick, skillshot.Start,
+                                    skillshot.End + skillshot.Direction * 100, skillshot.Unit);
+                                if (!extendedE.IsSafe(s.End))
+                                {
+                                    endPos = s.End;
+                                }
+                                break;
+                            }
+                        }
+                        foreach (var m in ObjectManager.Get<Obj_AI_Minion>())
+                        {
+                            if (m.BaseSkinName == "jarvanivstandard" && m.Team == skillshot.Unit.Team)
+                            {
+                                var extendedE = new Skillshot(
+                                    skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick, skillshot.Start,
+                                    skillshot.End + skillshot.Direction * 100, skillshot.Unit);
+                                if (!extendedE.IsSafe(m.Position.To2D()))
+                                {
+                                    endPos = m.Position.To2D();
+                                }
+                                break;
+                            }
+                        }
+                        if (endPos.IsValid())
+                        {
+                            skillshot = new Skillshot(
+                                DetectionType.ProcessSpell, SpellDatabase.GetByName("JarvanIVEQ"),
+                                Utils.GameTimeTickCount, skillshot.Start, endPos, skillshot.Unit);
+                            skillshot.End = endPos + 200 * (endPos - skillshot.Start).Normalized();
+                            skillshot.Direction = (skillshot.End - skillshot.Start).Normalized();
+                        }
+                    }
+                }
+                if (skillshot.SpellData.SpellName == "OriannasQ")
+                {
+                    var skillshotToAdd = new Skillshot(
+                        skillshot.DetectionType, SpellDatabase.GetByName("OriannaQend"), skillshot.StartTick,
+                        skillshot.Start, skillshot.End, skillshot.Unit);
+                    SkillshotDetector.DetectedSkillshots.Add(skillshotToAdd);
+                }
+                if (skillshot.SpellData.DisableFowDetection && skillshot.DetectionType == DetectionType.RecvPacket)
+                {
+                    return;
+                }
+                SkillshotDetector.DetectedSkillshots.Add(skillshot);
+            }
+
+            private static void OnDeleteMissile(Skillshot skillshot, Obj_SpellMissile missile)
+            {
+                if (skillshot.SpellData.SpellName != "VelkozQ" ||
+                    SkillshotDetector.DetectedSkillshots.Count(i => i.SpellData.SpellName == "VelkozQSplit") != 0)
+                {
+                    return;
+                }
+                var spellData = SpellDatabase.GetByName("VelkozQSplit");
+                for (var i = -1; i <= 1; i = i + 2)
+                {
+                    var skillshotToAdd = new Skillshot(
+                        DetectionType.ProcessSpell, spellData, Utils.GameTimeTickCount, missile.Position.To2D(),
+                        missile.Position.To2D() + i * skillshot.Perpendicular * spellData.Range, skillshot.Unit);
+                    SkillshotDetector.DetectedSkillshots.Add(skillshotToAdd);
+                }
+            }
+
+            private static List<Obj_AI_Base> GetEvadeTargets(EvadeSpellData spell,
+                bool onlyGood = false,
+                bool dontCheckForSafety = false)
+            {
+                var badTargets = new List<Obj_AI_Base>();
+                var goodTargets = new List<Obj_AI_Base>();
+                var allTargets = new List<Obj_AI_Base>();
+                foreach (var targetType in spell.ValidTargets)
+                {
+                    switch (targetType)
+                    {
+                        case SpellTargets.AllyChampions:
+                            allTargets.AddRange(
+                                HeroManager.Allies.Where(i => i.IsValidTarget(spell.MaxRange, false) && !i.IsMe));
+                            break;
+                        case SpellTargets.AllyMinions:
+                            allTargets.AddRange(
+                                MinionManager.GetMinions(
+                                    Player.Position, spell.MaxRange, MinionTypes.All, MinionTeam.Ally));
+                            break;
+                        case SpellTargets.AllyWards:
+                            allTargets.AddRange(
+                                ObjectManager.Get<Obj_AI_Minion>()
+                                    .Where(
+                                        i =>
+                                            IsWard(i) && i.IsValidTarget(spell.MaxRange, false) && i.Team == Player.Team));
+                            break;
+                        case SpellTargets.EnemyChampions:
+                            allTargets.AddRange(HeroManager.Enemies.Where(i => i.IsValidTarget(spell.MaxRange)));
+                            break;
+                        case SpellTargets.EnemyMinions:
+                            allTargets.AddRange(
+                                MinionManager.GetMinions(
+                                    Player.Position, spell.MaxRange, MinionTypes.All, MinionTeam.NotAlly));
+                            break;
+                        case SpellTargets.EnemyWards:
+                            allTargets.AddRange(
+                                ObjectManager.Get<Obj_AI_Minion>()
+                                    .Where(i => IsWard(i) && i.IsValidTarget(spell.MaxRange)));
+                            break;
+                    }
+                }
+                foreach (var target in
+                    allTargets.Where(i => dontCheckForSafety || IsSafe(i.ServerPosition.To2D()).Safe))
+                {
+                    if (spell.Slot == SpellSlot.E && target.HasBuff("YasuoDashWrapper"))
+                    {
+                        continue;
+                    }
+                    var pathToTarget = new List<Vector2> { Player.ServerPosition.To2D(), target.ServerPosition.To2D() };
+                    if (IsSafePath(pathToTarget, Configs.EvadingFirstTimeOffset, spell.Speed, spell.Delay).IsSafe)
+                    {
+                        goodTargets.Add(target);
+                    }
+                    if (IsSafePath(pathToTarget, Configs.EvadingSecondTimeOffset, spell.Speed, spell.Delay).IsSafe)
+                    {
+                        badTargets.Add(target);
+                    }
+                }
+                return goodTargets.Count > 0 ? goodTargets : (onlyGood ? new List<Obj_AI_Base>() : badTargets);
+            }
+
+            private static void TryToEvade(IEnumerable<Skillshot> hitBy, Vector2 to)
+            {
+                var dangerLevel =
+                    hitBy.Select(i => GetValue<Slider>("SS_" + i.SpellData.MenuItemName, "DangerLevel").Value)
+                        .Concat(new[] { 0 })
+                        .Max();
+                foreach (var evadeSpell in
+                    EvadeSpellDatabase.Spells.Where(i => i.Enabled && i.DangerLevel <= dangerLevel && i.IsReady()))
+                {
+                    if (evadeSpell.EvadeType == EvadeTypes.Dash && evadeSpell.CastType == CastTypes.Target)
+                    {
+                        var targets =
+                            GetEvadeTargets(evadeSpell)
+                                .Where(
+                                    i =>
+                                        IsSafe(
+                                            Player.ServerPosition.Extend(i.ServerPosition, evadeSpell.MaxRange).To2D())
+                                            .Safe)
+                                .ToList();
+                        if (targets.Count > 0)
+                        {
+                            var closestTarget =
+                                targets.OrderBy(
+                                    i =>
+                                        Player.ServerPosition.Extend(i.ServerPosition, evadeSpell.MaxRange)
+                                            .To2D()
+                                            .Distance(to)).FirstOrDefault();
+                            if (closestTarget != null && Player.Spellbook.CastSpell(evadeSpell.Slot, closestTarget))
+                            {
+                                return;
+                            }
+                        }
+                    }
+                    if (evadeSpell.EvadeType == EvadeTypes.WindWall)
+                    {
+                        var safeResult = IsSafe(Player.ServerPosition.To2D());
+                        if (!safeResult.Safe &&
+                            safeResult.SkillshotList.Where(
+                                i =>
+                                    i.SpellData.CollisionObjects.Contains(CollisionObjectTypes.YasuoWall) &&
+                                    i.IsAboutToHit(evadeSpell.Delay, Player))
+                                .Any(
+                                    i =>
+                                        Player.Spellbook.CastSpell(
+                                            evadeSpell.Slot, Player.ServerPosition.Extend(i.MissilePosition.To3D(), 100))))
+                        {
+                            return;
+                        }
+                    }
+                }
+            }
+
+            private static IsSafeResult IsSafe(Vector2 point)
+            {
+                var result = new IsSafeResult { SkillshotList = new List<Skillshot>() };
+                foreach (var skillshot in
+                    SkillshotDetector.DetectedSkillshots.Where(i => i.Evade() && !i.IsSafe(point)))
+                {
+                    result.SkillshotList.Add(skillshot);
+                }
+                result.Safe = result.SkillshotList.Count == 0;
+                return result;
+            }
+
+            private static SafePathResult IsSafePath(List<Vector2> path, int timeOffset, int speed = -1, int delay = 0)
+            {
+                var isSafe = false;
+                var intersections = new List<FoundIntersection>();
+                var intersection = new FoundIntersection();
+                foreach (var sResult in
+                    SkillshotDetector.DetectedSkillshots.Where(i => i.Evade())
+                        .Select(i => i.IsSafePath(path, timeOffset, speed, delay)))
+                {
+                    isSafe = sResult.IsSafe;
+                    if (sResult.Intersection.Valid)
+                    {
+                        intersections.Add(sResult.Intersection);
+                    }
+                }
+                if (isSafe)
+                {
+                    return new SafePathResult(true, intersection);
+                }
+                var sortedList = intersections.OrderBy(i => i.Distance).ToList();
+                return new SafePathResult(false, sortedList.Count > 0 ? sortedList[0] : intersection);
+            }
+
+            private struct IsSafeResult
+            {
+                public bool Safe;
+                public List<Skillshot> SkillshotList;
+            }
+        }
+
+        private class Target
+        {
+            private static readonly List<SpellData> Spells = new List<SpellData>();
+            private static readonly List<Targets> DetectedTargets = new List<Targets>();
+
+            public Target(Menu menu)
+            {
+                LoadTargetData();
+                var targetMenu = new Menu("Wind Wall (Target)", "Target");
+                {
+                    AddBool(targetMenu, "W", "Use W");
+                    AddBool(targetMenu, "BAttack", "-> Basic Attack");
+                    AddSlider(targetMenu, "BAttackHpU", "--> If Hp Under", 20);
+                    AddBool(targetMenu, "CAttack", "-> Crit Attack");
+                    AddSlider(targetMenu, "CAttackHpU", "--> If Hp Under", 40);
+                    foreach (var hero in
+                        HeroManager.Enemies.Where(i => Spells.Any(a => a.ChampionName == i.ChampionName)))
+                    {
+                        targetMenu.AddSubMenu(new Menu("-> " + hero.ChampionName, "T_" + hero.ChampionName));
                     }
                     foreach (
-                        var wwData in _spells.Where(i => HeroManager.Enemies.Any(a => a.ChampionName == i.ChampName)))
+                        var spell in Spells.Where(i => HeroManager.Enemies.Any(a => a.ChampionName == i.ChampionName)))
                     {
-                        var name = wwData.SpellName == ""
-                            ? HeroManager.Enemies.First(i => i.ChampionName == wwData.ChampName)
-                                .GetSpell(wwData.Slot)
-                                .SData.Name
-                            : wwData.SpellName;
                         AddBool(
-                            windMenu.SubMenu("WW_" + wwData.ChampName), name,
-                            string.Format("{0} ({1})", name, wwData.Slot), false);
+                            targetMenu.SubMenu("T_" + spell.ChampionName), spell.MissileName, spell.DisplayName, false);
                     }
                 }
-                menu.AddSubMenu(windMenu);
-                Game.OnUpdate += OnUpdateDetect;
-                GameObject.OnCreate += OnCreateWwDetectSkillShot;
-                GameObject.OnCreate += OnCreateWwDetectTarget;
-                GameObject.OnDelete += OnDeleteWwDetect;
-                Obj_AI_Base.OnProcessSpellCast += OnCastWwDetect;
+                menu.AddSubMenu(targetMenu);
+                Game.OnUpdate += OnUpdate;
+                GameObject.OnCreate += ObjSpellMissileOnCreate;
+                GameObject.OnDelete += ObjSpellMissileOnDelete;
             }
 
-            private void OnUpdateDetect(EventArgs args)
+            private static void OnUpdate(EventArgs args)
             {
-                _spellsDetected.RemoveAll(i => i.Deactivate);
-                if (!W.IsReady(5000) && _spellsDetected.Any())
-                {
-                    _spellsDetected.Clear();
-                }
-                if (Player.IsDead || !W.IsReady())
+                if (Player.IsDead)
                 {
                     return;
                 }
-                foreach (var spell in
-                    _spellsDetected.Where(
-                        i => i.Spell.Type == SpellType.Target || (i.Obj.IsVisible && W.IsInRange(i.Obj))))
+                if (Player.HasBuffOfType(BuffType.SpellImmunity) || Player.HasBuffOfType(BuffType.SpellShield))
                 {
-                    var isHit = false;
-                    switch (spell.Spell.Type)
-                    {
-                        case SpellType.Target:
-                        case SpellType.TargetGlobal:
-                            if (spell.Spell.Type == SpellType.TargetGlobal)
-                            {
-                                spell.Start = spell.Obj.Position.To2D();
-                            }
-                            isHit = true;
-                            break;
-                        case SpellType.AoE:
-                        case SpellType.LineAoE:
-                            isHit = WillHit(spell.Start, spell.End, spell.Spell) ||
-                                    (spell.Spell.Type == SpellType.LineAoE &&
-                                     WillHit(spell.Start, spell.Start * 2 - spell.End, spell.Spell));
-                            break;
-                        case SpellType.Line:
-                        case SpellType.LinePoint:
-                        case SpellType.Global:
-                            var posCur = spell.Obj.Position.To2D();
-                            var posEnd = spell.End;
-                            isHit = WillHit(posCur, posEnd, spell.Spell);
-                            if (spell.Spell.SpellName == "DravenR" && !isHit)
-                            {
-                                posEnd = posCur +
-                                         spell.Direction * spell.Spell.Speed *
-                                         (0.5f + spell.Spell.Radius * 2 / Player.MoveSpeed);
-                                posEnd = posCur.Extend(posEnd, spell.Spell.Range);
-                                if (WillHit(posCur, posEnd, spell.Spell))
-                                {
-                                    W.Cast(posCur, PacketCast);
-                                }
-                            }
-                            break;
-                    }
-                    if (isHit)
-                    {
-                        W.Cast(spell.Start, PacketCast);
-                    }
+                    return;
+                }
+                if (!W.IsReady() || !GetValue<bool>("Target", "W"))
+                {
+                    return;
+                }
+                foreach (var target in
+                    DetectedTargets.Where(i => W.IsInRange(i.Obj)))
+                {
+                    W.Cast(Player.ServerPosition.Extend(target.Obj.Position, 100), PacketCast);
+                    return;
                 }
             }
 
-            private void OnCreateWwDetectSkillShot(GameObject sender, EventArgs args)
+            private static void ObjSpellMissileOnCreate(GameObject sender, EventArgs args)
             {
-                if (Player.IsDead || !sender.IsValid<Obj_SpellMissile>() || !GetValue<bool>("WindWall", "W"))
-                {
-                    return;
-                }
-                var missile = (Obj_SpellMissile) sender;
-                if (!missile.SpellCaster.IsValid<Obj_AI_Hero>() || missile.SpellCaster.IsAlly)
-                {
-                    return;
-                }
-                var caster = (Obj_AI_Hero) missile.SpellCaster;
-                var spellData =
-                    _spells.FirstOrDefault(
-                        i =>
-                            i.FoW && i.Type != SpellType.Target && i.Type != SpellType.TargetGlobal &&
-                            (i.SpellName == ""
-                                ? caster.GetSpellSlot(missile.SData.Name) == i.Slot
-                                : i.SpellName == missile.SData.Name) &&
-                            GetItem("WW_" + i.ChampName, missile.SData.Name) != null &&
-                            GetValue<bool>("WW_" + i.ChampName, missile.SData.Name));
-                if (spellData == null)
-                {
-                    return;
-                }
-                var posPlayer = Player.ServerPosition.To2D();
-                var posCur = missile.Position.To2D();
-                var posStart = missile.StartPosition.To2D();
-                var posEnd = missile.EndPosition.To2D();
-                if (spellData.Type == SpellType.AoE || spellData.Type == SpellType.LinePoint)
-                {
-                    if (spellData.Range > 0 && posStart.Distance(posEnd) > spellData.Range)
-                    {
-                        posEnd = posStart.Extend(posEnd, spellData.Range);
-                    }
-                }
-                else if (spellData.Type != SpellType.Target && spellData.Type != SpellType.TargetGlobal)
-                {
-                    posEnd = posStart.Extend(posEnd, spellData.Range);
-                }
-                var castTime = Utils.TickCount - Game.Ping / 2 -
-                               (int) (1000 * posCur.Distance(posStart) / spellData.Speed);
-                if (posPlayer.Distance(posStart) > (spellData.Range + spellData.Radius + 1000) * 1.5)
-                {
-                    return;
-                }
-                _spellsDetected.Add(new Skills(spellData, castTime, posStart, posEnd, missile));
-            }
-
-            private void OnCreateWwDetectTarget(GameObject sender, EventArgs args)
-            {
-                if (Player.IsDead || !sender.IsValid<MissileClient>() || !GetValue<bool>("WindWall", "W"))
+                if (!sender.IsValid<MissileClient>())
                 {
                     return;
                 }
                 var missile = (MissileClient) sender;
-                if (!missile.SpellCaster.IsValid<Obj_AI_Hero>() || missile.SpellCaster.IsAlly)
+                if (!missile.SpellCaster.IsValid<Obj_AI_Hero>() || missile.SpellCaster.Team == Player.Team)
                 {
                     return;
                 }
-                var caster = (Obj_AI_Hero) missile.SpellCaster;
+                var unit = (Obj_AI_Hero) missile.SpellCaster;
                 var spellData =
-                    _spells.FirstOrDefault(
+                    Spells.FirstOrDefault(
                         i =>
-                            i.FoW && (i.Type == SpellType.Target || i.Type == SpellType.TargetGlobal) &&
-                            (i.SpellName == ""
-                                ? caster.GetSpellSlot(missile.SData.Name) == i.Slot
-                                : i.SpellName == missile.SData.Name) &&
-                            GetItem("WW_" + i.ChampName, missile.SData.Name) != null &&
-                            GetValue<bool>("WW_" + i.ChampName, missile.SData.Name));
+                            i.SpellNames.Contains(missile.SData.Name.ToLower()) &&
+                            GetItem("T_" + i.ChampionName, i.MissileName) != null &&
+                            GetValue<bool>("T_" + i.ChampionName, i.MissileName));
                 if (spellData == null && missile.SData.IsAutoAttack() &&
-                    (!missile.SData.Name.ToLower().Contains("critattack")
-                        ? GetValue<bool>("WindWall", "BAttack") &&
-                          Player.HealthPercent < GetValue<Slider>("WindWall", "BAttackHpU").Value
-                        : GetValue<bool>("WindWall", "CAttack") &&
-                          Player.HealthPercent < GetValue<Slider>("WindWall", "CAttackHpU").Value) && W.IsReady())
+                    (!missile.SData.Name.ToLower().Contains("crit")
+                        ? GetValue<bool>("Target", "BAttack") &&
+                          Player.HealthPercent < GetValue<Slider>("Target", "BAttackHpU").Value
+                        : GetValue<bool>("Target", "CAttack") &&
+                          Player.HealthPercent < GetValue<Slider>("Target", "CAttackHpU").Value) && W.IsReady())
                 {
-                    spellData = new Spells(
-                        caster.ChampionName, SpellSlot.Unknown, SpellType.Target, 0, 0, 0, missile.SData.Name);
+                    spellData = new SpellData
+                    {
+                        ChampionName = unit.ChampionName,
+                        SpellNames = new[] { missile.SData.Name }
+                    };
                 }
                 if (spellData == null || !missile.Target.IsMe)
                 {
                     return;
                 }
-                _spellsDetected.Add(
-                    new Skills(spellData, 0, missile.StartPosition.To2D(), missile.EndPosition.To2D(), missile));
+                DetectedTargets.Add(new Targets { Obj = missile });
             }
 
-            private void OnDeleteWwDetect(GameObject sender, EventArgs args)
+            private static void ObjSpellMissileOnDelete(GameObject sender, EventArgs args)
             {
-                if (!_spellsDetected.Any())
+                if (!sender.IsValid<MissileClient>())
                 {
                     return;
                 }
-                if (sender.IsValid<Obj_SpellMissile>())
+                var missile = (MissileClient) sender;
+                if (missile.SpellCaster.IsValid<Obj_AI_Hero>() && missile.SpellCaster.Team != Player.Team)
                 {
-                    var missile = (Obj_SpellMissile) sender;
-                    if (missile.SpellCaster.IsValid<Obj_AI_Hero>() && missile.SpellCaster.IsEnemy)
+                    DetectedTargets.RemoveAll(i => i.Obj.NetworkId == missile.NetworkId);
+                }
+            }
+
+            private static void LoadTargetData()
+            {
+                Spells.Add(
+                    new SpellData
                     {
-                        _spellsDetected.RemoveAll(
-                            i =>
-                                ((Obj_SpellMissile) i.Obj).SData.Name == missile.SData.Name &&
-                                i.Obj.NetworkId == missile.NetworkId);
-                    }
-                }
-                if (sender.IsValid<MissileClient>())
-                {
-                    var missile = (MissileClient) sender;
-                    if (missile.SpellCaster.IsValid<Obj_AI_Hero>() && missile.SpellCaster.IsEnemy)
+                        ChampionName = "Ahri",
+                        SpellNames = new[] { "ahrifoxfiremissiletwo" },
+                        Slot = SpellSlot.W
+                    });
+                Spells.Add(
+                    new SpellData
                     {
-                        _spellsDetected.RemoveAll(
-                            i =>
-                                ((MissileClient) i.Obj).SData.Name == missile.SData.Name &&
-                                i.Obj.NetworkId == missile.NetworkId);
-                    }
-                }
-            }
-
-            private void OnCastWwDetect(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
-            {
-                if (Player.IsDead || !sender.IsValid<Obj_AI_Hero>() || !sender.IsEnemy ||
-                    !GetValue<bool>("WindWall", "W") || !W.IsReady())
-                {
-                    return;
-                }
-                var target = (Obj_AI_Hero) sender;
-                var spellData =
-                    _spells.FirstOrDefault(
-                        i =>
-                            !i.FoW &&
-                            (i.SpellName == ""
-                                ? target.GetSpellSlot(args.SData.Name) == i.Slot
-                                : i.SpellName == args.SData.Name) &&
-                            GetItem("WW_" + i.ChampName, args.SData.Name) != null &&
-                            GetValue<bool>("WW_" + i.ChampName, args.SData.Name));
-                if (spellData == null)
-                {
-                    return;
-                }
-                if (WillHit(args.Start.To2D(), args.End.To2D(), spellData))
-                {
-                    W.Cast(args.Start, PacketCast);
-                }
-            }
-
-            private bool WillHit(Vector2 pos1, Vector2 pos2, Spells spellData)
-            {
-                if (spellData.Type == SpellType.AoE)
-                {
-                    return Player.Distance(pos2) < spellData.Radius + Player.BoundingRadius;
-                }
-                var point = Player.ServerPosition.To2D().ProjectOn(pos1, pos2).SegmentPoint;
-                return Player.Distance(point) < spellData.Radius + Player.BoundingRadius &&
-                       pos1.Distance(point) < pos1.Distance(pos2) && pos2.Distance(point) < pos1.Distance(pos2);
-            }
-
-            private void LoadWindWallData()
-            {
-                _spells.Add(new Spells("Aatrox", SpellSlot.E, SpellType.Line, 1075, 40, 1250, "aatroxeconemissile"));
-                _spells.Add(new Spells("Ahri", SpellSlot.Q, SpellType.Line, 900, 100, 2500, "AhriOrbMissile"));
-                _spells.Add(new Spells("Ahri", SpellSlot.Q, SpellType.LinePoint, 0, 100, 60, "AhriOrbReturn"));
-                _spells.Add(new Spells("Ahri", SpellSlot.W, SpellType.Target, 0, 0, 0, "AhriFoxFireMissileTwo"));
-                _spells.Add(new Spells("Ahri", SpellSlot.E, SpellType.Line, 1000, 60, 1550, "AhriSeduceMissile"));
-                _spells.Add(new Spells("Ahri", SpellSlot.R, SpellType.Target, 0, 0, 0, "AhriTumbleMissile"));
-                _spells.Add(new Spells("Akali", SpellSlot.Q));
-                _spells.Add(new Spells("Amumu", SpellSlot.Q, SpellType.Line, 1100, 80, 2000, "SadMummyBandageToss"));
-                _spells.Add(new Spells("Anivia", SpellSlot.Q, SpellType.Line, 1100, 110, 850, "FlashFrostSpell"));
-                _spells.Add(new Spells("Anivia", SpellSlot.E));
-                _spells.Add(new Spells("Annie", SpellSlot.Q));
-                _spells.Add(new Spells("Ashe", SpellSlot.W, SpellType.Line, 1200, 20, 1500, "VolleyAttack"));
-                _spells.Add(
-                    new Spells("Ashe", SpellSlot.R, SpellType.Global, 25000, 130, 1600, "EnchantedCrystalArrow"));
-                _spells.Add(new Spells("Bard", SpellSlot.Q, SpellType.Line, 950, 60, 1500, "bardqmissile"));
-                _spells.Add(new Spells("Blitzcrank", SpellSlot.Q, SpellType.Line, 1050, 70, 1800, "RocketGrabMissile"));
-                _spells.Add(new Spells("Brand", SpellSlot.Q, SpellType.Line, 1100, 60, 1600, "BrandBlazeMissile"));
-                _spells.Add(new Spells("Brand", SpellSlot.E, SpellType.Target, 0, 0, 0, "BrandConflagrationMissile"));
-                _spells.Add(new Spells("Brand", SpellSlot.R));
-                _spells.Add(new Spells("Brand", SpellSlot.R, SpellType.Target, 0, 0, 0, "BrandWildfireMissile"));
-                _spells.Add(new Spells("Braum", SpellSlot.Q, SpellType.Line, 1050, 60, 1700, "BraumQMissile"));
-                _spells.Add(new Spells("Braum", SpellSlot.R, SpellType.Line, 1200, 115, 1400, "braumrmissile"));
-                _spells.Add(
-                    new Spells("Caitlyn", SpellSlot.Q, SpellType.Line, 1250, 90, 2200, "CaitlynPiltoverPeacemaker"));
-                _spells.Add(
-                    new Spells("Caitlyn", SpellSlot.E, SpellType.Line, 1000, 80, 2000, "CaitlynEntrapmentMissile"));
-                _spells.Add(
-                    new Spells("Caitlyn", SpellSlot.R, SpellType.TargetGlobal, 0, 0, 0, "CaitlynAceintheHoleMissile"));
-                _spells.Add(new Spells("Cassiopeia", SpellSlot.W, SpellType.AoE, 850, 175, 2500, "CassiopeiaMiasma"));
-                _spells.Add(new Spells("Cassiopeia", SpellSlot.E));
-                _spells.Add(new Spells("Corki", SpellSlot.Q, SpellType.AoE, 825, 210, 1000, "PhosphorusBombMissile"));
-                _spells.Add(new Spells("Corki", SpellSlot.R, SpellType.Line, 1300, 40, 2000, "MissileBarrageMissile"));
-                _spells.Add(new Spells("Corki", SpellSlot.R, SpellType.Line, 1500, 40, 2000, "MissileBarrageMissile2"));
-                _spells.Add(new Spells("Diana", SpellSlot.Q, SpellType.AoE, 900, 185, 0, "DianaArc", false));
-                _spells.Add(
-                    new Spells("DrMundo", SpellSlot.Q, SpellType.Line, 1050, 60, 2000, "InfectedCleaverMissile"));
-                _spells.Add(
-                    new Spells("Draven", SpellSlot.E, SpellType.Line, 1100, 130, 1400, "DravenDoubleShotMissile"));
-                _spells.Add(new Spells("Draven", SpellSlot.R, SpellType.Global, 25000, 160, 2000, "DravenR"));
-                _spells.Add(new Spells("Ekko", SpellSlot.Q, SpellType.Line, 950, 60, 1650, "ekkoqmis"));
-                _spells.Add(new Spells("Elise", SpellSlot.Q, SpellType.Target, 0, 0, 0, "EliseHumanQ"));
-                _spells.Add(new Spells("Elise", SpellSlot.E, SpellType.Line, 1100, 55, 1600, "EliseHumanE"));
-                _spells.Add(new Spells("Evelynn", SpellSlot.Q, SpellType.Line, 650, 80, 2200, "HateSpikeLineMissile"));
-                _spells.Add(
-                    new Spells("Ezreal", SpellSlot.Q, SpellType.Line, 1200, 60, 2000, "EzrealMysticShotMissile"));
-                _spells.Add(
-                    new Spells("Ezreal", SpellSlot.W, SpellType.Line, 1050, 80, 1600, "EzrealEssenceFluxMissile"));
-                _spells.Add(new Spells("Ezreal", SpellSlot.E, SpellType.Target, 0, 0, 0, "EzrealArcaneShiftMissile"));
-                _spells.Add(
-                    new Spells("Ezreal", SpellSlot.R, SpellType.Global, 25000, 160, 2000, "EzrealTrueshotBarrage"));
-                _spells.Add(new Spells("FiddleSticks", SpellSlot.E));
-                _spells.Add(
-                    new Spells("FiddleSticks", SpellSlot.E, SpellType.Target, 0, 0, 0, "FiddleSticksDarkWindMissile"));
-                _spells.Add(
-                    new Spells("Fizz", SpellSlot.R, SpellType.LinePoint, 1175, 120, 1350, "FizzMarinerDoomMissile"));
-                _spells.Add(new Spells("Galio", SpellSlot.Q, SpellType.AoE, 900, 200, 1300, "GalioResoluteSmite"));
-                _spells.Add(
-                    new Spells("Galio", SpellSlot.E, SpellType.Line, 1100, 160, 1300, "galiorighteousgustmissile"));
-                _spells.Add(new Spells("Gangplank", SpellSlot.Q));
-                _spells.Add(new Spells("Gnar", SpellSlot.Q, SpellType.Line, 1125, 55, 2500, "gnarqmissile"));
-                _spells.Add(new Spells("Gnar", SpellSlot.Q, SpellType.Line, 2500, 75, 60, "GnarQMissileReturn"));
-                _spells.Add(new Spells("Gnar", SpellSlot.Q, SpellType.Line, 1150, 90, 2100, "GnarBigQMissile"));
-                _spells.Add(new Spells("Gragas", SpellSlot.Q, SpellType.AoE, 1100, 275, 1300, "GragasQMissile"));
-                _spells.Add(new Spells("Gragas", SpellSlot.R, SpellType.AoE, 1050, 375, 1800, "GragasRBoom"));
-                _spells.Add(
-                    new Spells("Graves", SpellSlot.Q, SpellType.Line, 1000, 50, 2000, "GravesClusterShotAttack"));
-                _spells.Add(new Spells("Graves", SpellSlot.W, SpellType.AoE, 900, 250, 1500, "gravessmokegrenadeboom"));
-                _spells.Add(new Spells("Graves", SpellSlot.R, SpellType.Line, 1000, 100, 2100, "GravesChargeShotShot"));
-                _spells.Add(
-                    new Spells("Heimerdinger", SpellSlot.W, SpellType.Line, 1250, 40, 750, "HeimerdingerWAttack2"));
-                _spells.Add(
-                    new Spells("Heimerdinger", SpellSlot.W, SpellType.Line, 1250, 60, 750, "HeimerdingerWAttack2Ult"));
-                _spells.Add(
-                    new Spells("Heimerdinger", SpellSlot.E, SpellType.AoE, 925, 100, 1200, "heimerdingerespell"));
-                _spells.Add(
-                    new Spells("Heimerdinger", SpellSlot.E, SpellType.AoE, 925, 210, 1400, "heimerdingerespell_ult"));
-                _spells.Add(
-                    new Spells("Heimerdinger", SpellSlot.E, SpellType.AoE, 300, 210, 1400, "heimerdingerespell_ult2"));
-                _spells.Add(
-                    new Spells("Heimerdinger", SpellSlot.E, SpellType.AoE, 300, 210, 1200, "heimerdingerespell_ult3"));
-                _spells.Add(
-                    new Spells("Irelia", SpellSlot.R, SpellType.Line, 1200, 65, 1600, "IreliaTranscendentBlades"));
-                _spells.Add(new Spells("Janna", SpellSlot.Q, SpellType.Line, 1700, 120, 900, "HowlingGaleSpell"));
-                _spells.Add(new Spells("Janna", SpellSlot.W));
-                _spells.Add(new Spells("Jayce", SpellSlot.Q, SpellType.Line, 1300, 70, 1450, "JayceShockBlastMis"));
-                _spells.Add(new Spells("Jayce", SpellSlot.Q, SpellType.Line, 2000, 70, 2350, "JayceShockBlastWallMis"));
-                _spells.Add(new Spells("Jinx", SpellSlot.W, SpellType.Line, 1450, 60, 3300, "JinxWMissile"));
-                _spells.Add(new Spells("Jinx", SpellSlot.E, SpellType.AoE, 900, 120, 1100, "JinxEHit"));
-                _spells.Add(new Spells("Jinx", SpellSlot.R, SpellType.Global, 25000, 140, 1700, "JinxR"));
-                _spells.Add(
-                    new Spells("Kalista", SpellSlot.Q, SpellType.Line, 1175, 40, 2400, "kalistamysticshotmistrue"));
-                _spells.Add(new Spells("Karma", SpellSlot.Q, SpellType.Line, 1050, 60, 1700, "KarmaQMissile"));
-                _spells.Add(new Spells("Karma", SpellSlot.Q, SpellType.Line, 950, 80, 1700, "KarmaQMissileMantra"));
-                _spells.Add(new Spells("Kassadin", SpellSlot.Q));
-                _spells.Add(new Spells("Katarina", SpellSlot.Q));
-                _spells.Add(new Spells("Katarina", SpellSlot.Q, SpellType.Target, 0, 0, 0, "KatarinaQMis"));
-                _spells.Add(new Spells("Katarina", SpellSlot.R, SpellType.AoE, 550, 550, 0, "KatarinaR", false));
-                _spells.Add(new Spells("Kayle", SpellSlot.Q));
-                _spells.Add(
-                    new Spells("Kennen", SpellSlot.Q, SpellType.Line, 1050, 50, 1700, "KennenShurikenHurlMissile1"));
-                _spells.Add(new Spells("Khazix", SpellSlot.W, SpellType.Line, 1025, 70, 1700, "KhazixWMissile"));
-                _spells.Add(new Spells("KogMaw", SpellSlot.Q, SpellType.Line, 1000, 70, 1650, "KogMawQMis"));
-                _spells.Add(new Spells("KogMaw", SpellSlot.E, SpellType.Line, 1250, 120, 1400, "KogMawVoidOozeMissile"));
-                _spells.Add(new Spells("Leblanc", SpellSlot.Q));
-                _spells.Add(new Spells("Leblanc", SpellSlot.E, SpellType.Line, 950, 70, 1600, "LeblancSoulShackle"));
-                _spells.Add(new Spells("Leblanc", SpellSlot.R, SpellType.Target, 0, 0, 0, "LeblancChaosOrbM"));
-                _spells.Add(new Spells("Leblanc", SpellSlot.R, SpellType.Line, 950, 70, 1600, "LeblancSoulShackleM"));
-                _spells.Add(new Spells("LeeSin", SpellSlot.Q, SpellType.Line, 1100, 60, 1800, "BlindMonkQOne"));
-                _spells.Add(new Spells("Leona", SpellSlot.E, SpellType.Line, 905, 70, 2000, "LeonaZenithBladeMissile"));
-                _spells.Add(new Spells("Lissandra", SpellSlot.Q, SpellType.Line, 700, 75, 2200, "LissandraQMissile"));
-                _spells.Add(
-                    new Spells("Lissandra", SpellSlot.Q, SpellType.LinePoint, 1000, 90, 2200, "lissandraqshards"));
-                _spells.Add(new Spells("Lissandra", SpellSlot.E, SpellType.Line, 1025, 125, 800, "LissandraEMissile"));
-                _spells.Add(new Spells("Lucian", SpellSlot.W, SpellType.Line, 1000, 55, 1600, "lucianwmissile"));
-                _spells.Add(new Spells("Lucian", SpellSlot.R, SpellType.Line, 1400, 110, 2800, "lucianrmissile"));
-                //Test
-                _spells.Add(new Spells("Lucian", SpellSlot.R, SpellType.Line, 1400, 110, 2800, "lucianrmissileoffhand"));
-                //Test
-                _spells.Add(new Spells("Lulu", SpellSlot.Q, SpellType.Line, 950, 60, 1450, "LuluQMissile"));
-                _spells.Add(new Spells("Lulu", SpellSlot.Q, SpellType.Line, 950, 60, 1450, "LuluQMissileTwo"));
-                _spells.Add(new Spells("Lulu", SpellSlot.W));
-                _spells.Add(new Spells("Lux", SpellSlot.Q, SpellType.Line, 1300, 70, 1200, "LuxLightBindingMis"));
-                _spells.Add(new Spells("Lux", SpellSlot.E, SpellType.AoE, 1100, 275, 1300, "LuxLightStrikeKugel"));
-                _spells.Add(new Spells("Malphite", SpellSlot.Q));
-                _spells.Add(new Spells("MissFortune", SpellSlot.Q));
-                _spells.Add(new Spells("MissFortune", SpellSlot.Q, SpellType.Target, 0, 0, 0, "MissFortuneRShotExtra"));
-                _spells.Add(
-                    new Spells("MissFortune", SpellSlot.R, SpellType.Line, 1500, 20, 2000, "MissFortuneBullets"));
-                //Test
-                _spells.Add(
-                    new Spells("MissFortune", SpellSlot.R, SpellType.Line, 1500, 20, 2000, "MissFortuneBulletsClone"));
-                //Test
-                _spells.Add(new Spells("Morgana", SpellSlot.Q, SpellType.Line, 1300, 70, 1200, "DarkBindingMissile"));
-                _spells.Add(new Spells("Nami", SpellSlot.Q, SpellType.AoE, 850, 225, 2500, "namiqmissile"));
-                _spells.Add(new Spells("Nami", SpellSlot.W, SpellType.Target, 0, 0, 0, "NamiWEnemy"));
-                _spells.Add(new Spells("Nami", SpellSlot.W, SpellType.Target, 0, 0, 0, "NamiWMissileEnemy"));
-                _spells.Add(new Spells("Nami", SpellSlot.R, SpellType.Line, 2750, 250, 850, "NamiRMissile"));
-                _spells.Add(
-                    new Spells("Nautilus", SpellSlot.Q, SpellType.Line, 1100, 90, 2000, "NautilusAnchorDragMissile"));
-                _spells.Add(
-                    new Spells("Nautilus", SpellSlot.E, SpellType.AoE, 600, 600, 450, "NautilusSplashZoneSplash"));
-                _spells.Add(new Spells("Nidalee", SpellSlot.Q, SpellType.Line, 1500, 40, 1300, "JavelinToss"));
-                _spells.Add(new Spells("Nocturne", SpellSlot.Q, SpellType.Line, 1200, 60, 1400, "NocturneDuskbringer"));
-                _spells.Add(new Spells("Nunu", SpellSlot.E));
-                _spells.Add(new Spells("Olaf", SpellSlot.Q, SpellType.LinePoint, 1000, 105, 1600, "olafaxethrow"));
-                _spells.Add(new Spells("Orianna", SpellSlot.Q, SpellType.LinePoint, 0, 80, 1200, "orianaizuna")); //Test
-                _spells.Add(new Spells("Orianna", SpellSlot.E, SpellType.LinePoint, 0, 80, 1850, "orianaredact"));
-                //Test
-                _spells.Add(new Spells("Pantheon", SpellSlot.Q));
-                _spells.Add(new Spells("Quinn", SpellSlot.Q, SpellType.Line, 1050, 80, 1550, "QuinnQMissile"));
-                _spells.Add(new Spells("RekSai", SpellSlot.Q, SpellType.Line, 1500, 65, 1950, "RekSaiQBurrowedMis"));
-                _spells.Add(new Spells("Rengar", SpellSlot.E, SpellType.Line, 1000, 70, 1500, "RengarEFinal"));
-                _spells.Add(new Spells("Riven", SpellSlot.R, SpellType.Line, 1075, 100, 1600, "RivenLightsaberMissile"));
-                _spells.Add(
-                    new Spells("Riven", SpellSlot.R, SpellType.Line, 1075, 100, 1600, "RivenLightsaberMissileSide"));
-                _spells.Add(
-                    new Spells("Rumble", SpellSlot.E, SpellType.Line, 950, 60, 2000, "rumblegrenademissilemechbase"));
-                _spells.Add(new Spells("Ryze", SpellSlot.Q, SpellType.Line, 900, 50, 1700, "RyzeQ"));
-                _spells.Add(new Spells("Ryze", SpellSlot.Q, SpellType.Line, 900, 50, 1700, "ryzerq"));
-                _spells.Add(new Spells("Ryze", SpellSlot.E));
-                _spells.Add(new Spells("Ryze", SpellSlot.E, SpellType.Target, 0, 0, 0, "spellfluxmissile"));
-                _spells.Add(new Spells("Sejuani", SpellSlot.R, SpellType.Line, 1100, 110, 1600, "sejuaniglacialprison"));
-                _spells.Add(new Spells("Shaco", SpellSlot.E));
-                _spells.Add(new Spells("Shen", SpellSlot.Q));
-                _spells.Add(new Spells("Shyvana", SpellSlot.E, SpellType.Line, 950, 60, 1700, "ShyvanaFireballMissile"));
-                _spells.Add(
-                    new Spells("Shyvana", SpellSlot.E, SpellType.Line, 750, 70, 2000, "ShyvanaFireballDragonFxMissile"));
-                _spells.Add(new Spells("Sion", SpellSlot.E, SpellType.Line, 800, 80, 1800, "SionEMissile"));
-                _spells.Add(new Spells("Sivir", SpellSlot.Q, SpellType.Line, 1250, 90, 1350, "SivirQMissile"));
-                _spells.Add(new Spells("Sivir", SpellSlot.Q, SpellType.LinePoint, 0, 100, 1350, "SivirQMissileReturn"));
-                _spells.Add(
-                    new Spells("Skarner", SpellSlot.E, SpellType.Line, 1000, 70, 1500, "SkarnerFractureMissile"));
-                _spells.Add(new Spells("Sona", SpellSlot.Q, SpellType.Target, 0, 0, 0, "sonaqmissile"));
-                _spells.Add(new Spells("Sona", SpellSlot.R, SpellType.Line, 1000, 140, 2400, "SonaR"));
-                _spells.Add(new Spells("Soraka", SpellSlot.Q, SpellType.AoE, 950, 210, 1100, "SorakaQMissile"));
-                _spells.Add(new Spells("Swain", SpellSlot.E));
-                _spells.Add(new Spells("Syndra", SpellSlot.R));
-                _spells.Add(new Spells("Talon", SpellSlot.W, SpellType.Line, 700, 75, 2300, "talonrakemissileone"));
-                _spells.Add(
-                    new Spells("Talon", SpellSlot.R, SpellType.Line, 575, 125, 2300, "talonshadowassaultmisone"));
-                _spells.Add(new Spells("Taric", SpellSlot.E));
-                _spells.Add(new Spells("Teemo", SpellSlot.Q));
-                _spells.Add(new Spells("Thresh", SpellSlot.Q, SpellType.Line, 1100, 70, 1900, "ThreshQMissile"));
-                _spells.Add(new Spells("Thresh", SpellSlot.E, SpellType.LineAoE, 540, 110, 2000, "ThreshEMissile1"));
-                _spells.Add(new Spells("Tristana", SpellSlot.E));
-                _spells.Add(new Spells("Tristana", SpellSlot.R, SpellType.AoE, 650, 210, 2000, "TristanaR"));
-                _spells.Add(new Spells("TwistedFate", SpellSlot.Q, SpellType.Line, 1450, 40, 1000, "SealFateMissile"));
-                _spells.Add(new Spells("TwistedFate", SpellSlot.W, SpellType.Target, 0, 0, 0, "bluecardattack"));
-                _spells.Add(new Spells("TwistedFate", SpellSlot.W, SpellType.Target, 0, 0, 0, "GoldCardAttack"));
-                _spells.Add(new Spells("TwistedFate", SpellSlot.W, SpellType.Target, 0, 0, 0, "RedCardAttack"));
-                _spells.Add(new Spells("Twitch", SpellSlot.W, SpellType.AoE, 950, 210, 1400, "TwitchVenomCaskMissile"));
-                _spells.Add(
-                    new Spells("Urgot", SpellSlot.Q, SpellType.Line, 1000, 60, 1600, "UrgotHeatseekingLineMissile"));
-                _spells.Add(new Spells("Urgot", SpellSlot.Q, SpellType.Target, 0, 0, 0, "UrgotHeatseekingHomeMissile"));
-                _spells.Add(new Spells("Urgot", SpellSlot.E, SpellType.AoE, 900, 210, 1500, "UrgotPlasmaGrenadeBoom"));
-                _spells.Add(new Spells("Varus", SpellSlot.Q, SpellType.LinePoint, 1550, 70, 1900, "VarusQMissile"));
-                _spells.Add(new Spells("Varus", SpellSlot.E, SpellType.AoE, 925, 210, 1500, "VarusEMissile"));
-                _spells.Add(new Spells("Varus", SpellSlot.R, SpellType.Line, 1200, 120, 1950, "VarusRMissile"));
-                _spells.Add(new Spells("Vayne", SpellSlot.E));
-                _spells.Add(new Spells("Veigar", SpellSlot.Q, SpellType.Line, 950, 70, 2200, "VeigarBalefulStrikeMis"));
-                _spells.Add(new Spells("Veigar", SpellSlot.R));
-                _spells.Add(new Spells("Velkoz", SpellSlot.Q, SpellType.Line, 1100, 50, 1300, "VelkozQMissile"));
-                _spells.Add(new Spells("Velkoz", SpellSlot.Q, SpellType.Line, 900, 45, 2100, "VelkozQMissileSplit"));
-                _spells.Add(new Spells("Velkoz", SpellSlot.W, SpellType.Line, 1100, 87.5f, 1700, "VelkozWMissile"));
-                _spells.Add(new Spells("Viktor", SpellSlot.Q));
-                _spells.Add(new Spells("Viktor", SpellSlot.E, SpellType.Line, 700, 80, 780, "ViktorDeathRayMissile"));
-                _spells.Add(new Spells("Viktor", SpellSlot.E, SpellType.Line, 700, 80, 780, "viktoreaugmissile"));
-                _spells.Add(new Spells("Vladimir", SpellSlot.E, SpellType.Target, 0, 0, 0, "vladimirtidesofbloodnuke"));
-                _spells.Add(new Spells("Xerath", SpellSlot.E, SpellType.Line, 1150, 60, 1400, "XerathMageSpearMissile"));
-                _spells.Add(new Spells("Yasuo", SpellSlot.Q, SpellType.Line, 1100, 90, 1500, "yasuoq3mis"));
-                _spells.Add(new Spells("Zed", SpellSlot.Q, SpellType.Line, 925, 50, 1700, "zedshurikenmisone"));
-                _spells.Add(new Spells("Zed", SpellSlot.Q, SpellType.Line, 925, 50, 1700, "zedshurikenmistwo"));
-                _spells.Add(new Spells("Ziggs", SpellSlot.Q, SpellType.AoE, 850, 225, 1700, "ZiggsQSpell"));
-                _spells.Add(new Spells("Ziggs", SpellSlot.Q, SpellType.AoE, 350, 225, 1600, "ZiggsQSpell2"));
-                _spells.Add(new Spells("Ziggs", SpellSlot.Q, SpellType.AoE, 200, 225, 1600, "ZiggsQSpell3"));
-                _spells.Add(new Spells("Ziggs", SpellSlot.W, SpellType.AoE, 1000, 275, 1750, "ZiggsW"));
-                _spells.Add(new Spells("Ziggs", SpellSlot.E, SpellType.AoE, 900, 225, 1550, "ziggse2"));
-                _spells.Add(new Spells("Zilean", SpellSlot.Q, SpellType.AoE, 900, 210, 2000, "ZileanQMissile"));
-                _spells.Add(new Spells("Zyra", SpellSlot.E, SpellType.Line, 1150, 70, 1150, "ZyraGraspingRoots"));
-                _spells.Add(
-                    new Spells("Zyra", SpellSlot.Unknown, SpellType.Line, 1474, 70, 1900, "zyrapassivedeathmanager"));
-            }
-
-            private enum SpellType
-            {
-                Target,
-                TargetGlobal,
-                Line,
-                LinePoint,
-                LineAoE,
-                AoE,
-                Global
-            }
-
-            private class Spells
-            {
-                public readonly string ChampName;
-                public readonly bool FoW;
-                public readonly float Radius;
-                public readonly float Range;
-                public readonly SpellSlot Slot;
-                public readonly float Speed;
-                public readonly string SpellName;
-                public readonly SpellType Type;
-
-                public Spells(string champ,
-                    SpellSlot slot,
-                    SpellType type = SpellType.Target,
-                    float range = 0,
-                    float radius = 0,
-                    float speed = 0,
-                    string spell = "",
-                    bool fow = true)
-                {
-                    ChampName = champ;
-                    SpellName = spell;
-                    Slot = slot;
-                    Type = type;
-                    Range = range;
-                    Radius = radius;
-                    Speed = speed;
-                    FoW = fow;
-                }
-            }
-
-            private class Skills
-            {
-                private readonly int _startTick;
-                public readonly Vector2 Direction;
-                public readonly Vector2 End;
-                public readonly GameObject Obj;
-                public readonly Spells Spell;
-                public Vector2 Start;
-
-                public Skills(Spells spell, int startT, Vector2 start, Vector2 end, GameObject obj)
-                {
-                    Spell = spell;
-                    _startTick = startT;
-                    Start = start;
-                    End = end;
-                    Obj = obj;
-                    Direction = (End - Start).Normalized();
-                }
-
-                public bool Deactivate
-                {
-                    get
+                        ChampionName = "Ahri",
+                        SpellNames = new[] { "ahritumblemissile" },
+                        Slot = SpellSlot.R
+                    });
+                Spells.Add(
+                    new SpellData { ChampionName = "Akali", SpellNames = new[] { "akalimota" }, Slot = SpellSlot.Q });
+                Spells.Add(
+                    new SpellData { ChampionName = "Anivia", SpellNames = new[] { "frostbite" }, Slot = SpellSlot.E });
+                Spells.Add(
+                    new SpellData { ChampionName = "Annie", SpellNames = new[] { "disintegrate" }, Slot = SpellSlot.Q });
+                Spells.Add(
+                    new SpellData
                     {
-                        return _startTick > 0 &&
-                               Utils.TickCount > _startTick + 1000 * (Start.Distance(End) / Spell.Speed);
-                    }
+                        ChampionName = "Brand",
+                        SpellNames = new[] { "brandConflagrationMissile" },
+                        Slot = SpellSlot.E
+                    });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "Brand",
+                        SpellNames = new[] { "brandWildfire", "brandWildfireMissile" },
+                        Slot = SpellSlot.R
+                    });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "Caitlyn",
+                        SpellNames = new[] { "caitlynAceintheHoleMissile" },
+                        Slot = SpellSlot.R
+                    });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "Cassiopeia",
+                        SpellNames = new[] { "cassiopeiatwinfang" },
+                        Slot = SpellSlot.E
+                    });
+                Spells.Add(
+                    new SpellData { ChampionName = "Elise", SpellNames = new[] { "elisehumanq" }, Slot = SpellSlot.Q });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "Ezreal",
+                        SpellNames = new[] { "ezrealarcaneshiftmissile" },
+                        Slot = SpellSlot.E
+                    });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "FiddleSticks",
+                        SpellNames = new[] { "fiddlesticksdarkwind", "fiddlesticksdarkwindmissile" },
+                        Slot = SpellSlot.E
+                    });
+                Spells.Add(
+                    new SpellData { ChampionName = "Gangplank", SpellNames = new[] { "parley" }, Slot = SpellSlot.Q });
+                Spells.Add(
+                    new SpellData { ChampionName = "Janna", SpellNames = new[] { "sowthewind" }, Slot = SpellSlot.W });
+                Spells.Add(
+                    new SpellData { ChampionName = "Kassadin", SpellNames = new[] { "nulllance" }, Slot = SpellSlot.Q });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "Katarina",
+                        SpellNames = new[] { "katarinaq", "katarinaqmis" },
+                        Slot = SpellSlot.Q
+                    });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "Kayle",
+                        SpellNames = new[] { "judicatorreckoning" },
+                        Slot = SpellSlot.Q
+                    });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "Leblanc",
+                        SpellNames = new[] { "leblancchaosorb", "leblancchaosorbm" },
+                        Slot = SpellSlot.Q
+                    });
+                Spells.Add(new SpellData { ChampionName = "Lulu", SpellNames = new[] { "luluw" }, Slot = SpellSlot.W });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "Malphite",
+                        SpellNames = new[] { "seismicshard" },
+                        Slot = SpellSlot.Q
+                    });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "MissFortune",
+                        SpellNames = new[] { "missfortunericochetshot", "missFortunershotextra" },
+                        Slot = SpellSlot.Q
+                    });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "Nami",
+                        SpellNames = new[] { "namiwenemy", "namiwmissileenemy" },
+                        Slot = SpellSlot.W
+                    });
+                Spells.Add(
+                    new SpellData { ChampionName = "Nunu", SpellNames = new[] { "iceblast" }, Slot = SpellSlot.E });
+                Spells.Add(
+                    new SpellData { ChampionName = "Pantheon", SpellNames = new[] { "pantheonq" }, Slot = SpellSlot.Q });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "Ryze",
+                        SpellNames = new[] { "spellflux", "spellfluxmissile" },
+                        Slot = SpellSlot.E
+                    });
+                Spells.Add(
+                    new SpellData { ChampionName = "Shaco", SpellNames = new[] { "twoshivpoison" }, Slot = SpellSlot.E });
+                Spells.Add(
+                    new SpellData { ChampionName = "Shen", SpellNames = new[] { "shenvorpalstar" }, Slot = SpellSlot.Q });
+                Spells.Add(
+                    new SpellData { ChampionName = "Sona", SpellNames = new[] { "sonaqmissile" }, Slot = SpellSlot.Q });
+                Spells.Add(
+                    new SpellData { ChampionName = "Swain", SpellNames = new[] { "swaintorment" }, Slot = SpellSlot.E });
+                Spells.Add(
+                    new SpellData { ChampionName = "Syndra", SpellNames = new[] { "syndrar" }, Slot = SpellSlot.R });
+                Spells.Add(
+                    new SpellData { ChampionName = "Taric", SpellNames = new[] { "dazzle" }, Slot = SpellSlot.E });
+                Spells.Add(
+                    new SpellData { ChampionName = "Teemo", SpellNames = new[] { "blindingdart" }, Slot = SpellSlot.Q });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "Tristana",
+                        SpellNames = new[] { "detonatingshot" },
+                        Slot = SpellSlot.E
+                    });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "TwistedFate",
+                        SpellNames = new[] { "bluecardattack" },
+                        Slot = SpellSlot.W
+                    });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "TwistedFate",
+                        SpellNames = new[] { "goldcardattack" },
+                        Slot = SpellSlot.W
+                    });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "TwistedFate",
+                        SpellNames = new[] { "redcardattack" },
+                        Slot = SpellSlot.W
+                    });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "Urgot",
+                        SpellNames = new[] { "urgotheatseekinghomemissile" },
+                        Slot = SpellSlot.Q
+                    });
+                Spells.Add(
+                    new SpellData { ChampionName = "Vayne", SpellNames = new[] { "vaynecondemn" }, Slot = SpellSlot.E });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "Veigar",
+                        SpellNames = new[] { "veigarprimordialburst" },
+                        Slot = SpellSlot.R
+                    });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "Viktor",
+                        SpellNames = new[] { "viktorpowertransfer" },
+                        Slot = SpellSlot.Q
+                    });
+                Spells.Add(
+                    new SpellData
+                    {
+                        ChampionName = "Vladimir",
+                        SpellNames = new[] { "vladimirtidesofbloodnuke" },
+                        Slot = SpellSlot.E
+                    });
+            }
+
+            private class SpellData
+            {
+                public string ChampionName;
+                public SpellSlot Slot;
+                public string[] SpellNames = { };
+
+                public string MissileName
+                {
+                    get { return SpellNames.First(); }
                 }
+
+                public string DisplayName
+                {
+                    get { return MissileName + " (" + Slot + ")"; }
+                }
+            }
+
+            private class Targets
+            {
+                public MissileClient Obj;
             }
         }
     }

@@ -475,7 +475,7 @@ namespace BrianSharp.Common
                 return;
             }
             Player.IssueOrder(
-                GameObjectOrder.MoveTo, Player.ServerPosition.Extend(pos, (RandomPos.NextFloat(0.6f, 1) + 0.2f) * 400));
+                GameObjectOrder.MoveTo, Player.ServerPosition.Extend(pos, (RandomPos.NextFloat(0.6f, 1) + 0.2f) * 200));
         }
 
         public static void Orbwalk(AttackableUnit target)

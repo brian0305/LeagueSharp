@@ -162,7 +162,7 @@ namespace BrianSharp.Plugin
                 var target = E.GetTarget();
                 if (target != null)
                 {
-                    var predE = E.GetPrediction(target);
+                    var predE = E.GetPrediction(target, true);
                     if (predE.Hitchance >= HitChance.High &&
                         ((mode == "Combo" && !Orbwalk.InAutoAttackRange(target, 20)) ||
                          (mode == "Harass" && Orbwalk.InAutoAttackRange(target, 50))))
@@ -236,7 +236,7 @@ namespace BrianSharp.Plugin
                 var target = E.GetTarget();
                 if (target != null && E.IsKillable(target))
                 {
-                    var predE = E.GetPrediction(target);
+                    var predE = E.GetPrediction(target, true);
                     if (predE.Hitchance >= HitChance.High)
                     {
                         E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width), PacketCast);

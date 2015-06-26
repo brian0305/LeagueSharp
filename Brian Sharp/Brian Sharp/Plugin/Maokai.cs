@@ -18,8 +18,10 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W, 525, TargetSelector.DamageType.Magical);
             E = new Spell(SpellSlot.E, 1100, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 475, TargetSelector.DamageType.Magical);
-            Q.SetSkillshot(0.5f, 110, 1800, false, SkillshotType.SkillshotLine);
-            E.SetSkillshot(1, 225, 1500, false, SkillshotType.SkillshotCircle);
+            //Q.SetSkillshot(0.5f, 110, 1800, false, SkillshotType.SkillshotLine);
+            Q.SetSkillshot(0.5f, 110, 1200, false, SkillshotType.SkillshotLine);
+            //E.SetSkillshot(1, 225, 1500, false, SkillshotType.SkillshotCircle);
+            E.SetSkillshot(1, 250, 1500, false, SkillshotType.SkillshotCircle);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -263,7 +265,7 @@ namespace BrianSharp.Plugin
             }
             else
             {
-                if (GetValue<bool>(mode, "E") && E.CastOnBestTarget(E.Width, PacketCast).IsCasted())
+                if (GetValue<bool>(mode, "E") && E.CastOnBestTarget(E.Width / 2, PacketCast, true).IsCasted())
                 {
                     return;
                 }
@@ -275,7 +277,7 @@ namespace BrianSharp.Plugin
                 }
                 if (GetValue<bool>(mode, "Q"))
                 {
-                    Q.CastOnBestTarget(0, PacketCast);
+                    Q.CastOnBestTarget(0, PacketCast, true);
                 }
             }
         }
@@ -340,7 +342,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Flee", "Q"))
             {
-                Q.CastOnBestTarget(0, PacketCast);
+                Q.CastOnBestTarget(0, PacketCast, true);
             }
         }
 
@@ -351,7 +353,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            Q.CastOnBestTarget(0, PacketCast);
+            Q.CastOnBestTarget(0, PacketCast, true);
         }
 
         private void KillSteal()

@@ -18,9 +18,12 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W);
             E = new Spell(SpellSlot.E, 1075, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 550, TargetSelector.DamageType.Magical);
-            Q.SetSkillshot(0.6f, 250, 2000, false, SkillshotType.SkillshotCircle);
-            Q2.SetSkillshot(0.6f, 150, 2000, false, SkillshotType.SkillshotCircle);
-            E.SetSkillshot(0.25f, 40, 1250, false, SkillshotType.SkillshotLine);
+            //Q.SetSkillshot(0.6f, 250, 2000, false, SkillshotType.SkillshotCircle);
+            //Q2.SetSkillshot(0.6f, 150, 2000, false, SkillshotType.SkillshotCircle);
+            Q.SetSkillshot(0.25f, 285, 450, false, SkillshotType.SkillshotCircle);
+            Q2.SetSkillshot(0.25f, 150, 450, false, SkillshotType.SkillshotCircle);
+            //E.SetSkillshot(0.25f, 40, 1250, false, SkillshotType.SkillshotLine);
+            E.SetSkillshot(0.25f, 100, 1200, false, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -209,7 +212,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            if (GetValue<bool>(mode, "E") && E.CastOnBestTarget(0, PacketCast).IsCasted())
+            if (GetValue<bool>(mode, "E") && E.CastOnBestTarget(0, PacketCast, true).IsCasted())
             {
                 return;
             }
@@ -316,7 +319,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Flee", "E"))
             {
-                E.CastOnBestTarget(0, PacketCast);
+                E.CastOnBestTarget(0, PacketCast, true);
             }
         }
 
@@ -327,7 +330,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            E.CastOnBestTarget(0, PacketCast);
+            E.CastOnBestTarget(0, PacketCast, true);
         }
 
         private void KillSteal()

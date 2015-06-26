@@ -22,9 +22,11 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W, 520);
             E = new Spell(SpellSlot.E, 860, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 650);
-            Q.SetSkillshot(0.6f, 70, float.MaxValue, false, SkillshotType.SkillshotLine);
+            //Q.SetSkillshot(0.6f, 70, float.MaxValue, false, SkillshotType.SkillshotLine);
+            Q.SetSkillshot(0.25f, 70, 2000, false, SkillshotType.SkillshotLine);
             Q2.SetSkillshot(0.25f, 180, 1450, false, SkillshotType.SkillshotLine);
-            E.SetSkillshot(0.5f, 175, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            //E.SetSkillshot(0.5f, 175, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            E.SetSkillshot(0.25f, 175, float.MaxValue, false, SkillshotType.SkillshotCircle);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -36,7 +38,7 @@ namespace BrianSharp.Plugin
                     AddSlider(comboMenu, "WHpU", "-> If Player Hp Under", 40);
                     AddSlider(comboMenu, "WCountA", "-> Or Enemy Above", 2, 1, 5);
                     AddBool(comboMenu, "E", "Use E");
-                    AddBool(comboMenu, "EQ", "-> Save E For EQ");
+                    AddBool(comboMenu, "EQ", "-> Save E For EQ (Q Must On)");
                     AddBool(comboMenu, "R", "Use R");
                     AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 40);
                     AddSlider(comboMenu, "RCountA", "-> Or Enemy Above", 2, 1, 5);
@@ -193,14 +195,14 @@ namespace BrianSharp.Plugin
             {
                 var predE = E.GetPrediction(unit);
                 if (predE.Hitchance >= HitChance.High &&
-                    E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width), PacketCast) &&
-                    Q.Cast(predE.CastPosition, PacketCast))
+                    E.Cast(predE.UnitPosition.Extend(Player.ServerPosition, -E.Width / 2), PacketCast) &&
+                    Q.Cast(predE.UnitPosition, PacketCast))
                 {
                     return;
                 }
             }
             foreach (var flag in
-                Flag.Where(i => unit.Distance(i) <= 60 || Q2.WillHit(unit, i.ServerPosition)))
+                Flag.Where(i => Q2.WillHit(unit, i.ServerPosition)))
             {
                 Q.Cast(flag.ServerPosition, PacketCast);
             }
@@ -223,21 +225,21 @@ namespace BrianSharp.Plugin
         {
             if (mode == "Combo" && GetValue<bool>(mode, "E") && E.IsReady())
             {
-                if (GetValue<bool>(mode, "EQ") &&
+                if (GetValue<bool>(mode, "EQ") && GetValue<bool>(mode, "Q") &&
                     (Player.Mana < E.Instance.ManaCost + Q.Instance.ManaCost || (!Q.IsReady() && Q.IsReady(4000))))
                 {
                     return;
                 }
-                var target = E.GetTarget(E.Width / 2);
+                var target = E.GetTarget(GetValue<bool>(mode, "Q") && Q.IsReady() ? 0 : E.Width / 2);
                 if (target != null)
                 {
                     var predE = E.GetPrediction(target);
                     if (predE.Hitchance >= HitChance.High &&
-                        E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -E.Width), PacketCast))
+                        E.Cast(predE.UnitPosition.Extend(Player.ServerPosition, -E.Width / 2), PacketCast))
                     {
                         if (GetValue<bool>(mode, "Q") && Q.IsReady())
                         {
-                            Q.Cast(predE.CastPosition, PacketCast);
+                            Q.Cast(predE.UnitPosition, PacketCast);
                         }
                         return;
                     }
@@ -247,8 +249,8 @@ namespace BrianSharp.Plugin
             {
                 if (mode == "Combo")
                 {
-                    if (GetValue<bool>(mode, "E") && Player.Mana >= E.Instance.ManaCost + Q.Instance.ManaCost &&
-                        E.IsReady(2000))
+                    if (GetValue<bool>(mode, "E") && GetValue<bool>(mode, "EQ") &&
+                        Player.Mana >= E.Instance.ManaCost + Q.Instance.ManaCost && E.IsReady(2000))
                     {
                         return;
                     }
@@ -257,13 +259,12 @@ namespace BrianSharp.Plugin
                         Flag.Where(
                             i =>
                                 Player.Distance(i) <= GetValue<Slider>(mode, "QFlagRange").Value &&
-                                (target.Distance(i) <= 60 || Q2.WillHit(target, i.ServerPosition)))
-                            .Any(i => Q.Cast(i.ServerPosition, PacketCast)))
+                                Q2.WillHit(target, i.ServerPosition)).Any(i => Q.Cast(i.ServerPosition, PacketCast)))
                     {
                         return;
                     }
                 }
-                if (Q.CastOnBestTarget(0, PacketCast).IsCasted())
+                if (Q.CastOnBestTarget(0, PacketCast, true).IsCasted())
                 {
                     return;
                 }
@@ -334,10 +335,7 @@ namespace BrianSharp.Plugin
                      (!E.IsReady() || (E.IsReady() && E.GetCircularFarmLocation(minionObj).MinionsHit == 1))))
                 {
                     if (GetValue<bool>("Clear", "E") &&
-                        Flag.Where(
-                            i =>
-                                minionObj.Count(a => a.Distance(i) <= 60) > 1 ||
-                                minionObj.Count(a => Q2.WillHit(a, i.ServerPosition)) > 1)
+                        Flag.Where(i => minionObj.Count(a => Q2.WillHit(a, i.ServerPosition)) > 1)
                             .Any(i => Q.Cast(i.ServerPosition, PacketCast)))
                     {
                         return;
@@ -413,7 +411,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            Q.CastOnBestTarget(0, PacketCast);
+            Q.CastOnBestTarget(0, PacketCast, true);
         }
 
         private void KillSteal()

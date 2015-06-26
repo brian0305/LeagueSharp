@@ -17,12 +17,15 @@ namespace BrianSharp.Plugin
         public Lucian()
         {
             Q = new Spell(SpellSlot.Q, 675);
-            Q2 = new Spell(SpellSlot.Q, 1100);
+            //Q2 = new Spell(SpellSlot.Q, 1100);
+            Q2 = new Spell(SpellSlot.Q, 1140);
             W = new Spell(SpellSlot.W, 1000, TargetSelector.DamageType.Magical);
             E = new Spell(SpellSlot.E, 425);
             R = new Spell(SpellSlot.R, 1400);
-            Q2.SetSkillshot(0.5f, 65, float.MaxValue, true, SkillshotType.SkillshotLine);
-            W.SetSkillshot(0.25f, 25, 1600, true, SkillshotType.SkillshotLine); //Width: 55
+            //Q2.SetSkillshot(0.5f, 65, float.MaxValue, true, SkillshotType.SkillshotLine);
+            Q2.SetSkillshot(0.35f, 65, float.MaxValue, true, SkillshotType.SkillshotLine);
+            //W.SetSkillshot(0.25f, 25, 1600, true, SkillshotType.SkillshotLine); //Width: 55
+            W.SetSkillshot(0.3f, 25, 1600, true, SkillshotType.SkillshotLine);
             R.SetSkillshot(0.5f, 110, 2800, true, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");

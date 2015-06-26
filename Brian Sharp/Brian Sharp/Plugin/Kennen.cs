@@ -17,7 +17,8 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W, 900, TargetSelector.DamageType.Magical);
             E = new Spell(SpellSlot.E);
             R = new Spell(SpellSlot.R, 550, TargetSelector.DamageType.Magical);
-            Q.SetSkillshot(0.125f, 50, 1700, true, SkillshotType.SkillshotLine);
+            //Q.SetSkillshot(0.125f, 50, 1700, true, SkillshotType.SkillshotLine);
+            Q.SetSkillshot(0.18f, 50, 1700, true, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {

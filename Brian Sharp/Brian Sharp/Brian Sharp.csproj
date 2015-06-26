@@ -51,6 +51,9 @@
     <UseVSHostingProcess>false</UseVSHostingProcess>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="clipper_library">
+      <HintPath>E:\League Sharp\System\clipper_library.dll</HintPath>
+    </Reference>
     <Reference Include="LeagueSharp">
       <HintPath>E:\League Sharp\System\LeagueSharp.dll</HintPath>
     </Reference>
@@ -72,6 +75,14 @@
   <ItemGroup>
     <Compile Include="Common\Helper.cs" />
     <Compile Include="Common\Orbwalker.cs" />
+    <Compile Include="Evade\Collisions.cs" />
+    <Compile Include="Evade\Configs.cs" />
+    <Compile Include="Evade\EvadeSpellData.cs" />
+    <Compile Include="Evade\EvadeSpellDatabase.cs" />
+    <Compile Include="Evade\Skillshot.cs" />
+    <Compile Include="Evade\SkillshotDetector.cs" />
+    <Compile Include="Evade\SpellData.cs" />
+    <Compile Include="Evade\SpellDatabase.cs" />
     <Compile Include="Plugin\Aatrox.cs" />
     <Compile Include="Plugin\Amumu.cs" />
     <Compile Include="Plugin\DrMundo.cs" />

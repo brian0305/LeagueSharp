@@ -17,9 +17,11 @@ namespace BrianSharp.Plugin
         {
             Q = new Spell(SpellSlot.Q, 485, TargetSelector.DamageType.Magical);
             W = new Spell(SpellSlot.W);
-            E = new Spell(SpellSlot.E, 650, TargetSelector.DamageType.Magical);
+            //E = new Spell(SpellSlot.E, 650, TargetSelector.DamageType.Magical);
+            E = new Spell(SpellSlot.E, 700, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R);
-            E.SetSkillshot(0, 50, 1600, false, SkillshotType.SkillshotLine);
+            //E.SetSkillshot(0, 50, 1600, false, SkillshotType.SkillshotLine);
+            E.SetSkillshot(0, 75, 1250, false, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -181,7 +183,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            var predE = E.GetPrediction(gapcloser.Sender);
+            var predE = E.GetPrediction(gapcloser.Sender, true);
             if (predE.Hitchance >= HitChance.High)
             {
                 E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
@@ -195,7 +197,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            var predE = E.GetPrediction(unit);
+            var predE = E.GetPrediction(unit, true);
             if (predE.Hitchance >= HitChance.High)
             {
                 E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
@@ -210,7 +212,7 @@ namespace BrianSharp.Plugin
                 var target = E.GetTarget();
                 if (target != null)
                 {
-                    var predE = E.GetPrediction(target);
+                    var predE = E.GetPrediction(target, true);
                     if (predE.Hitchance >= HitChance.High &&
                         E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast))
                     {
@@ -307,7 +309,7 @@ namespace BrianSharp.Plugin
                 var target = E.GetTarget();
                 if (target != null && E.IsKillable(target))
                 {
-                    var predE = E.GetPrediction(target);
+                    var predE = E.GetPrediction(target, true);
                     if (predE.Hitchance >= HitChance.High)
                     {
                         E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
@@ -364,7 +366,7 @@ namespace BrianSharp.Plugin
                     .FirstOrDefault(i => i.IsAlly && !i.IsDead && i.Distance(Player) <= 850);
             if (target != null && tower != null && target.Distance(tower) <= 850)
             {
-                var predE = E.GetPrediction(target);
+                var predE = E.GetPrediction(target, true);
                 if (predE.Hitchance >= HitChance.High)
                 {
                     E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);

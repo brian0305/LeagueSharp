@@ -178,10 +178,12 @@ namespace BrianSharp.Plugin
                 case Orbwalker.Mode.Flee:
                     Flee();
                     break;
+                case Orbwalker.Mode.None:
+                    StackQ();
+                    break;
             }
             AutoQ();
             KillSteal();
-            StackQ();
         }
 
         private void OnDraw(EventArgs args)
@@ -693,7 +695,7 @@ namespace BrianSharp.Plugin
             {
                 var evadeMenu = new Menu("Evade", "Evade");
                 {
-					evadeMenu.AddItem(new MenuItem("Credit", "Credit: Evade#"));
+                    evadeMenu.AddItem(new MenuItem("Credit", "Credit: Evade#"));
                     var evadeSpells = new Menu("Spells", "Spells");
                     {
                         foreach (var spell in EvadeSpellDatabase.Spells)
@@ -745,10 +747,9 @@ namespace BrianSharp.Plugin
                 {
                     return;
                 }
-                var currentPath = Player.GetWaypoints();
                 var safeResult = IsSafe(Player.ServerPosition.To2D());
-                var safePath = IsSafePath(currentPath, 100);
-                if (!safePath.IsSafe && !safeResult.Safe)
+                var safePath = IsSafePath(Player.GetWaypoints(), 100);
+                if (!safePath.IsSafe || !safeResult.Safe)
                 {
                     TryToEvade(safeResult.SkillshotList, Game.CursorPos.To2D());
                 }
@@ -1064,7 +1065,8 @@ namespace BrianSharp.Plugin
                                 .Any(
                                     i =>
                                         Player.Spellbook.CastSpell(
-                                            evadeSpell.Slot, Player.ServerPosition.Extend(i.MissilePosition.To3D(), 100))))
+                                            evadeSpell.Slot,
+                                            Player.ServerPosition.Extend(i.GetMissilePosition(0).To3D(), 100))))
                         {
                             return;
                         }
@@ -1099,12 +1101,10 @@ namespace BrianSharp.Plugin
                         intersections.Add(sResult.Intersection);
                     }
                 }
-                if (isSafe)
-                {
-                    return new SafePathResult(true, intersection);
-                }
-                var sortedList = intersections.OrderBy(i => i.Distance).ToList();
-                return new SafePathResult(false, sortedList.Count > 0 ? sortedList[0] : intersection);
+                return isSafe
+                    ? new SafePathResult(true, intersection)
+                    : new SafePathResult(
+                        false, intersections.Count > 0 ? intersections.OrderBy(i => i.Distance).First() : intersection);
             }
 
             private struct IsSafeResult
@@ -1246,21 +1246,21 @@ namespace BrianSharp.Plugin
                     new SpellData
                     {
                         ChampionName = "Brand",
-                        SpellNames = new[] { "brandConflagrationMissile" },
+                        SpellNames = new[] { "brandconflagrationmissile" },
                         Slot = SpellSlot.E
                     });
                 Spells.Add(
                     new SpellData
                     {
                         ChampionName = "Brand",
-                        SpellNames = new[] { "brandWildfire", "brandWildfireMissile" },
+                        SpellNames = new[] { "brandwildfire", "brandwildfiremissile" },
                         Slot = SpellSlot.R
                     });
                 Spells.Add(
                     new SpellData
                     {
                         ChampionName = "Caitlyn",
-                        SpellNames = new[] { "caitlynAceintheHoleMissile" },
+                        SpellNames = new[] { "caitlynaceintheholemissile" },
                         Slot = SpellSlot.R
                     });
                 Spells.Add(

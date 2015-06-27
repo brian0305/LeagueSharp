@@ -67,7 +67,6 @@ namespace BrianSharp.Evade
         public Vector2 Direction;
         public Vector2 End;
         public bool ForceDisabled;
-        public Vector2 MissilePosition;
         public Geometry.Polygon Polygon;
         public Geometry.Polygon.Rectangle Rectangle;
         public Geometry.Polygon.Ring Ring;
@@ -88,7 +87,6 @@ namespace BrianSharp.Evade
             StartTick = startT;
             Start = start;
             End = end;
-            MissilePosition = start;
             Direction = (end - start).Normalized();
             Unit = unit;
             switch (spellData.Type)

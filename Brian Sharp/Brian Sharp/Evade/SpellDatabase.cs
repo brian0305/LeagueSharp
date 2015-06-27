@@ -277,7 +277,6 @@ namespace BrianSharp.Evade
                     MissileSpeed = 1000,
                     AddHitbox = true,
                     DangerValue = 2,
-                    MissileSpellName = "AzirQ",
                     CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
                 });
 
@@ -2059,7 +2058,7 @@ namespace BrianSharp.Evade
                     Slot = SpellSlot.Q,
                     Type = SkillShotType.SkillshotCircle,
                     Delay = 950,
-                    Range = 875,
+                    Range = 1625,
                     Radius = 150,
                     MissileSpeed = int.MaxValue,
                     AddHitbox = true,

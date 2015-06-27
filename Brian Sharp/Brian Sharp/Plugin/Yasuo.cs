@@ -634,14 +634,14 @@ namespace BrianSharp.Plugin
             {
                 dmgItem = Player.BaseAttackDamage * 2;
             }
-            var haveInfinity = ItemData.Infinity_Edge.GetItem().IsOwned();
+            var haveInfinity = LeagueSharp.Common.Data.ItemData.Infinity_Edge.GetItem().IsOwned();
             var maxCrit = Player.Crit >= 0.85f;
             var dmg = 20 * Q.Level + Player.TotalAttackDamage * (maxCrit ? (haveInfinity ? 1.875 : 1.5) : 1);
             if (!HaveQ3 || Player.IsDashing())
             {
                 dmg += dmgItem;
             }
-            if (ItemData.Blade_of_the_Ruined_King.GetItem().IsOwned())
+            if (LeagueSharp.Common.Data.ItemData.Blade_of_the_Ruined_King.GetItem().IsOwned())
             {
                 var dmgBotrk = Math.Max(0.08 * target.Health, 10);
                 if (target.IsValid<Obj_AI_Minion>())

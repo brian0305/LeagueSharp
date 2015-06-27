@@ -972,6 +972,7 @@ namespace BrianSharp.Evade
                     CanBeRemoved = true,
                     ForceRemove = true,
                     MissileSpellName = "GnarQMissileReturn",
+					DisabledByDefault = true,
                     CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
                 });
             Spells.Add(
@@ -2058,8 +2059,8 @@ namespace BrianSharp.Evade
                     Slot = SpellSlot.Q,
                     Type = SkillShotType.SkillshotCircle,
                     Delay = 950,
-                    Range = 1625,
-                    Radius = 150,
+                    Range = 875,
+                    Radius = 200,
                     MissileSpeed = int.MaxValue,
                     AddHitbox = true,
                     DangerValue = 3,

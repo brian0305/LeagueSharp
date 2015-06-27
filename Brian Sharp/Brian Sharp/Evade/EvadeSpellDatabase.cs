@@ -16,7 +16,7 @@ namespace BrianSharp.Evade
             Spells.Add(
                 new EvadeSpellData
                 {
-                    Name = "Yasuo E",
+                    Name = "YasuoDashWrapper",
                     DangerLevel = 2,
                     Slot = SpellSlot.E,
                     EvadeType = EvadeTypes.Dash,
@@ -30,7 +30,7 @@ namespace BrianSharp.Evade
             Spells.Add(
                 new EvadeSpellData
                 {
-                    Name = "Yasuo W",
+                    Name = "YasuoWMovingWall",
                     DangerLevel = 3,
                     Slot = SpellSlot.W,
                     EvadeType = EvadeTypes.WindWall,

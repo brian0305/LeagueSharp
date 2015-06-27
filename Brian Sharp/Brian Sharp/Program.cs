@@ -4,7 +4,7 @@ using System.Reflection.Emit;
 using BrianSharp.Common;
 using LeagueSharp;
 using LeagueSharp.Common;
-using LeagueSharp.Common.Data;
+using ItemData = LeagueSharp.Common.Data.ItemData;
 using Orbwalk = BrianSharp.Common.Orbwalker;
 
 namespace BrianSharp

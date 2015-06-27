@@ -5,10 +5,10 @@ using BrianSharp.Common;
 using BrianSharp.Evade;
 using LeagueSharp;
 using LeagueSharp.Common;
-using LeagueSharp.Common.Data;
 using SharpDX;
 using Color = System.Drawing.Color;
 using Orbwalk = BrianSharp.Common.Orbwalker;
+using ItemData=LeagueSharp.Common.Data.ItemData;
 
 namespace BrianSharp.Plugin
 {
@@ -700,7 +700,7 @@ namespace BrianSharp.Plugin
                     {
                         foreach (var spell in EvadeSpellDatabase.Spells)
                         {
-                            var sub = new Menu(spell.Name, "ES_" + spell.Name);
+                            var sub = new Menu(spell.Name + " (" + spell.Slot + ")", "ES_" + spell.Name);
                             {
                                 AddSlider(sub, "DangerLevel", "Danger Level", spell.DangerLevel, 1, 5);
                                 AddBool(sub, "Enabled", "Enabled", false);
@@ -717,7 +717,7 @@ namespace BrianSharp.Plugin
                     foreach (var spell in
                         SpellDatabase.Spells.Where(i => HeroManager.Enemies.Any(a => a.ChampionName == i.ChampionName)))
                     {
-                        var sub = new Menu(spell.SpellName, "SS_" + spell.MenuItemName);
+                        var sub = new Menu(spell.SpellName + " (" + spell.Slot + ")", "SS_" + spell.MenuItemName);
                         {
                             AddSlider(sub, "DangerLevel", "Danger Level", spell.DangerValue, 1, 5);
                             AddBool(sub, "Enabled", "Enabled", !spell.DisabledByDefault);

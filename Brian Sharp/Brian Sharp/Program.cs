@@ -54,14 +54,14 @@ namespace BrianSharp
             NewInstance(plugin);
             Helper.AddBool(
                 MainMenu.SubMenu(Player.ChampionName + "_Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");
-            Tiamat = ItemData.Tiamat_Melee_Only.GetItem();
-            Hydra = ItemData.Ravenous_Hydra_Melee_Only.GetItem();
-            Youmuu = ItemData.Youmuus_Ghostblade.GetItem();
-            Zhonya = ItemData.Zhonyas_Hourglass.GetItem();
-            Seraph = ItemData.Seraphs_Embrace.GetItem();
-            Sheen = ItemData.Sheen.GetItem();
-            Iceborn = ItemData.Iceborn_Gauntlet.GetItem();
-            Trinity = ItemData.Trinity_Force.GetItem();
+            Tiamat = LeagueSharp.Common.Data.ItemData.Tiamat_Melee_Only.GetItem();
+            Hydra = LeagueSharp.Common.Data.ItemData.Ravenous_Hydra_Melee_Only.GetItem();
+            Youmuu = LeagueSharp.Common.Data.ItemData.Youmuus_Ghostblade.GetItem();
+            Zhonya = LeagueSharp.Common.Data.ItemData.Zhonyas_Hourglass.GetItem();
+            Seraph = LeagueSharp.Common.Data.ItemData.Seraphs_Embrace.GetItem();
+            Sheen = LeagueSharp.Common.Data.ItemData.Sheen.GetItem();
+            Iceborn = LeagueSharp.Common.Data.ItemData.Iceborn_Gauntlet.GetItem();
+            Trinity = LeagueSharp.Common.Data.ItemData.Trinity_Force.GetItem();
             Flash = Player.GetSpellSlot("summonerflash");
             foreach (var spell in
                 Player.Spellbook.Spells.Where(

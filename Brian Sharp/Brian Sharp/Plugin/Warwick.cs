@@ -80,7 +80,7 @@ namespace BrianSharp.Plugin
             Orbwalk.OnAttack += OnAttack;
         }
 
-        private void OnUpdate(EventArgs args)
+        private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
@@ -110,7 +110,7 @@ namespace BrianSharp.Plugin
             AutoRUnderTower();
         }
 
-        private void OnDraw(EventArgs args)
+        private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -126,7 +126,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnAttack(AttackableUnit target)
+        private static void OnAttack(AttackableUnit target)
         {
             if (!W.IsReady())
             {
@@ -140,7 +140,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Fight(string mode)
+        private static void Fight(string mode)
         {
             if (GetValue<bool>(mode, "Q") && Q.CastOnBestTarget(0, PacketCast).IsCasted())
             {
@@ -174,7 +174,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Clear()
+        private static void Clear()
         {
             SmiteMob();
             if (!GetValue<bool>("Clear", "Q") || !Q.IsReady())
@@ -192,7 +192,7 @@ namespace BrianSharp.Plugin
             Q.CastOnUnit(obj, PacketCast);
         }
 
-        private void LastHit()
+        private static void LastHit()
         {
             if (!GetValue<bool>("LastHit", "Q") || !Q.IsReady())
             {
@@ -209,7 +209,7 @@ namespace BrianSharp.Plugin
             Q.CastOnUnit(obj, PacketCast);
         }
 
-        private void AutoQ()
+        private static void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
                 Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value)
@@ -219,7 +219,7 @@ namespace BrianSharp.Plugin
             Q.CastOnBestTarget(0, PacketCast);
         }
 
-        private void KillSteal()
+        private static void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
@@ -256,7 +256,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void AutoRUnderTower()
+        private static void AutoRUnderTower()
         {
             if (!GetValue<bool>("Misc", "RTower") || !R.IsReady())
             {

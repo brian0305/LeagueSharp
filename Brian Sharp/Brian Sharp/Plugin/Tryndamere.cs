@@ -72,7 +72,7 @@ namespace BrianSharp.Plugin
             AttackableUnit.OnDamage += OnDamage;
         }
 
-        private void OnUpdate(EventArgs args)
+        private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
@@ -103,7 +103,7 @@ namespace BrianSharp.Plugin
             KillSteal();
         }
 
-        private void OnDraw(EventArgs args)
+        private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -119,7 +119,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnDamage(AttackableUnit sender, AttackableUnitDamageEventArgs args)
+        private static void OnDamage(AttackableUnit sender, AttackableUnitDamageEventArgs args)
         {
             if (args.TargetNetworkId != Player.NetworkId || Orbwalk.CurrentMode != Orbwalker.Mode.Combo)
             {
@@ -136,7 +136,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Fight(string mode)
+        private static void Fight(string mode)
         {
             if (mode == "Combo" && GetValue<bool>(mode, "W") && W.IsReady() && !Player.IsDashing())
             {
@@ -182,7 +182,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Clear()
+        private static void Clear()
         {
             SmiteMob();
             var minionObj = MinionManager.GetMinions(
@@ -212,7 +212,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void KillSteal()
+        private static void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {

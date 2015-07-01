@@ -119,7 +119,7 @@ namespace BrianSharp.Plugin
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
         }
 
-        private void OnUpdate(EventArgs args)
+        private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
@@ -153,7 +153,7 @@ namespace BrianSharp.Plugin
             AutoWUnderTower();
         }
 
-        private void OnDraw(EventArgs args)
+        private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -177,7 +177,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
+        private static void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
             if (Player.IsDead || !GetValue<bool>("AntiGap", "Q") ||
                 !GetValue<bool>("AntiGap", gapcloser.Sender.ChampionName + "_" + gapcloser.Slot) ||
@@ -196,7 +196,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
+        private static void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
         {
             if (Player.IsDead || !GetValue<bool>("Interrupt", "Q") ||
                 !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !Q.IsReady())
@@ -214,7 +214,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Fight(string mode)
+        private static void Fight(string mode)
         {
             if (mode == "Combo" && GetValue<bool>(mode, "R") && R.IsReady())
             {
@@ -282,7 +282,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Clear()
+        private static void Clear()
         {
             SmiteMob();
             var minionObj = MinionManager.GetMinions(
@@ -322,7 +322,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Flee()
+        private static void Flee()
         {
             if (GetValue<bool>("Flee", "W") && W.IsReady())
             {
@@ -346,7 +346,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void AutoQ()
+        private static void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
                 Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value)
@@ -356,7 +356,7 @@ namespace BrianSharp.Plugin
             Q.CastOnBestTarget(0, PacketCast, true);
         }
 
-        private void KillSteal()
+        private static void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
@@ -394,7 +394,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void AutoWUnderTower()
+        private static void AutoWUnderTower()
         {
             if (!GetValue<bool>("Misc", "WTower") || !W.IsReady())
             {
@@ -410,7 +410,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private double GetRDmg(Obj_AI_Hero target)
+        private static double GetRDmg(Obj_AI_Hero target)
         {
             return Player.CalcDamage(
                 target, Damage.DamageType.Magical,

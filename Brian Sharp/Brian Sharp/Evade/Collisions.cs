@@ -167,8 +167,7 @@ namespace BrianSharp.Evade
                         {
                             break;
                         }
-                        var level = wall.Name.Substring(wall.Name.Length - 6, 1);
-                        var wallWidth = 300 + 50 * Convert.ToInt32(level);
+                        var wallWidth = 300 + 50 * Convert.ToInt32(wall.Name.Substring(wall.Name.Length - 6, 1));
                         var wallDirection = (wall.Position.To2D() - _wallCastedPos).Normalized().Perpendicular();
                         var subWallWidth = wallWidth / 2;
                         var wallStart = wall.Position.To2D() + subWallWidth * wallDirection;

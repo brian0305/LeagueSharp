@@ -10,8 +10,8 @@ namespace BrianSharp.Plugin
 {
     internal class Shen : Helper
     {
-        private Obj_AI_Hero _alertAlly;
-        private bool _alertCasted;
+        private static Obj_AI_Hero _alertAlly;
+        private static bool _alertCasted;
 
         public Shen()
         {
@@ -126,7 +126,7 @@ namespace BrianSharp.Plugin
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
         }
 
-        private void OnUpdate(EventArgs args)
+        private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
@@ -175,7 +175,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
+        private static void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
             if (Player.IsDead || !GetValue<bool>("AntiGap", "E") ||
                 !GetValue<bool>("AntiGap", gapcloser.Sender.ChampionName + "_" + gapcloser.Slot) ||
@@ -190,7 +190,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
+        private static void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
         {
             if (Player.IsDead || !GetValue<bool>("Interrupt", "Q") ||
                 !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !E.CanCast(unit))
@@ -204,7 +204,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Fight(string mode)
+        private static void Fight(string mode)
         {
             if (GetValue<bool>(mode, "E") &&
                 (mode == "Combo" || Player.HealthPercent >= GetValue<Slider>(mode, "EHpA").Value))
@@ -235,7 +235,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Clear()
+        private static void Clear()
         {
             var minionObj = MinionManager.GetMinions(
                 Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
@@ -259,7 +259,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void LastHit()
+        private static void LastHit()
         {
             if (!GetValue<bool>("LastHit", "Q") || !Q.IsReady())
             {
@@ -276,7 +276,7 @@ namespace BrianSharp.Plugin
             Q.CastOnUnit(obj, PacketCast);
         }
 
-        private void AutoQ()
+        private static void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
                 Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value)
@@ -286,7 +286,7 @@ namespace BrianSharp.Plugin
             Q.CastOnBestTarget(0, PacketCast);
         }
 
-        private void KillSteal()
+        private static void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
@@ -318,7 +318,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void UltimateAlert()
+        private static void UltimateAlert()
         {
             if (!GetValue<bool>("Ultimate", "Alert") || !R.IsReady())
             {
@@ -354,7 +354,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void AutoEUnderTower()
+        private static void AutoEUnderTower()
         {
             if (!GetValue<bool>("Misc", "ETower") || !E.IsReady())
             {

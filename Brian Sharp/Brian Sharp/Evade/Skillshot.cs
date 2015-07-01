@@ -120,43 +120,44 @@ namespace BrianSharp.Evade
             {
                 return _collisionEnd.IsValid()
                     ? _collisionEnd
-                    : (IsGlobal
-                        ? GlobalGetMissilePosition(0) +
+                    : (SpellData.RawRange == 20000
+                        ? GetGlobalMissilePosition(0) +
                           Direction * SpellData.MissileSpeed *
                           (0.5f + SpellData.Radius * 2 / ObjectManager.Player.MoveSpeed)
                         : End);
             }
         }
 
-        private bool IsGlobal
-        {
-            get { return SpellData.RawRange == 20000; }
-        }
-
         public Obj_AI_Base Unit { get; set; }
 
-        public bool IsActive()
+        public bool IsActive
         {
-            return SpellData.MissileAccel != 0
-                ? Utils.GameTimeTickCount <= StartTick + 5000
-                : Utils.GameTimeTickCount <=
-                  StartTick + SpellData.Delay + SpellData.ExtraDuration +
-                  1000 * (Start.Distance(End) / SpellData.MissileSpeed);
+            get
+            {
+                return SpellData.MissileAccel != 0
+                    ? Utils.GameTimeTickCount <= StartTick + 5000
+                    : Utils.GameTimeTickCount <=
+                      StartTick + SpellData.Delay + SpellData.ExtraDuration +
+                      1000 * (Start.Distance(End) / SpellData.MissileSpeed);
+            }
         }
 
-        public bool Evade()
+        public bool Evade
         {
-            if (ForceDisabled)
+            get
             {
-                return false;
-            }
-            if (Utils.GameTimeTickCount - _cachedValueTick < 100)
-            {
+                if (ForceDisabled)
+                {
+                    return false;
+                }
+                if (Utils.GameTimeTickCount - _cachedValueTick < 100)
+                {
+                    return _cachedValue;
+                }
+                _cachedValue = Helper.GetValue<bool>("ESS_" + SpellData.MenuItemName, "Enabled");
+                _cachedValueTick = Utils.GameTimeTickCount;
                 return _cachedValue;
             }
-            _cachedValue = Helper.GetValue<bool>("SS_" + SpellData.MenuItemName, "Enabled");
-            _cachedValueTick = Utils.GameTimeTickCount;
-            return _cachedValue;
         }
 
         public void OnUpdate()
@@ -234,7 +235,7 @@ namespace BrianSharp.Evade
             }
         }
 
-        private Vector2 GlobalGetMissilePosition(int time)
+        private Vector2 GetGlobalMissilePosition(int time)
         {
             var t = Math.Max(0, Utils.GameTimeTickCount + time - StartTick - SpellData.Delay);
             var sub = t * SpellData.MissileSpeed / 1000;
@@ -306,7 +307,7 @@ namespace BrianSharp.Evade
             if (SpellData.Type == SkillShotType.SkillshotMissileLine ||
                 SpellData.Type == SkillShotType.SkillshotMissileCone)
             {
-                if (IsSafe(ObjectManager.Player.ServerPosition.To2D()))
+                if (IsSafePoint(ObjectManager.Player.ServerPosition.To2D()))
                 {
                     if (allIntersections.Count == 0)
                     {
@@ -351,7 +352,7 @@ namespace BrianSharp.Evade
                     }
                 }
             }
-            if (IsSafe(ObjectManager.Player.ServerPosition.To2D()))
+            if (IsSafePoint(ObjectManager.Player.ServerPosition.To2D()))
             {
                 if (allIntersections.Count == 0)
                 {
@@ -370,28 +371,30 @@ namespace BrianSharp.Evade
                                 (int) (1000 * Start.Distance(End) / SpellData.MissileSpeed) -
                                 (Utils.GameTimeTickCount - StartTick);
             var myPositionWhenExplodes = path.PositionAfter(timeToExplode, speed, delay);
-            return !IsSafe(myPositionWhenExplodes)
+            return !IsSafePoint(myPositionWhenExplodes)
                 ? new SafePathResult(false, allIntersections[0])
-                : new SafePathResult(IsSafe(path.PositionAfter(timeToExplode, speed, timeOffset)), allIntersections[0]);
+                : new SafePathResult(
+                    IsSafePoint(path.PositionAfter(timeToExplode, speed, timeOffset)), allIntersections[0]);
         }
 
-        public bool IsSafe(Vector2 point)
+        public bool IsSafePoint(Vector2 point)
         {
             return Polygon.IsOutside(point);
         }
 
         public bool IsAboutToHit(int time, Obj_AI_Base unit)
         {
-            if (SpellData.Type == SkillShotType.SkillshotMissileLine)
+            if (SpellData.Type != SkillShotType.SkillshotMissileLine)
             {
-                var missilePos = GetMissilePosition(0);
-                var missilePosAfterT = GetMissilePosition(time);
-                return unit.ServerPosition.To2D().Distance(missilePos, missilePosAfterT, true) < SpellData.Radius;
+                return !IsSafePoint(unit.ServerPosition.To2D()) &&
+                       SpellData.ExtraDuration + SpellData.Delay +
+                       (int) (1000 * Start.Distance(End) / SpellData.MissileSpeed) -
+                       (Utils.GameTimeTickCount - StartTick) <= time;
             }
-            return !IsSafe(unit.ServerPosition.To2D()) &&
-                   SpellData.ExtraDuration + SpellData.Delay +
-                   (int) ((1000 * Start.Distance(End)) / SpellData.MissileSpeed) - (Utils.GameTimeTickCount - StartTick) <=
-                   time;
+            var missilePos = GetMissilePosition(0);
+            var missilePosAfterT = GetMissilePosition(time);
+            var project = unit.ServerPosition.To2D().ProjectOn(missilePos, missilePosAfterT);
+            return project.IsOnSegment && unit.Distance(project.SegmentPoint) < SpellData.Radius;
         }
     }
 }

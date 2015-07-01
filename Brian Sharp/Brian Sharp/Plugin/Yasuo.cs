@@ -1,30 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using BrianSharp.Common;
 using BrianSharp.Evade;
 using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 using Color = System.Drawing.Color;
+using ItemData = LeagueSharp.Common.Data.ItemData;
 using Orbwalk = BrianSharp.Common.Orbwalker;
-using ItemData=LeagueSharp.Common.Data.ItemData;
 
 namespace BrianSharp.Plugin
 {
     internal class Yasuo : Helper
     {
-        private const int QCirWidth = 300, RWidth = 400;
+        private const int QCirWidth = 300, QCirWidthMin = 250, RWidth = 400;
 
         public Yasuo()
         {
-            Q = new Spell(SpellSlot.Q, 500);
-            Q2 = new Spell(SpellSlot.Q, 1100);
+            Q = new Spell(SpellSlot.Q, 510);
+            Q2 = new Spell(SpellSlot.Q, 1150);
             W = new Spell(SpellSlot.W, 400);
             E = new Spell(SpellSlot.E, 475, TargetSelector.DamageType.Magical);
-            R = new Spell(SpellSlot.R, 1200);
-            Q.SetSkillshot(GetQDelay, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
-            Q2.SetSkillshot(GetQ2Delay, 90, 1500, false, SkillshotType.SkillshotLine);
+            R = new Spell(SpellSlot.R, 1300);
+            Q.SetSkillshot(0.4f, 55, float.MaxValue, false, SkillshotType.SkillshotLine);
+            Q2.SetSkillshot(0.5f, 90, 1500, false, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -32,7 +33,7 @@ namespace BrianSharp.Plugin
                 {
                     AddBool(comboMenu, "Q", "Use Q");
                     AddBool(comboMenu, "E", "Use E");
-                    AddBool(comboMenu, "EDmg", "-> Deal Damage (Q Must On)");
+                    AddBool(comboMenu, "EDmg", "-> Q3 Circle (Q Must On)");
                     AddBool(comboMenu, "EGap", "-> Gap Closer");
                     AddSlider(comboMenu, "EGapRange", "-> If Enemy Not In", 300, 1, 475);
                     AddBool(comboMenu, "EGapTower", "-> Under Tower", false);
@@ -66,7 +67,7 @@ namespace BrianSharp.Plugin
                 var lastHitMenu = new Menu("Last Hit", "LastHit");
                 {
                     AddBool(lastHitMenu, "Q", "Use Q");
-                    AddBool(lastHitMenu, "Q3", "-> Use Q3");
+                    AddBool(lastHitMenu, "Q3", "-> Use Q3", false);
                     AddBool(lastHitMenu, "E", "Use E");
                     AddBool(lastHitMenu, "ETower", "-> Under Tower", false);
                     champMenu.AddSubMenu(lastHitMenu);
@@ -81,8 +82,8 @@ namespace BrianSharp.Plugin
                 {
                     if (HeroManager.Enemies.Any())
                     {
-                        new Evade(miscMenu);
-                        new Target(miscMenu);
+                        EvadeSkillshot.Init(miscMenu);
+                        EvadeTarget.Init(miscMenu);
                     }
                     var killStealMenu = new Menu("Kill Steal", "KillSteal");
                     {
@@ -123,40 +124,25 @@ namespace BrianSharp.Plugin
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
         }
 
-        private float GetQDelay
-        {
-            get { return 0.4f * (1 - Math.Min((Player.AttackSpeedMod - 1) * 0.58f, 0.66f)); }
-        }
-
-        private float GetQ2Delay
-        {
-            get { return 0.5f * (1 - Math.Min((Player.AttackSpeedMod - 1) * 0.58f, 0.66f)); }
-        }
-
-        private bool HaveQ3
+        private static bool HaveQ3
         {
             get { return Player.HasBuff("YasuoQ3W"); }
         }
 
-        private Obj_AI_Hero QCirTarget
+        private static Obj_AI_Hero QCirTarget
         {
             get
             {
                 var pos = Player.GetDashInfo().EndPos.To3D();
                 var target = TargetSelector.GetTarget(QCirWidth, TargetSelector.DamageType.Physical, true, null, pos);
-                return target != null && Player.Distance(target) < QCirWidth && Player.Distance(pos) < 150
+                return target != null && Player.Distance(target) < QCirWidth && Player.Distance(pos) < 100
                     ? target
                     : null;
             }
         }
 
-        private void OnUpdate(EventArgs args)
+        private static void OnUpdate(EventArgs args)
         {
-            if (!Equals(Q.Delay, GetQDelay))
-            {
-                Q.Delay = GetQDelay;
-                Q2.Delay = GetQ2Delay;
-            }
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
                 return;
@@ -178,15 +164,13 @@ namespace BrianSharp.Plugin
                 case Orbwalker.Mode.Flee:
                     Flee();
                     break;
-                case Orbwalker.Mode.None:
-                    StackQ();
-                    break;
             }
             AutoQ();
             KillSteal();
+			StackQ();
         }
 
-        private void OnDraw(EventArgs args)
+        private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -213,7 +197,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
+        private static void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
         {
             if (Player.IsDead || !GetValue<bool>("Interrupt", "Q") ||
                 !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !HaveQ3)
@@ -222,12 +206,12 @@ namespace BrianSharp.Plugin
             }
             if (E.IsReady() && Q.IsReady(50))
             {
-                if (E.IsInRange(unit) && CanCastE(unit) && unit.Distance(PosAfterE(unit)) < QCirWidth &&
+                if (E.IsInRange(unit) && CanCastE(unit) && unit.Distance(PosAfterE(unit)) < QCirWidthMin &&
                     E.CastOnUnit(unit, PacketCast))
                 {
                     return;
                 }
-                if (E.IsInRange(unit, E.Range + QCirWidth))
+                if (E.IsInRange(unit, E.Range + QCirWidthMin))
                 {
                     var obj = GetNearObj(unit, true);
                     if (obj != null && E.CastOnUnit(obj, PacketCast))
@@ -243,7 +227,7 @@ namespace BrianSharp.Plugin
             if (Player.IsDashing())
             {
                 var pos = Player.GetDashInfo().EndPos;
-                if (Player.Distance(pos) < 40 && unit.Distance(pos) < QCirWidth)
+                if (Player.Distance(pos) < 80 && unit.Distance(pos) < QCirWidth)
                 {
                     CastQCir(unit);
                 }
@@ -254,7 +238,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Fight(string mode)
+        private static void Fight(string mode)
         {
             if (mode == "Combo")
             {
@@ -283,7 +267,7 @@ namespace BrianSharp.Plugin
                 }
                 if (GetValue<bool>(mode, "E") && E.IsReady())
                 {
-                    if (GetValue<bool>(mode, "EDmg") && GetValue<bool>(mode, "Q") && Q.IsReady(50))
+                    if (GetValue<bool>(mode, "EDmg") && GetValue<bool>(mode, "Q") && HaveQ3 && Q.IsReady(50))
                     {
                         var target = Q.GetTarget();
                         if (target != null)
@@ -337,7 +321,8 @@ namespace BrianSharp.Plugin
                             {
                                 return;
                             }
-                            if ((!HaveQ3 ? Q : Q2).Cast(target, PacketCast, true).IsCasted())
+                            if ((!Orbwalk.InAutoAttackRange(target) || !Orbwalk.CanAttack) &&
+                                (!HaveQ3 ? Q : Q2).Cast(target, PacketCast, true).IsCasted())
                             {
                                 return;
                             }
@@ -360,7 +345,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Clear()
+        private static void Clear()
         {
             if (GetValue<bool>("Clear", "E") && E.IsReady())
             {
@@ -380,7 +365,7 @@ namespace BrianSharp.Plugin
                                 MinionManager.GetMinions(PosAfterE(i), QCirWidth, MinionTypes.All, MinionTeam.NotAlly)
                             where
                                 i.Team == GameObjectTeam.Neutral ||
-                                (i.Distance(PosAfterE(i)) < QCirWidth && CanKill(i, GetEDmg(i) + GetQDmg(i))) ||
+                                (i.Distance(PosAfterE(i)) < QCirWidthMin && CanKill(i, GetEDmg(i) + GetQDmg(i))) ||
                                 sub.Cast<Obj_AI_Minion>().Any(a => CanKill(a, GetQDmg(a))) || sub.Count > 1
                             select i).MaxOrDefault(
                                 i =>
@@ -402,7 +387,8 @@ namespace BrianSharp.Plugin
                     if (
                         (minionObj.Cast<Obj_AI_Minion>()
                             .Any(i => CanKill(i, GetQDmg(i)) || i.Team == GameObjectTeam.Neutral) || minionObj.Count > 1) &&
-                        Player.Distance(Player.GetDashInfo().EndPos) < 50 && CastQCir(minionObj.First()))
+                        Player.Distance(Player.GetDashInfo().EndPos) < 80 &&
+                        CastQCir(minionObj.MinOrDefault(i => i.Distance(Player))))
                     {
                         return;
                     }
@@ -449,7 +435,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void LastHit()
+        private static void LastHit()
         {
             if (GetValue<bool>("LastHit", "Q") && Q.IsReady() && !Player.IsDashing() &&
                 (!HaveQ3 || GetValue<bool>("LastHit", "Q3")))
@@ -482,7 +468,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Flee()
+        private static void Flee()
         {
             if (!GetValue<bool>("Flee", "E"))
             {
@@ -494,14 +480,12 @@ namespace BrianSharp.Plugin
                 {
                     return;
                 }
-                if (Player.Distance(Player.GetDashInfo().EndPos) < 100)
+                var minionObj = MinionManager.GetMinions(
+                    Player.GetDashInfo().EndPos.To3D(), QCirWidth, MinionTypes.All, MinionTeam.NotAlly);
+                if (minionObj.Any() && Player.Distance(Player.GetDashInfo().EndPos) < 80 &&
+                    CastQCir(minionObj.MinOrDefault(i => i.Distance(Player))))
                 {
-                    var minionObj = MinionManager.GetMinions(
-                        Player.GetDashInfo().EndPos.To3D(), QCirWidth, MinionTypes.All, MinionTeam.NotAlly);
-                    if (minionObj.Any() && CastQCir(minionObj.First()))
-                    {
-                        return;
-                    }
+                    return;
                 }
             }
             var obj = GetNearObj();
@@ -512,7 +496,7 @@ namespace BrianSharp.Plugin
             E.CastOnUnit(obj, PacketCast);
         }
 
-        private void AutoQ()
+        private static void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active || Player.IsDashing() ||
                 (HaveQ3 && !GetValue<bool>("Harass", "AutoQ3")) ||
@@ -523,7 +507,7 @@ namespace BrianSharp.Plugin
             (!HaveQ3 ? Q : Q2).CastOnBestTarget(0, PacketCast, true);
         }
 
-        private void KillSteal()
+        private static void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
@@ -574,7 +558,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void StackQ()
+        private static void StackQ()
         {
             if (!GetValue<KeyBind>("Misc", "StackQ").Active || !Q.IsReady() || Player.IsDashing() || HaveQ3)
             {
@@ -602,28 +586,29 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private bool CastQCir(Obj_AI_Base target)
+        private static bool CastQCir(Obj_AI_Base target)
         {
-            return Q.Cast((!HaveQ3 ? Q : Q2).GetPrediction(target).CastPosition, PacketCast);
+            return target.IsValidTarget(QCirWidthMin) &&
+                   Q.Cast((!HaveQ3 ? Q : Q2).GetPrediction(target).CastPosition, PacketCast);
         }
 
-        private bool CanCastE(Obj_AI_Base target)
+        private static bool CanCastE(Obj_AI_Base target)
         {
             return !target.HasBuff("YasuoDashWrapper");
         }
 
-        private bool CanCastR(Obj_AI_Hero target)
+        private static bool CanCastR(Obj_AI_Hero target)
         {
             return target.HasBuffOfType(BuffType.Knockup) || target.HasBuffOfType(BuffType.Knockback);
         }
 
-        private float TimeLeftR(Obj_AI_Hero target)
+        private static float TimeLeftR(Obj_AI_Hero target)
         {
             var buff = target.Buffs.FirstOrDefault(i => i.Type == BuffType.Knockup || i.Type == BuffType.Knockback);
             return buff != null ? buff.EndTime - Game.Time : -1;
         }
 
-        public double GetQDmg(Obj_AI_Base target)
+        private static double GetQDmg(Obj_AI_Base target)
         {
             var dmgItem = 0d;
             if (Sheen.IsOwned() && (Sheen.IsReady() || Player.HasBuff("Sheen")))
@@ -634,14 +619,14 @@ namespace BrianSharp.Plugin
             {
                 dmgItem = Player.BaseAttackDamage * 2;
             }
-            var haveInfinity = LeagueSharp.Common.Data.ItemData.Infinity_Edge.GetItem().IsOwned();
+            var haveInfinity = ItemData.Infinity_Edge.GetItem().IsOwned();
             var maxCrit = Player.Crit >= 0.85f;
             var dmg = 20 * Q.Level + Player.TotalAttackDamage * (maxCrit ? (haveInfinity ? 1.875 : 1.5) : 1);
             if (!HaveQ3 || Player.IsDashing())
             {
                 dmg += dmgItem;
             }
-            if (LeagueSharp.Common.Data.ItemData.Blade_of_the_Ruined_King.GetItem().IsOwned())
+            if (ItemData.Blade_of_the_Ruined_King.GetItem().IsOwned())
             {
                 var dmgBotrk = Math.Max(0.08 * target.Health, 10);
                 if (target.IsValid<Obj_AI_Minion>())
@@ -657,7 +642,7 @@ namespace BrianSharp.Plugin
                        : 0);
         }
 
-        private double GetEDmg(Obj_AI_Base target)
+        private static double GetEDmg(Obj_AI_Base target)
         {
             return Player.CalcDamage(
                 target, Damage.DamageType.Magical,
@@ -665,42 +650,45 @@ namespace BrianSharp.Plugin
                 0.6 * Player.FlatMagicDamageMod);
         }
 
-        private Obj_AI_Base GetNearObj(Obj_AI_Base target = null, bool inQCir = false)
+        private static Obj_AI_Base GetNearObj(Obj_AI_Base target = null, bool inQCir = false)
         {
             var pos = target != null ? Prediction.GetPrediction(target, 0.25f).UnitPosition : Game.CursorPos;
             var obj = new List<Obj_AI_Base>();
             obj.AddRange(MinionManager.GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly));
             obj.AddRange(HeroManager.Enemies.Where(i => i.IsValidTarget(E.Range)));
             return
-                obj.Where(i => CanCastE(i) && pos.Distance(PosAfterE(i)) < (inQCir ? QCirWidth : Player.Distance(pos)))
+                obj.Where(
+                    i =>
+                        CanCastE(i) && pos.Distance(PosAfterE(i)) < (inQCir ? QCirWidthMin : Player.Distance(pos)) &&
+                        EvadeSkillshot.IsSafePoint(PosAfterE(i).To2D()).IsSafe)
                     .MinOrDefault(i => pos.Distance(PosAfterE(i)));
         }
 
-        private Vector3 PosAfterE(Obj_AI_Base target)
+        private static Vector3 PosAfterE(Obj_AI_Base target)
         {
             return Player.ServerPosition.Extend(
                 target.ServerPosition, Player.Distance(target) < 410 ? E.Range : Player.Distance(target) + 65);
         }
 
-        private bool UnderTower(Vector3 pos)
+        private static bool UnderTower(Vector3 pos)
         {
             return
                 ObjectManager.Get<Obj_AI_Turret>()
                     .Any(i => i.IsEnemy && !i.IsDead && i.Distance(pos) < 850 + Player.BoundingRadius);
         }
 
-        private class Evade
+        protected class EvadeSkillshot
         {
-            public Evade(Menu menu)
+            public static void Init(Menu menu)
             {
-                var evadeMenu = new Menu("Evade", "Evade");
+                var evadeMenu = new Menu("Evade Skillshot", "EvadeSkillshot");
                 {
                     evadeMenu.AddItem(new MenuItem("Credit", "Credit: Evade#"));
                     var evadeSpells = new Menu("Spells", "Spells");
                     {
                         foreach (var spell in EvadeSpellDatabase.Spells)
                         {
-                            var sub = new Menu(spell.Name + " (" + spell.Slot + ")", "ES_" + spell.Name);
+                            var sub = new Menu(spell.Name + " (" + spell.Slot + ")", "ESSS_" + spell.Name);
                             {
                                 AddSlider(sub, "DangerLevel", "Danger Level", spell.DangerLevel, 1, 5);
                                 AddBool(sub, "Enabled", "Enabled", false);
@@ -712,29 +700,29 @@ namespace BrianSharp.Plugin
                     foreach (var hero in
                         HeroManager.Enemies.Where(i => SpellDatabase.Spells.Any(a => a.ChampionName == i.ChampionName)))
                     {
-                        evadeMenu.AddSubMenu(new Menu("-> " + hero.ChampionName, "Evade_" + hero.ChampionName));
+                        evadeMenu.AddSubMenu(new Menu("-> " + hero.ChampionName, "EvadeSS_" + hero.ChampionName));
                     }
                     foreach (var spell in
                         SpellDatabase.Spells.Where(i => HeroManager.Enemies.Any(a => a.ChampionName == i.ChampionName)))
                     {
-                        var sub = new Menu(spell.SpellName + " (" + spell.Slot + ")", "SS_" + spell.MenuItemName);
+                        var sub = new Menu(spell.SpellName + " (" + spell.Slot + ")", "ESS_" + spell.MenuItemName);
                         {
                             AddSlider(sub, "DangerLevel", "Danger Level", spell.DangerValue, 1, 5);
                             AddBool(sub, "Enabled", "Enabled", !spell.DisabledByDefault);
-                            evadeMenu.SubMenu("Evade_" + spell.ChampionName).AddSubMenu(sub);
+                            evadeMenu.SubMenu("EvadeSS_" + spell.ChampionName).AddSubMenu(sub);
                         }
                     }
                 }
                 menu.AddSubMenu(evadeMenu);
                 Collisions.Init();
-                Game.OnUpdate += OnUpdate;
+                Game.OnUpdate += OnUpdateEvade;
                 SkillshotDetector.OnDetectSkillshot += OnDetectSkillshot;
                 SkillshotDetector.OnDeleteMissile += OnDeleteMissile;
             }
 
-            private static void OnUpdate(EventArgs args)
+            private static void OnUpdateEvade(EventArgs args)
             {
-                SkillshotDetector.DetectedSkillshots.RemoveAll(i => !i.IsActive());
+                SkillshotDetector.DetectedSkillshots.RemoveAll(i => !i.IsActive);
                 foreach (var skillshot in SkillshotDetector.DetectedSkillshots)
                 {
                     skillshot.OnUpdate();
@@ -747,11 +735,11 @@ namespace BrianSharp.Plugin
                 {
                     return;
                 }
-                var safeResult = IsSafe(Player.ServerPosition.To2D());
+                var safePoint = IsSafePoint(Player.ServerPosition.To2D());
                 var safePath = IsSafePath(Player.GetWaypoints(), 100);
-                if (!safePath.IsSafe || !safeResult.Safe)
+                if (!safePath.IsSafe && !safePoint.IsSafe)
                 {
-                    TryToEvade(safeResult.SkillshotList, Game.CursorPos.To2D());
+                    TryToEvade(safePoint.SkillshotList, Game.CursorPos.To2D());
                 }
             }
 
@@ -897,7 +885,7 @@ namespace BrianSharp.Plugin
                                 var extendedE = new Skillshot(
                                     skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick, skillshot.Start,
                                     skillshot.End + skillshot.Direction * 100, skillshot.Unit);
-                                if (!extendedE.IsSafe(s.End))
+                                if (!extendedE.IsSafePoint(s.End))
                                 {
                                     endPos = s.End;
                                 }
@@ -906,12 +894,12 @@ namespace BrianSharp.Plugin
                         }
                         foreach (var m in ObjectManager.Get<Obj_AI_Minion>())
                         {
-                            if (m.BaseSkinName == "jarvanivstandard" && m.Team == skillshot.Unit.Team)
+                            if (m.CharData.BaseSkinName == "jarvanivstandard" && m.Team == skillshot.Unit.Team)
                             {
                                 var extendedE = new Skillshot(
                                     skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick, skillshot.Start,
                                     skillshot.End + skillshot.Direction * 100, skillshot.Unit);
-                                if (!extendedE.IsSafe(m.Position.To2D()))
+                                if (!extendedE.IsSafePoint(m.Position.To2D()))
                                 {
                                     endPos = m.Position.To2D();
                                 }
@@ -942,7 +930,7 @@ namespace BrianSharp.Plugin
                 SkillshotDetector.DetectedSkillshots.Add(skillshot);
             }
 
-            private static void OnDeleteMissile(Skillshot skillshot, Obj_SpellMissile missile)
+            private static void OnDeleteMissile(Skillshot skillshot, MissileClient missile)
             {
                 if (skillshot.SpellData.SpellName != "VelkozQ" ||
                     SkillshotDetector.DetectedSkillshots.Count(i => i.SpellData.SpellName == "VelkozQSplit") != 0)
@@ -1002,9 +990,9 @@ namespace BrianSharp.Plugin
                     }
                 }
                 foreach (var target in
-                    allTargets.Where(i => dontCheckForSafety || IsSafe(i.ServerPosition.To2D()).Safe))
+                    allTargets.Where(i => dontCheckForSafety || IsSafePoint(i.ServerPosition.To2D()).IsSafe))
                 {
-                    if (spell.Slot == SpellSlot.E && target.HasBuff("YasuoDashWrapper"))
+                    if (spell.Name == "YasuoDashWrapper" && target.HasBuff("YasuoDashWrapper"))
                     {
                         continue;
                     }
@@ -1021,68 +1009,52 @@ namespace BrianSharp.Plugin
                 return goodTargets.Count > 0 ? goodTargets : (onlyGood ? new List<Obj_AI_Base>() : badTargets);
             }
 
-            private static void TryToEvade(IEnumerable<Skillshot> hitBy, Vector2 to)
+            private static void TryToEvade(List<Skillshot> hitBy, Vector2 to)
             {
                 var dangerLevel =
-                    hitBy.Select(i => GetValue<Slider>("SS_" + i.SpellData.MenuItemName, "DangerLevel").Value)
+                    hitBy.Select(i => GetValue<Slider>("ESS_" + i.SpellData.MenuItemName, "DangerLevel").Value)
                         .Concat(new[] { 0 })
                         .Max();
                 foreach (var evadeSpell in
-                    EvadeSpellDatabase.Spells.Where(i => i.Enabled && i.DangerLevel <= dangerLevel && i.IsReady()))
+                    EvadeSpellDatabase.Spells.Where(i => i.Enabled && dangerLevel >= i.DangerLevel && i.IsReady))
                 {
                     if (evadeSpell.EvadeType == EvadeTypes.Dash && evadeSpell.CastType == CastTypes.Target)
                     {
                         var targets =
                             GetEvadeTargets(evadeSpell)
-                                .Where(
-                                    i =>
-                                        IsSafe(
-                                            Player.ServerPosition.Extend(i.ServerPosition, evadeSpell.MaxRange).To2D())
-                                            .Safe)
+                                .Where(i => IsSafePoint(PosAfterE(i).To2D()).IsSafe && !UnderTower(PosAfterE(i)))
                                 .ToList();
-                        if (targets.Count > 0)
+                        if (targets.Any())
                         {
-                            var closestTarget =
-                                targets.OrderBy(
-                                    i =>
-                                        Player.ServerPosition.Extend(i.ServerPosition, evadeSpell.MaxRange)
-                                            .To2D()
-                                            .Distance(to)).FirstOrDefault();
+                            var closestTarget = targets.MinOrDefault(i => PosAfterE(i).To2D().Distance(to));
                             if (closestTarget != null && Player.Spellbook.CastSpell(evadeSpell.Slot, closestTarget))
                             {
                                 return;
                             }
                         }
                     }
-                    if (evadeSpell.EvadeType == EvadeTypes.WindWall)
+                    if (evadeSpell.EvadeType == EvadeTypes.WindWall &&
+                        hitBy.Where(
+                            i =>
+                                i.SpellData.CollisionObjects.Contains(CollisionObjectTypes.YasuoWall) &&
+                                i.IsAboutToHit(evadeSpell.Delay + 150, Player))
+                            .OrderBy(i => i.SpellData.DangerValue)
+                            .Any(i => Player.Spellbook.CastSpell(evadeSpell.Slot, i.Start.To3D())))
                     {
-                        var safeResult = IsSafe(Player.ServerPosition.To2D());
-                        if (!safeResult.Safe &&
-                            safeResult.SkillshotList.Where(
-                                i =>
-                                    i.SpellData.CollisionObjects.Contains(CollisionObjectTypes.YasuoWall) &&
-                                    i.IsAboutToHit(evadeSpell.Delay, Player))
-                                .Any(
-                                    i =>
-                                        Player.Spellbook.CastSpell(
-                                            evadeSpell.Slot,
-                                            Player.ServerPosition.Extend(i.GetMissilePosition(0).To3D(), 100))))
-                        {
-                            return;
-                        }
+                        return;
                     }
                 }
             }
 
-            private static IsSafeResult IsSafe(Vector2 point)
+            public static IsSafeResult IsSafePoint(Vector2 point)
             {
                 var result = new IsSafeResult { SkillshotList = new List<Skillshot>() };
                 foreach (var skillshot in
-                    SkillshotDetector.DetectedSkillshots.Where(i => i.Evade() && !i.IsSafe(point)))
+                    SkillshotDetector.DetectedSkillshots.Where(i => i.Evade && !i.IsSafePoint(point)))
                 {
                     result.SkillshotList.Add(skillshot);
                 }
-                result.Safe = result.SkillshotList.Count == 0;
+                result.IsSafe = result.SkillshotList.Count == 0;
                 return result;
             }
 
@@ -1092,7 +1064,7 @@ namespace BrianSharp.Plugin
                 var intersections = new List<FoundIntersection>();
                 var intersection = new FoundIntersection();
                 foreach (var sResult in
-                    SkillshotDetector.DetectedSkillshots.Where(i => i.Evade())
+                    SkillshotDetector.DetectedSkillshots.Where(i => i.Evade)
                         .Select(i => i.IsSafePath(path, timeOffset, speed, delay)))
                 {
                     isSafe = sResult.IsSafe;
@@ -1107,47 +1079,70 @@ namespace BrianSharp.Plugin
                         false, intersections.Count > 0 ? intersections.OrderBy(i => i.Distance).First() : intersection);
             }
 
-            private struct IsSafeResult
+            internal struct IsSafeResult
             {
-                public bool Safe;
+                public bool IsSafe;
                 public List<Skillshot> SkillshotList;
             }
         }
 
-        private class Target
+        protected class EvadeTarget
         {
             private static readonly List<SpellData> Spells = new List<SpellData>();
             private static readonly List<Targets> DetectedTargets = new List<Targets>();
+            private static Vector2 _wallCastedPos;
 
-            public Target(Menu menu)
+            private static GameObject Wall
+            {
+                get
+                {
+                    return
+                        ObjectManager.Get<Obj_AI_Hero>()
+                            .Any(
+                                i =>
+                                    i.IsValidTarget(float.MaxValue, false) && i.Team == Player.Team &&
+                                    i.ChampionName == "Yasuo")
+                            ? ObjectManager.Get<GameObject>()
+                                .FirstOrDefault(
+                                    i =>
+                                        i.IsValid &&
+                                        Regex.IsMatch(i.Name, "_w_windwall.\\.troy", RegexOptions.IgnoreCase))
+                            : null;
+                }
+            }
+
+            public static void Init(Menu menu)
             {
                 LoadTargetData();
-                var targetMenu = new Menu("Wind Wall (Target)", "Target");
+                var evadeMenu = new Menu("Evade Target", "EvadeTarget");
                 {
-                    AddBool(targetMenu, "W", "Use W");
-                    AddBool(targetMenu, "BAttack", "-> Basic Attack");
-                    AddSlider(targetMenu, "BAttackHpU", "--> If Hp Under", 20);
-                    AddBool(targetMenu, "CAttack", "-> Crit Attack");
-                    AddSlider(targetMenu, "CAttackHpU", "--> If Hp Under", 40);
+                    AddBool(evadeMenu, "W", "Use W");
+                    //AddBool(evadeMenu, "E", "Use E (Detuks)");
+                    AddBool(evadeMenu, "BAttack", "-> Basic Attack");
+                    AddSlider(evadeMenu, "BAttackHpU", "--> If Hp Under", 20);
+                    AddBool(evadeMenu, "CAttack", "-> Crit Attack");
+                    AddSlider(evadeMenu, "CAttackHpU", "--> If Hp Under", 40);
                     foreach (var hero in
                         HeroManager.Enemies.Where(i => Spells.Any(a => a.ChampionName == i.ChampionName)))
                     {
-                        targetMenu.AddSubMenu(new Menu("-> " + hero.ChampionName, "T_" + hero.ChampionName));
+                        evadeMenu.AddSubMenu(new Menu("-> " + hero.ChampionName, "ET_" + hero.ChampionName));
                     }
                     foreach (
                         var spell in Spells.Where(i => HeroManager.Enemies.Any(a => a.ChampionName == i.ChampionName)))
                     {
                         AddBool(
-                            targetMenu.SubMenu("T_" + spell.ChampionName), spell.MissileName, spell.DisplayName, false);
+                            evadeMenu.SubMenu("ET_" + spell.ChampionName), spell.MissileName,
+                            spell.MissileName + " (" + spell.Slot + ")", false);
                     }
                 }
-                menu.AddSubMenu(targetMenu);
-                Game.OnUpdate += OnUpdate;
+                menu.AddSubMenu(evadeMenu);
+                Game.OnUpdate += OnUpdateTarget;
                 GameObject.OnCreate += ObjSpellMissileOnCreate;
                 GameObject.OnDelete += ObjSpellMissileOnDelete;
+                Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
             }
 
-            private static void OnUpdate(EventArgs args)
+            private static void OnUpdateTarget(EventArgs args)
             {
                 if (Player.IsDead)
                 {
@@ -1157,15 +1152,33 @@ namespace BrianSharp.Plugin
                 {
                     return;
                 }
-                if (!W.IsReady() || !GetValue<bool>("Target", "W"))
-                {
-                    return;
-                }
+                //if (!W.IsReady(300) && (Wall == null || !E.IsReady(200)))
+                //{
+                //    return;
+                //}
                 foreach (var target in
-                    DetectedTargets.Where(i => W.IsInRange(i.Obj)))
+                    DetectedTargets.Where(i => Player.Distance(i.Obj.Position) < 700))
                 {
-                    W.Cast(Player.ServerPosition.Extend(target.Obj.Position, 100), PacketCast);
-                    return;
+                    if (W.IsReady() && GetValue<bool>("EvadeTarget", "W") && W.IsInRange(target.Obj, 250))
+                    {
+                        W.Cast(target.Obj.Position, PacketCast);
+                        return;
+                    }
+                    //if (E.IsReady() && GetValue<bool>("EvadeTarget", "E") && Wall != null &&
+                    //    !GoThroughWall(Player.ServerPosition.To2D(), target.Obj.Position.To2D()))
+                    //{
+                    //    var obj = new List<Obj_AI_Base>();
+                    //    obj.AddRange(MinionManager.GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly));
+                    //    obj.AddRange(HeroManager.Enemies.Where(i => i.IsValidTarget(E.Range)));
+                    //    if (
+                    //        obj.Where(
+                    //            i => CanCastE(i) && GoThroughWall(Player.ServerPosition.To2D(), PosAfterE(i).To2D()))
+                    //            .OrderBy(i => i.Distance(Game.CursorPos))
+                    //            .Any(i => E.CastOnUnit(i, PacketCast)))
+                    //    {
+                    //        return;
+                    //    }
+                    //}
                 }
             }
 
@@ -1185,14 +1198,14 @@ namespace BrianSharp.Plugin
                     Spells.FirstOrDefault(
                         i =>
                             i.SpellNames.Contains(missile.SData.Name.ToLower()) &&
-                            GetItem("T_" + i.ChampionName, i.MissileName) != null &&
-                            GetValue<bool>("T_" + i.ChampionName, i.MissileName));
+                            GetItem("ET_" + i.ChampionName, i.MissileName) != null &&
+                            GetValue<bool>("ET_" + i.ChampionName, i.MissileName));
                 if (spellData == null && missile.SData.IsAutoAttack() &&
                     (!missile.SData.Name.ToLower().Contains("crit")
-                        ? GetValue<bool>("Target", "BAttack") &&
-                          Player.HealthPercent < GetValue<Slider>("Target", "BAttackHpU").Value
-                        : GetValue<bool>("Target", "CAttack") &&
-                          Player.HealthPercent < GetValue<Slider>("Target", "CAttackHpU").Value) && W.IsReady())
+                        ? GetValue<bool>("EvadeTarget", "BAttack") &&
+                          Player.HealthPercent < GetValue<Slider>("EvadeTarget", "BAttackHpU").Value
+                        : GetValue<bool>("EvadeTarget", "CAttack") &&
+                          Player.HealthPercent < GetValue<Slider>("EvadeTarget", "CAttackHpU").Value) && W.IsReady())
                 {
                     spellData = new SpellData
                     {
@@ -1218,6 +1231,15 @@ namespace BrianSharp.Plugin
                 {
                     DetectedTargets.RemoveAll(i => i.Obj.NetworkId == missile.NetworkId);
                 }
+            }
+
+            private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+            {
+                if (!sender.IsValid || sender.Team != ObjectManager.Player.Team || args.SData.Name != "YasuoWMovingWall")
+                {
+                    return;
+                }
+                _wallCastedPos = sender.ServerPosition.To2D();
             }
 
             private static void LoadTargetData()
@@ -1420,6 +1442,32 @@ namespace BrianSharp.Plugin
                     });
             }
 
+            private static bool GoThroughWall(Vector2 pos1, Vector2 pos2)
+            {
+                if (Wall == null)
+                {
+                    return false;
+                }
+                var wallWidth = 300 + 50 * Convert.ToInt32(Wall.Name.Substring(Wall.Name.Length - 6, 1));
+                var wallDirection = (Wall.Position.To2D() - _wallCastedPos).Normalized().Perpendicular();
+                var subWallWidth = wallWidth / 2;
+                var wallStart = Wall.Position.To2D() + subWallWidth * wallDirection;
+                var wallEnd = wallStart - wallWidth * wallDirection;
+                var wallPolygon = new Geometry.Polygon.Rectangle(wallStart, wallEnd, 75);
+                var intersections = new List<Vector2>();
+                for (var i = 0; i < wallPolygon.Points.Count; i++)
+                {
+                    var inter =
+                        wallPolygon.Points[i].Intersection(
+                            wallPolygon.Points[i != wallPolygon.Points.Count - 1 ? i + 1 : 0], pos1, pos2);
+                    if (inter.Intersects)
+                    {
+                        intersections.Add(inter.Point);
+                    }
+                }
+                return intersections.Any();
+            }
+
             private class SpellData
             {
                 public string ChampionName;
@@ -1429,11 +1477,6 @@ namespace BrianSharp.Plugin
                 public string MissileName
                 {
                     get { return SpellNames.First(); }
-                }
-
-                public string DisplayName
-                {
-                    get { return MissileName + " (" + Slot + ")"; }
                 }
             }
 

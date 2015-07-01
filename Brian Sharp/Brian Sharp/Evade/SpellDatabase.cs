@@ -301,9 +301,7 @@ namespace BrianSharp.Evade
                     IsDangerous = true,
                     MissileSpellName = "BardQMissile",
                     CanBeRemoved = true,
-                    CollisionObjects =
-                        new[]
-                        { CollisionObjectTypes.Champions, CollisionObjectTypes.Minion, CollisionObjectTypes.YasuoWall }
+                    CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.YasuoWall }
                 });
             Spells.Add(
                 new SpellData
@@ -517,7 +515,6 @@ namespace BrianSharp.Evade
                     Range = 825,
                     Radius = 80,
                     MissileSpeed = int.MaxValue,
-                    FixedRange = true,
                     DangerValue = 5,
                     IsDangerous = true,
                     MissileSpellName = "CassiopeiaPetrifyingGaze"
@@ -972,7 +969,7 @@ namespace BrianSharp.Evade
                     CanBeRemoved = true,
                     ForceRemove = true,
                     MissileSpellName = "GnarQMissileReturn",
-					DisabledByDefault = true,
+                    DisabledByDefault = true,
                     CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
                 });
             Spells.Add(
@@ -1153,7 +1150,7 @@ namespace BrianSharp.Evade
                     DangerValue = 5,
                     IsDangerous = true,
                     MissileSpellName = "GravesChargeShotShot",
-                    CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                    CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.YasuoWall }
                 });
 
             #endregion Graves
@@ -1231,7 +1228,6 @@ namespace BrianSharp.Evade
                     Range = 1700,
                     Radius = 120,
                     MissileSpeed = 900,
-                    FixedRange = true,
                     AddHitbox = true,
                     DangerValue = 2,
                     MissileSpellName = "HowlingGaleSpell",
@@ -1935,7 +1931,7 @@ namespace BrianSharp.Evade
                     DangerValue = 3,
                     IsDangerous = true,
                     MissileSpellName = "LuxLightBindingMis",
-                    //CanBeRemoved = true,
+                    CanBeRemoved = true,
                     CollisionObjects =
                         new[]
                         { CollisionObjectTypes.Champions, CollisionObjectTypes.Minion, CollisionObjectTypes.YasuoWall }
@@ -1949,7 +1945,7 @@ namespace BrianSharp.Evade
                     Type = SkillShotType.SkillshotCircle,
                     Delay = 250,
                     Range = 1100,
-                    Radius = 275,
+                    Radius = 325,
                     MissileSpeed = 1300,
                     AddHitbox = true,
                     DangerValue = 2,
@@ -2360,8 +2356,6 @@ namespace BrianSharp.Evade
                     Range = 1100,
                     Radius = 125,
                     MissileSpeed = 1600,
-                    FixedRange = true,
-                    AddHitbox = true,
                     DangerValue = 5,
                     IsDangerous = true,
                     MultipleNumber = 3,
@@ -2426,7 +2420,7 @@ namespace BrianSharp.Evade
                     Type = SkillShotType.SkillshotMissileLine,
                     Delay = 250,
                     Range = 900,
-                    Radius = 50,
+                    Radius = 55,
                     MissileSpeed = 1700,
                     FixedRange = true,
                     AddHitbox = true,
@@ -2791,7 +2785,6 @@ namespace BrianSharp.Evade
                     Range = 950,
                     Radius = 90,
                     MissileSpeed = 1601,
-                    FixedRange = true,
                     AddHitbox = true,
                     DangerValue = 2,
                     MissileSpellName = "syndrae5",
@@ -2809,7 +2802,6 @@ namespace BrianSharp.Evade
                     Range = 950,
                     Radius = 90,
                     MissileSpeed = 1601,
-                    FixedRange = true,
                     AddHitbox = true,
                     DangerValue = 2,
                     DisableFowDetection = true,

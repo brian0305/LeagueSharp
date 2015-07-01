@@ -11,7 +11,7 @@ namespace BrianSharp.Plugin
 {
     internal class Kayle : Helper
     {
-        private readonly Dictionary<int, RAntiItem> _rAntiDetected = new Dictionary<int, RAntiItem>();
+        private static readonly Dictionary<int, RAntiItem> RAntiDetected = new Dictionary<int, RAntiItem>();
 
         public Kayle()
         {
@@ -113,12 +113,12 @@ namespace BrianSharp.Plugin
             AttackableUnit.OnDamage += OnDamage;
         }
 
-        private bool HaveE
+        private static bool HaveE
         {
             get { return Player.HasBuff("JudicatorRighteousFury"); }
         }
 
-        private void OnUpdate(EventArgs args)
+        private static void OnUpdate(EventArgs args)
         {
             AntiDetect();
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
@@ -151,7 +151,7 @@ namespace BrianSharp.Plugin
             KillSteal();
         }
 
-        private void OnDraw(EventArgs args)
+        private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -171,7 +171,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnDamage(AttackableUnit sender, AttackableUnitDamageEventArgs args)
+        private static void OnDamage(AttackableUnit sender, AttackableUnitDamageEventArgs args)
         {
             if (Orbwalk.CurrentMode != Orbwalker.Mode.Combo)
             {
@@ -200,7 +200,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Fight(string mode)
+        private static void Fight(string mode)
         {
             if (mode == "Combo" && GetValue<bool>(mode, "E") && GetValue<bool>(mode, "EAoE") && HaveE)
             {
@@ -249,8 +249,8 @@ namespace BrianSharp.Plugin
                 var obj =
                     HeroManager.Allies.Where(
                         i =>
-                            i.IsValidTarget(R.Range, false) && _rAntiDetected.ContainsKey(i.NetworkId) &&
-                            Game.Time > _rAntiDetected[i.NetworkId].StartTick && !i.HasBuff("UndyingRage"))
+                            i.IsValidTarget(R.Range, false) && RAntiDetected.ContainsKey(i.NetworkId) &&
+                            Game.Time > RAntiDetected[i.NetworkId].StartTick && !i.HasBuff("UndyingRage"))
                         .MinOrDefault(i => i.Health);
                 if (obj != null)
                 {
@@ -259,7 +259,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Clear()
+        private static void Clear()
         {
             SmiteMob();
             var minionObj = MinionManager.GetMinions(
@@ -284,7 +284,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void LastHit()
+        private static void LastHit()
         {
             if (!GetValue<bool>("LastHit", "Q") || !Q.IsReady())
             {
@@ -301,7 +301,7 @@ namespace BrianSharp.Plugin
             Q.CastOnUnit(obj, PacketCast);
         }
 
-        private void Flee()
+        private static void Flee()
         {
             if (GetValue<bool>("Flee", "W") && W.IsReady() && W.Cast(PacketCast))
             {
@@ -313,7 +313,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void AutoQ()
+        private static void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
                 Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value)
@@ -323,7 +323,7 @@ namespace BrianSharp.Plugin
             Q.CastOnBestTarget(0, PacketCast);
         }
 
-        private void KillSteal()
+        private static void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
@@ -352,7 +352,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void AntiDetect()
+        private static void AntiDetect()
         {
             if (Player.IsDead || GetValue<StringList>("Combo", "RAnti").SelectedIndex == 0 || R.Level == 0)
             {
@@ -360,39 +360,40 @@ namespace BrianSharp.Plugin
             }
             var key =
                 HeroManager.Allies.FirstOrDefault(
-                    i => _rAntiDetected.ContainsKey(i.NetworkId) && Game.Time > _rAntiDetected[i.NetworkId].EndTick);
+                    i => RAntiDetected.ContainsKey(i.NetworkId) && Game.Time > RAntiDetected[i.NetworkId].EndTick);
             if (key != null)
             {
-                _rAntiDetected.Remove(key.NetworkId);
+                RAntiDetected.Remove(key.NetworkId);
             }
             foreach (var obj in
-                HeroManager.Allies.Where(i => !i.IsDead && !_rAntiDetected.ContainsKey(i.NetworkId)))
+                HeroManager.Allies.Where(i => !i.IsDead && !RAntiDetected.ContainsKey(i.NetworkId)))
             {
-                if ((GetValue<StringList>("Combo", "RAnti").SelectedIndex == 1 && obj.IsMe) ||
-                    (GetValue<StringList>("Combo", "RAnti").SelectedIndex == 2 && !obj.IsMe) ||
-                    GetValue<StringList>("Combo", "RAnti").SelectedIndex == 3)
+                if ((GetValue<StringList>("Combo", "RAnti").SelectedIndex != 1 || !obj.IsMe) &&
+                    (GetValue<StringList>("Combo", "RAnti").SelectedIndex != 2 || obj.IsMe) &&
+                    GetValue<StringList>("Combo", "RAnti").SelectedIndex != 3)
                 {
-                    foreach (var buff in obj.Buffs)
+                    continue;
+                }
+                foreach (var buff in obj.Buffs)
+                {
+                    if ((buff.DisplayName == "ZedUltExecute" && GetValue<bool>("Anti", "Zed")) ||
+                        (buff.DisplayName == "FizzChurnTheWatersCling" && GetValue<bool>("Anti", "Fizz")) ||
+                        (buff.DisplayName == "VladimirHemoplagueDebuff" && GetValue<bool>("Anti", "Vlad")))
                     {
-                        if ((buff.DisplayName == "ZedUltExecute" && GetValue<bool>("Anti", "Zed")) ||
-                            (buff.DisplayName == "FizzChurnTheWatersCling" && GetValue<bool>("Anti", "Fizz")) ||
-                            (buff.DisplayName == "VladimirHemoplagueDebuff" && GetValue<bool>("Anti", "Vlad")))
-                        {
-                            _rAntiDetected.Add(obj.NetworkId, new RAntiItem(buff));
-                        }
-                        else if (buff.DisplayName == "KarthusFallenOne" && GetValue<bool>("Anti", "Karthus") &&
-                                 obj.Health <=
-                                 ((Obj_AI_Hero) buff.Caster).GetSpellDamage(obj, SpellSlot.R) + obj.Health * 0.2f &&
-                                 obj.CountEnemiesInRange(R.Range) > 0)
-                        {
-                            _rAntiDetected.Add(obj.NetworkId, new RAntiItem(buff));
-                        }
+                        RAntiDetected.Add(obj.NetworkId, new RAntiItem(buff));
+                    }
+                    else if (buff.DisplayName == "KarthusFallenOne" && GetValue<bool>("Anti", "Karthus") &&
+                             obj.Health <=
+                             ((Obj_AI_Hero) buff.Caster).GetSpellDamage(obj, SpellSlot.R) + obj.Health * 0.2f &&
+                             obj.CountEnemiesInRange(R.Range) > 0)
+                    {
+                        RAntiDetected.Add(obj.NetworkId, new RAntiItem(buff));
                     }
                 }
             }
         }
 
-        private string MenuName(Obj_AI_Hero obj)
+        private static string MenuName(Obj_AI_Hero obj)
         {
             return obj.IsMe ? "Self" : obj.ChampionName;
         }

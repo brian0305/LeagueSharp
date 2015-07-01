@@ -16,7 +16,7 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W, 600, TargetSelector.DamageType.Magical);
             E = new Spell(SpellSlot.E, 600, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R);
-            Q.SetSkillshot(0.25f, 50, 1700, true, SkillshotType.SkillshotLine);
+            Q.SetSkillshot(0.25f, 55, 1700, true, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -105,7 +105,7 @@ namespace BrianSharp.Plugin
             AttackableUnit.OnDamage += OnDamage;
         }
 
-        private void OnUpdate(EventArgs args)
+        private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
@@ -135,7 +135,7 @@ namespace BrianSharp.Plugin
             AutoWUnderTower();
         }
 
-        private void OnDraw(EventArgs args)
+        private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -155,7 +155,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
+        private static void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
             if (Player.IsDead || !GetValue<bool>("AntiGap", "W") ||
                 !GetValue<bool>("AntiGap", gapcloser.Sender.ChampionName + "_" + gapcloser.Slot) ||
@@ -166,7 +166,7 @@ namespace BrianSharp.Plugin
             W.CastOnUnit(gapcloser.Sender, PacketCast);
         }
 
-        private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
+        private static void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
         {
             if (Player.IsDead || !GetValue<bool>("Interrupt", "W") ||
                 !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !W.CanCast(unit))
@@ -176,7 +176,7 @@ namespace BrianSharp.Plugin
             W.CastOnUnit(unit, PacketCast);
         }
 
-        private void OnDamage(AttackableUnit sender, AttackableUnitDamageEventArgs args)
+        private static void OnDamage(AttackableUnit sender, AttackableUnitDamageEventArgs args)
         {
             if (args.TargetNetworkId != Player.NetworkId || Orbwalk.CurrentMode != Orbwalker.Mode.Combo)
             {
@@ -189,7 +189,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Fight(string mode)
+        private static void Fight(string mode)
         {
             switch (mode)
             {
@@ -243,7 +243,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Clear()
+        private static void Clear()
         {
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
@@ -288,7 +288,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void LastHit()
+        private static void LastHit()
         {
             if (!GetValue<bool>("LastHit", "Q") || !Q.IsReady())
             {
@@ -306,7 +306,7 @@ namespace BrianSharp.Plugin
             Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast);
         }
 
-        private void AutoQ()
+        private static void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
                 Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value)
@@ -316,7 +316,7 @@ namespace BrianSharp.Plugin
             Q.CastOnBestTarget(0, PacketCast);
         }
 
-        private void KillSteal()
+        private static void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
@@ -353,7 +353,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void AutoWUnderTower()
+        private static void AutoWUnderTower()
         {
             if (!GetValue<bool>("Misc", "WTower") || !W.IsReady())
             {

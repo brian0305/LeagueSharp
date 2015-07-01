@@ -106,12 +106,12 @@ namespace BrianSharp.Plugin
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
         }
 
-        private bool HaveW
+        private static bool HaveW
         {
             get { return Player.HasBuff("AuraofDespair"); }
         }
 
-        private void OnUpdate(EventArgs args)
+        private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
@@ -136,7 +136,7 @@ namespace BrianSharp.Plugin
             KillSteal();
         }
 
-        private void OnDraw(EventArgs args)
+        private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -160,7 +160,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
+        private static void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
             if (Player.IsDead || !GetValue<bool>("AntiGap", "Q") ||
                 !GetValue<bool>("AntiGap", gapcloser.Sender.ChampionName + "_" + gapcloser.Slot) || !Q.IsReady())
@@ -170,7 +170,7 @@ namespace BrianSharp.Plugin
             Q.CastIfHitchanceEquals(gapcloser.Sender, HitChance.High, PacketCast);
         }
 
-        private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
+        private static void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
         {
             if (Player.IsDead || !GetValue<bool>("Interrupt", "Q") ||
                 !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !Q.CanCast(unit))
@@ -180,7 +180,7 @@ namespace BrianSharp.Plugin
             Q.CastIfHitchanceEquals(unit, HitChance.High, PacketCast);
         }
 
-        private void Fight(string mode)
+        private static void Fight(string mode)
         {
             if (mode == "Combo")
             {
@@ -252,7 +252,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Clear()
+        private static void Clear()
         {
             SmiteMob();
             var minionObj = MinionManager.GetMinions(
@@ -300,7 +300,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void KillSteal()
+        private static void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
@@ -346,13 +346,14 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private List<Obj_AI_Hero> GetRTarget(Vector3 from = new Vector3())
+        private static List<Obj_AI_Hero> GetRTarget(Vector3 from = new Vector3())
         {
-            var pos = from.IsValid() ? from : Player.ServerPosition;
             return
                 HeroManager.Enemies.Where(
-                    i => i.IsValidTarget() && pos.Distance(Prediction.GetPrediction(i, 0.25f).UnitPosition) < R.Range)
-                    .ToList();
+                    i =>
+                        i.IsValidTarget() &&
+                        (from.IsValid() ? from : Player.ServerPosition).Distance(
+                            Prediction.GetPrediction(i, 0.25f).UnitPosition) < R.Range).ToList();
         }
     }
 }

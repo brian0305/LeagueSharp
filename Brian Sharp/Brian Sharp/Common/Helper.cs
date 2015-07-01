@@ -89,7 +89,8 @@ namespace BrianSharp.Common
         public static bool IsWard(Obj_AI_Minion obj)
         {
             return !MinionManager.IsMinion(obj) &&
-                   (obj.BaseSkinName.ToLower().Contains("ward") || obj.BaseSkinName.ToLower().Contains("trinket"));
+                   (obj.CharData.BaseSkinName.ToLower().Contains("ward") ||
+                    obj.CharData.BaseSkinName.ToLower().Contains("trinket"));
         }
 
         public static void CustomOrbwalk(Obj_AI_Base target)

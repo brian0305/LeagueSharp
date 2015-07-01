@@ -89,12 +89,12 @@ namespace BrianSharp.Plugin
             Orbwalk.AfterAttack += AfterAttack;
         }
 
-        private bool HaveQ
+        private static bool HaveQ
         {
             get { return Player.HasBuff("NasusQ"); }
         }
 
-        private void OnUpdate(EventArgs args)
+        private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
@@ -122,7 +122,7 @@ namespace BrianSharp.Plugin
             KillSteal();
         }
 
-        private void OnDraw(EventArgs args)
+        private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -146,7 +146,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
+        private static void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
             if (Player.IsDead || !GetValue<bool>("AntiGap", "W") ||
                 !GetValue<bool>("AntiGap", gapcloser.Sender.ChampionName + "_" + gapcloser.Slot) ||
@@ -157,7 +157,7 @@ namespace BrianSharp.Plugin
             W.CastOnUnit(gapcloser.Sender, PacketCast);
         }
 
-        private void AfterAttack(AttackableUnit target)
+        private static void AfterAttack(AttackableUnit target)
         {
             if (!Q.IsReady())
             {
@@ -170,7 +170,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Fight(string mode)
+        private static void Fight(string mode)
         {
             if (mode == "Combo")
             {
@@ -219,7 +219,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Clear()
+        private static void Clear()
         {
             SmiteMob();
             var minionObj = MinionManager.GetMinions(
@@ -273,7 +273,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void LastHit()
+        private static void LastHit()
         {
             if (!GetValue<bool>("LastHit", "Q") || (!Q.IsReady() && !HaveQ))
             {
@@ -298,7 +298,7 @@ namespace BrianSharp.Plugin
             Orbwalk.Attack = true;
         }
 
-        private void KillSteal()
+        private static void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
@@ -343,7 +343,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private double GetBonusDmg(Obj_AI_Base target)
+        private static double GetBonusDmg(Obj_AI_Base target)
         {
             var dmgItem = 0d;
             if (Sheen.IsOwned() && (Sheen.IsReady() || Player.HasBuff("Sheen")))

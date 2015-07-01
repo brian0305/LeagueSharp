@@ -86,7 +86,7 @@ namespace BrianSharp.Plugin
             Orbwalk.AfterAttack += AfterAttack;
         }
 
-        private List<Obj_AI_Hero> GetRTarget
+        private static List<Obj_AI_Hero> GetRTarget
         {
             get
             {
@@ -98,7 +98,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnUpdate(EventArgs args)
+        private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
@@ -123,7 +123,7 @@ namespace BrianSharp.Plugin
             KillSteal();
         }
 
-        private void OnDraw(EventArgs args)
+        private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -139,7 +139,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
+        private static void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
         {
             if (Player.IsDead || !GetValue<bool>("Interrupt", "R") ||
                 !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !R.IsReady() ||
@@ -168,7 +168,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnAttack(AttackableUnit target)
+        private static void OnAttack(AttackableUnit target)
         {
             if (!W.IsReady())
             {
@@ -182,7 +182,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void AfterAttack(AttackableUnit target)
+        private static void AfterAttack(AttackableUnit target)
         {
             if (!Q.IsReady())
             {
@@ -196,7 +196,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Fight(string mode)
+        private static void Fight(string mode)
         {
             if (mode == "Combo" && GetValue<bool>(mode, "R") && R.IsReady() && !Player.IsDashing())
             {
@@ -239,7 +239,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Clear()
+        private static void Clear()
         {
             SmiteMob();
             var minionObj = MinionManager.GetMinions(
@@ -272,7 +272,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void KillSteal()
+        private static void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {

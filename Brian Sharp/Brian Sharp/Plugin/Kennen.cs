@@ -99,12 +99,12 @@ namespace BrianSharp.Plugin
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
         }
 
-        private bool HaveR
+        private static bool HaveR
         {
             get { return Player.HasBuff("KennenShurikenStorm"); }
         }
 
-        private List<Obj_AI_Hero> GetRTarget
+        private static List<Obj_AI_Hero> GetRTarget
         {
             get
             {
@@ -144,7 +144,7 @@ namespace BrianSharp.Plugin
             KillSteal();
         }
 
-        private void OnDraw(EventArgs args)
+        private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -164,7 +164,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
+        private static void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
         {
             if (Player.IsDead || !GetValue<bool>("Interrupt", "W") ||
                 !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !W.CanCast(unit) ||
@@ -175,7 +175,7 @@ namespace BrianSharp.Plugin
             W.Cast(PacketCast);
         }
 
-        private void Fight(string mode)
+        private static void Fight(string mode)
         {
             if (GetValue<bool>(mode, "Q") && Q.CastOnBestTarget(0, PacketCast).IsCasted())
             {
@@ -220,7 +220,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Clear()
+        private static void Clear()
         {
             var minionObj = MinionManager.GetMinions(
                 Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
@@ -245,7 +245,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void LastHit()
+        private static void LastHit()
         {
             if (!GetValue<bool>("LastHit", "Q") || !Q.IsReady())
             {
@@ -263,7 +263,7 @@ namespace BrianSharp.Plugin
             Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast);
         }
 
-        private void Flee()
+        private static void Flee()
         {
             if (GetValue<bool>("Flee", "E") && E.IsReady() && !Player.HasBuff("KennenLightningRush") &&
                 E.Cast(PacketCast))
@@ -277,7 +277,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void AutoQ()
+        private static void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
                 Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value)
@@ -287,7 +287,7 @@ namespace BrianSharp.Plugin
             Q.CastOnBestTarget(0, PacketCast);
         }
 
-        private void KillSteal()
+        private static void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
@@ -324,14 +324,14 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private double GetRDmg(Obj_AI_Hero target)
+        private static double GetRDmg(Obj_AI_Hero target)
         {
             return Player.CalcDamage(
                 target, Damage.DamageType.Magical,
                 (new[] { 80, 145, 210 }[R.Level - 1] + 0.4 * Player.FlatMagicDamageMod) * 3);
         }
 
-        private bool HaveW(Obj_AI_Base target, bool onlyStun = false)
+        private static bool HaveW(Obj_AI_Base target, bool onlyStun = false)
         {
             return target.HasBuff("KennenMarkOfStorm") && (!onlyStun || target.GetBuffCount("KennenMarkOfStorm") == 2);
         }

@@ -23,7 +23,7 @@ namespace BrianSharp.Evade
                     CastType = CastTypes.Target,
                     MaxRange = 475,
                     Speed = 1000,
-                    Delay = 150,
+                    Delay = 50,
                     FixedRange = true,
                     ValidTargets = new[] { SpellTargets.EnemyChampions, SpellTargets.EnemyMinions }
                 });

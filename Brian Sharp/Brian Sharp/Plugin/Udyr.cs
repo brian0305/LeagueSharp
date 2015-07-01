@@ -9,8 +9,8 @@ namespace BrianSharp.Plugin
 {
     internal class Udyr : Helper
     {
-        private int _aaCount;
-        private bool _phoenixActive;
+        private static int _aaCount;
+        private static bool _phoenixActive;
 
         public Udyr()
         {
@@ -64,7 +64,7 @@ namespace BrianSharp.Plugin
             Orbwalk.AfterAttack += AfterAttack;
         }
 
-        private Stance CurStance
+        private static Stance CurStance
         {
             get
             {
@@ -84,7 +84,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnUpdate(EventArgs args)
+        private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
@@ -117,7 +117,7 @@ namespace BrianSharp.Plugin
             KillSteal();
         }
 
-        private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+        private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
             if (!sender.IsMe)
             {
@@ -134,7 +134,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void AfterAttack(AttackableUnit target)
+        private static void AfterAttack(AttackableUnit target)
         {
             if ((Orbwalk.CurrentMode != Orbwalker.Mode.Combo && Orbwalk.CurrentMode != Orbwalker.Mode.Clear) ||
                 (CurStance != Stance.Tiger && CurStance != Stance.Phoenix))
@@ -156,7 +156,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Fight()
+        private static void Fight()
         {
             var target = E.GetTarget();
             if (target == null)
@@ -190,7 +190,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Clear()
+        private static void Clear()
         {
             SmiteMob();
             var obj = Orbwalk.GetPossibleTarget;
@@ -232,7 +232,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Flee()
+        private static void Flee()
         {
             if (!GetValue<bool>("Flee", "E") || E.Cast(PacketCast) || !GetValue<bool>("Flee", "Stack"))
             {
@@ -265,7 +265,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void StunCycle()
+        private static void StunCycle()
         {
             var obj =
                 HeroManager.Enemies.Where(i => i.IsValidTarget(E.Range) && CanCastE(i))
@@ -289,7 +289,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void KillSteal()
+        private static void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
@@ -310,7 +310,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private bool CanCastE(Obj_AI_Base target)
+        private static bool CanCastE(Obj_AI_Base target)
         {
             return !target.HasBuff("UdyrBearStunCheck");
         }

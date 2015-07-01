@@ -13,7 +13,7 @@ namespace BrianSharp.Plugin
     internal class JarvanIV : Helper
     {
         private const int RWidth = 325;
-        private bool _rCasted;
+        private static bool _rCasted;
 
         public JarvanIV()
         {
@@ -114,7 +114,7 @@ namespace BrianSharp.Plugin
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
         }
 
-        private IEnumerable<Obj_AI_Minion> Flag
+        private static IEnumerable<Obj_AI_Minion> Flag
         {
             get
             {
@@ -124,7 +124,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnUpdate(EventArgs args)
+        private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
@@ -160,7 +160,7 @@ namespace BrianSharp.Plugin
             KillSteal();
         }
 
-        private void OnDraw(EventArgs args)
+        private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -184,7 +184,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
+        private static void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
         {
             if (Player.IsDead || !GetValue<bool>("Interrupt", "EQ") ||
                 !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !Q.IsReady())
@@ -208,7 +208,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+        private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
             if (!sender.IsMe)
             {
@@ -221,7 +221,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Fight(string mode)
+        private static void Fight(string mode)
         {
             if (mode == "Combo" && GetValue<bool>(mode, "E") && E.IsReady())
             {
@@ -295,7 +295,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Clear()
+        private static void Clear()
         {
             SmiteMob();
             if (GetValue<bool>("Clear", "E") && E.IsReady())
@@ -373,7 +373,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void LastHit()
+        private static void LastHit()
         {
             if (!GetValue<bool>("LastHit", "Q") || !Q.IsReady())
             {
@@ -390,7 +390,7 @@ namespace BrianSharp.Plugin
             Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast);
         }
 
-        private void Flee()
+        private static void Flee()
         {
             if (GetValue<bool>("Flee", "EQ") && Q.IsReady() && E.IsReady() &&
                 Player.Mana >= Q.Instance.ManaCost + E.Instance.ManaCost && E.Cast(Game.CursorPos, PacketCast) &&
@@ -404,7 +404,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void AutoQ()
+        private static void AutoQ()
         {
             if (!GetValue<KeyBind>("Harass", "AutoQ").Active ||
                 Player.ManaPercent < GetValue<Slider>("Harass", "AutoQMpA").Value)
@@ -414,7 +414,7 @@ namespace BrianSharp.Plugin
             Q.CastOnBestTarget(0, PacketCast, true);
         }
 
-        private void KillSteal()
+        private static void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
@@ -461,7 +461,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private List<Obj_AI_Hero> GetRTarget(Vector3 pos)
+        private static List<Obj_AI_Hero> GetRTarget(Vector3 pos)
         {
             return
                 HeroManager.Enemies.Where(

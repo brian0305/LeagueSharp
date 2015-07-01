@@ -12,7 +12,7 @@ namespace BrianSharp.Plugin
 {
     internal class LeeSin : Helper
     {
-        private Vector3 _wardPlacePos;
+        private static Vector3 _wardPlacePos;
 
         public LeeSin()
         {
@@ -104,32 +104,32 @@ namespace BrianSharp.Plugin
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
         }
 
-        private bool HaveP
+        private static bool HaveP
         {
             get { return Player.HasBuff("blindmonkpassive_cosmetic"); }
         }
 
-        private bool IsQ
+        private static bool IsQOne
         {
             get { return Q.Instance.SData.Name.ToLower().Contains("one"); }
         }
 
-        private bool IsW
+        private static bool IsWOne
         {
             get { return W.Instance.SData.Name.ToLower().Contains("one"); }
         }
 
-        private bool IsE
+        private static bool IsEOne
         {
             get { return E.Instance.SData.Name.ToLower().Contains("one"); }
         }
 
-        private IEnumerable<Obj_AI_Base> ObjHaveQ
+        private static IEnumerable<Obj_AI_Base> ObjHaveQ
         {
             get { return ObjectManager.Get<Obj_AI_Base>().Where(i => i.IsValidTarget(Q2.Range) && HaveQ(i)); }
         }
 
-        private void OnUpdate(EventArgs args)
+        private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
@@ -157,7 +157,7 @@ namespace BrianSharp.Plugin
             KillSteal();
         }
 
-        private void OnDraw(EventArgs args)
+        private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -165,15 +165,17 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Draw", "Q") && Q.Level > 0)
             {
-                Render.Circle.DrawCircle(Player.Position, (IsQ ? Q : Q2).Range, Q.IsReady() ? Color.Green : Color.Red);
+                Render.Circle.DrawCircle(
+                    Player.Position, (IsQOne ? Q : Q2).Range, Q.IsReady() ? Color.Green : Color.Red);
             }
-            if (GetValue<bool>("Draw", "W") && W.Level > 0 && IsW)
+            if (GetValue<bool>("Draw", "W") && W.Level > 0 && IsWOne)
             {
                 Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.Green : Color.Red);
             }
             if (GetValue<bool>("Draw", "E") && E.Level > 0)
             {
-                Render.Circle.DrawCircle(Player.Position, (IsE ? E : E2).Range, E.IsReady() ? Color.Green : Color.Red);
+                Render.Circle.DrawCircle(
+                    Player.Position, (IsEOne ? E : E2).Range, E.IsReady() ? Color.Green : Color.Red);
             }
             if (GetValue<bool>("Draw", "R") && R.Level > 0)
             {
@@ -181,7 +183,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
+        private static void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
         {
             if (Player.IsDead || !GetValue<bool>("Interrupt", "R") ||
                 !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !R.IsReady())
@@ -192,7 +194,7 @@ namespace BrianSharp.Plugin
             {
                 R.CastOnUnit(unit, PacketCast);
             }
-            else if (W.IsReady() && IsW)
+            else if (W.IsReady() && IsWOne)
             {
                 var pos = unit.ServerPosition.Randomize(0, (int) R.Range);
                 if (Flee(pos, false))
@@ -206,7 +208,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Fight(string mode)
+        private static void Fight(string mode)
         {
             if (GetValue<bool>(mode, "P") && HaveP && Orbwalk.GetBestHeroTarget != null && Orbwalk.CanAttack)
             {
@@ -214,7 +216,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>(mode, "Q") && Q.IsReady())
             {
-                if (IsQ)
+                if (IsQOne)
                 {
                     var target = Q.GetTarget();
                     if (target != null)
@@ -256,7 +258,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>(mode, "E") && E.IsReady())
             {
-                if (IsE)
+                if (IsEOne)
                 {
                     if (E.GetTarget() != null && E.Cast(PacketCast))
                     {
@@ -270,7 +272,7 @@ namespace BrianSharp.Plugin
                     return;
                 }
             }
-            if (GetValue<bool>(mode, "R") && R.IsReady() && GetValue<bool>(mode, "Q") && Q.IsReady() && !IsQ)
+            if (GetValue<bool>(mode, "R") && R.IsReady() && GetValue<bool>(mode, "Q") && Q.IsReady() && !IsQOne)
             {
                 var target = R.GetTarget(0, HeroManager.Enemies.Where(i => !HaveQ(i)));
                 if (target != null && CanKill(target, GetQ2Dmg(target, R.GetDamage(target))) &&
@@ -281,7 +283,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>(mode, "W") && W.IsReady() && Orbwalk.GetBestHeroTarget != null)
             {
-                if (IsW)
+                if (IsWOne)
                 {
                     if (!HaveP && !Q.IsReady() && !E.IsReady() && Player.HealthPercent < 50)
                     {
@@ -296,9 +298,9 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void LastHit()
+        private static void LastHit()
         {
-            if (!GetValue<bool>("LastHit", "Q") || !Q.IsReady() || !IsQ)
+            if (!GetValue<bool>("LastHit", "Q") || !Q.IsReady() || !IsQOne)
             {
                 return;
             }
@@ -317,9 +319,9 @@ namespace BrianSharp.Plugin
             Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast);
         }
 
-        private bool Flee(Vector3 pos, bool useWard = true)
+        private static bool Flee(Vector3 pos, bool useWard = true)
         {
-            if (!GetValue<bool>("Flee", "W") || !W.IsReady() || !IsW)
+            if (!GetValue<bool>("Flee", "W") || !W.IsReady() || !IsWOne)
             {
                 return false;
             }
@@ -362,7 +364,7 @@ namespace BrianSharp.Plugin
             return false;
         }
 
-        private void KillSteal()
+        private static void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {
@@ -383,7 +385,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
-                if (IsQ)
+                if (IsQOne)
                 {
                     var target = Q.GetTarget();
                     if (target != null && Q.IsKillable(target) &&
@@ -401,7 +403,7 @@ namespace BrianSharp.Plugin
                     }
                 }
             }
-            if (GetValue<bool>("KillSteal", "E") && E.IsReady() && IsE)
+            if (GetValue<bool>("KillSteal", "E") && E.IsReady() && IsEOne)
             {
                 var target = E.GetTarget();
                 if (target != null && E.IsKillable(target) && E.Cast(PacketCast))
@@ -419,7 +421,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private double GetQ2Dmg(Obj_AI_Base target, double subHp = 0)
+        private static double GetQ2Dmg(Obj_AI_Base target, double subHp = 0)
         {
             var dmg = new[] { 50, 80, 110, 140, 170 }[Q.Level - 1] + 0.9 * Player.FlatPhysicalDamageMod +
                       0.08 * (target.MaxHealth - (target.Health - subHp));
@@ -429,23 +431,23 @@ namespace BrianSharp.Plugin
                 subHp;
         }
 
-        private bool HaveQ(Obj_AI_Base target)
+        private static bool HaveQ(Obj_AI_Base target)
         {
-            return target.HasBuff("BlindMonkQOne") || target.HasBuff("blindmonkqonechaos");
+            return target.HasBuff("BlindMonkSonicWave");
         }
 
-        private bool HaveE(Obj_AI_Base target)
+        private static bool HaveE(Obj_AI_Base target)
         {
-            return target.HasBuff("BlindMonkEOne");
+            return target.HasBuff("BlindMonkTempest");
         }
 
-        private bool QAgain(Obj_AI_Base target)
+        private static bool QAgain(Obj_AI_Base target)
         {
             var buff = target.GetBuff("BlindMonkSonicWave");
             return buff != null && buff.EndTime - Game.Time < 0.5f;
         }
 
-        private bool EAgain(Obj_AI_Base target)
+        private static bool EAgain(Obj_AI_Base target)
         {
             var buff = target.GetBuff("BlindMonkTempest");
             return buff != null && buff.EndTime - Game.Time < 0.5f;

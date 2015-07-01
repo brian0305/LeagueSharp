@@ -52,8 +52,8 @@ namespace BrianSharp.Evade
         {
             get
             {
-                return Helper.GetItem("ES_" + Name, "DangerLevel") != null
-                    ? Helper.GetValue<Slider>("ES_" + Name, "DangerLevel").Value
+                return Helper.GetItem("ESSS_" + Name, "DangerLevel") != null
+                    ? Helper.GetValue<Slider>("ESSS_" + Name, "DangerLevel").Value
                     : _dangerLevel;
             }
             set { _dangerLevel = value; }
@@ -63,14 +63,18 @@ namespace BrianSharp.Evade
         {
             get
             {
-                return Helper.GetItem("ES_" + Name, "Enabled") == null || Helper.GetValue<bool>("ES_" + Name, "Enabled");
+                return Helper.GetItem("ESSS_" + Name, "Enabled") == null ||
+                       Helper.GetValue<bool>("ESSS_" + Name, "Enabled");
             }
         }
 
-        public bool IsReady()
+        public bool IsReady
         {
-            return (CheckSpellName == "" || ObjectManager.Player.Spellbook.GetSpell(Slot).Name == CheckSpellName) &&
-                   Slot.IsReady();
+            get
+            {
+                return (CheckSpellName == "" || ObjectManager.Player.Spellbook.GetSpell(Slot).Name == CheckSpellName) &&
+                       Slot.IsReady();
+            }
         }
     }
 }

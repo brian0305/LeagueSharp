@@ -118,12 +118,12 @@ namespace BrianSharp.Plugin
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
         }
 
-        private bool HaveWDmg
+        private static bool HaveWDmg
         {
             get { return Player.HasBuff("AatroxWPower"); }
         }
 
-        private List<Obj_AI_Hero> GetRTarget
+        private static List<Obj_AI_Hero> GetRTarget
         {
             get
             {
@@ -135,7 +135,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnUpdate(EventArgs args)
+        private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
@@ -164,7 +164,7 @@ namespace BrianSharp.Plugin
             KillSteal();
         }
 
-        private void OnDraw(EventArgs args)
+        private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -184,7 +184,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnEnemyGapcloser(ActiveGapcloser gapcloser)
+        private static void OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
             if (Player.IsDead || !GetValue<bool>("AntiGap", "Q") ||
                 !GetValue<bool>("AntiGap", gapcloser.Sender.ChampionName + "_" + gapcloser.Slot) || !Q.IsReady())
@@ -194,7 +194,7 @@ namespace BrianSharp.Plugin
             Q2.CastIfHitchanceEquals(gapcloser.Sender, HitChance.High, PacketCast);
         }
 
-        private void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
+        private static void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
         {
             if (Player.IsDead || !GetValue<bool>("Interrupt", "Q") ||
                 !GetValue<bool>("Interrupt", unit.ChampionName + "_" + spell.Slot) || !Q.IsReady())
@@ -204,7 +204,7 @@ namespace BrianSharp.Plugin
             Q2.CastIfHitchanceEquals(unit, HitChance.High, PacketCast);
         }
 
-        private void Fight(string mode)
+        private static void Fight(string mode)
         {
             if (GetValue<bool>(mode, "Q") &&
                 (mode == "Combo" || Player.HealthPercent >= GetValue<Slider>(mode, "QHpA").Value) &&
@@ -246,7 +246,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Clear()
+        private static void Clear()
         {
             SmiteMob();
             var minionObj = MinionManager.GetMinions(
@@ -311,7 +311,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void Flee()
+        private static void Flee()
         {
             if (GetValue<bool>("Flee", "Q") && Q.IsReady() && Q.Cast(Game.CursorPos, PacketCast))
             {
@@ -323,7 +323,7 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void AutoE()
+        private static void AutoE()
         {
             if (!GetValue<KeyBind>("Harass", "AutoE").Active ||
                 Player.HealthPercent < GetValue<Slider>("Harass", "AutoEHpA").Value)
@@ -333,7 +333,7 @@ namespace BrianSharp.Plugin
             E.CastOnBestTarget(0, PacketCast, true);
         }
 
-        private void KillSteal()
+        private static void KillSteal()
         {
             if (GetValue<bool>("KillSteal", "Ignite") && Ignite.IsReady())
             {

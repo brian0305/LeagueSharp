@@ -173,14 +173,11 @@ namespace BrianSharp.Evade
                 Rectangle = new Geometry.Polygon.Rectangle(GetMissilePosition(0), CollisionEnd, SpellData.Radius);
                 UpdatePolygon();
             }
-            if (SpellData.MissileFollowsUnit)
+            if (SpellData.MissileFollowsUnit && Unit.IsVisible)
             {
-                if (Unit.IsVisible)
-                {
-                    End = Unit.ServerPosition.To2D();
-                    Direction = (End - Start).Normalized();
-                    UpdatePolygon();
-                }
+                End = Unit.ServerPosition.To2D();
+                Direction = (End - Start).Normalized();
+                UpdatePolygon();
             }
             if (SpellData.SpellName == "SionR")
             {
@@ -237,10 +234,9 @@ namespace BrianSharp.Evade
 
         private Vector2 GetGlobalMissilePosition(int time)
         {
-            var t = Math.Max(0, Utils.GameTimeTickCount + time - StartTick - SpellData.Delay);
-            var sub = t * SpellData.MissileSpeed / 1000;
-            t = (int) Math.Max(0, Math.Min(End.Distance(Start), sub));
-            return Start + Direction * t;
+            var x = Math.Max(0, Utils.GameTimeTickCount + time - StartTick - SpellData.Delay) * SpellData.MissileSpeed /
+                    1000;
+            return Start + Direction * (int) Math.Max(0, Math.Min(End.Distance(Start), x));
         }
 
         public Vector2 GetMissilePosition(int time)
@@ -256,24 +252,15 @@ namespace BrianSharp.Evade
                 var t1 = (SpellData.MissileAccel > 0
                     ? SpellData.MissileMaxSpeed
                     : SpellData.MissileMinSpeed - SpellData.MissileSpeed) * 1000f / SpellData.MissileAccel;
-                if (t <= t1)
-                {
-                    x =
-                        (int)
-                            (t * SpellData.MissileSpeed / 1000d + 0.5d * SpellData.MissileAccel * Math.Pow(t / 1000d, 2));
-                }
-                else
-                {
-                    x =
-                        (int)
-                            (t1 * SpellData.MissileSpeed / 1000d +
-                             0.5d * SpellData.MissileAccel * Math.Pow(t1 / 1000d, 2) +
-                             (t - t1) / 1000d *
-                             (SpellData.MissileAccel < 0 ? SpellData.MissileMaxSpeed : SpellData.MissileMinSpeed));
-                }
+                x = t <= t1
+                    ? (int)
+                        (t * SpellData.MissileSpeed / 1000d + 0.5d * SpellData.MissileAccel * Math.Pow(t / 1000d, 2))
+                    : (int)
+                        (t1 * SpellData.MissileSpeed / 1000d + 0.5d * SpellData.MissileAccel * Math.Pow(t1 / 1000d, 2) +
+                         (t - t1) / 1000d *
+                         (SpellData.MissileAccel < 0 ? SpellData.MissileMaxSpeed : SpellData.MissileMinSpeed));
             }
-            t = (int) Math.Max(0, Math.Min(CollisionEnd.Distance(Start), x));
-            return Start + Direction * t;
+            return Start + Direction * (int) Math.Max(0, Math.Min(CollisionEnd.Distance(Start), x));
         }
 
         public SafePathResult IsSafePath(List<Vector2> path, int timeOffset, int speed = -1, int delay = 0)
@@ -327,10 +314,10 @@ namespace BrianSharp.Evade
                         }
                         var exitIntersection = allIntersections[i + 1];
                         var exitIntersectionProjection = exitIntersection.Point.ProjectOn(Start, End).SegmentPoint;
-                        var missilePosOnEnter = GetMissilePosition(enterIntersection.Time - timeOffset);
-                        var missilePosOnExit = GetMissilePosition(exitIntersection.Time + timeOffset);
-                        if (missilePosOnEnter.Distance(End) + 50 > enterIntersectionProjection.Distance(End) &&
-                            missilePosOnExit.Distance(End) <= exitIntersectionProjection.Distance(End))
+                        if (GetMissilePosition(enterIntersection.Time - timeOffset).Distance(End) + 50 >
+                            enterIntersectionProjection.Distance(End) &&
+                            GetMissilePosition(exitIntersection.Time + timeOffset).Distance(End) <=
+                            exitIntersectionProjection.Distance(End))
                         {
                             return new SafePathResult(false, allIntersections[0]);
                         }
@@ -345,8 +332,8 @@ namespace BrianSharp.Evade
                 {
                     var exitIntersection = allIntersections[0];
                     var exitIntersectionProjection = exitIntersection.Point.ProjectOn(Start, End).SegmentPoint;
-                    var missilePosOnExit = GetMissilePosition(exitIntersection.Time + timeOffset);
-                    if (missilePosOnExit.Distance(End) <= exitIntersectionProjection.Distance(End))
+                    if (GetMissilePosition(exitIntersection.Time + timeOffset).Distance(End) <=
+                        exitIntersectionProjection.Distance(End))
                     {
                         return new SafePathResult(false, allIntersections[0]);
                     }
@@ -370,8 +357,7 @@ namespace BrianSharp.Evade
             var timeToExplode = (SpellData.DontAddExtraDuration ? 0 : SpellData.ExtraDuration) + SpellData.Delay +
                                 (int) (1000 * Start.Distance(End) / SpellData.MissileSpeed) -
                                 (Utils.GameTimeTickCount - StartTick);
-            var myPositionWhenExplodes = path.PositionAfter(timeToExplode, speed, delay);
-            return !IsSafePoint(myPositionWhenExplodes)
+            return !IsSafePoint(path.PositionAfter(timeToExplode, speed, delay))
                 ? new SafePathResult(false, allIntersections[0])
                 : new SafePathResult(
                     IsSafePoint(path.PositionAfter(timeToExplode, speed, timeOffset)), allIntersections[0]);
@@ -391,9 +377,7 @@ namespace BrianSharp.Evade
                        (int) (1000 * Start.Distance(End) / SpellData.MissileSpeed) -
                        (Utils.GameTimeTickCount - StartTick) <= time;
             }
-            var missilePos = GetMissilePosition(0);
-            var missilePosAfterT = GetMissilePosition(time);
-            var project = unit.ServerPosition.To2D().ProjectOn(missilePos, missilePosAfterT);
+            var project = unit.ServerPosition.To2D().ProjectOn(GetMissilePosition(0), GetMissilePosition(time));
             return project.IsOnSegment && unit.Distance(project.SegmentPoint) < SpellData.Radius;
         }
     }

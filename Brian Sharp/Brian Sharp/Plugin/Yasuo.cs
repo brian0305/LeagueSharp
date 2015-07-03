@@ -167,7 +167,7 @@ namespace BrianSharp.Plugin
             }
             AutoQ();
             KillSteal();
-			StackQ();
+            StackQ();
         }
 
         private static void OnDraw(EventArgs args)
@@ -321,7 +321,7 @@ namespace BrianSharp.Plugin
                             {
                                 return;
                             }
-                            if ((!Orbwalk.InAutoAttackRange(target) || !Orbwalk.CanAttack) &&
+                            if ((!Orbwalk.InAutoAttackRange(target) || HaveQ3 || !Orbwalk.CanAttack) &&
                                 (!HaveQ3 ? Q : Q2).Cast(target, PacketCast, true).IsCasted())
                             {
                                 return;
@@ -774,13 +774,12 @@ namespace BrianSharp.Plugin
                             i <= (skillshot.SpellData.MultipleNumber - 1) / 2;
                             i++)
                         {
-                            var end = skillshot.Start +
-                                      skillshot.SpellData.Range *
-                                      originalDirection.Rotated(skillshot.SpellData.MultipleAngle * i);
-                            var skillshotToAdd = new Skillshot(
-                                skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick, skillshot.Start, end,
-                                skillshot.Unit);
-                            SkillshotDetector.DetectedSkillshots.Add(skillshotToAdd);
+                            SkillshotDetector.DetectedSkillshots.Add(
+                                new Skillshot(
+                                    skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick, skillshot.Start,
+                                    skillshot.Start +
+                                    skillshot.SpellData.Range *
+                                    originalDirection.Rotated(skillshot.SpellData.MultipleAngle * i), skillshot.Unit));
                         }
                         return;
                     }
@@ -794,22 +793,21 @@ namespace BrianSharp.Plugin
                     }
                     if (skillshot.SpellData.Invert)
                     {
-                        var newDirection = -(skillshot.End - skillshot.Start).Normalized();
-                        var end = skillshot.Start + newDirection * skillshot.Start.Distance(skillshot.End);
-                        var skillshotToAdd = new Skillshot(
-                            skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick, skillshot.Start, end,
-                            skillshot.Unit);
-                        SkillshotDetector.DetectedSkillshots.Add(skillshotToAdd);
+                        SkillshotDetector.DetectedSkillshots.Add(
+                            new Skillshot(
+                                skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick, skillshot.Start,
+                                skillshot.Start +
+                                -(skillshot.End - skillshot.Start).Normalized() *
+                                skillshot.Start.Distance(skillshot.End), skillshot.Unit));
                         return;
                     }
                     if (skillshot.SpellData.Centered)
                     {
-                        var start = skillshot.Start - skillshot.Direction * skillshot.SpellData.Range;
-                        var end = skillshot.Start + skillshot.Direction * skillshot.SpellData.Range;
-                        var skillshotToAdd = new Skillshot(
-                            skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick, start, end,
-                            skillshot.Unit);
-                        SkillshotDetector.DetectedSkillshots.Add(skillshotToAdd);
+                        SkillshotDetector.DetectedSkillshots.Add(
+                            new Skillshot(
+                                skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick,
+                                skillshot.Start - skillshot.Direction * skillshot.SpellData.Range,
+                                skillshot.Start + skillshot.Direction * skillshot.SpellData.Range, skillshot.Unit));
                         return;
                     }
                     if (skillshot.SpellData.SpellName == "SyndraE" || skillshot.SpellData.SpellName == "syndrae5")
@@ -840,12 +838,11 @@ namespace BrianSharp.Plugin
                     }
                     if (skillshot.SpellData.SpellName == "AlZaharCalloftheVoid")
                     {
-                        var start = skillshot.End - skillshot.Perpendicular * 400;
-                        var end = skillshot.End + skillshot.Perpendicular * 400;
-                        var skillshotToAdd = new Skillshot(
-                            skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick, start, end,
-                            skillshot.Unit);
-                        SkillshotDetector.DetectedSkillshots.Add(skillshotToAdd);
+                        SkillshotDetector.DetectedSkillshots.Add(
+                            new Skillshot(
+                                skillshot.DetectionType, skillshot.SpellData, skillshot.StartTick,
+                                skillshot.End - skillshot.Perpendicular * 400,
+                                skillshot.End + skillshot.Perpendicular * 400, skillshot.Unit));
                         return;
                     }
                     if (skillshot.SpellData.SpellName == "ZiggsQ")
@@ -861,14 +858,14 @@ namespace BrianSharp.Plugin
                             (int) (skillshot.SpellData.Delay + d1 * 1000f / skillshot.SpellData.MissileSpeed + 500);
                         bounce2SpellData.Delay =
                             (int) (bounce1SpellData.Delay + d2 * 1000f / bounce1SpellData.MissileSpeed + 500);
-                        var bounce1 = new Skillshot(
-                            skillshot.DetectionType, bounce1SpellData, skillshot.StartTick, skillshot.End, bounce1Pos,
-                            skillshot.Unit);
-                        var bounce2 = new Skillshot(
-                            skillshot.DetectionType, bounce2SpellData, skillshot.StartTick, bounce1Pos, bounce2Pos,
-                            skillshot.Unit);
-                        SkillshotDetector.DetectedSkillshots.Add(bounce1);
-                        SkillshotDetector.DetectedSkillshots.Add(bounce2);
+                        SkillshotDetector.DetectedSkillshots.Add(
+                            new Skillshot(
+                                skillshot.DetectionType, bounce1SpellData, skillshot.StartTick, skillshot.End,
+                                bounce1Pos, skillshot.Unit));
+                        SkillshotDetector.DetectedSkillshots.Add(
+                            new Skillshot(
+                                skillshot.DetectionType, bounce2SpellData, skillshot.StartTick, bounce1Pos, bounce2Pos,
+                                skillshot.Unit));
                     }
                     if (skillshot.SpellData.SpellName == "ZiggsR")
                     {
@@ -918,10 +915,10 @@ namespace BrianSharp.Plugin
                 }
                 if (skillshot.SpellData.SpellName == "OriannasQ")
                 {
-                    var skillshotToAdd = new Skillshot(
-                        skillshot.DetectionType, SpellDatabase.GetByName("OriannaQend"), skillshot.StartTick,
-                        skillshot.Start, skillshot.End, skillshot.Unit);
-                    SkillshotDetector.DetectedSkillshots.Add(skillshotToAdd);
+                    SkillshotDetector.DetectedSkillshots.Add(
+                        new Skillshot(
+                            skillshot.DetectionType, SpellDatabase.GetByName("OriannaQend"), skillshot.StartTick,
+                            skillshot.Start, skillshot.End, skillshot.Unit));
                 }
                 if (skillshot.SpellData.DisableFowDetection && skillshot.DetectionType == DetectionType.RecvPacket)
                 {
@@ -940,10 +937,10 @@ namespace BrianSharp.Plugin
                 var spellData = SpellDatabase.GetByName("VelkozQSplit");
                 for (var i = -1; i <= 1; i = i + 2)
                 {
-                    var skillshotToAdd = new Skillshot(
-                        DetectionType.ProcessSpell, spellData, Utils.GameTimeTickCount, missile.Position.To2D(),
-                        missile.Position.To2D() + i * skillshot.Perpendicular * spellData.Range, skillshot.Unit);
-                    SkillshotDetector.DetectedSkillshots.Add(skillshotToAdd);
+                    SkillshotDetector.DetectedSkillshots.Add(
+                        new Skillshot(
+                            DetectionType.ProcessSpell, spellData, Utils.GameTimeTickCount, missile.Position.To2D(),
+                            missile.Position.To2D() + i * skillshot.Perpendicular * spellData.Range, skillshot.Unit));
                 }
             }
 
@@ -1037,7 +1034,7 @@ namespace BrianSharp.Plugin
                         hitBy.Where(
                             i =>
                                 i.SpellData.CollisionObjects.Contains(CollisionObjectTypes.YasuoWall) &&
-                                i.IsAboutToHit(evadeSpell.Delay + 150, Player))
+                                i.IsAboutToHit(evadeSpell.Delay + 250, Player))
                             .OrderBy(i => i.SpellData.DangerValue)
                             .Any(i => Player.Spellbook.CastSpell(evadeSpell.Slot, i.Start.To3D())))
                     {
@@ -1113,15 +1110,16 @@ namespace BrianSharp.Plugin
 
             public static void Init(Menu menu)
             {
-                LoadTargetData();
+                LoadSpellData();
                 var evadeMenu = new Menu("Evade Target", "EvadeTarget");
                 {
                     AddBool(evadeMenu, "W", "Use W");
-                    //AddBool(evadeMenu, "E", "Use E (Detuks)");
-                    AddBool(evadeMenu, "BAttack", "-> Basic Attack");
-                    AddSlider(evadeMenu, "BAttackHpU", "--> If Hp Under", 20);
-                    AddBool(evadeMenu, "CAttack", "-> Crit Attack");
-                    AddSlider(evadeMenu, "CAttackHpU", "--> If Hp Under", 40);
+                    AddBool(evadeMenu, "E", "Use E (To Dash Behind WindWall)");
+                    AddBool(evadeMenu, "ETower", "-> Under Tower", false);
+                    AddBool(evadeMenu, "BAttack", "Basic Attack");
+                    AddSlider(evadeMenu, "BAttackHpU", "-> If Hp Under", 20);
+                    AddBool(evadeMenu, "CAttack", "Crit Attack");
+                    AddSlider(evadeMenu, "CAttackHpU", "-> If Hp Under", 40);
                     foreach (var hero in
                         HeroManager.Enemies.Where(i => Spells.Any(a => a.ChampionName == i.ChampionName)))
                     {
@@ -1152,33 +1150,38 @@ namespace BrianSharp.Plugin
                 {
                     return;
                 }
-                //if (!W.IsReady(300) && (Wall == null || !E.IsReady(200)))
-                //{
-                //    return;
-                //}
-                foreach (var target in
-                    DetectedTargets.Where(i => Player.Distance(i.Obj.Position) < 700))
+                if (!W.IsReady(300) && (Wall == null || !E.IsReady(200)))
                 {
-                    if (W.IsReady() && GetValue<bool>("EvadeTarget", "W") && W.IsInRange(target.Obj, 250))
+                    return;
+                }
+                foreach (var target in
+                    DetectedTargets.Where(i => Player.Distance(i.Obj.Position) < 500))
+                {
+                    if (E.IsReady() && GetValue<bool>("EvadeTarget", "E") && Wall != null &&
+                        !GoThroughWall(Player.ServerPosition.To2D(), target.Obj.Position.To2D()) &&
+                        W.IsInRange(target.Obj, 300))
                     {
-                        W.Cast(target.Obj.Position, PacketCast);
+                        var obj = new List<Obj_AI_Base>();
+                        obj.AddRange(MinionManager.GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly));
+                        obj.AddRange(HeroManager.Enemies.Where(i => i.IsValidTarget(E.Range)));
+                        if (
+                            obj.Where(
+                                i =>
+                                    CanCastE(i) && EvadeSkillshot.IsSafePoint(i.ServerPosition.To2D()).IsSafe &&
+                                    EvadeSkillshot.IsSafePoint(PosAfterE(i).To2D()).IsSafe &&
+                                    (!UnderTower(PosAfterE(i)) || GetValue<bool>("EvadeTarget", "ETower")) &&
+                                    GoThroughWall(Player.ServerPosition.To2D(), PosAfterE(i).To2D()))
+                                .OrderBy(i => PosAfterE(i).Distance(Game.CursorPos))
+                                .Any(i => E.CastOnUnit(i, PacketCast)))
+                        {
+                            return;
+                        }
+                    }
+                    if (W.IsReady() && GetValue<bool>("EvadeTarget", "W") && W.IsInRange(target.Obj) &&
+                        W.Cast(target.Obj.Position, PacketCast))
+                    {
                         return;
                     }
-                    //if (E.IsReady() && GetValue<bool>("EvadeTarget", "E") && Wall != null &&
-                    //    !GoThroughWall(Player.ServerPosition.To2D(), target.Obj.Position.To2D()))
-                    //{
-                    //    var obj = new List<Obj_AI_Base>();
-                    //    obj.AddRange(MinionManager.GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly));
-                    //    obj.AddRange(HeroManager.Enemies.Where(i => i.IsValidTarget(E.Range)));
-                    //    if (
-                    //        obj.Where(
-                    //            i => CanCastE(i) && GoThroughWall(Player.ServerPosition.To2D(), PosAfterE(i).To2D()))
-                    //            .OrderBy(i => i.Distance(Game.CursorPos))
-                    //            .Any(i => E.CastOnUnit(i, PacketCast)))
-                    //    {
-                    //        return;
-                    //    }
-                    //}
                 }
             }
 
@@ -1205,7 +1208,7 @@ namespace BrianSharp.Plugin
                         ? GetValue<bool>("EvadeTarget", "BAttack") &&
                           Player.HealthPercent < GetValue<Slider>("EvadeTarget", "BAttackHpU").Value
                         : GetValue<bool>("EvadeTarget", "CAttack") &&
-                          Player.HealthPercent < GetValue<Slider>("EvadeTarget", "CAttackHpU").Value) && W.IsReady())
+                          Player.HealthPercent < GetValue<Slider>("EvadeTarget", "CAttackHpU").Value))
                 {
                     spellData = new SpellData
                     {
@@ -1242,7 +1245,7 @@ namespace BrianSharp.Plugin
                 _wallCastedPos = sender.ServerPosition.To2D();
             }
 
-            private static void LoadTargetData()
+            private static void LoadSpellData()
             {
                 Spells.Add(
                     new SpellData

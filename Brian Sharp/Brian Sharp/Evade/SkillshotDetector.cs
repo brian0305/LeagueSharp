@@ -184,10 +184,9 @@ namespace BrianSharp.Evade
             Vector2 end,
             Obj_AI_Base unit)
         {
-            var skillshot = new Skillshot(detectionType, spellData, startT, start, end, unit);
             if (OnDetectSkillshot != null)
             {
-                OnDetectSkillshot(skillshot);
+                OnDetectSkillshot(new Skillshot(detectionType, spellData, startT, start, end, unit));
             }
         }
     }

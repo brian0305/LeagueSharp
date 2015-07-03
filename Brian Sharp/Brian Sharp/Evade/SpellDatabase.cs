@@ -736,6 +736,40 @@ namespace BrianSharp.Evade
                     CanBeRemoved = true,
                     CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.YasuoWall }
                 });
+            Spells.Add(
+                new SpellData
+                {
+                    ChampionName = "Ekko",
+                    SpellName = "EkkoW",
+                    Slot = SpellSlot.W,
+                    Type = SkillShotType.SkillshotCircle,
+                    Delay = 3750,
+                    Range = 1600,
+                    Radius = 375,
+                    MissileSpeed = 1650,
+                    FixedRange = true,
+                    DangerValue = 3,
+                    MissileSpellName = "EkkoW",
+                    CanBeRemoved = true
+                });
+            Spells.Add(
+                new SpellData
+                {
+                    ChampionName = "Ekko",
+                    SpellName = "EkkoR",
+                    Slot = SpellSlot.R,
+                    Type = SkillShotType.SkillshotCircle,
+                    Delay = 250,
+                    Range = 1600,
+                    Radius = 375,
+                    MissileSpeed = 1650,
+                    FixedRange = true,
+                    AddHitbox = true,
+                    DangerValue = 3,
+                    MissileSpellName = "EkkoR",
+                    CanBeRemoved = true,
+                    FromObjects = new[] { "Ekko_Base_R_TrailEnd.troy" }
+                });
 
             #endregion Ekko
 
@@ -1931,10 +1965,12 @@ namespace BrianSharp.Evade
                     DangerValue = 3,
                     IsDangerous = true,
                     MissileSpellName = "LuxLightBindingMis",
-                    CanBeRemoved = true,
-                    CollisionObjects =
-                        new[]
-                        { CollisionObjectTypes.Champions, CollisionObjectTypes.Minion, CollisionObjectTypes.YasuoWall }
+                    //CanBeRemoved = true,
+                    CollisionObjects = new[]
+                    {
+                        /*CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,*/
+                        CollisionObjectTypes.YasuoWall
+                    }
                 });
             Spells.Add(
                 new SpellData
@@ -1945,7 +1981,7 @@ namespace BrianSharp.Evade
                     Type = SkillShotType.SkillshotCircle,
                     Delay = 250,
                     Range = 1100,
-                    Radius = 325,
+                    Radius = 340,
                     MissileSpeed = 1300,
                     AddHitbox = true,
                     DangerValue = 2,
@@ -2149,11 +2185,8 @@ namespace BrianSharp.Evade
                     Range = 1125,
                     Radius = 60,
                     MissileSpeed = 1400,
-                    FixedRange = true,
-                    AddHitbox = true,
-                    DangerValue = 1,
+                    DangerValue = 2,
                     MissileSpellName = "NocturneDuskbringer",
-                    CanBeRemoved = true,
                     CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
                 });
 
@@ -2293,6 +2326,30 @@ namespace BrianSharp.Evade
 
             #endregion Quinn
 
+            #region RekSai
+
+            Spells.Add(
+                new SpellData
+                {
+                    ChampionName = "RekSai",
+                    SpellName = "reksaiqburrowed",
+                    Slot = SpellSlot.Q,
+                    Type = SkillShotType.SkillshotMissileLine,
+                    Delay = 500,
+                    Range = 1625,
+                    Radius = 60,
+                    MissileSpeed = 1950,
+                    FixedRange = true,
+                    AddHitbox = true,
+                    DangerValue = 3,
+                    MissileSpellName = "RekSaiQBurrowedMis",
+                    CollisionObjects =
+                        new[]
+                        { CollisionObjectTypes.Champions, CollisionObjectTypes.Minion, CollisionObjectTypes.YasuoWall }
+                });
+
+            #endregion RekSai
+
             #region Rengar
 
             Spells.Add(
@@ -2318,30 +2375,6 @@ namespace BrianSharp.Evade
                 });
 
             #endregion Rengar
-
-            #region RekSai
-
-            Spells.Add(
-                new SpellData
-                {
-                    ChampionName = "RekSai",
-                    SpellName = "reksaiqburrowed",
-                    Slot = SpellSlot.Q,
-                    Type = SkillShotType.SkillshotMissileLine,
-                    Delay = 500,
-                    Range = 1625,
-                    Radius = 60,
-                    MissileSpeed = 1950,
-                    FixedRange = true,
-                    AddHitbox = true,
-                    DangerValue = 3,
-                    MissileSpellName = "RekSaiQBurrowedMis",
-                    CollisionObjects =
-                        new[]
-                        { CollisionObjectTypes.Champions, CollisionObjectTypes.Minion, CollisionObjectTypes.YasuoWall }
-                });
-
-            #endregion RekSai
 
             #region Riven
 
@@ -2495,66 +2528,6 @@ namespace BrianSharp.Evade
 
             #endregion Sejuani
 
-            #region Sion
-
-            Spells.Add(
-                new SpellData
-                {
-                    ChampionName = "Sion",
-                    SpellName = "SionE",
-                    Slot = SpellSlot.E,
-                    Type = SkillShotType.SkillshotMissileLine,
-                    Delay = 250,
-                    Range = 800,
-                    Radius = 80,
-                    MissileSpeed = 1800,
-                    FixedRange = true,
-                    AddHitbox = true,
-                    DangerValue = 3,
-                    IsDangerous = true,
-                    MissileSpellName = "SionEMissile",
-                    CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.YasuoWall }
-                });
-            Spells.Add(
-                new SpellData
-                {
-                    ChampionName = "Sion",
-                    SpellName = "SionR",
-                    Slot = SpellSlot.R,
-                    Type = SkillShotType.SkillshotMissileLine,
-                    Delay = 500,
-                    Range = 800,
-                    Radius = 120,
-                    MissileSpeed = 1000,
-                    FixedRange = true,
-                    AddHitbox = true,
-                    DangerValue = 3,
-                    IsDangerous = true,
-                    CollisionObjects = new[] { CollisionObjectTypes.Champions }
-                });
-
-            #endregion Sion
-
-            #region Soraka
-
-            Spells.Add(
-                new SpellData
-                {
-                    ChampionName = "Soraka",
-                    SpellName = "SorakaQ",
-                    Slot = SpellSlot.Q,
-                    Type = SkillShotType.SkillshotCircle,
-                    Delay = 500,
-                    Range = 950,
-                    Radius = 300,
-                    MissileSpeed = 1750,
-                    AddHitbox = true,
-                    DangerValue = 2,
-                    CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
-                });
-
-            #endregion Soraka
-
             #region Shen
 
             Spells.Add(
@@ -2635,6 +2608,46 @@ namespace BrianSharp.Evade
                 });
 
             #endregion Shyvana
+
+            #region Sion
+
+            Spells.Add(
+                new SpellData
+                {
+                    ChampionName = "Sion",
+                    SpellName = "SionE",
+                    Slot = SpellSlot.E,
+                    Type = SkillShotType.SkillshotMissileLine,
+                    Delay = 250,
+                    Range = 800,
+                    Radius = 80,
+                    MissileSpeed = 1800,
+                    FixedRange = true,
+                    AddHitbox = true,
+                    DangerValue = 3,
+                    IsDangerous = true,
+                    MissileSpellName = "SionEMissile",
+                    CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.YasuoWall }
+                });
+            Spells.Add(
+                new SpellData
+                {
+                    ChampionName = "Sion",
+                    SpellName = "SionR",
+                    Slot = SpellSlot.R,
+                    Type = SkillShotType.SkillshotMissileLine,
+                    Delay = 500,
+                    Range = 800,
+                    Radius = 120,
+                    MissileSpeed = 1000,
+                    FixedRange = true,
+                    AddHitbox = true,
+                    DangerValue = 3,
+                    IsDangerous = true,
+                    CollisionObjects = new[] { CollisionObjectTypes.Champions }
+                });
+
+            #endregion Sion
 
             #region Sivir
 
@@ -2720,6 +2733,26 @@ namespace BrianSharp.Evade
                 });
 
             #endregion Sona
+
+            #region Soraka
+
+            Spells.Add(
+                new SpellData
+                {
+                    ChampionName = "Soraka",
+                    SpellName = "SorakaQ",
+                    Slot = SpellSlot.Q,
+                    Type = SkillShotType.SkillshotCircle,
+                    Delay = 500,
+                    Range = 950,
+                    Radius = 300,
+                    MissileSpeed = 1750,
+                    AddHitbox = true,
+                    DangerValue = 2,
+                    CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                });
+
+            #endregion Soraka
 
             #region Swain
 

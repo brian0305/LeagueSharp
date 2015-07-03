@@ -321,8 +321,7 @@ namespace BrianSharp.Plugin
                             {
                                 return;
                             }
-                            if ((!Orbwalk.InAutoAttackRange(target) || HaveQ3 || !Orbwalk.CanAttack) &&
-                                (!HaveQ3 ? Q : Q2).Cast(target, PacketCast, true).IsCasted())
+                            if ((!HaveQ3 ? Q : Q2).Cast(target, PacketCast, true).IsCasted())
                             {
                                 return;
                             }

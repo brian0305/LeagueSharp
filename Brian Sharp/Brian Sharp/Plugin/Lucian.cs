@@ -5,6 +5,7 @@ using BrianSharp.Common;
 using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
+using Collision = LeagueSharp.Common.Collision;
 using Color = System.Drawing.Color;
 using Orbwalk = BrianSharp.Common.Orbwalker;
 
@@ -17,15 +18,14 @@ namespace BrianSharp.Plugin
         public Lucian()
         {
             Q = new Spell(SpellSlot.Q, 675);
-            //Q2 = new Spell(SpellSlot.Q, 1100);
-            Q2 = new Spell(SpellSlot.Q, 1140);
+            Q2 = new Spell(SpellSlot.Q, 1100);
             W = new Spell(SpellSlot.W, 1000, TargetSelector.DamageType.Magical);
+            W2 = new Spell(SpellSlot.W, 1000, TargetSelector.DamageType.Magical);
             E = new Spell(SpellSlot.E, 425);
             R = new Spell(SpellSlot.R, 1400);
-            //Q2.SetSkillshot(0.5f, 65, float.MaxValue, true, SkillshotType.SkillshotLine);
-            Q2.SetSkillshot(0.35f, 65, float.MaxValue, true, SkillshotType.SkillshotLine);
-            //W.SetSkillshot(0.25f, 25, 1600, true, SkillshotType.SkillshotLine); //Width: 55
-            W.SetSkillshot(0.3f, 25, 1600, true, SkillshotType.SkillshotLine);
+            Q2.SetSkillshot(0.5f, 65, float.MaxValue, false, SkillshotType.SkillshotLine);
+            W.SetSkillshot(0.25f, 150, 1600, true, SkillshotType.SkillshotCircle);
+            W2.SetSkillshot(0.25f, 150, 1600, false, SkillshotType.SkillshotCircle);
             R.SetSkillshot(0.5f, 110, 2800, true, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
@@ -37,7 +37,6 @@ namespace BrianSharp.Plugin
                     AddBool(comboMenu, "Q", "Use Q");
                     AddBool(comboMenu, "QExtend", "-> Extend");
                     AddBool(comboMenu, "W", "Use W");
-                    AddBool(comboMenu, "WPred", "-> Prediction", false);
                     AddBool(comboMenu, "E", "Use E");
                     AddBool(comboMenu, "EGap", "-> Gap Closer");
                     AddSlider(comboMenu, "EDelay", "-> Stop Q/W If E Will Ready In (ms)", 500, 100, 1000);
@@ -52,13 +51,13 @@ namespace BrianSharp.Plugin
                 var harassMenu = new Menu("Harass", "Harass");
                 {
                     AddKeybind(harassMenu, "AutoQ", "Auto Q (Only Extend)", "H", KeyBindType.Toggle);
-                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp >=", 50);
                     AddBool(harassMenu, "P", "Use Passive");
                     AddBool(harassMenu, "PSave", "-> Always Save", false);
                     AddBool(harassMenu, "Q", "Use Q");
                     AddBool(harassMenu, "W", "Use W");
                     AddBool(harassMenu, "E", "Use E");
-                    AddSlider(harassMenu, "EHpA", "-> If Hp Above", 20);
+                    AddSlider(harassMenu, "EHpA", "-> If Hp >=", 20);
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
@@ -263,7 +262,7 @@ namespace BrianSharp.Plugin
                         (!Orbwalk.InAutoAttackRange(target) && (!GetValue<bool>(mode, "Q") || !Q.IsReady()) &&
                          (!GetValue<bool>(mode, "W") || !W.IsReady()) && (!GetValue<bool>(mode, "E") || !E.IsReady())))
                     {
-                        if (R.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
+                        if (R.Cast(target, PacketCast).IsCasted())
                         {
                             if (GetValue<bool>(mode, "RItem") && Youmuu.IsReady())
                             {
@@ -276,7 +275,7 @@ namespace BrianSharp.Plugin
             }
             if (mode == "Combo" && GetValue<bool>(mode, "E") && GetValue<bool>(mode, "EGap") && E.IsReady())
             {
-                var target = E.GetTarget(Orbwalk.GetAutoAttackRange());
+                var target = E.GetTarget(Orbwalk.GetAutoAttackRange() - 30);
                 if (target != null && !Orbwalk.InAutoAttackRange(target) &&
                     Orbwalk.InAutoAttackRange(target, 20, Player.ServerPosition.Extend(Game.CursorPos, E.Range)) &&
                     E.Cast(Player.ServerPosition.Extend(Game.CursorPos, E.Range), PacketCast))
@@ -318,13 +317,13 @@ namespace BrianSharp.Plugin
                 if (target != null &&
                     ((Orbwalk.InAutoAttackRange(target) && !HavePassive) || !Orbwalk.InAutoAttackRange(target, 20)))
                 {
-                    if (mode == "Harass" || GetValue<bool>(mode, "WPred"))
+                    if (Orbwalk.InAutoAttackRange(target))
                     {
-                        W.CastIfHitchanceEquals(target, HitChance.High, PacketCast);
+                        W2.CastIfWillHit(target, -1, PacketCast);
                     }
                     else
                     {
-                        W.Cast(W.GetPrediction(target).CastPosition, PacketCast);
+                        W.CastIfWillHit(target, -1, PacketCast);
                     }
                 }
             }
@@ -332,8 +331,10 @@ namespace BrianSharp.Plugin
 
         private static void Clear()
         {
-            var minionObj = MinionManager.GetMinions(
-                Q2.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            var minionObj =
+                GetMinions(Q2.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
+                    .Cast<Obj_AI_Base>()
+                    .ToList();
             if (!minionObj.Any())
             {
                 return;
@@ -355,7 +356,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "W") && W.IsReady() && !Player.IsDashing() && !HavePassive)
             {
-                var pos = W.GetLineFarmLocation(minionObj.Where(i => W.IsInRange(i)).ToList());
+                var pos = W.GetCircularFarmLocation(minionObj.Where(i => W.IsInRange(i)).ToList());
                 if (pos.MinionsHit > 1)
                 {
                     W.Cast(pos.Position, PacketCast);
@@ -367,7 +368,7 @@ namespace BrianSharp.Plugin
                             .MinOrDefault(i => i.Distance(Player));
                     if (obj != null)
                     {
-                        W.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast);
+                        W.Cast(obj, PacketCast);
                     }
                 }
             }
@@ -427,7 +428,7 @@ namespace BrianSharp.Plugin
                 var target = W.GetTarget();
                 if (target != null && W.IsKillable(target) && (!cancelR || R.Cast(PacketCast)))
                 {
-                    W.CastIfHitchanceEquals(target, HitChance.High, PacketCast);
+                    W.Cast(target, PacketCast);
                 }
             }
         }
@@ -456,10 +457,20 @@ namespace BrianSharp.Plugin
 
         private static bool CastExtendQ(Obj_AI_Hero target, bool cancelR = false)
         {
-            //var obj =
-            //    GetMinion(Q.Range, MinionType.Minion, MinionTeam.NotAlly)
-            //        .FirstOrDefault(i => Q2.WillHit(target, i.ServerPosition.Extend(Player.ServerPosition, -Q2.Range)));
-            var obj = Q2.GetPrediction(target).CollisionObjects.FirstOrDefault();
+            var obj =
+                Collision.GetCollision(
+                    new List<Vector3> { target.ServerPosition },
+                    new PredictionInput
+                    {
+                        From = Player.ServerPosition,
+                        Type = Q2.Type,
+                        Range = Q2.Range,
+                        Delay = Q2.Delay,
+                        Radius = Q2.Width,
+                        Speed = Q2.Speed,
+                        CollisionObjects = new[] { CollisionableObjects.Minions, CollisionableObjects.Heroes }
+                    })
+                    .FirstOrDefault(i => Q.CanCast(i));
             return obj != null && (!cancelR || R.Cast(PacketCast)) && Q.CastOnUnit(obj, PacketCast);
         }
 

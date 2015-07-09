@@ -26,8 +26,8 @@ namespace BrianSharp.Plugin
                     AddBool(comboMenu, "W", "Use W");
                     AddBool(comboMenu, "E", "Use E");
                     AddBool(comboMenu, "R", "Use R");
-                    AddSlider(comboMenu, "RHpU", "-> If Player Hp Under", 60);
-                    AddSlider(comboMenu, "RCountA", "-> Or Enemy Above", 2, 1, 5);
+                    AddSlider(comboMenu, "RHpU", "-> If Player Hp <", 60);
+                    AddSlider(comboMenu, "RCountA", "-> Or Enemy >=", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
@@ -130,8 +130,8 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Draw", "QKillObj") && Q.Level > 0)
             {
-                var minionObj = MinionManager.GetMinions(Q.Range + 300, MinionTypes.All, MinionTeam.NotAlly);
-                foreach (var obj in minionObj.Cast<Obj_AI_Minion>().Where(i => CanKill(i, GetBonusDmg(i))))
+                var minionObj = GetMinions(Q.Range + 300, MinionTypes.All, MinionTeam.NotAlly);
+                foreach (var obj in minionObj.Where(i => CanKill(i, GetBonusDmg(i))))
                 {
                     Render.Circle.DrawCircle(obj.Position, obj.BoundingRadius, Color.MediumPurple);
                 }
@@ -202,7 +202,7 @@ namespace BrianSharp.Plugin
             {
                 var target = E.GetTarget(E.Width / 2);
                 if (target != null && (mode == "Combo" || Orbwalk.InAutoAttackRange(target, 50)) &&
-                    E.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
+                    E.Cast(target, PacketCast).IsCasted())
                 {
                     return;
                 }
@@ -222,7 +222,7 @@ namespace BrianSharp.Plugin
         private static void Clear()
         {
             SmiteMob();
-            var minionObj = MinionManager.GetMinions(
+            var minionObj = GetMinions(
                 E.Range + E.Width / 2, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (!minionObj.Any())
             {
@@ -231,8 +231,9 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("Clear", "Q") && (Q.IsReady() || HaveQ))
             {
                 var obj =
-                    ObjectManager.Get<Obj_AI_Turret>()
-                        .FirstOrDefault(i => Orbwalk.InAutoAttackRange(i) && CanKill(i, GetBonusDmg(i))) ??
+                    (Obj_AI_Base)
+                        ObjectManager.Get<Obj_AI_Turret>()
+                            .FirstOrDefault(i => Orbwalk.InAutoAttackRange(i) && CanKill(i, GetBonusDmg(i))) ??
                     minionObj.Where(i => Orbwalk.InAutoAttackRange(i))
                         .FirstOrDefault(
                             i =>
@@ -257,7 +258,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "E") && E.IsReady())
             {
-                var pos = E.GetCircularFarmLocation(minionObj);
+                var pos = E.GetCircularFarmLocation(minionObj.Cast<Obj_AI_Base>().ToList());
                 if (pos.MinionsHit > 1)
                 {
                     E.Cast(pos.Position, PacketCast);
@@ -267,7 +268,7 @@ namespace BrianSharp.Plugin
                     var obj = minionObj.FirstOrDefault(i => i.MaxHealth >= 1200);
                     if (obj != null)
                     {
-                        E.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast);
+                        E.Cast(obj, PacketCast);
                     }
                 }
             }
@@ -280,7 +281,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             var obj =
-                MinionManager.GetMinions(Q.Range + 100, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
+                GetMinions(Q.Range + 100, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                     .Where(i => Orbwalk.InAutoAttackRange(i))
                     .FirstOrDefault(i => CanKill(i, GetBonusDmg(i)));
             if (obj == null)
@@ -338,7 +339,7 @@ namespace BrianSharp.Plugin
                 var target = E.GetTarget(E.Width);
                 if (target != null && E.IsKillable(target))
                 {
-                    E.CastIfHitchanceEquals(target, HitChance.High, PacketCast);
+                    E.Cast(target, PacketCast);
                 }
             }
         }

@@ -18,7 +18,7 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W, 300, TargetSelector.DamageType.Magical);
             E = new Spell(SpellSlot.E, 350, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 550, TargetSelector.DamageType.Magical);
-            Q.SetSkillshot(0.25f, 80, 2000, true, SkillshotType.SkillshotLine);
+            Q.SetSkillshot(0.25f, 90, 2000, true, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -27,17 +27,17 @@ namespace BrianSharp.Plugin
                     AddBool(comboMenu, "Q", "Use Q");
                     AddBool(comboMenu, "QCol", "-> Smite Collision");
                     AddBool(comboMenu, "W", "Use W");
-                    AddSlider(comboMenu, "WMpA", "-> If Mp Above", 20);
+                    AddSlider(comboMenu, "WMpA", "-> If Mp >=", 20);
                     AddBool(comboMenu, "E", "Use E");
                     AddBool(comboMenu, "R", "Use R");
-                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
-                    AddSlider(comboMenu, "RCountA", "-> Or Enemy Above", 2, 1, 5);
+                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp <", 60);
+                    AddSlider(comboMenu, "RCountA", "-> Or Enemy >=", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
                     AddBool(harassMenu, "W", "Use W");
-                    AddSlider(harassMenu, "WMpA", "-> If Mp Above", 20);
+                    AddSlider(harassMenu, "WMpA", "-> If Mp >=", 20);
                     AddBool(harassMenu, "E", "Use E");
                     champMenu.AddSubMenu(harassMenu);
                 }
@@ -46,7 +46,7 @@ namespace BrianSharp.Plugin
                     AddSmiteMob(clearMenu);
                     AddBool(clearMenu, "Q", "Use Q");
                     AddBool(clearMenu, "W", "Use W");
-                    AddSlider(clearMenu, "WMpA", "-> If Mp Above", 20);
+                    AddSlider(clearMenu, "WMpA", "-> If Mp >=", 20);
                     AddBool(clearMenu, "E", "Use E");
                     champMenu.AddSubMenu(clearMenu);
                 }
@@ -167,7 +167,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            Q.CastIfHitchanceEquals(gapcloser.Sender, HitChance.High, PacketCast);
+            Q.Cast(gapcloser.Sender, PacketCast);
         }
 
         private static void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
@@ -177,7 +177,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            Q.CastIfHitchanceEquals(unit, HitChance.High, PacketCast);
+            Q.Cast(unit, PacketCast);
         }
 
         private static void Fight(string mode)
@@ -199,17 +199,17 @@ namespace BrianSharp.Plugin
                     if (GetValue<bool>(mode, "R") && R.IsReady(100))
                     {
                         var nearObj = new List<Obj_AI_Base>();
-                        nearObj.AddRange(MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly));
+                        nearObj.AddRange(GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly));
                         nearObj.AddRange(HeroManager.Enemies.Where(i => i.IsValidTarget(Q.Range)));
-                        var obj = (from i in nearObj
+                        if ((from i in nearObj
                             where Q.GetPrediction(i).Hitchance >= HitChance.High
                             let enemy = GetRTarget(i.ServerPosition)
                             where
                                 (enemy.Count > 1 && enemy.Any(a => R.IsKillable(a))) ||
                                 enemy.Any(a => a.HealthPercent < GetValue<Slider>(mode, "RHpU").Value) ||
                                 enemy.Count >= GetValue<Slider>(mode, "RCountA").Value
-                            select i).MaxOrDefault(i => GetRTarget(i.ServerPosition).Count);
-                        if (obj != null && Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast))
+                            select i).OrderByDescending(i => GetRTarget(i.ServerPosition).Count)
+                            .Any(i => Q.Cast(i, PacketCast).IsCasted()))
                         {
                             return;
                         }
@@ -217,16 +217,21 @@ namespace BrianSharp.Plugin
                     var target = Q.GetTarget();
                     if (target != null && !Orbwalk.InAutoAttackRange(target))
                     {
-                        var pred = Q.GetPrediction(target);
-                        if (pred.Hitchance >= HitChance.High && Q.Cast(pred.CastPosition, PacketCast))
+                        var state = Q.Cast(target, PacketCast);
+                        if (state.IsCasted())
                         {
                             return;
                         }
-                        if (GetValue<bool>(mode, "QCol") && pred.Hitchance == HitChance.Collision &&
-                            pred.CollisionObjects.Count(IsMinion) == 1 && CastSmite(pred.CollisionObjects.First()) &&
-                            Q.Cast(pred.CastPosition, PacketCast))
+                        if (state == Spell.CastStates.Collision && GetValue<bool>(mode, "QCol"))
                         {
-                            return;
+                            var pred = Q.GetPrediction(target);
+                            if (
+                                pred.CollisionObjects.Count(
+                                    i => i.IsValid<Obj_AI_Minion>() && IsSmiteable((Obj_AI_Minion) i)) == 1 &&
+                                CastSmite(pred.CollisionObjects.First()) && Q.Cast(pred.CastPosition, PacketCast))
+                            {
+                                return;
+                            }
                         }
                     }
                 }
@@ -255,8 +260,7 @@ namespace BrianSharp.Plugin
         private static void Clear()
         {
             SmiteMob();
-            var minionObj = MinionManager.GetMinions(
-                Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            var minionObj = GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (!minionObj.Any())
             {
                 if (GetValue<bool>("Clear", "W") && W.IsReady() && HaveW)
@@ -290,12 +294,12 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var list = minionObj.Where(i => Q.GetPrediction(i).Hitchance >= HitChance.Medium).ToList();
-                var obj = list.Cast<Obj_AI_Minion>().FirstOrDefault(i => Q.IsKillable(i)) ??
+                var list = minionObj.Where(i => Q.GetPrediction(i).Hitchance >= HitChance.High).ToList();
+                var obj = list.FirstOrDefault(i => Q.IsKillable(i)) ??
                           list.FirstOrDefault(i => !Orbwalk.InAutoAttackRange(i));
                 if (obj != null)
                 {
-                    Q.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast);
+                    Q.Cast(obj, PacketCast);
                 }
             }
         }
@@ -322,8 +326,7 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
                 var target = Q.GetTarget();
-                if (target != null && Q.IsKillable(target) &&
-                    Q.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
+                if (target != null && Q.IsKillable(target) && Q.Cast(target, PacketCast).IsCasted())
                 {
                     return;
                 }

@@ -29,7 +29,7 @@ namespace BrianSharp.Plugin
                         foreach (var name in HeroManager.Allies.Select(MenuName))
                         {
                             AddBool(healMenu, name, name, false);
-                            AddSlider(healMenu, name + "HpU", "-> If Hp Under", 40);
+                            AddSlider(healMenu, name + "HpU", "-> If Hp <", 40);
                         }
                         comboMenu.AddSubMenu(healMenu);
                     }
@@ -38,7 +38,7 @@ namespace BrianSharp.Plugin
                         foreach (var name in HeroManager.Allies.Select(MenuName))
                         {
                             AddBool(saveMenu, name, name, false);
-                            AddSlider(saveMenu, name + "HpU", "-> If Hp Under", 30);
+                            AddSlider(saveMenu, name + "HpU", "-> If Hp <", 30);
                         }
                         comboMenu.AddSubMenu(saveMenu);
                     }
@@ -65,7 +65,7 @@ namespace BrianSharp.Plugin
                 var harassMenu = new Menu("Harass", "Harass");
                 {
                     AddKeybind(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
-                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp >=", 50);
                     AddBool(harassMenu, "Q", "Use Q");
                     AddBool(harassMenu, "E", "Use E");
                     champMenu.AddSubMenu(harassMenu);
@@ -262,15 +262,14 @@ namespace BrianSharp.Plugin
         private static void Clear()
         {
             SmiteMob();
-            var minionObj = MinionManager.GetMinions(
-                Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            var minionObj = GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (!minionObj.Any())
             {
                 return;
             }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var obj = minionObj.Cast<Obj_AI_Minion>().FirstOrDefault(i => Q.IsKillable(i)) ??
+                var obj = minionObj.FirstOrDefault(i => Q.IsKillable(i)) ??
                           minionObj.FirstOrDefault(i => i.MaxHealth >= 1200);
                 if (obj != null && Q.CastOnUnit(obj, PacketCast))
                 {
@@ -291,8 +290,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             var obj =
-                MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Cast<Obj_AI_Minion>()
+                GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                     .FirstOrDefault(i => Q.IsKillable(i));
             if (obj == null)
             {

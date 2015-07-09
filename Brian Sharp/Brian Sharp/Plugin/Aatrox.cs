@@ -18,12 +18,9 @@ namespace BrianSharp.Plugin
             W = new Spell(SpellSlot.W);
             E = new Spell(SpellSlot.E, 1075, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 550, TargetSelector.DamageType.Magical);
-            //Q.SetSkillshot(0.6f, 250, 2000, false, SkillshotType.SkillshotCircle);
-            //Q2.SetSkillshot(0.6f, 150, 2000, false, SkillshotType.SkillshotCircle);
-            Q.SetSkillshot(0.25f, 285, 450, false, SkillshotType.SkillshotCircle);
-            Q2.SetSkillshot(0.25f, 150, 450, false, SkillshotType.SkillshotCircle);
-            //E.SetSkillshot(0.25f, 40, 1250, false, SkillshotType.SkillshotLine);
-            E.SetSkillshot(0.25f, 100, 1200, false, SkillshotType.SkillshotLine);
+            Q.SetSkillshot(0.6f, 250, 2000, false, SkillshotType.SkillshotCircle);
+            Q2.SetSkillshot(0.6f, 150, 2000, false, SkillshotType.SkillshotCircle);
+            E.SetSkillshot(0.25f, 35, 1250, false, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -31,19 +28,19 @@ namespace BrianSharp.Plugin
                 {
                     AddBool(comboMenu, "Q", "Use Q");
                     AddBool(comboMenu, "W", "Use W");
-                    AddSlider(comboMenu, "WHpU", "-> Switch To Heal If Hp Under", 50);
+                    AddSlider(comboMenu, "WHpU", "-> Switch To Heal If Hp <", 50);
                     AddBool(comboMenu, "E", "Use E");
                     AddBool(comboMenu, "R", "Use R");
-                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
-                    AddSlider(comboMenu, "RCountA", "-> Or Enemy Above", 2, 1, 5);
+                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp <", 60);
+                    AddSlider(comboMenu, "RCountA", "-> Or Enemy >=", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
                     AddKeybind(harassMenu, "AutoE", "Auto E", "H", KeyBindType.Toggle);
-                    AddSlider(harassMenu, "AutoEHpA", "-> If Hp Above", 50);
+                    AddSlider(harassMenu, "AutoEHpA", "-> If Hp >=", 50);
                     AddBool(harassMenu, "Q", "Use Q");
-                    AddSlider(harassMenu, "QHpA", "-> If Hp Above", 20);
+                    AddSlider(harassMenu, "QHpA", "-> If Hp >=", 20);
                     AddBool(harassMenu, "E", "Use E");
                     champMenu.AddSubMenu(harassMenu);
                 }
@@ -53,7 +50,7 @@ namespace BrianSharp.Plugin
                     AddBool(clearMenu, "Q", "Use Q");
                     AddBool(clearMenu, "W", "Use W");
                     AddBool(clearMenu, "WPriority", "-> Priority Heal");
-                    AddSlider(clearMenu, "WHpU", "-> Switch To Heal If Hp Under", 50);
+                    AddSlider(clearMenu, "WHpU", "-> Switch To Heal If Hp <", 50);
                     AddBool(clearMenu, "E", "Use E");
                     AddBool(clearMenu, "Item", "Use Tiamat/Hydra Item");
                     champMenu.AddSubMenu(clearMenu);
@@ -191,7 +188,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            Q2.CastIfHitchanceEquals(gapcloser.Sender, HitChance.High, PacketCast);
+            Q2.Cast(gapcloser.Sender, PacketCast);
         }
 
         private static void OnPossibleToInterrupt(Obj_AI_Hero unit, InterruptableSpell spell)
@@ -201,14 +198,14 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            Q2.CastIfHitchanceEquals(unit, HitChance.High, PacketCast);
+            Q2.Cast(unit, PacketCast);
         }
 
         private static void Fight(string mode)
         {
             if (GetValue<bool>(mode, "Q") &&
                 (mode == "Combo" || Player.HealthPercent >= GetValue<Slider>(mode, "QHpA").Value) &&
-                Q2.CastOnBestTarget(Q2.Width / 2, PacketCast).IsCasted())
+                Q2.CastOnBestTarget(Q2.Width / 2, PacketCast, true).IsCasted())
             {
                 return;
             }
@@ -249,8 +246,10 @@ namespace BrianSharp.Plugin
         private static void Clear()
         {
             SmiteMob();
-            var minionObj = MinionManager.GetMinions(
-                E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            var minionObj =
+                GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
+                    .Cast<Obj_AI_Base>()
+                    .ToList();
             if (!minionObj.Any())
             {
                 return;
@@ -269,8 +268,7 @@ namespace BrianSharp.Plugin
                 else
                 {
                     var obj = minionObj.FirstOrDefault(i => i.MaxHealth >= 1200);
-                    if (obj != null && Q.IsInRange(obj, Q.Range + Q2.Width / 2) &&
-                        Q2.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast))
+                    if (obj != null && Q.IsInRange(obj, Q.Range + Q2.Width / 2) && Q.Cast(obj, PacketCast).IsCasted())
                     {
                         return;
                     }
@@ -355,8 +353,7 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
                 var target = Q.GetTarget(Q.Width / 2);
-                if (target != null && Q.IsKillable(target) &&
-                    Q.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
+                if (target != null && Q.IsKillable(target) && Q2.Cast(target, PacketCast).IsCasted())
                 {
                     return;
                 }
@@ -364,8 +361,7 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("KillSteal", "E") && E.IsReady())
             {
                 var target = E.GetTarget();
-                if (target != null && E.IsKillable(target) &&
-                    E.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
+                if (target != null && E.IsKillable(target) && E.Cast(target, PacketCast).IsCasted())
                 {
                     return;
                 }

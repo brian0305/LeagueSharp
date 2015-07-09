@@ -27,7 +27,7 @@ namespace BrianSharp.Plugin
                     AddBool(comboMenu, "EW", "-> Only Have W");
                     AddBool(comboMenu, "R", "Use R");
                     AddList(comboMenu, "RMode", "-> Mode", new[] { "Always", "# Enemy" });
-                    AddSlider(comboMenu, "RCountA", "--> If Enemy Above", 2, 1, 5);
+                    AddSlider(comboMenu, "RCountA", "--> If Enemy >=", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
@@ -36,7 +36,7 @@ namespace BrianSharp.Plugin
                     AddBool(clearMenu, "Q", "Use Q");
                     AddBool(clearMenu, "W", "Use W");
                     AddBool(clearMenu, "E", "Use E");
-                    AddSlider(clearMenu, "EHpA", "-> If Hp Above", 50);
+                    AddSlider(clearMenu, "EHpA", "-> If Hp >=", 50);
                     AddBool(clearMenu, "EW", "-> Only Have W");
                     champMenu.AddSubMenu(clearMenu);
                 }
@@ -217,8 +217,7 @@ namespace BrianSharp.Plugin
         private static void Clear()
         {
             SmiteMob();
-            var minionObj = MinionManager.GetMinions(
-                600, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            var minionObj = GetMinions(600, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (!minionObj.Any() || HaveQ)
             {
                 return;

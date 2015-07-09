@@ -1595,12 +1595,12 @@ namespace BrianSharp.Evade
 
             #endregion Khazix
 
-            #region Kogmaw
+            #region KogMaw
 
             Spells.Add(
                 new SpellData
                 {
-                    ChampionName = "Kogmaw",
+                    ChampionName = "KogMaw",
                     SpellName = "KogMawQ",
                     Slot = SpellSlot.Q,
                     Type = SkillShotType.SkillshotMissileLine,
@@ -1620,7 +1620,7 @@ namespace BrianSharp.Evade
             Spells.Add(
                 new SpellData
                 {
-                    ChampionName = "Kogmaw",
+                    ChampionName = "KogMaw",
                     SpellName = "KogMawVoidOoze",
                     Slot = SpellSlot.E,
                     Type = SkillShotType.SkillshotMissileLine,
@@ -1637,7 +1637,7 @@ namespace BrianSharp.Evade
             Spells.Add(
                 new SpellData
                 {
-                    ChampionName = "Kogmaw",
+                    ChampionName = "KogMaw",
                     SpellName = "KogMawLivingArtillery",
                     Slot = SpellSlot.R,
                     Type = SkillShotType.SkillshotCircle,
@@ -1650,7 +1650,7 @@ namespace BrianSharp.Evade
                     MissileSpellName = "KogMawLivingArtillery"
                 });
 
-            #endregion Kogmaw
+            #endregion KogMaw
 
             #region Leblanc
 
@@ -3370,6 +3370,24 @@ namespace BrianSharp.Evade
                 new SpellData
                 {
                     ChampionName = "Yasuo",
+                    SpellName = "yasuoq",
+                    Slot = SpellSlot.Q,
+                    Type = SkillShotType.SkillshotLine,
+                    Delay = 400,
+                    Range = 550,
+                    Radius = 20,
+                    MissileSpeed = int.MaxValue,
+                    FixedRange = true,
+                    AddHitbox = true,
+                    DangerValue = 2,
+                    IsDangerous = true,
+                    MissileSpellName = "yasuoq",
+                    Invert = true
+                });
+            Spells.Add(
+                new SpellData
+                {
+                    ChampionName = "Yasuo",
                     SpellName = "yasuoq2",
                     Slot = SpellSlot.Q,
                     Type = SkillShotType.SkillshotLine,
@@ -3401,24 +3419,6 @@ namespace BrianSharp.Evade
                     IsDangerous = true,
                     MissileSpellName = "yasuoq3w",
                     CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
-                });
-            Spells.Add(
-                new SpellData
-                {
-                    ChampionName = "Yasuo",
-                    SpellName = "yasuoq",
-                    Slot = SpellSlot.Q,
-                    Type = SkillShotType.SkillshotLine,
-                    Delay = 400,
-                    Range = 550,
-                    Radius = 20,
-                    MissileSpeed = int.MaxValue,
-                    FixedRange = true,
-                    AddHitbox = true,
-                    DangerValue = 2,
-                    IsDangerous = true,
-                    MissileSpellName = "yasuoq",
-                    Invert = true
                 });
 
             #endregion Yasuo

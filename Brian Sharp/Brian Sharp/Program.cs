@@ -50,7 +50,7 @@ namespace BrianSharp
                 MainMenu.AddSubMenu(infoMenu);
             }
             TargetSelector.AddToMenu(MainMenu.AddSubMenu(new Menu("Target Selector", "TS")));
-            Orbwalk.AddToMainMenu(MainMenu);
+            Orbwalk.Init(MainMenu);
             NewInstance(plugin);
             Helper.AddBool(
                 MainMenu.SubMenu(Player.ChampionName + "_Plugin").SubMenu("Misc"), "UsePacket", "Use Packet To Cast");

@@ -25,7 +25,7 @@ namespace BrianSharp.Plugin
                 {
                     AddBool(comboMenu, "Q", "Use Q");
                     AddBool(comboMenu, "W", "Use W");
-                    AddSlider(comboMenu, "WHpU", "-> If Hp Under", 70);
+                    AddSlider(comboMenu, "WHpU", "-> If Hp <", 70);
                     AddBool(comboMenu, "E", "Use E");
                     AddBool(comboMenu, "R", "Use R");
                     champMenu.AddSubMenu(comboMenu);
@@ -35,7 +35,7 @@ namespace BrianSharp.Plugin
                     AddSmiteMob(clearMenu);
                     AddBool(clearMenu, "Q", "Use Q");
                     AddBool(clearMenu, "W", "Use W");
-                    AddSlider(clearMenu, "WHpU", "-> If Hp Under", 70);
+                    AddSlider(clearMenu, "WHpU", "-> If Hp <", 70);
                     AddBool(clearMenu, "R", "Use R");
                     AddBool(clearMenu, "Item", "Use Tiamat/Hydra Item");
                     champMenu.AddSubMenu(clearMenu);
@@ -221,7 +221,7 @@ namespace BrianSharp.Plugin
                 var item = Hydra.IsReady() ? Hydra : Tiamat;
                 if (item.IsReady())
                 {
-                    var minionObj = MinionManager.GetMinions(
+                    var minionObj = GetMinions(
                         item.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
                     if (minionObj.Count > 2 ||
                         minionObj.Any(i => i.MaxHealth >= 1200 && i.Distance(Player) < item.Range - 80))

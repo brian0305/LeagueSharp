@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using BrianSharp.Common;
 using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
@@ -90,7 +91,7 @@ namespace BrianSharp.Evade
                     case CollisionObjectTypes.Minion:
                         collisions.AddRange(
                             from minion in
-                                MinionManager.GetMinions(
+                                Helper.GetMinions(
                                     @from.To3D(), 1200, MinionTypes.All,
                                     skillshot.Unit.Team == ObjectManager.Player.Team
                                         ? MinionTeam.NotAlly
@@ -120,12 +121,7 @@ namespace BrianSharp.Evade
                         break;
                     case CollisionObjectTypes.Champions:
                         collisions.AddRange(
-                            from hero in
-                                ObjectManager.Get<Obj_AI_Hero>()
-                                    .Where(
-                                        i =>
-                                            i.IsValidTarget(1200, false) && i.Team == ObjectManager.Player.Team &&
-                                            !i.IsMe)
+                            from hero in HeroManager.Allies.Where(i => i.IsValidTarget(1200, false) && !i.IsMe)
                             let pred =
                                 FastPrediction(
                                     @from, hero,
@@ -149,11 +145,8 @@ namespace BrianSharp.Evade
                         break;
                     case CollisionObjectTypes.YasuoWall:
                         if (
-                            !ObjectManager.Get<Obj_AI_Hero>()
-                                .Any(
-                                    i =>
-                                        i.IsValidTarget(float.MaxValue, false) && i.Team == ObjectManager.Player.Team &&
-                                        i.ChampionName == "Yasuo"))
+                            !HeroManager.Allies.Any(
+                                i => i.IsValidTarget(float.MaxValue, false) && i.ChampionName == "Yasuo"))
                         {
                             break;
                         }

@@ -166,7 +166,7 @@ namespace BrianSharp.Common
                             .Where(
                                 i =>
                                     InAutoAttackRange(i) && i.Team != GameObjectTeam.Neutral &&
-                                    MinionManager.IsMinion(i, true)))
+                                    (MinionManager.IsMinion(i, true) || Helper.IsPet(i))))
                     {
                         var time = (int) (Player.AttackCastDelay * 1000) - 100 + Game.Ping / 2 +
                                    1000 * (int) (Player.Distance(obj) / Orbwalking.GetMyProjectileSpeed());
@@ -274,7 +274,7 @@ namespace BrianSharp.Common
         public static event OnTargetChangeH OnTargetChange;
         public static event OnNonKillableMinionH OnNonKillableMinion;
 
-        public static void AddToMainMenu(Menu mainMenu)
+        public static void Init(Menu mainMenu)
         {
             _config = mainMenu;
             var owMenu = new Menu("Orbwalker", "OW");
@@ -334,7 +334,8 @@ namespace BrianSharp.Common
                         new MenuItem("OW_Misc_MoveDelay", "Movement Delay").SetValue(new Slider(30, 0, 250)));
                     miscMenu.AddItem(
                         new MenuItem("OW_Misc_ExtraWindUp", "Extra WindUp Time").SetValue(new Slider(60, 0, 200)));
-                    miscMenu.AddItem(new MenuItem("OW_Misc_PriorityFarm", "Priorize Farm Over Harass").SetValue(true));
+                    miscMenu.AddItem(
+                        new MenuItem("OW_Misc_PriorityFarm", "Priorize LastHit Over Harass").SetValue(true));
                     miscMenu.AddItem(
                         new MenuItem("OW_Misc_AllMovementDisabled", "Disable All Movement").SetValue(false));
                     miscMenu.AddItem(new MenuItem("OW_Misc_AllAttackDisabled", "Disable All Attack").SetValue(false));
@@ -458,7 +459,7 @@ namespace BrianSharp.Common
             }
         }
 
-        private static void MoveTo(Vector3 pos)
+        public static void MoveTo(Vector3 pos)
         {
             if (Utils.GameTimeTickCount - _lastMove < _config.Item("OW_Misc_MoveDelay").GetValue<Slider>().Value)
             {

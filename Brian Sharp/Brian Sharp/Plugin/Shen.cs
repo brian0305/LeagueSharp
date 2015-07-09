@@ -17,11 +17,9 @@ namespace BrianSharp.Plugin
         {
             Q = new Spell(SpellSlot.Q, 485, TargetSelector.DamageType.Magical);
             W = new Spell(SpellSlot.W);
-            //E = new Spell(SpellSlot.E, 650, TargetSelector.DamageType.Magical);
-            E = new Spell(SpellSlot.E, 700, TargetSelector.DamageType.Magical);
+            E = new Spell(SpellSlot.E, 650, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R);
-            //E.SetSkillshot(0, 50, 1600, false, SkillshotType.SkillshotLine);
-            E.SetSkillshot(0, 75, 1250, false, SkillshotType.SkillshotLine);
+            E.SetSkillshot(0, 50, 1600, false, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -29,17 +27,17 @@ namespace BrianSharp.Plugin
                 {
                     AddBool(comboMenu, "Q", "Use Q");
                     AddBool(comboMenu, "W", "Use W");
-                    AddSlider(comboMenu, "WHpU", "-> If Hp Under", 20);
+                    AddSlider(comboMenu, "WHpU", "-> If Hp <", 20);
                     AddBool(comboMenu, "E", "Use E");
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
                     AddKeybind(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
-                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp >=", 50);
                     AddBool(harassMenu, "Q", "Use Q");
                     AddBool(harassMenu, "E", "Use E");
-                    AddSlider(harassMenu, "EHpA", "-> If Hp Above", 20);
+                    AddSlider(harassMenu, "EHpA", "-> If Hp >=", 20);
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
@@ -104,7 +102,7 @@ namespace BrianSharp.Plugin
                             ultiMenu.AddSubMenu(saveMenu);
                         }
                         AddBool(ultiMenu, "Alert", "Alert Ally");
-                        AddSlider(ultiMenu, "AlertHpU", "-> If Hp Under", 30);
+                        AddSlider(ultiMenu, "AlertHpU", "-> If Hp <", 30);
                         AddBool(ultiMenu, "Save", "-> Save Ally");
                         AddKeybind(ultiMenu, "SaveKey", "--> Key", "T");
                         miscMenu.AddSubMenu(ultiMenu);
@@ -159,7 +157,7 @@ namespace BrianSharp.Plugin
             AutoEUnderTower();
         }
 
-        private void OnDraw(EventArgs args)
+        private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -184,7 +182,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             var predE = E.GetPrediction(gapcloser.Sender, true);
-            if (predE.Hitchance >= HitChance.High)
+            if (predE.Hitchance >= HitChance.VeryHigh)
             {
                 E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
             }
@@ -198,7 +196,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             var predE = E.GetPrediction(unit, true);
-            if (predE.Hitchance >= HitChance.High)
+            if (predE.Hitchance >= HitChance.VeryHigh)
             {
                 E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
             }
@@ -209,11 +207,11 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>(mode, "E") &&
                 (mode == "Combo" || Player.HealthPercent >= GetValue<Slider>(mode, "EHpA").Value))
             {
-                var target = E.GetTarget();
+                var target = E.GetTarget(E.Width);
                 if (target != null)
                 {
                     var predE = E.GetPrediction(target, true);
-                    if (predE.Hitchance >= HitChance.High &&
+                    if (predE.Hitchance >= HitChance.VeryHigh &&
                         E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast))
                     {
                         if (mode == "Combo" && GetValue<bool>(mode, "W") && W.IsReady())
@@ -237,16 +235,14 @@ namespace BrianSharp.Plugin
 
         private static void Clear()
         {
-            var minionObj = MinionManager.GetMinions(
-                Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            var minionObj = GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (!minionObj.Any())
             {
                 return;
             }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var obj = minionObj.Cast<Obj_AI_Minion>().FirstOrDefault(i => Q.IsKillable(i)) ??
-                          minionObj.MinOrDefault(i => i.Health);
+                var obj = minionObj.FirstOrDefault(i => Q.IsKillable(i)) ?? minionObj.MinOrDefault(i => i.Health);
                 if (obj != null && Q.CastOnUnit(obj, PacketCast))
                 {
                     return;
@@ -266,8 +262,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             var obj =
-                MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Cast<Obj_AI_Minion>()
+                GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                     .FirstOrDefault(i => Q.IsKillable(i));
             if (obj == null)
             {
@@ -306,11 +301,11 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("KillSteal", "E") && E.IsReady())
             {
-                var target = E.GetTarget();
+                var target = E.GetTarget(E.Width);
                 if (target != null && E.IsKillable(target))
                 {
                     var predE = E.GetPrediction(target, true);
-                    if (predE.Hitchance >= HitChance.High)
+                    if (predE.Hitchance >= HitChance.VeryHigh)
                     {
                         E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
                     }
@@ -367,7 +362,7 @@ namespace BrianSharp.Plugin
             if (target != null && tower != null && target.Distance(tower) <= 850)
             {
                 var predE = E.GetPrediction(target, true);
-                if (predE.Hitchance >= HitChance.High)
+                if (predE.Hitchance >= HitChance.VeryHigh)
                 {
                     E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
                 }

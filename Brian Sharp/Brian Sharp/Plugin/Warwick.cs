@@ -37,7 +37,7 @@ namespace BrianSharp.Plugin
                 var harassMenu = new Menu("Harass", "Harass");
                 {
                     AddKeybind(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
-                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp >=", 50);
                     AddBool(harassMenu, "Q", "Use Q");
                     AddBool(harassMenu, "W", "Use W");
                     champMenu.AddSubMenu(harassMenu);
@@ -181,10 +181,8 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            var minionObj = MinionManager.GetMinions(
-                Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
-            var obj = minionObj.Cast<Obj_AI_Minion>().FirstOrDefault(i => Q.IsKillable(i)) ??
-                      minionObj.MinOrDefault(i => i.Health);
+            var minionObj = GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            var obj = minionObj.FirstOrDefault(i => Q.IsKillable(i)) ?? minionObj.MinOrDefault(i => i.Health);
             if (obj == null)
             {
                 return;
@@ -199,8 +197,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             var obj =
-                MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Cast<Obj_AI_Minion>()
+                GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                     .FirstOrDefault(i => Q.IsKillable(i));
             if (obj == null)
             {

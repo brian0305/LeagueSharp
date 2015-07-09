@@ -25,19 +25,19 @@ namespace BrianSharp.Plugin
                     AddBool(comboMenu, "Q", "Use Q");
                     AddBool(comboMenu, "QCol", "-> Smite Collision");
                     AddBool(comboMenu, "W", "Use W");
-                    AddSlider(comboMenu, "WHpA", "-> If Hp Above", 20);
+                    AddSlider(comboMenu, "WHpA", "-> If Hp >=", 20);
                     AddBool(comboMenu, "E", "Use E");
                     AddBool(comboMenu, "R", "Use R");
-                    AddSlider(comboMenu, "RHpU", "-> If Hp Under", 50);
+                    AddSlider(comboMenu, "RHpU", "-> If Hp <", 50);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
                     AddKeybind(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
-                    AddSlider(harassMenu, "AutoQHpA", "-> If Hp Above", 30);
+                    AddSlider(harassMenu, "AutoQHpA", "-> If Hp >=", 30);
                     AddBool(harassMenu, "Q", "Use Q");
                     AddBool(harassMenu, "W", "Use W");
-                    AddSlider(harassMenu, "WHpA", "-> If Hp Above", 20);
+                    AddSlider(harassMenu, "WHpA", "-> If Hp >=", 20);
                     AddBool(harassMenu, "E", "Use E");
                     champMenu.AddSubMenu(harassMenu);
                 }
@@ -46,7 +46,7 @@ namespace BrianSharp.Plugin
                     AddSmiteMob(clearMenu);
                     AddBool(clearMenu, "Q", "Use Q");
                     AddBool(clearMenu, "W", "Use W");
-                    AddSlider(clearMenu, "WHpA", "-> If Hp Above", 20);
+                    AddSlider(clearMenu, "WHpA", "-> If Hp >=", 20);
                     AddBool(clearMenu, "E", "Use E");
                     champMenu.AddSubMenu(clearMenu);
                 }
@@ -165,16 +165,21 @@ namespace BrianSharp.Plugin
                 var target = Q.GetTarget();
                 if (target != null)
                 {
-                    var pred = Q.GetPrediction(target);
-                    if (pred.Hitchance >= HitChance.High && Q.Cast(pred.CastPosition, PacketCast))
+                    var state = Q.Cast(target, PacketCast);
+                    if (state.IsCasted())
                     {
                         return;
                     }
-                    if (GetValue<bool>(mode, "QCol") && pred.Hitchance == HitChance.Collision &&
-                        pred.CollisionObjects.Count(IsMinion) == 1 && CastSmite(pred.CollisionObjects.First()) &&
-                        Q.Cast(pred.CastPosition, PacketCast))
+                    if (state == Spell.CastStates.Collision && GetValue<bool>(mode, "QCol"))
                     {
-                        return;
+                        var pred = Q.GetPrediction(target);
+                        if (
+                            pred.CollisionObjects.Count(
+                                i => i.IsValid<Obj_AI_Minion>() && IsSmiteable((Obj_AI_Minion) i)) == 1 &&
+                            CastSmite(pred.CollisionObjects.First()) && Q.Cast(pred.CastPosition, PacketCast))
+                        {
+                            return;
+                        }
                     }
                 }
             }
@@ -198,8 +203,7 @@ namespace BrianSharp.Plugin
         private static void Clear()
         {
             SmiteMob();
-            var minionObj = MinionManager.GetMinions(
-                Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            var minionObj = GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (!minionObj.Any())
             {
                 if (GetValue<bool>("Clear", "W") && W.IsReady() && HaveW)
@@ -229,12 +233,11 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var list = minionObj.Where(i => Q.GetPrediction(i).Hitchance >= HitChance.Medium).ToList();
-                var obj = list.Cast<Obj_AI_Minion>().FirstOrDefault(i => Q.IsKillable(i)) ??
-                          list.MinOrDefault(i => i.Distance(Player));
+                var list = minionObj.Where(i => Q.GetPrediction(i).Hitchance >= HitChance.High).ToList();
+                var obj = list.FirstOrDefault(i => Q.IsKillable(i)) ?? list.MinOrDefault(i => i.Distance(Player));
                 if (obj != null)
                 {
-                    Q.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast);
+                    Q.Cast(obj, PacketCast);
                 }
             }
         }
@@ -246,15 +249,14 @@ namespace BrianSharp.Plugin
                 return;
             }
             var obj =
-                MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Cast<Obj_AI_Minion>()
+                GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                     .Where(i => Q.GetPrediction(i).Hitchance >= HitChance.High)
                     .FirstOrDefault(i => Q.IsKillable(i));
             if (obj == null)
             {
                 return;
             }
-            Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast);
+            Q.Cast(obj, PacketCast);
         }
 
         private static void AutoQ()
@@ -291,7 +293,7 @@ namespace BrianSharp.Plugin
                 var target = Q.GetTarget();
                 if (target != null && Q.IsKillable(target))
                 {
-                    Q.CastIfHitchanceEquals(target, HitChance.High, PacketCast);
+                    Q.Cast(target, PacketCast);
                 }
             }
         }

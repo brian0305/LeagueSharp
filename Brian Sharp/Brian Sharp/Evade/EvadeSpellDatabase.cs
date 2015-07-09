@@ -37,7 +37,7 @@ namespace BrianSharp.Evade
                     CastType = CastTypes.Position,
                     MaxRange = 400,
                     Speed = int.MaxValue,
-                    Delay = 250
+                    Delay = 500
                 });
         }
     }

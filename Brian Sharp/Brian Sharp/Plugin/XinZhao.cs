@@ -26,8 +26,8 @@ namespace BrianSharp.Plugin
                     AddBool(comboMenu, "W", "Use W");
                     AddBool(comboMenu, "E", "Use E");
                     AddBool(comboMenu, "R", "Use R");
-                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
-                    AddSlider(comboMenu, "RCountA", "-> Or Enemy Above", 2, 1, 5);
+                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp <", 60);
+                    AddSlider(comboMenu, "RCountA", "-> Or Enemy >=", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
@@ -155,10 +155,11 @@ namespace BrianSharp.Plugin
             if (!R.IsInRange(pos) && E.IsReady() && Player.Mana >= E.Instance.ManaCost + R.Instance.ManaCost)
             {
                 var obj =
-                    HeroManager.Enemies.Where(
-                        i => i.IsValidTarget(E.Range) && i.Distance(pos) <= R.Range && i.NetworkId != unit.NetworkId)
-                        .MinOrDefault(i => i.Distance(unit)) ??
-                    MinionManager.GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly)
+                    (Obj_AI_Base)
+                        HeroManager.Enemies.Where(
+                            i => i.IsValidTarget(E.Range) && i.Distance(pos) <= R.Range && i.NetworkId != unit.NetworkId)
+                            .MinOrDefault(i => i.Distance(unit)) ??
+                    GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly)
                         .Where(i => i.Distance(pos) <= R.Range)
                         .MinOrDefault(i => i.Distance(unit));
                 if (obj != null)
@@ -242,8 +243,7 @@ namespace BrianSharp.Plugin
         private static void Clear()
         {
             SmiteMob();
-            var minionObj = MinionManager.GetMinions(
-                E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            var minionObj = GetMinions(E.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (!minionObj.Any())
             {
                 return;

@@ -16,9 +16,8 @@ namespace BrianSharp.Plugin
             Q = new Spell(SpellSlot.Q, 1050, TargetSelector.DamageType.Magical);
             W = new Spell(SpellSlot.W, 900, TargetSelector.DamageType.Magical);
             E = new Spell(SpellSlot.E);
-            R = new Spell(SpellSlot.R, 550, TargetSelector.DamageType.Magical);
-            //Q.SetSkillshot(0.125f, 50, 1700, true, SkillshotType.SkillshotLine);
-            Q.SetSkillshot(0.18f, 50, 1700, true, SkillshotType.SkillshotLine);
+            R = new Spell(SpellSlot.R, 500, TargetSelector.DamageType.Magical);
+            Q.SetSkillshot(0.125f, 50, 1700, true, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -27,26 +26,26 @@ namespace BrianSharp.Plugin
                     AddBool(comboMenu, "Q", "Use Q");
                     AddBool(comboMenu, "W", "Use W");
                     AddBool(comboMenu, "R", "Use R");
-                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 60);
-                    AddSlider(comboMenu, "RCountA", "-> Or Enemy Above", 2, 1, 5);
+                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp <", 60);
+                    AddSlider(comboMenu, "RCountA", "-> Or Enemy >=", 2, 1, 5);
                     AddBool(comboMenu, "RItem", "-> Use Zhonya When R Active");
-                    AddSlider(comboMenu, "RItemHpU", "--> If Hp Under", 60);
+                    AddSlider(comboMenu, "RItemHpU", "--> If Hp <", 60);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
                     AddKeybind(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
-                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp >=", 50);
                     AddBool(harassMenu, "Q", "Use Q");
                     AddBool(harassMenu, "W", "Use W");
-                    AddSlider(harassMenu, "WMpA", "-> If Mp Above", 50);
+                    AddSlider(harassMenu, "WMpA", "-> If Mp >=", 50);
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
                 {
                     AddBool(clearMenu, "Q", "Use Q");
                     AddBool(clearMenu, "W", "Use W");
-                    AddSlider(clearMenu, "WHitA", "-> If Hit Above", 2, 1, 5);
+                    AddSlider(clearMenu, "WHitA", "-> If Hit >=", 2, 1, 5);
                     champMenu.AddSubMenu(clearMenu);
                 }
                 var lastHitMenu = new Menu("Last Hit", "LastHit");
@@ -99,6 +98,11 @@ namespace BrianSharp.Plugin
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
         }
 
+        private static bool HaveE
+        {
+            get { return Player.HasBuff("KennenLightningRush"); }
+        }
+
         private static bool HaveR
         {
             get { return Player.HasBuff("KennenShurikenStorm"); }
@@ -116,11 +120,19 @@ namespace BrianSharp.Plugin
             }
         }
 
-        private void OnUpdate(EventArgs args)
+        private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
                 return;
+            }
+            if (Orbwalk.CurrentMode != Orbwalker.Mode.None)
+            {
+                Orbwalk.Attack = !HaveE;
+            }
+            else
+            {
+                Orbwalk.Attack = true;
             }
             switch (Orbwalk.CurrentMode)
             {
@@ -222,18 +234,16 @@ namespace BrianSharp.Plugin
 
         private static void Clear()
         {
-            var minionObj = MinionManager.GetMinions(
-                Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
+            var minionObj = GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (!minionObj.Any())
             {
                 return;
             }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var list = minionObj.Where(i => Q.GetPrediction(i).Hitchance >= HitChance.Medium).ToList();
-                var obj = list.Cast<Obj_AI_Minion>().FirstOrDefault(i => Q.IsKillable(i)) ??
-                          list.MaxOrDefault(i => i.Distance(Player));
-                if (obj != null && Q.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast))
+                var list = minionObj.Where(i => Q.GetPrediction(i).Hitchance >= HitChance.High).ToList();
+                var obj = list.FirstOrDefault(i => Q.IsKillable(i)) ?? list.MaxOrDefault(i => i.Distance(Player));
+                if (obj != null && Q.Cast(obj, PacketCast).IsCasted())
                 {
                     return;
                 }
@@ -252,21 +262,19 @@ namespace BrianSharp.Plugin
                 return;
             }
             var obj =
-                MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Cast<Obj_AI_Minion>()
+                GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                     .Where(i => Q.GetPrediction(i).Hitchance >= HitChance.High)
                     .FirstOrDefault(i => Q.IsKillable(i));
             if (obj == null)
             {
                 return;
             }
-            Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast);
+            Q.Cast(obj, PacketCast);
         }
 
         private static void Flee()
         {
-            if (GetValue<bool>("Flee", "E") && E.IsReady() && !Player.HasBuff("KennenLightningRush") &&
-                E.Cast(PacketCast))
+            if (GetValue<bool>("Flee", "E") && E.IsReady() && !HaveE && E.Cast(PacketCast))
             {
                 return;
             }
@@ -300,8 +308,7 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
                 var target = Q.GetTarget();
-                if (target != null && Q.IsKillable(target) &&
-                    Q.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
+                if (target != null && Q.IsKillable(target) && Q.Cast(target, PacketCast).IsCasted())
                 {
                     return;
                 }

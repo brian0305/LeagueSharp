@@ -13,28 +13,28 @@ namespace BrianSharp.Plugin
         public Ryze()
         {
             Q = new Spell(SpellSlot.Q, 900, TargetSelector.DamageType.Magical);
+            Q2 = new Spell(SpellSlot.Q, 900, TargetSelector.DamageType.Magical);
             W = new Spell(SpellSlot.W, 600, TargetSelector.DamageType.Magical);
             E = new Spell(SpellSlot.E, 600, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R);
-            Q.SetSkillshot(0.25f, 55, 1700, true, SkillshotType.SkillshotLine);
+            Q.SetSkillshot(0.25f, 50, 1700, true, SkillshotType.SkillshotLine);
+            Q2.SetSkillshot(0.25f, 50, 1700, false, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
                 var comboMenu = new Menu("Combo", "Combo");
                 {
-                    AddBool(comboMenu, "R", "Use R");
-                    AddSlider(comboMenu, "RHpU", "-> If Enemy Hp Under", 70);
                     AddBool(comboMenu, "Seraph", "Use Seraph's Embrace");
-                    AddSlider(comboMenu, "SeraphHpU", "-> If Hp Under", 50);
+                    AddSlider(comboMenu, "SeraphHpU", "-> If Hp <", 50);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 var harassMenu = new Menu("Harass", "Harass");
                 {
                     AddKeybind(harassMenu, "AutoQ", "Auto Q", "H", KeyBindType.Toggle);
-                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp Above", 50);
+                    AddSlider(harassMenu, "AutoQMpA", "-> If Mp >=", 50);
                     AddBool(harassMenu, "Q", "Use Q");
-                    AddBool(harassMenu, "W", "Use W");
-                    AddBool(harassMenu, "E", "Use E");
+                    AddBool(harassMenu, "W", "Use W", false);
+                    AddBool(harassMenu, "E", "Use E", false);
                     champMenu.AddSubMenu(harassMenu);
                 }
                 var clearMenu = new Menu("Clear", "Clear");
@@ -85,7 +85,6 @@ namespace BrianSharp.Plugin
                         }
                         miscMenu.AddSubMenu(interruptMenu);
                     }
-                    AddKeybind(miscMenu, "Chase", "Chase", "Z");
                     AddBool(miscMenu, "WTower", "Auto W If Enemy Under Tower");
                     champMenu.AddSubMenu(miscMenu);
                 }
@@ -103,6 +102,45 @@ namespace BrianSharp.Plugin
             AntiGapcloser.OnEnemyGapcloser += OnEnemyGapcloser;
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
             AttackableUnit.OnDamage += OnDamage;
+        }
+
+        private static bool HaveP
+        {
+            get { return Player.HasBuff("ryzepassivecharged"); }
+        }
+
+        private static int PassiveCount
+        {
+            get
+            {
+                var count = Player.GetBuffCount("RyzePassiveStack");
+                return count == -1 ? 0 : count;
+            }
+        }
+
+        private static int SkillCount
+        {
+            get
+            {
+                var count = 0;
+                if (Q.IsReady())
+                {
+                    count += 1;
+                }
+                if (W.IsReady())
+                {
+                    count += 1;
+                }
+                if (E.IsReady())
+                {
+                    count += 1;
+                }
+                if (R.IsReady())
+                {
+                    count += 1;
+                }
+                return count;
+            }
         }
 
         private static void OnUpdate(EventArgs args)
@@ -126,11 +164,10 @@ namespace BrianSharp.Plugin
                     LastHit();
                     break;
             }
-            if (GetValue<KeyBind>("Misc", "Chase").Active)
+            if (Orbwalk.CurrentMode != Orbwalker.Mode.Combo)
             {
-                Fight("Chase");
+                AutoQ();
             }
-            AutoQ();
             KillSteal();
             AutoWUnderTower();
         }
@@ -191,55 +228,58 @@ namespace BrianSharp.Plugin
 
         private static void Fight(string mode)
         {
-            switch (mode)
+            if (mode == "Harass")
             {
-                case "Harass":
-                    if (GetValue<bool>(mode, "Q") && Q.CastOnBestTarget(0, PacketCast).IsCasted())
+                if (GetValue<bool>(mode, "Q") && Q.CastOnBestTarget(0, PacketCast).IsCasted())
+                {
+                    return;
+                }
+                if (GetValue<bool>(mode, "W") && W.CastOnBestTarget(0, PacketCast).IsCasted())
+                {
+                    return;
+                }
+                if (GetValue<bool>(mode, "E"))
+                {
+                    E.CastOnBestTarget(0, PacketCast);
+                }
+            }
+            else
+            {
+                if (PassiveCount + SkillCount >= 5 || HaveP)
+                {
+                    if (Q.IsReady())
                     {
-                        return;
+                        var target = W.GetTarget() ?? Q.GetTarget();
+                        if (target != null)
+                        {
+                            Q2.Cast(target, PacketCast);
+                        }
                     }
-                    if (GetValue<bool>(mode, "W") && W.CastOnBestTarget(0, PacketCast).IsCasted())
-                    {
-                        return;
-                    }
-                    if (GetValue<bool>(mode, "E"))
+                    else if (E.IsReady())
                     {
                         E.CastOnBestTarget(0, PacketCast);
                     }
-                    break;
-                case "Combo":
-                    if (GetValue<bool>(mode, "R") && Q.GetTarget(100) != null &&
-                        Q.GetTarget(100).HealthPercent < GetValue<Slider>(mode, "RHpU").Value && R.Cast(PacketCast))
+                    else if (W.IsReady())
                     {
-                        return;
+                        W.CastOnBestTarget(0, PacketCast);
                     }
+                    else if (R.IsReady() && Q.GetTarget() != null)
+                    {
+                        R.Cast(PacketCast);
+                    }
+                }
+                else
+                {
                     if (Q.CastOnBestTarget(0, PacketCast).IsCasted())
                     {
                         return;
                     }
-                    if (W.IsReady() && !E.IsReady() && W.CastOnBestTarget(0, PacketCast).IsCasted())
+                    if (W.CastOnBestTarget(0, PacketCast).IsCasted())
                     {
                         return;
                     }
                     E.CastOnBestTarget(0, PacketCast);
-                    break;
-                case "Chase":
-                    var target = W.GetTarget();
-                    CustomOrbwalk(target);
-                    if (target == null)
-                    {
-                        return;
-                    }
-                    if (W.CastOnUnit(target, PacketCast) || W.IsReady() || !target.HasBuff("RunePrison"))
-                    {
-                        return;
-                    }
-                    if (E.CastOnUnit(target, PacketCast))
-                    {
-                        return;
-                    }
-                    Q.CastIfHitchanceEquals(target, HitChance.High, PacketCast);
-                    break;
+                }
             }
         }
 
@@ -248,20 +288,17 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
                 var minionObjQ =
-                    MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                        .Where(i => Q.GetPrediction(i).Hitchance >= HitChance.Medium)
+                    GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
+                        .Where(i => Q.GetPrediction(i).Hitchance >= HitChance.High)
                         .ToList();
-                var obj = minionObjQ.Cast<Obj_AI_Minion>().FirstOrDefault(i => Q.IsKillable(i)) ??
+                var obj = minionObjQ.FirstOrDefault(i => Q.IsKillable(i)) ??
                           minionObjQ.MinOrDefault(i => i.Distance(Player));
                 if (obj != null)
                 {
-                    Q.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast);
+                    Q.Cast(obj, PacketCast);
                 }
             }
-            var minionObjW =
-                MinionManager.GetMinions(W.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Cast<Obj_AI_Minion>()
-                    .ToList();
+            var minionObjW = GetMinions(W.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
             if (!minionObjW.Any())
             {
                 return;
@@ -278,9 +315,7 @@ namespace BrianSharp.Plugin
             {
                 var obj = minionObjW.FirstOrDefault(i => E.IsKillable(i)) ??
                           minionObjW.MaxOrDefault(
-                              i =>
-                                  MinionManager.GetMinions(i.ServerPosition, 200, MinionTypes.All, MinionTeam.NotAlly)
-                                      .Count);
+                              i => GetMinions(i.ServerPosition, 200, MinionTypes.All, MinionTeam.NotAlly).Count);
                 if (obj != null)
                 {
                     E.CastOnUnit(obj, PacketCast);
@@ -295,15 +330,14 @@ namespace BrianSharp.Plugin
                 return;
             }
             var obj =
-                MinionManager.GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Cast<Obj_AI_Minion>()
+                GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                     .Where(i => Q.GetPrediction(i).Hitchance >= HitChance.High)
                     .FirstOrDefault(i => Q.IsKillable(i));
             if (obj == null)
             {
                 return;
             }
-            Q.CastIfHitchanceEquals(obj, HitChance.High, PacketCast);
+            Q.Cast(obj, PacketCast);
         }
 
         private static void AutoQ()
@@ -329,8 +363,7 @@ namespace BrianSharp.Plugin
             if (GetValue<bool>("KillSteal", "Q") && Q.IsReady())
             {
                 var target = Q.GetTarget();
-                if (target != null && Q.IsKillable(target) &&
-                    Q.CastIfHitchanceEquals(target, HitChance.High, PacketCast))
+                if (target != null && Q.IsKillable(target) && Q.Cast(target, PacketCast).IsCasted())
                 {
                     return;
                 }

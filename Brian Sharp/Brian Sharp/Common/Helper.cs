@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using LeagueSharp;
 using LeagueSharp.Common;
 using LeagueSharp.Common.Data;
@@ -8,13 +9,6 @@ namespace BrianSharp.Common
 {
     internal class Helper : Program
     {
-        public enum MinionType
-        {
-            All,
-            Minion,
-            Ward
-        }
-
         public enum SmiteType
         {
             Grey,
@@ -54,9 +48,9 @@ namespace BrianSharp.Common
             get
             {
                 var ward = Items.GetWardSlot();
-                var wardPink = new[] { 3362, 2043 };
                 if (GetValue<bool>("Flee", "PinkWard") && ward == null)
                 {
+                    var wardPink = new[] { 3362, 2043 };
                     foreach (var item in
                         wardPink.Where(Items.CanUseItem)
                             .Select(i => Player.InventoryItems.FirstOrDefault(a => a.Id == (ItemId) i))
@@ -81,16 +75,69 @@ namespace BrianSharp.Common
             }
         }
 
-        public static bool IsMinion(Obj_AI_Base obj)
+        public static List<Obj_AI_Minion> GetMinions(Vector3 from,
+            float range,
+            MinionTypes type = MinionTypes.All,
+            MinionTeam team = MinionTeam.Enemy,
+            MinionOrderTypes order = MinionOrderTypes.Health)
         {
-            return obj.IsValid<Obj_AI_Minion>() && MinionManager.IsMinion((Obj_AI_Minion) obj);
+            var result = from minion in ObjectManager.Get<Obj_AI_Minion>()
+                where minion.IsValidTarget(range, false, @from)
+                let minionTeam = minion.Team
+                where
+                    (team == MinionTeam.Neutral && minionTeam == GameObjectTeam.Neutral) ||
+                    (team == MinionTeam.Ally &&
+                     minionTeam == (Player.Team == GameObjectTeam.Chaos ? GameObjectTeam.Chaos : GameObjectTeam.Order)) ||
+                    (team == MinionTeam.Enemy &&
+                     minionTeam == (Player.Team == GameObjectTeam.Chaos ? GameObjectTeam.Order : GameObjectTeam.Chaos)) ||
+                    (team == MinionTeam.NotAlly && minionTeam != Player.Team) ||
+                    (team == MinionTeam.NotAllyForEnemy &&
+                     (minionTeam == Player.Team || minionTeam == GameObjectTeam.Neutral)) || team == MinionTeam.All
+                where
+                    (minion.IsMelee() && type == MinionTypes.Melee) || (!minion.IsMelee() && type == MinionTypes.Ranged) ||
+                    type == MinionTypes.All
+                where MinionManager.IsMinion(minion) || minionTeam == GameObjectTeam.Neutral || IsPet(minion)
+                select minion;
+            switch (order)
+            {
+                case MinionOrderTypes.Health:
+                    result = result.OrderBy(i => i.Health);
+                    break;
+                case MinionOrderTypes.MaxHealth:
+                    result = result.OrderBy(i => i.MaxHealth).Reverse();
+                    break;
+            }
+            return result.ToList();
+        }
+
+        public static List<Obj_AI_Minion> GetMinions(float range,
+            MinionTypes type = MinionTypes.All,
+            MinionTeam team = MinionTeam.Enemy,
+            MinionOrderTypes order = MinionOrderTypes.Health)
+        {
+            return GetMinions(Player.ServerPosition, range, type, team, order);
+        }
+
+        public static bool IsPet(Obj_AI_Minion obj)
+        {
+            var pets = new[]
+            {
+                "annietibbers", "elisespiderling", "heimertyellow", "heimertblue", "leblanc", "malzaharvoidling",
+                "shacobox", "shaco", "yorickspectralghoul", "yorickdecayedghoul", "yorickravenousghoul",
+                "zyrathornplant", "zyragraspingplant"
+            };
+            return pets.Contains(obj.CharData.BaseSkinName.ToLower());
         }
 
         public static bool IsWard(Obj_AI_Minion obj)
         {
-            return !MinionManager.IsMinion(obj) &&
-                   (obj.CharData.BaseSkinName.ToLower().Contains("ward") ||
-                    obj.CharData.BaseSkinName.ToLower().Contains("trinket"));
+            return obj.Team != GameObjectTeam.Neutral && !MinionManager.IsMinion(obj) && !IsPet(obj) &&
+                   MinionManager.IsMinion(obj, true);
+        }
+
+        public static bool IsSmiteable(Obj_AI_Minion obj)
+        {
+            return MinionManager.IsMinion(obj) || obj.Team == GameObjectTeam.Neutral || IsPet(obj);
         }
 
         public static void CustomOrbwalk(Obj_AI_Base target)

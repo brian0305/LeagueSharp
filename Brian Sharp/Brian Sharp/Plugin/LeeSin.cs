@@ -23,7 +23,6 @@ namespace BrianSharp.Plugin
             E2 = new Spell(SpellSlot.E, 600);
             R = new Spell(SpellSlot.R, 375);
             Q.SetSkillshot(0.25f, 65, 1800, true, SkillshotType.SkillshotLine);
-            W.SetTargetted(0.25f, 2000);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -287,7 +286,7 @@ namespace BrianSharp.Plugin
                         (QAgain(target) ||
                          ((target.HasBuffOfType(BuffType.Knockback) || target.HasBuffOfType(BuffType.Knockup)) &&
                           Player.Distance(target) > 300 && !R.IsReady()) || Q.IsKillable(target, 1) ||
-                         !Orbwalk.InAutoAttackRange(target, 100) || !HaveP) && Q2.Cast(PacketCast))
+                         !Orbwalk.InAutoAttackRange(target, 100)) && Q2.Cast(PacketCast))
                     {
                         return;
                     }
@@ -331,7 +330,7 @@ namespace BrianSharp.Plugin
             {
                 if (IsWOne)
                 {
-                    if (!HaveP && !Q.IsReady() && !E.IsReady() && Player.HealthPercent < 50)
+                    if (Player.HealthPercent < GetValue<Slider>(mode, "WHpU").Value)
                     {
                         W.Cast(PacketCast);
                     }
@@ -590,10 +589,6 @@ namespace BrianSharp.Plugin
                 {
                     return;
                 }
-                if (!R.IsReady())
-                {
-                    InsecPos = new Vector3();
-                }
                 Target = Q2.GetTarget(200);
                 if (GetValue<KeyBind>("Insec", "AdvancedInsec").Active ||
                     GetValue<KeyBind>("Insec", "NormalInsec").Active)
@@ -637,18 +632,15 @@ namespace BrianSharp.Plugin
 
             private static void JumpBehind(bool isFlash = false)
             {
-                var posPred =
-                    Prediction.GetPrediction(Target, !isFlash ? W.Delay : 0.05f, 0, !isFlash ? W.Speed : float.MaxValue)
-                        .UnitPosition;
+                var posPred = Prediction.GetPrediction(Target, 0.05f, 0, !isFlash ? 2000 : float.MaxValue).UnitPosition;
                 var posBehind = posPred.Extend(PosAfterKick, -DistBehind);
-                if (posBehind.Distance(PosAfterKick) <= Target.Distance(PosAfterKick) ||
-                    posBehind.Distance(posPred) < 80)
+                if (posBehind.Distance(PosAfterKick) <= Target.Distance(PosAfterKick))
                 {
                     return;
                 }
                 if (isFlash)
                 {
-                    if (Player.Distance(posBehind) >= 400 || Player.Distance(posBehind) <= 200)
+                    if (Player.Distance(posBehind) >= 400)
                     {
                         return;
                     }
@@ -659,7 +651,7 @@ namespace BrianSharp.Plugin
                         LastFlash = Utils.GameTimeTickCount;
                     }
                 }
-                else if (posBehind.Distance(posPred) < R.Range - 75 && Player.Distance(posBehind) < 600)
+                else if (Player.Distance(posBehind) < 600)
                 {
                     InsecPos = PosAfterKick;
                     Utility.DelayAction.Add(5000, () => InsecPos = new Vector3());
@@ -723,17 +715,16 @@ namespace BrianSharp.Plugin
                 if (!isNormal)
                 {
                     var posBehind = Target.ServerPosition.Extend(PosAfterKick, -DistBehind);
-                    if (posBehind.Distance(PosAfterKick) > Target.Distance(PosAfterKick) &&
-                        Player.Distance(posBehind) < 400)
+                    if (R.IsInRange(Target) && Player.Distance(posBehind) < 400)
                     {
                         InsecPos = PosAfterKick;
                         Utility.DelayAction.Add(5000, () => InsecPos = new Vector3());
                         if (R.CastOnUnit(Target, PacketCast))
                         {
                             Utility.DelayAction.Add(
-                                250, () =>
+                                125, () =>
                                 {
-                                    if (CastFlash(posBehind))
+                                    if (Player.LastCastedSpellName() == "BlindMonkRKick" && CastFlash(posBehind))
                                     {
                                         LastFlash = Utils.GameTimeTickCount;
                                     }

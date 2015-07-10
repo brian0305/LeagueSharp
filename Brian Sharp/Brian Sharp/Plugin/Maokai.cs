@@ -326,9 +326,8 @@ namespace BrianSharp.Plugin
         {
             if (GetValue<bool>("Flee", "W") && W.IsReady())
             {
-                var pos = Player.Distance(Game.CursorPos) > W.Range
-                    ? Player.ServerPosition.Extend(Game.CursorPos, W.Range)
-                    : Game.CursorPos;
+                var pos = Player.ServerPosition.Extend(
+                    Game.CursorPos, Math.Min(W.Range, Player.Distance(Game.CursorPos)));
                 var obj =
                     (Obj_AI_Base)
                         HeroManager.Enemies.Where(i => i.IsValidTarget(W.Range) && i.Distance(pos) < 200)

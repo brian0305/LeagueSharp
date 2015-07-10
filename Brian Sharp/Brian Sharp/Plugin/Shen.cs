@@ -182,7 +182,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             var predE = E.GetPrediction(gapcloser.Sender, true);
-            if (predE.Hitchance >= HitChance.VeryHigh)
+            if (predE.Hitchance >= E.MinHitChance)
             {
                 E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
             }
@@ -196,7 +196,7 @@ namespace BrianSharp.Plugin
                 return;
             }
             var predE = E.GetPrediction(unit, true);
-            if (predE.Hitchance >= HitChance.VeryHigh)
+            if (predE.Hitchance >= E.MinHitChance)
             {
                 E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
             }
@@ -211,7 +211,7 @@ namespace BrianSharp.Plugin
                 if (target != null)
                 {
                     var predE = E.GetPrediction(target, true);
-                    if (predE.Hitchance >= HitChance.VeryHigh &&
+                    if (predE.Hitchance >= E.MinHitChance &&
                         E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast))
                     {
                         if (mode == "Combo" && GetValue<bool>(mode, "W") && W.IsReady())
@@ -305,7 +305,7 @@ namespace BrianSharp.Plugin
                 if (target != null && E.IsKillable(target))
                 {
                     var predE = E.GetPrediction(target, true);
-                    if (predE.Hitchance >= HitChance.VeryHigh)
+                    if (predE.Hitchance >= E.MinHitChance)
                     {
                         E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
                     }
@@ -362,7 +362,7 @@ namespace BrianSharp.Plugin
             if (target != null && tower != null && target.Distance(tower) <= 850)
             {
                 var predE = E.GetPrediction(target, true);
-                if (predE.Hitchance >= HitChance.VeryHigh)
+                if (predE.Hitchance >= E.MinHitChance)
                 {
                     E.Cast(predE.CastPosition.Extend(Player.ServerPosition, -100), PacketCast);
                 }

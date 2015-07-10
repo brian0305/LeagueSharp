@@ -192,7 +192,7 @@ namespace BrianSharp.Plugin
             if (E.CanCast(unit) && Player.Mana >= Q.Instance.ManaCost + E.Instance.ManaCost)
             {
                 var predE = E.GetPrediction(unit);
-                if (predE.Hitchance >= HitChance.VeryHigh &&
+                if (predE.Hitchance >= E.MinHitChance &&
                     E.Cast(
                         predE.UnitPosition.Extend(Player.ServerPosition, -E.Width / (unit.IsFacing(Player) ? 2 : 1)),
                         PacketCast) && Q.Cast(predE.UnitPosition, PacketCast))
@@ -233,7 +233,7 @@ namespace BrianSharp.Plugin
                 if (target != null)
                 {
                     var predE = E.GetPrediction(target);
-                    if (predE.Hitchance >= HitChance.VeryHigh &&
+                    if (predE.Hitchance >= E.MinHitChance &&
                         E.Cast(
                             predE.UnitPosition.Extend(
                                 Player.ServerPosition, -E.Width / (target.IsFacing(Player) ? 2 : 1)), PacketCast))

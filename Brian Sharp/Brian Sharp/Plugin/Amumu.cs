@@ -202,7 +202,7 @@ namespace BrianSharp.Plugin
                         nearObj.AddRange(GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly));
                         nearObj.AddRange(HeroManager.Enemies.Where(i => i.IsValidTarget(Q.Range)));
                         if ((from i in nearObj
-                            where Q.GetPrediction(i).Hitchance >= HitChance.High
+                            where Q.GetPrediction(i).Hitchance >= Q.MinHitChance
                             let enemy = GetRTarget(i.ServerPosition)
                             where
                                 (enemy.Count > 1 && enemy.Any(a => R.IsKillable(a))) ||
@@ -294,7 +294,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var list = minionObj.Where(i => Q.GetPrediction(i).Hitchance >= HitChance.High).ToList();
+                var list = minionObj.Where(i => Q.GetPrediction(i).Hitchance >= Q.MinHitChance).ToList();
                 var obj = list.FirstOrDefault(i => Q.IsKillable(i)) ??
                           list.FirstOrDefault(i => !Orbwalk.InAutoAttackRange(i));
                 if (obj != null)

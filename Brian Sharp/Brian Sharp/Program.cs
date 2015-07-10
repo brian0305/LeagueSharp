@@ -11,7 +11,7 @@ namespace BrianSharp
 {
     internal class Program
     {
-        public static Spell Q, Q2, W, W2, E, E2, R;
+        public static Spell Q, Q2, W, W2, E, E2, R, R2;
         public static SpellSlot Flash, Smite, Ignite;
         public static Items.Item Tiamat, Hydra, Youmuu, Zhonya, Seraph, Sheen, Iceborn, Trinity;
         public static Menu MainMenu;

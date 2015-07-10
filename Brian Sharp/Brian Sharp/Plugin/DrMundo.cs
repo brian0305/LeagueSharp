@@ -233,7 +233,7 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var list = minionObj.Where(i => Q.GetPrediction(i).Hitchance >= HitChance.High).ToList();
+                var list = minionObj.Where(i => Q.GetPrediction(i).Hitchance >= Q.MinHitChance).ToList();
                 var obj = list.FirstOrDefault(i => Q.IsKillable(i)) ?? list.MinOrDefault(i => i.Distance(Player));
                 if (obj != null)
                 {
@@ -250,7 +250,7 @@ namespace BrianSharp.Plugin
             }
             var obj =
                 GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Where(i => Q.GetPrediction(i).Hitchance >= HitChance.High)
+                    .Where(i => Q.GetPrediction(i).Hitchance >= Q.MinHitChance)
                     .FirstOrDefault(i => Q.IsKillable(i));
             if (obj == null)
             {

@@ -22,7 +22,9 @@ namespace BrianSharp.Plugin
             E = new Spell(SpellSlot.E, 430, TargetSelector.DamageType.Magical);
             E2 = new Spell(SpellSlot.E, 600);
             R = new Spell(SpellSlot.R, 375);
+            R2 = new Spell(SpellSlot.R, 800);
             Q.SetSkillshot(0.25f, 65, 1800, true, SkillshotType.SkillshotLine);
+            R2.SetSkillshot(0.25f, 0, 1500, false, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
@@ -36,6 +38,7 @@ namespace BrianSharp.Plugin
                     AddSlider(comboMenu, "WHpU", "-> If Hp <", 30);
                     AddBool(comboMenu, "E", "Use E");
                     AddBool(comboMenu, "R", "Use R");
+                    AddBool(comboMenu, "RBehind", "-> Kill Enemy Behind");
                     champMenu.AddSubMenu(comboMenu);
                 }
                 //var harassMenu = new Menu("Harass", "Harass");
@@ -108,7 +111,7 @@ namespace BrianSharp.Plugin
 
         private static bool HaveP
         {
-            get { return Player.HasBuff("blindmonkpassive_cosmetic"); }
+            get { return Player.HasBuff("BlindMonkFlurry"); }
         }
 
         private static bool IsQOne
@@ -206,7 +209,7 @@ namespace BrianSharp.Plugin
             else if (GetValue<bool>("Interrupt", "RGap") && W.IsReady() && IsWOne &&
                      Utils.GameTimeTickCount - _limitWard > 1000)
             {
-                var posPred = Prediction.GetPrediction(unit, 0.25f, 0, 2000)
+                var posPred = Prediction.GetPrediction(unit, 0.05f, 0, 2000)
                     .UnitPosition.Randomize(0, (int) R.Range - 75);
                 var posJump = Player.ServerPosition.Extend(posPred, Math.Min(W.Range, Player.Distance(posPred)));
                 var objNear = new List<Obj_AI_Base>();
@@ -286,7 +289,8 @@ namespace BrianSharp.Plugin
                         (QAgain(target) ||
                          ((target.HasBuffOfType(BuffType.Knockback) || target.HasBuffOfType(BuffType.Knockup)) &&
                           Player.Distance(target) > 300 && !R.IsReady()) || Q.IsKillable(target, 1) ||
-                         !Orbwalk.InAutoAttackRange(target, 100)) && Q2.Cast(PacketCast))
+                         !Orbwalk.InAutoAttackRange(target, 100) || (Orbwalk.InAutoAttackRange(target) && !HaveP)) &&
+                        Q2.Cast(PacketCast))
                     {
                         return;
                     }
@@ -312,18 +316,54 @@ namespace BrianSharp.Plugin
                 }
                 else if (
                     HeroManager.Enemies.Where(i => i.IsValidTarget(E2.Range) && HaveE(i))
-                        .Any(i => EAgain(i) || !Orbwalk.InAutoAttackRange(i, 50) || !HaveP) && E2.Cast(PacketCast))
+                        .Any(
+                            i =>
+                                EAgain(i) || !Orbwalk.InAutoAttackRange(i, 50) ||
+                                (Orbwalk.InAutoAttackRange(i) && !HaveP)) && Player.Mana >= 50 &&
+                    E2.Cast(PacketCast))
                 {
                     return;
                 }
             }
-            if (GetValue<bool>(mode, "R") && R.IsReady() && GetValue<bool>(mode, "Q") && Q.IsReady() && !IsQOne)
+            if (GetValue<bool>(mode, "R") && R.IsReady())
             {
                 var target = R.GetTarget(0, HeroManager.Enemies.Where(i => !HaveQ(i)));
-                if (target != null && CanKill(target, GetQ2Dmg(target, R.GetDamage(target))) &&
-                    R.CastOnUnit(target, PacketCast))
+                if (GetValue<bool>(mode, "Q") && Q.IsReady() && !IsQOne && target != null)
                 {
-                    return;
+                    if (CanKill(target, GetQ2Dmg(target, R.GetDamage(target))) && R.CastOnUnit(target, PacketCast))
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    target = R.GetTarget();
+                    if (target != null && R.IsKillable(target))
+                    {
+                        if (R.CastOnUnit(target, PacketCast))
+                        {
+                            return;
+                        }
+                    }
+                    else if (GetValue<bool>(mode, "RBehind"))
+                    {
+                        foreach (
+                            var enemy in HeroManager.Enemies.Where(i => i.IsValidTarget(R.Range) && !R.IsKillable(i)))
+                        {
+                            R2.UpdateSourcePosition(enemy.ServerPosition, enemy.ServerPosition);
+                            if (
+                                HeroManager.Enemies.Any(
+                                    i =>
+                                        i.IsValidTarget(R2.Range) && i.NetworkId != enemy.NetworkId &&
+                                        R2.WillHit(
+                                            i, enemy.ServerPosition.Extend(Player.ServerPosition, -R2.Range),
+                                            (int) enemy.BoundingRadius + 50) && R.IsKillable(i)) &&
+                                R.CastOnUnit(enemy, PacketCast))
+                            {
+                                break;
+                            }
+                        }
+                    }
                 }
             }
             if (GetValue<bool>(mode, "W") && W.IsReady() && Orbwalk.GetBestHeroTarget != null)
@@ -338,7 +378,7 @@ namespace BrianSharp.Plugin
                 else if (!Player.HasBuff("BlindMonkSafeguard") &&
                          (Player.HealthPercent < GetValue<Slider>(mode, "WHpU").Value || !HaveP))
                 {
-                    W2.Cast(PacketCast);
+                    W.Cast(PacketCast);
                 }
             }
         }
@@ -353,7 +393,7 @@ namespace BrianSharp.Plugin
                 GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                     .Where(
                         i =>
-                            Q.GetPrediction(i).Hitchance >= HitChance.High &&
+                            Q.GetPrediction(i).Hitchance >= Q.MinHitChance &&
                             (!Orbwalk.InAutoAttackRange(i) || i.Health > Player.GetAutoAttackDamage(i, true)))
                     .FirstOrDefault(i => Q.IsKillable(i));
             if (obj == null)
@@ -590,14 +630,15 @@ namespace BrianSharp.Plugin
                     return;
                 }
                 Target = Q2.GetTarget(200);
-                if (GetValue<KeyBind>("Insec", "AdvancedInsec").Active ||
-                    GetValue<KeyBind>("Insec", "NormalInsec").Active)
+                if (!GetValue<KeyBind>("Insec", "AdvancedInsec").Active &&
+                    !GetValue<KeyBind>("Insec", "NormalInsec").Active)
                 {
-                    Orbwalker.MoveTo(Game.CursorPos);
-                    if (IsReady && (GetValue<KeyBind>("Insec", "NormalInsec").Active || Flash.IsReady()))
-                    {
-                        Start(GetValue<KeyBind>("Insec", "NormalInsec").Active);
-                    }
+                    return;
+                }
+                Orbwalker.MoveTo(Game.CursorPos);
+                if (IsReady && (GetValue<KeyBind>("Insec", "NormalInsec").Active || Flash.IsReady()))
+                {
+                    Start(GetValue<KeyBind>("Insec", "NormalInsec").Active);
                 }
             }
 
@@ -640,7 +681,7 @@ namespace BrianSharp.Plugin
                 }
                 if (isFlash)
                 {
-                    if (Player.Distance(posBehind) >= 400)
+                    if (Player.Distance(posBehind) >= 425)
                     {
                         return;
                     }
@@ -651,7 +692,7 @@ namespace BrianSharp.Plugin
                         LastFlash = Utils.GameTimeTickCount;
                     }
                 }
-                else if (Player.Distance(posBehind) < 600)
+                else if (Player.Distance(posBehind) < GetWardRange)
                 {
                     InsecPos = PosAfterKick;
                     Utility.DelayAction.Add(5000, () => InsecPos = new Vector3());
@@ -664,12 +705,13 @@ namespace BrianSharp.Plugin
 
             private static bool PlaceWard(Vector3 pos)
             {
-                if (!W.IsReady() || !IsWOne || Utils.GameTimeTickCount - LastWard <= 1000 || GetWardSlot == null)
+                if (Utils.GameTimeTickCount - LastWard <= 1000)
                 {
                     return false;
                 }
                 return Player.Spellbook.CastSpell(
-                    GetWardSlot.SpellSlot, Player.ServerPosition.Extend(pos, Math.Min(600, Player.Distance(pos))));
+                    GetWardSlot.SpellSlot,
+                    Player.ServerPosition.Extend(pos, Math.Min(GetWardRange, Player.Distance(pos))));
             }
 
             private static void Start(bool isNormal = true)
@@ -689,13 +731,13 @@ namespace BrianSharp.Plugin
                         {
                             var nearObj = new List<Obj_AI_Base>();
                             nearObj.AddRange(
-                                GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly).Where(i => !Q.IsKillable(i)));
-                            nearObj.AddRange(
                                 HeroManager.Enemies.Where(i => i.IsValidTarget(Q.Range) && !Q.IsKillable(i)));
+                            nearObj.AddRange(
+                                GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly).Where(i => !Q.IsKillable(i)));
                             if (
                                 nearObj.Where(
                                     i =>
-                                        Q.GetPrediction(i).Hitchance >= HitChance.High &&
+                                        Q.GetPrediction(i).Hitchance >= Q.MinHitChance &&
                                         i.Distance(Target) < minDistToJump)
                                     .OrderBy(i => i.Distance(Target))
                                     .Any(i => Q.Cast(i, PacketCast).IsCasted()))
@@ -706,8 +748,8 @@ namespace BrianSharp.Plugin
                     }
                     else if (Player.Distance(Target) > minDistToJump &&
                              ObjHaveQ.Any(i => i.Distance(Target) < minDistToJump) &&
-                             ((W.IsReady() && IsWOne && GetWardSlot != null && Player.Mana >= 80) || Flash.IsReady()) &&
-                             Q2.Cast(PacketCast))
+                             ((isNormal && W.IsReady() && IsWOne && GetWardSlot != null && Player.Mana >= 80) ||
+                              Flash.IsReady()) && Q2.Cast(PacketCast))
                     {
                         return;
                     }
@@ -715,7 +757,7 @@ namespace BrianSharp.Plugin
                 if (!isNormal)
                 {
                     var posBehind = Target.ServerPosition.Extend(PosAfterKick, -DistBehind);
-                    if (R.IsInRange(Target) && Player.Distance(posBehind) < 400)
+                    if (R.IsInRange(Target) && Player.Distance(posBehind) < 425)
                     {
                         InsecPos = PosAfterKick;
                         Utility.DelayAction.Add(5000, () => InsecPos = new Vector3());

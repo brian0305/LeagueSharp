@@ -289,7 +289,7 @@ namespace BrianSharp.Plugin
             {
                 var minionObjQ =
                     GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                        .Where(i => Q.GetPrediction(i).Hitchance >= HitChance.High)
+                        .Where(i => Q.GetPrediction(i).Hitchance >= Q.MinHitChance)
                         .ToList();
                 var obj = minionObjQ.FirstOrDefault(i => Q.IsKillable(i)) ??
                           minionObjQ.MinOrDefault(i => i.Distance(Player));
@@ -331,7 +331,7 @@ namespace BrianSharp.Plugin
             }
             var obj =
                 GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Where(i => Q.GetPrediction(i).Hitchance >= HitChance.High)
+                    .Where(i => Q.GetPrediction(i).Hitchance >= Q.MinHitChance)
                     .FirstOrDefault(i => Q.IsKillable(i));
             if (obj == null)
             {

@@ -5,7 +5,6 @@ using BrianSharp.Common;
 using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
-using Collision = LeagueSharp.Common.Collision;
 using Color = System.Drawing.Color;
 using Orbwalk = BrianSharp.Common.Orbwalker;
 
@@ -348,7 +347,7 @@ namespace BrianSharp.Plugin
                 var obj =
                     minionObj.Where(i => Q.IsInRange(i))
                         .MaxOrDefault(
-                            i => Q2.CountHits(minionObj, i.ServerPosition.Extend(Player.ServerPosition, -Q2.Range)));
+                            i => Q2.CountHits(minionObj, Player.ServerPosition.Extend(i.ServerPosition, Q2.Range)));
                 if (obj != null && Q.CastOnUnit(obj, PacketCast))
                 {
                     return;
@@ -364,7 +363,7 @@ namespace BrianSharp.Plugin
                 else
                 {
                     var obj =
-                        minionObj.Where(i => W.GetPrediction(i).Hitchance >= HitChance.High)
+                        minionObj.Where(i => W.GetPrediction(i).Hitchance >= W.MinHitChance)
                             .MinOrDefault(i => i.Distance(Player));
                     if (obj != null)
                     {
@@ -457,20 +456,12 @@ namespace BrianSharp.Plugin
 
         private static bool CastExtendQ(Obj_AI_Hero target, bool cancelR = false)
         {
+            var objNear = new List<Obj_AI_Base>();
+            objNear.AddRange(HeroManager.Enemies.Where(i => i.IsValidTarget(Q.Range)));
+            objNear.AddRange(GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly));
             var obj =
-                Collision.GetCollision(
-                    new List<Vector3> { target.ServerPosition },
-                    new PredictionInput
-                    {
-                        From = Player.ServerPosition,
-                        Type = Q2.Type,
-                        Range = Q2.Range,
-                        Delay = Q2.Delay,
-                        Radius = Q2.Width,
-                        Speed = Q2.Speed,
-                        CollisionObjects = new[] { CollisionableObjects.Minions, CollisionableObjects.Heroes }
-                    })
-                    .FirstOrDefault(i => Q.CanCast(i));
+                objNear.FirstOrDefault(
+                    i => Q2.WillHit(target, Player.ServerPosition.Extend(i.ServerPosition, Q2.Range)));
             return obj != null && (!cancelR || R.Cast(PacketCast)) && Q.CastOnUnit(obj, PacketCast);
         }
 

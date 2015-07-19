@@ -12,25 +12,28 @@ namespace BrianSharp.Plugin
 {
     internal class LeeSin : Helper
     {
-        private static int _limitWard;
+        private static Vector3 _limitWardPos;
+        private static int _limitWardTime;
 
         public LeeSin()
         {
             Q = new Spell(SpellSlot.Q, 1100);
             Q2 = new Spell(SpellSlot.Q, 1300);
             W = new Spell(SpellSlot.W, 700);
-            E = new Spell(SpellSlot.E, 430, TargetSelector.DamageType.Magical);
-            E2 = new Spell(SpellSlot.E, 600);
+            E = new Spell(SpellSlot.E, 400, TargetSelector.DamageType.Magical);
+            E2 = new Spell(SpellSlot.E, 570);
             R = new Spell(SpellSlot.R, 375);
             R2 = new Spell(SpellSlot.R, 800);
             Q.SetSkillshot(0.25f, 65, 1800, true, SkillshotType.SkillshotLine);
-            R2.SetSkillshot(0.25f, 0, 1500, false, SkillshotType.SkillshotLine);
+            R2.SetSkillshot(0.25f, 100, 1500, false, SkillshotType.SkillshotLine);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
             {
                 Insec.Init(champMenu);
                 var comboMenu = new Menu("Combo", "Combo");
                 {
+                    AddKeybind(comboMenu, "Star", "Star Combo (Q-[W]-R-E-Q)", "X");
+                    AddBool(comboMenu, "Smite", "Use Red Smite");
                     AddBool(comboMenu, "P", "Use Passive", false);
                     AddBool(comboMenu, "Q", "Use Q");
                     AddBool(comboMenu, "QCol", "-> Smite Collision");
@@ -38,7 +41,8 @@ namespace BrianSharp.Plugin
                     AddSlider(comboMenu, "WHpU", "-> If Hp <", 30);
                     AddBool(comboMenu, "E", "Use E");
                     AddBool(comboMenu, "R", "Use R");
-                    AddBool(comboMenu, "RBehind", "-> Kill Enemy Behind");
+                    AddBool(comboMenu, "RBehind", "-> If Kill Enemy Behind");
+                    AddSlider(comboMenu, "RCount", "-> Or Hit Enemy Behind >=", 2, 1, 4);
                     champMenu.AddSubMenu(comboMenu);
                 }
                 //var harassMenu = new Menu("Harass", "Harass");
@@ -140,6 +144,10 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
+            if (GetValue<KeyBind>("Combo", "Star").Active)
+            {
+                Star();
+            }
             switch (Orbwalk.CurrentMode)
             {
                 case Orbwalker.Mode.Combo:
@@ -207,7 +215,7 @@ namespace BrianSharp.Plugin
                 R.CastOnUnit(unit, PacketCast);
             }
             else if (GetValue<bool>("Interrupt", "RGap") && W.IsReady() && IsWOne &&
-                     Utils.GameTimeTickCount - _limitWard > 1000)
+                     Utils.GameTimeTickCount - _limitWardTime > 1000)
             {
                 var posPred = Prediction.GetPrediction(unit, 0.05f, 0, 2000)
                     .UnitPosition.Randomize(0, (int) R.Range - 75);
@@ -223,32 +231,99 @@ namespace BrianSharp.Plugin
                         .OrderBy(i => i.Distance(posJump))
                         .Any(i => W.CastOnUnit(i, PacketCast)))
                 {
-                    _limitWard = Utils.GameTimeTickCount + 800;
+                    _limitWardTime = Utils.GameTimeTickCount + 800;
                 }
             }
         }
 
         private static void OnCreateWardForFlee(GameObject sender, EventArgs args)
         {
-            if (Orbwalk.CurrentMode != Orbwalker.Mode.Flee || !W.IsReady() || !IsWOne ||
-                !sender.IsValid<Obj_AI_Minion>())
+            if ((Orbwalk.CurrentMode != Orbwalker.Mode.Flee && !GetValue<KeyBind>("Combo", "Star").Active) ||
+                !W.IsReady() || !IsWOne || !sender.IsValid<Obj_AI_Minion>())
             {
                 return;
             }
             var ward = (Obj_AI_Minion) sender;
-            if (!ward.IsAlly || !IsWard(ward) || !W.IsInRange(ward) || Utils.GameTimeTickCount - _limitWard > 1000)
+            if (!ward.IsAlly || !IsWard(ward) || !W.IsInRange(ward) || Utils.GameTimeTickCount - _limitWardTime > 1000 ||
+                ward.Distance(_limitWardPos) > 200)
             {
                 return;
             }
-            Utility.DelayAction.Add(
-                50, () =>
+            if (W.CastOnUnit(ward, PacketCast))
+            {
+                _limitWardPos = new Vector3();
+            }
+        }
+
+        private static void Star()
+        {
+            var target = TargetSelector.GetTarget(W.Range + R.Range, TargetSelector.DamageType.Physical);
+            CustomOrbwalk(target);
+            if (target == null)
+            {
+                return;
+            }
+            if (Q.IsReady())
+            {
+                if (IsQOne)
                 {
-                    var buff = ward.GetBuff("sharedstealthwardbuff") ?? ward.GetBuff("sharedvisionwardbuff");
-                    if (buff != null && buff.Caster.IsMe)
+                    if (R.IsReady() && Q.Cast(target, PacketCast).IsCasted())
                     {
-                        W.CastOnUnit(ward, PacketCast);
+                        return;
                     }
-                });
+                }
+                else if (HaveQ(target) &&
+                         (Q.IsKillable(target, 1) ||
+                          (!R.IsReady() && Utils.TickCount - R.LastCastAttemptT > 300 &&
+                           Utils.TickCount - R.LastCastAttemptT < 1500)) && Q2.Cast(PacketCast))
+                {
+                    return;
+                }
+            }
+            if (E.IsReady() && IsEOne && E.IsInRange(target) && HaveQ(target) && !R.IsReady() &&
+                Utils.TickCount - R.LastCastAttemptT < 1500 && Player.Mana >= 80 && E.Cast(PacketCast))
+            {
+                return;
+            }
+            if (!R.IsReady() || !Q.IsReady() || IsQOne || !HaveQ(target))
+            {
+                return;
+            }
+            if (R.IsInRange(target))
+            {
+                R.CastOnUnit(target, PacketCast);
+            }
+            else if (W.IsReady() && IsWOne && Utils.GameTimeTickCount - _limitWardTime > 1000 && Player.Mana >= 60)
+            {
+                var posPred = Prediction.GetPrediction(target, 0.05f, 0, 2000)
+                    .UnitPosition.Randomize(0, (int) R.Range - 75);
+                var posJump = Player.ServerPosition.Extend(posPred, Math.Min(W.Range, Player.Distance(posPred)));
+                var objNear = new List<Obj_AI_Base>();
+                objNear.AddRange(HeroManager.Allies.Where(i => i.IsValidTarget(W.Range, false) && !i.IsMe));
+                objNear.AddRange(GetMinions(W.Range, MinionTypes.All, MinionTeam.Ally));
+                objNear.AddRange(
+                    ObjectManager.Get<Obj_AI_Minion>()
+                        .Where(i => i.IsValidTarget(W.Range, false) && i.IsAlly && IsWard(i)));
+                var objJump = objNear.Where(i => i.Distance(posJump) < 200).MinOrDefault(i => i.Distance(posJump));
+                if (objJump != null)
+                {
+                    if (W.CastOnUnit(objJump, PacketCast))
+                    {
+                        _limitWardTime = Utils.GameTimeTickCount + 800;
+                    }
+                }
+                else if (GetWardSlot != null)
+                {
+                    var posPlace = Player.ServerPosition.Extend(
+                        posPred, Math.Min(GetWardRange - 10, Player.Distance(posPred)));
+                    if (target.Distance(posPlace) < R.Range - 50 &&
+                        Player.Spellbook.CastSpell(GetWardSlot.SpellSlot, posPlace))
+                    {
+                        _limitWardTime = Utils.GameTimeTickCount;
+                        _limitWardPos = posPlace;
+                    }
+                }
+            }
         }
 
         private static void Fight(string mode)
@@ -288,8 +363,8 @@ namespace BrianSharp.Plugin
                     if (target != null &&
                         (QAgain(target) ||
                          ((target.HasBuffOfType(BuffType.Knockback) || target.HasBuffOfType(BuffType.Knockup)) &&
-                          Player.Distance(target) > 300 && !R.IsReady()) || Q.IsKillable(target, 1) ||
-                         !Orbwalk.InAutoAttackRange(target, 100) || (Orbwalk.InAutoAttackRange(target) && !HaveP)) &&
+                          Player.Distance(target) > 300 && !R.IsReady() && Utils.TickCount - R.LastCastAttemptT < 1500) ||
+                         Q.IsKillable(target, 1) || !Orbwalk.InAutoAttackRange(target, 100) || !HaveP) &&
                         Q2.Cast(PacketCast))
                     {
                         return;
@@ -297,7 +372,8 @@ namespace BrianSharp.Plugin
                     if (target == null)
                     {
                         var sub = Q2.GetTarget();
-                        if (sub != null && ObjHaveQ.Any(i => i.Distance(sub) < Player.Distance(sub)) &&
+                        if (sub != null &&
+                            ObjHaveQ.Any(i => i.Distance(sub) < Player.Distance(sub) && i.Distance(sub) < E.Range) &&
                             Q2.Cast(PacketCast))
                         {
                             return;
@@ -305,21 +381,27 @@ namespace BrianSharp.Plugin
                     }
                 }
             }
+            if (GetValue<bool>(mode, "Smite") && CurrentSmiteType == SmiteType.Red)
+            {
+                var target = TargetSelector.GetTarget(760, TargetSelector.DamageType.Physical);
+                if (target != null)
+                {
+                    CastSmite(target, false);
+                }
+                return;
+            }
             if (GetValue<bool>(mode, "E") && E.IsReady())
             {
                 if (IsEOne)
                 {
-                    if (E.GetTarget() != null && E.Cast(PacketCast))
+                    if (E.GetTarget() != null && Player.Mana >= 70 && E.Cast(PacketCast))
                     {
                         return;
                     }
                 }
                 else if (
                     HeroManager.Enemies.Where(i => i.IsValidTarget(E2.Range) && HaveE(i))
-                        .Any(
-                            i =>
-                                EAgain(i) || !Orbwalk.InAutoAttackRange(i, 50) ||
-                                (Orbwalk.InAutoAttackRange(i) && !HaveP)) && Player.Mana >= 50 &&
+                        .Any(i => EAgain(i) || !Orbwalk.InAutoAttackRange(i, 50) || !HaveP) && Player.Mana >= 50 &&
                     E2.Cast(PacketCast))
                 {
                     return;
@@ -337,31 +419,26 @@ namespace BrianSharp.Plugin
                 }
                 else
                 {
-                    target = R.GetTarget();
-                    if (target != null && R.IsKillable(target))
+                    foreach (var enemy in
+                        HeroManager.Enemies.Where(i => i.IsValidTarget(R.Range) && !R.IsKillable(i)))
                     {
-                        if (R.CastOnUnit(target, PacketCast))
+                        R2.UpdateSourcePosition(enemy.ServerPosition, enemy.ServerPosition);
+                        var enemyBehind =
+                            HeroManager.Enemies.Where(
+                                i =>
+                                    i.IsValidTarget(R2.Range) && i.NetworkId != enemy.NetworkId &&
+                                    R2.WillHit(
+                                        i, enemy.ServerPosition.Extend(Player.ServerPosition, -R2.Range),
+                                        (int) enemy.BoundingRadius)).ToList();
+                        if (GetValue<bool>(mode, "RBehind") && enemyBehind.Any(i => R.IsKillable(i)) &&
+                            R.CastOnUnit(enemy, PacketCast))
                         {
-                            return;
+                            break;
                         }
-                    }
-                    else if (GetValue<bool>(mode, "RBehind"))
-                    {
-                        foreach (
-                            var enemy in HeroManager.Enemies.Where(i => i.IsValidTarget(R.Range) && !R.IsKillable(i)))
+                        if (enemyBehind.Count >= GetValue<Slider>(mode, "RCount").Value &&
+                            R.CastOnUnit(enemy, PacketCast))
                         {
-                            R2.UpdateSourcePosition(enemy.ServerPosition, enemy.ServerPosition);
-                            if (
-                                HeroManager.Enemies.Any(
-                                    i =>
-                                        i.IsValidTarget(R2.Range) && i.NetworkId != enemy.NetworkId &&
-                                        R2.WillHit(
-                                            i, enemy.ServerPosition.Extend(Player.ServerPosition, -R2.Range),
-                                            (int) enemy.BoundingRadius + 50) && R.IsKillable(i)) &&
-                                R.CastOnUnit(enemy, PacketCast))
-                            {
-                                break;
-                            }
+                            break;
                         }
                     }
                 }
@@ -393,9 +470,9 @@ namespace BrianSharp.Plugin
                 GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                     .Where(
                         i =>
-                            Q.GetPrediction(i).Hitchance >= Q.MinHitChance &&
+                            Q.IsKillable(i) &&
                             (!Orbwalk.InAutoAttackRange(i) || i.Health > Player.GetAutoAttackDamage(i, true)))
-                    .FirstOrDefault(i => Q.IsKillable(i));
+                    .FirstOrDefault(i => Q.GetPrediction(i).Hitchance >= Q.MinHitChance);
             if (obj == null)
             {
                 return;
@@ -405,7 +482,8 @@ namespace BrianSharp.Plugin
 
         private static void Flee(Vector3 pos)
         {
-            if (!GetValue<bool>("Flee", "W") || !W.IsReady() || !IsWOne || Utils.GameTimeTickCount - _limitWard <= 1000)
+            if (!GetValue<bool>("Flee", "W") || !W.IsReady() || !IsWOne ||
+                Utils.GameTimeTickCount - _limitWardTime <= 1000)
             {
                 return;
             }
@@ -420,7 +498,7 @@ namespace BrianSharp.Plugin
             {
                 if (W.CastOnUnit(objJump, PacketCast))
                 {
-                    _limitWard = Utils.GameTimeTickCount + 800;
+                    _limitWardTime = Utils.GameTimeTickCount + 800;
                 }
             }
             else if (GetWardSlot != null)
@@ -428,7 +506,8 @@ namespace BrianSharp.Plugin
                 var posPlace = Player.ServerPosition.Extend(pos, Math.Min(GetWardRange - 10, Player.Distance(pos)));
                 if (Player.Spellbook.CastSpell(GetWardSlot.SpellSlot, posPlace))
                 {
-                    _limitWard = Utils.GameTimeTickCount;
+                    _limitWardTime = Utils.GameTimeTickCount;
+                    _limitWardPos = posPlace;
                 }
             }
         }
@@ -512,22 +591,23 @@ namespace BrianSharp.Plugin
         private static bool QAgain(Obj_AI_Base target)
         {
             var buff = target.GetBuff("BlindMonkSonicWave");
-            return buff != null && buff.EndTime - Game.Time < 0.5f;
+            return buff != null && buff.EndTime - Game.Time <= 0.5f;
         }
 
         private static bool EAgain(Obj_AI_Base target)
         {
             var buff = target.GetBuff("BlindMonkTempest");
-            return buff != null && buff.EndTime - Game.Time < 0.5f;
+            return buff != null && buff.EndTime - Game.Time <= 0.5f;
         }
 
         protected class Insec
         {
             private const int RKickRange = 800;
             public static Obj_AI_Hero Target;
+            private static Vector3 _lastWardPos;
             private static Vector3 InsecPos { get; set; }
-            private static int LastWard { get; set; }
-            private static int LastFlash { set; get; }
+            private static int LastWardTime { get; set; }
+            private static int LastFlashTime { set; get; }
 
             public static bool IsReady
             {
@@ -617,8 +697,8 @@ namespace BrianSharp.Plugin
                 }
                 menu.AddSubMenu(insecMenu);
                 InsecPos = new Vector3();
-                LastWard = 0;
-                LastFlash = 0;
+                LastWardTime = 0;
+                LastFlashTime = 0;
                 Game.OnUpdate += OnUpdateInsec;
                 GameObject.OnCreate += OnCreateWardForJump;
             }
@@ -650,25 +730,20 @@ namespace BrianSharp.Plugin
                     return;
                 }
                 var ward = (Obj_AI_Minion) sender;
-                if (!ward.IsAlly || !IsWard(ward) || !W.IsInRange(ward) || Utils.GameTimeTickCount - LastWard > 1000)
+                if (!ward.IsAlly || !IsWard(ward) || !W.IsInRange(ward) || Utils.GameTimeTickCount - LastWardTime > 1000 ||
+                    ward.Distance(_lastWardPos) > 200)
                 {
                     return;
                 }
-                Utility.DelayAction.Add(
-                    50, () =>
-                    {
-                        var buff = ward.GetBuff("sharedstealthwardbuff") ?? ward.GetBuff("sharedvisionwardbuff");
-                        if (buff != null && buff.Caster.IsMe)
-                        {
-                            W.CastOnUnit(ward, PacketCast);
-                        }
-                    });
+                if (W.CastOnUnit(ward, PacketCast))
+                {
+                    _lastWardPos = new Vector3();
+                }
             }
 
             private static bool JumpRecent(int tick = 1000)
             {
-                return (LastWard != 0 && Utils.GameTimeTickCount - LastWard < tick) ||
-                       (LastFlash != 0 && Utils.GameTimeTickCount - LastFlash < tick);
+                return Utils.GameTimeTickCount - LastWardTime <= tick || Utils.GameTimeTickCount - LastFlashTime <= tick;
             }
 
             private static void JumpBehind(bool isFlash = false)
@@ -685,33 +760,34 @@ namespace BrianSharp.Plugin
                     {
                         return;
                     }
-                    InsecPos = PosAfterKick;
+                    InsecPos = PosKickTo;
                     Utility.DelayAction.Add(5000, () => InsecPos = new Vector3());
                     if (CastFlash(posBehind))
                     {
-                        LastFlash = Utils.GameTimeTickCount;
+                        LastFlashTime = Utils.GameTimeTickCount;
                     }
                 }
                 else if (Player.Distance(posBehind) < GetWardRange)
                 {
-                    InsecPos = PosAfterKick;
+                    InsecPos = PosKickTo;
                     Utility.DelayAction.Add(5000, () => InsecPos = new Vector3());
                     if (PlaceWard(posBehind))
                     {
-                        LastWard = Utils.GameTimeTickCount;
+                        LastWardTime = Utils.GameTimeTickCount;
+                        _lastWardPos = posBehind;
                     }
                 }
             }
 
             private static bool PlaceWard(Vector3 pos)
             {
-                if (Utils.GameTimeTickCount - LastWard <= 1000)
+                if (Utils.GameTimeTickCount - LastWardTime <= 1000)
                 {
                     return false;
                 }
                 return Player.Spellbook.CastSpell(
                     GetWardSlot.SpellSlot,
-                    Player.ServerPosition.Extend(pos, Math.Min(GetWardRange, Player.Distance(pos))));
+                    Player.ServerPosition.Extend(pos, Math.Min(GetWardRange - 10, Player.Distance(pos))));
             }
 
             private static void Start(bool isNormal = true)
@@ -737,9 +813,11 @@ namespace BrianSharp.Plugin
                             if (
                                 nearObj.Where(
                                     i =>
-                                        Q.GetPrediction(i).Hitchance >= Q.MinHitChance &&
-                                        i.Distance(Target) < minDistToJump)
+                                        isNormal
+                                            ? i.Distance(Target) < minDistToJump
+                                            : i.Distance(Target) < R.Range - 50)
                                     .OrderBy(i => i.Distance(Target))
+                                    .Where(i => Q.GetPrediction(i).Hitchance >= Q.MinHitChance)
                                     .Any(i => Q.Cast(i, PacketCast).IsCasted()))
                             {
                                 return;
@@ -747,7 +825,8 @@ namespace BrianSharp.Plugin
                         }
                     }
                     else if (Player.Distance(Target) > minDistToJump &&
-                             ObjHaveQ.Any(i => i.Distance(Target) < minDistToJump) &&
+                             ObjHaveQ.Any(
+                                 i => isNormal ? i.Distance(Target) < minDistToJump : i.Distance(Target) < R.Range - 50) &&
                              ((isNormal && W.IsReady() && IsWOne && GetWardSlot != null && Player.Mana >= 80) ||
                               Flash.IsReady()) && Q2.Cast(PacketCast))
                     {
@@ -757,21 +836,23 @@ namespace BrianSharp.Plugin
                 if (!isNormal)
                 {
                     var posBehind = Target.ServerPosition.Extend(PosAfterKick, -DistBehind);
-                    if (R.IsInRange(Target) && Player.Distance(posBehind) < 425)
+                    if (!R.IsInRange(Target) || Player.Distance(posBehind) >= 425)
                     {
-                        InsecPos = PosAfterKick;
-                        Utility.DelayAction.Add(5000, () => InsecPos = new Vector3());
-                        if (R.CastOnUnit(Target, PacketCast))
-                        {
-                            Utility.DelayAction.Add(
-                                125, () =>
+                        return;
+                    }
+                    InsecPos = PosKickTo;
+                    Utility.DelayAction.Add(5000, () => InsecPos = new Vector3());
+                    if (R.CastOnUnit(Target, PacketCast))
+                    {
+                        Utility.DelayAction.Add(
+                            125, () =>
+                            {
+                                if (Player.LastCastedSpellName() == "BlindMonkRKick" &&
+                                    CastFlash(Target.ServerPosition.Extend(PosAfterKick, -DistBehind)))
                                 {
-                                    if (Player.LastCastedSpellName() == "BlindMonkRKick" && CastFlash(posBehind))
-                                    {
-                                        LastFlash = Utils.GameTimeTickCount;
-                                    }
-                                });
-                        }
+                                    LastFlashTime = Utils.GameTimeTickCount;
+                                }
+                            });
                     }
                 }
                 else

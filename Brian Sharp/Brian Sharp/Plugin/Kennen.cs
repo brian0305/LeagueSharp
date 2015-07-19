@@ -263,8 +263,8 @@ namespace BrianSharp.Plugin
             }
             var obj =
                 GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Where(i => Q.GetPrediction(i).Hitchance >= Q.MinHitChance)
-                    .FirstOrDefault(i => Q.IsKillable(i));
+                    .Where(i => Q.IsKillable(i))
+                    .FirstOrDefault(i => Q.GetPrediction(i).Hitchance >= Q.MinHitChance);
             if (obj == null)
             {
                 return;

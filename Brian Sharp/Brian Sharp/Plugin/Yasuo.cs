@@ -15,15 +15,15 @@ namespace BrianSharp.Plugin
 {
     internal class Yasuo : Helper
     {
-        private const int QRange = 510, Q2Range = 1150, QCirWidth = 275, QCirWidthMin = 250, RWidth = 400;
+        private const int QRange = 550, Q2Range = 1150, QCirWidth = 275, QCirWidthMin = 250, RWidth = 400;
 
         public Yasuo()
         {
-            Q = new Spell(SpellSlot.Q, 475);
+            Q = new Spell(SpellSlot.Q, 490);
             Q2 = new Spell(SpellSlot.Q, 1100);
             W = new Spell(SpellSlot.W, 400);
             E = new Spell(SpellSlot.E, 475, TargetSelector.DamageType.Magical);
-            R = new Spell(SpellSlot.R, 1200);
+            R = new Spell(SpellSlot.R, 1300);
             Q.SetSkillshot(0.4f, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
             Q2.SetSkillshot(0.5f, 90, 1500, false, SkillshotType.SkillshotLine);
             E.SetTargetted(0.05f, 1000);
@@ -41,7 +41,6 @@ namespace BrianSharp.Plugin
                     AddBool(comboMenu, "EGapTower", "-> Under Tower", false);
                     AddBool(comboMenu, "R", "Use R");
                     AddBool(comboMenu, "RDelay", "-> Delay");
-                    AddSlider(comboMenu, "RDelayTime", "--> Knock Time Left < (ms)", 200, 200, 400);
                     AddSlider(comboMenu, "RHpU", "-> If Enemy Hp <", 60);
                     AddSlider(comboMenu, "RCountA", "-> Or Enemy >=", 2, 1, 5);
                     champMenu.AddSubMenu(comboMenu);
@@ -250,15 +249,13 @@ namespace BrianSharp.Plugin
                             (sub.Count > 1 && R.IsKillable(enemy)) ||
                             sub.Any(i => i.HealthPercent < GetValue<Slider>(mode, "RHpU").Value) ||
                             sub.Count >= GetValue<Slider>(mode, "RCountA").Value
+                        orderby sub.Count descending
                         select enemy).ToList();
                     if (obj.Any())
                     {
-                        var target =
-                            obj.Where(
-                                i =>
-                                    !GetValue<bool>(mode, "RDelay") ||
-                                    TimeLeftR(i) < (float) GetValue<Slider>(mode, "RDelayTime").Value / 1000)
-                                .MaxOrDefault(i => i.GetEnemiesInRange(RWidth).Count(CanCastR));
+                        var target = !GetValue<bool>(mode, "RDelay")
+                            ? obj.FirstOrDefault()
+                            : obj.Where(i => TimeLeftR(i) * 1000 < 150 + Game.Ping * 2).MinOrDefault(TimeLeftR);
                         if (target != null && R.CastOnUnit(target, PacketCast))
                         {
                             return;
@@ -593,17 +590,13 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            var target = TargetSelector.GetTarget(QRange, TargetSelector.DamageType.Physical);
+            var target = Q.GetTarget(25);
             if (target != null && (!UnderTower(Player.ServerPosition) || !UnderTower(target.ServerPosition)))
             {
-                Q.Cast(target, PacketCast);
+                Q.Cast(target, PacketCast, true);
             }
             else
             {
-                if (Orbwalk.CurrentMode == Orbwalker.Mode.Combo && Q.GetTarget(100) != null)
-                {
-                    return;
-                }
                 var minionObj = GetMinions(QRange, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth);
                 if (!minionObj.Any())
                 {
@@ -635,7 +628,7 @@ namespace BrianSharp.Plugin
 
         private static float TimeLeftR(Obj_AI_Hero target)
         {
-            var buff = target.Buffs.FirstOrDefault(i => i.Type == BuffType.Knockup || i.Type == BuffType.Knockback);
+            var buff = target.Buffs.FirstOrDefault(i => i.Type == BuffType.Knockback || i.Type == BuffType.Knockup);
             return buff != null ? buff.EndTime - Game.Time : -1;
         }
 
@@ -1160,7 +1153,7 @@ namespace BrianSharp.Plugin
                     AddBool(evadeMenu, "E", "Use E (To Dash Behind WindWall)");
                     AddBool(evadeMenu, "ETower", "-> Under Tower", false);
                     AddBool(evadeMenu, "BAttack", "Basic Attack");
-                    AddSlider(evadeMenu, "BAttackHpU", "-> If Hp <", 20);
+                    AddSlider(evadeMenu, "BAttackHpU", "-> If Hp <", 35);
                     AddBool(evadeMenu, "CAttack", "Crit Attack");
                     AddSlider(evadeMenu, "CAttackHpU", "-> If Hp <", 40);
                     foreach (var hero in
@@ -1220,7 +1213,7 @@ namespace BrianSharp.Plugin
                             return;
                         }
                     }
-                    if (W.IsReady() && GetValue<bool>("EvadeTarget", "W") && W.IsInRange(target.Obj) &&
+                    if (W.IsReady() && GetValue<bool>("EvadeTarget", "W") && W.IsInRange(target.Obj, 500) &&
                         W.Cast(target.Obj.Position, PacketCast))
                     {
                         return;

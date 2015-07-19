@@ -747,9 +747,9 @@ namespace BrianSharp.Evade
                     Range = 1600,
                     Radius = 375,
                     MissileSpeed = 1650,
-                    FixedRange = true,
                     DangerValue = 3,
                     MissileSpellName = "EkkoW",
+                    DisabledByDefault = true,
                     CanBeRemoved = true
                 });
             Spells.Add(
@@ -2843,6 +2843,32 @@ namespace BrianSharp.Evade
                 });
 
             #endregion Syndra
+
+            #region Tahm Kench
+
+            Spells.Add(
+                new SpellData
+                {
+                    ChampionName = "TahmKench",
+                    SpellName = "TahmKenchQ",
+                    Slot = SpellSlot.Q,
+                    Type = SkillShotType.SkillshotMissileLine,
+                    Delay = 250,
+                    Range = 951,
+                    Radius = 90,
+                    MissileSpeed = 2800,
+                    FixedRange = true,
+                    AddHitbox = true,
+                    DangerValue = 3,
+                    IsDangerous = true,
+                    MissileSpellName = "tahmkenchqmissile",
+                    CanBeRemoved = true,
+                    CollisionObjects =
+                        new[]
+                        { CollisionObjectTypes.Champions, CollisionObjectTypes.Minion, CollisionObjectTypes.YasuoWall }
+                });
+
+            #endregion Tahm Kench
 
             #region Talon
 

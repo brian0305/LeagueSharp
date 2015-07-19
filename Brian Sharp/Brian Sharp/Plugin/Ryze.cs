@@ -255,6 +255,12 @@ namespace BrianSharp.Plugin
                             Q2.Cast(target, PacketCast);
                         }
                     }
+                    else if (R.IsReady() &&
+                             (Player.CountEnemiesInRange(Q.Range) >= 2 ||
+                              (Player.HealthPercent < 50 && Q.GetTarget() != null)))
+                    {
+                        R.Cast(PacketCast);
+                    }
                     else if (E.IsReady())
                     {
                         E.CastOnBestTarget(0, PacketCast);
@@ -331,8 +337,8 @@ namespace BrianSharp.Plugin
             }
             var obj =
                 GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
-                    .Where(i => Q.GetPrediction(i).Hitchance >= Q.MinHitChance)
-                    .FirstOrDefault(i => Q.IsKillable(i));
+                    .Where(i => Q.IsKillable(i))
+                    .FirstOrDefault(i => Q.GetPrediction(i).Hitchance >= Q.MinHitChance);
             if (obj == null)
             {
                 return;

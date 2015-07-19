@@ -202,14 +202,14 @@ namespace BrianSharp.Plugin
                         nearObj.AddRange(GetMinions(Q.Range, MinionTypes.All, MinionTeam.NotAlly));
                         nearObj.AddRange(HeroManager.Enemies.Where(i => i.IsValidTarget(Q.Range)));
                         if ((from i in nearObj
-                            where Q.GetPrediction(i).Hitchance >= Q.MinHitChance
                             let enemy = GetRTarget(i.ServerPosition)
                             where
                                 (enemy.Count > 1 && enemy.Any(a => R.IsKillable(a))) ||
                                 enemy.Any(a => a.HealthPercent < GetValue<Slider>(mode, "RHpU").Value) ||
                                 enemy.Count >= GetValue<Slider>(mode, "RCountA").Value
-                            select i).OrderByDescending(i => GetRTarget(i.ServerPosition).Count)
-                            .Any(i => Q.Cast(i, PacketCast).IsCasted()))
+                            orderby enemy.Count descending
+                            where Q.GetPrediction(i).Hitchance >= Q.MinHitChance
+                            select i).Any(i => Q.Cast(i, PacketCast).IsCasted()))
                         {
                             return;
                         }
@@ -294,9 +294,9 @@ namespace BrianSharp.Plugin
             }
             if (GetValue<bool>("Clear", "Q") && Q.IsReady())
             {
-                var list = minionObj.Where(i => Q.GetPrediction(i).Hitchance >= Q.MinHitChance).ToList();
-                var obj = list.FirstOrDefault(i => Q.IsKillable(i)) ??
-                          list.FirstOrDefault(i => !Orbwalk.InAutoAttackRange(i));
+                var obj =
+                    minionObj.Where(i => Q.IsKillable(i) || !Orbwalk.InAutoAttackRange(i))
+                        .FirstOrDefault(i => Q.GetPrediction(i).Hitchance >= Q.MinHitChance);
                 if (obj != null)
                 {
                     Q.Cast(obj, PacketCast);

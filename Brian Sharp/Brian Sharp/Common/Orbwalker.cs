@@ -29,16 +29,6 @@ namespace BrianSharp.Common
             None
         }
 
-        private const float ClearWaitTime = 2;
-        private static Menu _config;
-        public static Obj_AI_Hero ForcedTarget = null;
-        private static Obj_AI_Minion _prevMinion;
-        private static bool _disableNextAttack, _missileLaunched;
-        private static int _lastAttack, _lastMove;
-        private static AttackableUnit _lastTarget;
-        private static Spell _movePrediction;
-        private static readonly Random RandomPos = new Random(DateTime.Now.Millisecond);
-
         private static Obj_AI_Hero Player
         {
             get { return ObjectManager.Player; }
@@ -46,11 +36,6 @@ namespace BrianSharp.Common
 
         public static bool Attack { get; set; }
         public static bool Move { get; set; }
-
-        private static int GetCurrentFarmDelay
-        {
-            get { return _config.Item("OW_Misc_FarmDelay").GetValue<Slider>().Value; }
-        }
 
         private static int GetCurrentWindupTime
         {
@@ -117,16 +102,21 @@ namespace BrianSharp.Common
 
         public static bool CanAttack
         {
-            get { return Utils.GameTimeTickCount + Game.Ping / 2 + 25 >= _lastAttack + Player.AttackDelay * 1000; }
+            get
+            {
+                return Utils.GameTimeTickCount + Game.Ping / 2 >=
+                       _lastAttack + Player.AttackDelay * 1000 + GetCurrentWindupTime;
+            }
         }
 
         private static bool CanMove
         {
             get
             {
-                return _missileLaunched ||
-                       Utils.GameTimeTickCount + Game.Ping / 2 >=
-                       _lastAttack + Player.AttackCastDelay * 1000 + GetCurrentWindupTime;
+                return Utils.GameTimeTickCount - _lastMove > _config.Item("OW_Misc_MoveDelay").GetValue<Slider>().Value &&
+                       (_missileLaunched ||
+                        Utils.GameTimeTickCount + Game.Ping / 2 >=
+                        _lastAttack + Player.AttackCastDelay * 1000 + GetCurrentWindupTime);
             }
         }
 
@@ -139,8 +129,7 @@ namespace BrianSharp.Common
                         .Any(
                             i =>
                                 InAutoAttackRange(i) && i.Team != GameObjectTeam.Neutral &&
-                                HealthPrediction.LaneClearHealthPrediction(
-                                    i, (int) (Player.AttackDelay * 1000 * ClearWaitTime), GetCurrentFarmDelay) <=
+                                HealthPrediction.GetHealthPrediction(i, (int) (Player.AttackDelay * 1000 * 2f), 100) <=
                                 Player.GetAutoAttackDamage(i, true));
             }
         }
@@ -149,14 +138,13 @@ namespace BrianSharp.Common
         {
             get
             {
-                AttackableUnit target = null;
                 if (!_config.Item("OW_Misc_PriorityFarm").IsActive() &&
                     (CurrentMode == Mode.Harass || CurrentMode == Mode.Clear))
                 {
-                    target = GetBestHeroTarget;
-                    if (target.IsValidTarget())
+                    var hero = GetBestHeroTarget;
+                    if (hero.IsValidTarget())
                     {
-                        return target;
+                        return hero;
                     }
                 }
                 if (CurrentMode == Mode.Harass || CurrentMode == Mode.Clear || CurrentMode == Mode.LastHit)
@@ -166,11 +154,13 @@ namespace BrianSharp.Common
                             .Where(
                                 i =>
                                     InAutoAttackRange(i) && i.Team != GameObjectTeam.Neutral &&
-                                    (MinionManager.IsMinion(i, true) || Helper.IsPet(i))))
+                                    (MinionManager.IsMinion(i, true) || Helper.IsPet(i)) &&
+                                    i.Health < 2 * Player.TotalAttackDamage)
+                            .OrderByDescending(i => i.MaxHealth))
                     {
-                        var time = (int) (Player.AttackCastDelay * 1000) - 100 + Game.Ping / 2 +
-                                   1000 * (int) (Player.Distance(obj) / Orbwalking.GetMyProjectileSpeed());
-                        var hpPred = HealthPrediction.GetHealthPrediction(obj, time, GetCurrentFarmDelay);
+                        var time = (int) (Player.AttackCastDelay * 1000) + Game.Ping / 2 +
+                                   (int) (Player.Distance(obj) / Orbwalking.GetMyProjectileSpeed() * 1000);
+                        var hpPred = HealthPrediction.GetHealthPrediction(obj, time, 100);
                         if (hpPred < 1)
                         {
                             FireOnNonKillableMinion(obj);
@@ -202,49 +192,33 @@ namespace BrianSharp.Common
                 }
                 if (CurrentMode != Mode.LastHit)
                 {
-                    target = GetBestHeroTarget;
-                    if (target.IsValidTarget())
+                    var hero = GetBestHeroTarget;
+                    if (hero.IsValidTarget())
                     {
-                        return target;
+                        return hero;
                     }
                 }
-                if (CurrentMode == Mode.Clear)
+                if (CurrentMode != Mode.Clear || ShouldWait)
                 {
-                    target =
-                        ObjectManager.Get<Obj_AI_Minion>()
-                            .Where(i => InAutoAttackRange(i) && i.Team == GameObjectTeam.Neutral)
-                            .MaxOrDefault(i => i.MaxHealth);
-                    if (target != null)
-                    {
-                        return target;
-                    }
+                    return null;
                 }
-                if (CurrentMode == Mode.Clear && !ShouldWait)
+                var mob =
+                    ObjectManager.Get<Obj_AI_Minion>()
+                        .Where(i => InAutoAttackRange(i) && i.Team == GameObjectTeam.Neutral)
+                        .MaxOrDefault(i => i.MaxHealth);
+                if (mob != null)
                 {
-                    if (InAutoAttackRange(_prevMinion))
-                    {
-                        var hpPred = HealthPrediction.LaneClearHealthPrediction(
-                            _prevMinion, (int) (Player.AttackDelay * 1000 * ClearWaitTime), GetCurrentFarmDelay);
-                        if (hpPred >= 2 * Player.GetAutoAttackDamage(_prevMinion, true) ||
-                            Math.Abs(hpPred - _prevMinion.Health) < float.Epsilon)
-                        {
-                            return _prevMinion;
-                        }
-                    }
-                    target = (from obj in ObjectManager.Get<Obj_AI_Minion>().Where(i => InAutoAttackRange(i))
-                        let hpPred =
-                            HealthPrediction.LaneClearHealthPrediction(
-                                obj, (int) (Player.AttackDelay * 1000 * ClearWaitTime), GetCurrentFarmDelay)
-                        where
-                            hpPred >= 2 * Player.GetAutoAttackDamage(obj, true) ||
-                            Math.Abs(hpPred - obj.Health) < float.Epsilon
-                        select obj).MaxOrDefault(i => i.Health);
-                    if (target != null)
-                    {
-                        _prevMinion = (Obj_AI_Minion) target;
-                    }
+                    return mob;
                 }
-                return target;
+                var minion = (from obj in
+                    ObjectManager.Get<Obj_AI_Minion>()
+                        .Where(i => InAutoAttackRange(i) && (MinionManager.IsMinion(i) || Helper.IsPet(i)))
+                    let hpPred = HealthPrediction.GetHealthPrediction(obj, (int) (Player.AttackDelay * 1000 * 2f), 100)
+                    where
+                        hpPred >= 2 * Player.GetAutoAttackDamage(obj, true) ||
+                        Math.Abs(hpPred - obj.Health) < float.Epsilon
+                    select obj).MaxOrDefault(i => i.Health);
+                return minion;
             }
         }
 
@@ -257,7 +231,7 @@ namespace BrianSharp.Common
                 foreach (var obj in HeroManager.Enemies.Where(i => InAutoAttackRange(i)))
                 {
                     var killHits = obj.Health / Player.GetAutoAttackDamage(obj, true);
-                    if (killableObj != null && (!(killHits < hitsToKill) || obj.HasBuffOfType(BuffType.Invulnerability)))
+                    if (killableObj != null && (killHits >= hitsToKill || obj.HasBuffOfType(BuffType.Invulnerability)))
                     {
                         continue;
                     }
@@ -329,11 +303,14 @@ namespace BrianSharp.Common
                 var miscMenu = new Menu("Misc", "Misc");
                 {
                     miscMenu.AddItem(new MenuItem("OW_Misc_HoldZone", "Hold Zone").SetValue(new Slider(50, 0, 250)));
-                    miscMenu.AddItem(new MenuItem("OW_Misc_FarmDelay", "Farm Delay").SetValue(new Slider(80, 0, 300)));
                     miscMenu.AddItem(
-                        new MenuItem("OW_Misc_MoveDelay", "Movement Delay").SetValue(new Slider(30, 0, 250)));
+                        new MenuItem("OW_Misc_MoveDelay", "Movement Delay").SetValue(
+                            new Slider(new Random(Utils.GameTimeTickCount).Next(30, 101), 0, 250)));
                     miscMenu.AddItem(
-                        new MenuItem("OW_Misc_ExtraWindUp", "Extra WindUp Time").SetValue(new Slider(60, 0, 200)));
+                        new MenuItem("OW_Misc_MaxMoveDist", "Max Movement Distance").SetValue(
+                            new Slider(new Random(Utils.GameTimeTickCount).Next(500, 1201), 350, 1200)));
+                    miscMenu.AddItem(
+                        new MenuItem("OW_Misc_ExtraWindUp", "Extra WindUp Time").SetValue(new Slider(80, 0, 200)));
                     miscMenu.AddItem(
                         new MenuItem("OW_Misc_PriorityFarm", "Priorize LastHit Over Harass").SetValue(true));
                     miscMenu.AddItem(
@@ -354,8 +331,7 @@ namespace BrianSharp.Common
                 }
                 _config.AddSubMenu(owMenu);
             }
-            _movePrediction = new Spell(SpellSlot.Unknown, GetAutoAttackRange());
-            _movePrediction.SetTargetted(Player.BasicAttack.SpellCastTime, Player.BasicAttack.MissileSpeed);
+            MovePrediction.SetTargetted(Player.BasicAttack.SpellCastTime, Player.BasicAttack.MissileSpeed);
             Attack = true;
             Move = true;
             Game.OnUpdate += OnUpdate;
@@ -411,26 +387,28 @@ namespace BrianSharp.Common
             }
             if (Orbwalking.IsAutoAttackReset(args.SData.Name))
             {
-                Utility.DelayAction.Add(250, ResetAutoAttack);
+                ResetAutoAttack();
             }
-            if (!args.SData.IsAutoAttack())
+            if (!args.Target.IsValid<AttackableUnit>() || !args.SData.IsAutoAttack())
             {
                 return;
             }
-            if (args.Target is Obj_AI_Base || args.Target is Obj_BarracksDampener || args.Target is Obj_HQ)
+            _lastAttack = Utils.GameTimeTickCount - Game.Ping / 2;
+            _lastMove = (int) (Utils.GameTimeTickCount + Player.AttackCastDelay * 1000 - Game.Ping / 2f);
+            if (args.Target.IsValid<Obj_AI_Base>())
             {
-                _lastAttack = Utils.GameTimeTickCount - Game.Ping / 2;
-                _missileLaunched = false;
-                if (args.Target.IsValid<Obj_AI_Base>())
+                var target = (AttackableUnit) args.Target;
+                if (!_lastTarget.IsValidTarget() || target.NetworkId != _lastTarget.NetworkId)
                 {
-                    var target = (AttackableUnit) args.Target;
                     FireOnTargetSwitch(target);
                     _lastTarget = target;
-                    Utility.DelayAction.Add(
-                        (int) (sender.AttackCastDelay * 1000 + 40), () => FireAfterAttack(_lastTarget));
+                }
+                if (sender.IsMelee)
+                {
+                    Utility.DelayAction.Add((int) (sender.AttackCastDelay * 1000 + 40), () => FireAfterAttack(target));
                 }
             }
-            FireOnAttack(_lastTarget);
+            FireOnAttack((AttackableUnit) args.Target);
         }
 
         private static void OnCreateMissileClient(GameObject sender, EventArgs args)
@@ -440,43 +418,46 @@ namespace BrianSharp.Common
                 return;
             }
             var missile = (MissileClient) sender;
-            if (!missile.SpellCaster.IsMe || !missile.SData.IsAutoAttack())
+            if (!missile.SpellCaster.IsMe || !missile.SpellCaster.IsRanged || !missile.SData.IsAutoAttack())
             {
                 return;
             }
             _missileLaunched = true;
+            FireAfterAttack((AttackableUnit) missile.Target);
         }
 
         private static void OnStopCast(Spellbook sender, SpellbookStopCastEventArgs args)
         {
-            if (!sender.Owner.IsMe)
+            if (!sender.Owner.IsMe || !args.DestroyMissile || !args.StopAnimation)
             {
                 return;
             }
-            if (args.DestroyMissile && args.StopAnimation)
-            {
-                ResetAutoAttack();
-            }
+            ResetAutoAttack();
         }
 
         public static void MoveTo(Vector3 pos)
         {
-            if (Utils.GameTimeTickCount - _lastMove < _config.Item("OW_Misc_MoveDelay").GetValue<Slider>().Value)
+            if (Player.Position.Distance(pos) <=
+                Player.BoundingRadius + _config.Item("OW_Misc_HoldZone").GetValue<Slider>().Value)
             {
                 return;
             }
-            _lastMove = Utils.GameTimeTickCount;
-            if (Player.Distance(pos) < _config.Item("OW_Misc_HoldZone").GetValue<Slider>().Value)
+            if (Player.Position.Distance(pos) > _config.Item("OW_Misc_MaxMoveDist").GetValue<Slider>().Value)
             {
-                if (Player.Path.Count() > 1)
-                {
-                    Player.IssueOrder(GameObjectOrder.Stop, Player.ServerPosition);
-                    Player.IssueOrder(GameObjectOrder.HoldPosition, Player.ServerPosition);
-                }
-                return;
+                var maxDist = _config.Item("OW_Misc_MaxMoveDist").GetValue<Slider>().Value;
+                var randDist = new Random(Utils.GameTimeTickCount).Next(0, 50);
+                pos = Player.Position.Extend(
+                    pos,
+                    maxDist - randDist <= Player.BoundingRadius ? Player.BoundingRadius + randDist : maxDist - randDist);
             }
-            Player.IssueOrder(
-                GameObjectOrder.MoveTo, Player.ServerPosition.Extend(pos, (RandomPos.NextFloat(0.6f, 1) + 0.2f) * 200));
+            var angle = 2 * Math.PI * new Random(Utils.GameTimeTickCount).NextDouble();
+            var radius = Player.Distance(Game.CursorPos) < 360 ? 0 : Player.BoundingRadius / 2;
+            var x = (float) (pos.X + radius * Math.Cos(angle));
+            var y = (float) (pos.Y + radius * Math.Sin(angle));
+            if (Player.IssueOrder(GameObjectOrder.MoveTo, new Vector3(x, y, NavMesh.GetHeightForPosition(x, y))))
+            {
+                _lastMove = Utils.GameTimeTickCount;
+            }
         }
 
         public static void Orbwalk(AttackableUnit target)
@@ -487,14 +468,11 @@ namespace BrianSharp.Common
                 FireBeforeAttack(target);
                 if (!_disableNextAttack)
                 {
-                    if (CurrentMode != Mode.Harass || !(target is Obj_AI_Minion) ||
-                        _config.Item("OW_Harass_LastHit").IsActive())
+                    if ((CurrentMode != Mode.Harass || !target.IsValid<Obj_AI_Minion>() ||
+                         _config.Item("OW_Harass_LastHit").IsActive()) &&
+                        Player.IssueOrder(GameObjectOrder.AttackUnit, target))
                     {
-                        _lastAttack = Utils.GameTimeTickCount + Game.Ping + 100 - (int) (Player.AttackCastDelay * 1000f);
-                        _missileLaunched = false;
-                        Player.IssueOrder(GameObjectOrder.AttackUnit, target);
-                        _lastTarget = target;
-                        return;
+                        _lastAttack = Utils.GameTimeTickCount + Game.Ping / 2;
                     }
                 }
             }
@@ -502,13 +480,13 @@ namespace BrianSharp.Common
             {
                 return;
             }
-            if (_config.Item("OW_Combo_MeleeMagnet").IsActive() && CurrentMode == Mode.Combo && Player.IsMelee() &&
-                Player.AttackRange < 200 && InAutoAttackRange(target) && target is Obj_AI_Hero &&
-                ((Obj_AI_Hero) target).Distance(Game.CursorPos) < 200)
+            if (_config.Item("OW_Combo_MeleeMagnet").IsActive() && CurrentMode == Mode.Combo && Player.IsMelee &&
+                Player.AttackRange < 200 && InAutoAttackRange(target) && target.IsValid<Obj_AI_Hero>() &&
+                ((Obj_AI_Hero) target).Distance(Game.CursorPos) < 300)
             {
-                _movePrediction.Delay = Player.BasicAttack.SpellCastTime;
-                _movePrediction.Speed = Player.BasicAttack.MissileSpeed;
-                MoveTo(_movePrediction.GetPrediction((Obj_AI_Hero) target).CastPosition);
+                MovePrediction.Delay = Player.BasicAttack.SpellCastTime;
+                MovePrediction.Speed = Player.BasicAttack.MissileSpeed;
+                MoveTo(MovePrediction.GetPrediction((Obj_AI_Hero) target).UnitPosition);
             }
             else
             {
@@ -569,7 +547,7 @@ namespace BrianSharp.Common
 
         private static void FireOnTargetSwitch(AttackableUnit newTarget)
         {
-            if (OnTargetChange != null && (!_lastTarget.IsValidTarget() || _lastTarget.NetworkId != newTarget.NetworkId))
+            if (OnTargetChange != null)
             {
                 OnTargetChange(_lastTarget, newTarget);
             }
@@ -598,5 +576,12 @@ namespace BrianSharp.Common
                 }
             }
         }
+
+        private static Menu _config;
+        public static Obj_AI_Hero ForcedTarget = null;
+        private static bool _disableNextAttack, _missileLaunched;
+        private static int _lastAttack, _lastMove;
+        private static AttackableUnit _lastTarget;
+        private static readonly Spell MovePrediction = new Spell(SpellSlot.Unknown, GetAutoAttackRange());
     }
 }

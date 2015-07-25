@@ -129,7 +129,7 @@ namespace BrianSharp.Common
                         .Any(
                             i =>
                                 InAutoAttackRange(i) && i.Team != GameObjectTeam.Neutral &&
-                                HealthPrediction.GetHealthPrediction(i, (int) (Player.AttackDelay * 1000 * 2f), 100) <=
+                                HealthPrediction.GetHealthPrediction(i, (int) (Player.AttackDelay * 1000 * 2), 100) <=
                                 Player.GetAutoAttackDamage(i, true));
             }
         }
@@ -204,7 +204,10 @@ namespace BrianSharp.Common
                 }
                 var mob =
                     ObjectManager.Get<Obj_AI_Minion>()
-                        .Where(i => InAutoAttackRange(i) && i.Team == GameObjectTeam.Neutral)
+                        .Where(
+                            i =>
+                                InAutoAttackRange(i) && i.Team == GameObjectTeam.Neutral &&
+                                i.CharData.BaseSkinName != "gangplankbarrel")
                         .MaxOrDefault(i => i.MaxHealth);
                 if (mob != null)
                 {
@@ -213,7 +216,7 @@ namespace BrianSharp.Common
                 var minion = (from obj in
                     ObjectManager.Get<Obj_AI_Minion>()
                         .Where(i => InAutoAttackRange(i) && (MinionManager.IsMinion(i) || Helper.IsPet(i)))
-                    let hpPred = HealthPrediction.GetHealthPrediction(obj, (int) (Player.AttackDelay * 1000 * 2f), 100)
+                    let hpPred = HealthPrediction.GetHealthPrediction(obj, (int) (Player.AttackDelay * 1000 * 2), 100)
                     where
                         hpPred >= 2 * Player.GetAutoAttackDamage(obj, true) ||
                         Math.Abs(hpPred - obj.Health) < float.Epsilon
@@ -385,18 +388,10 @@ namespace BrianSharp.Common
             {
                 return;
             }
-            if (Orbwalking.IsAutoAttackReset(args.SData.Name))
+            if (args.Target.IsValid<AttackableUnit>() && args.SData.IsAutoAttack())
             {
-                ResetAutoAttack();
-            }
-            if (!args.Target.IsValid<AttackableUnit>() || !args.SData.IsAutoAttack())
-            {
-                return;
-            }
-            _lastAttack = Utils.GameTimeTickCount - Game.Ping / 2;
-            _lastMove = (int) (Utils.GameTimeTickCount + Player.AttackCastDelay * 1000 - Game.Ping / 2f);
-            if (args.Target.IsValid<Obj_AI_Base>())
-            {
+                _lastAttack = Utils.GameTimeTickCount - Game.Ping / 2;
+                _lastMove = (int) (Utils.GameTimeTickCount + Player.AttackCastDelay * 1000 - Game.Ping / 2f);
                 var target = (AttackableUnit) args.Target;
                 if (!_lastTarget.IsValidTarget() || target.NetworkId != _lastTarget.NetworkId)
                 {
@@ -407,8 +402,12 @@ namespace BrianSharp.Common
                 {
                     Utility.DelayAction.Add((int) (sender.AttackCastDelay * 1000 + 40), () => FireAfterAttack(target));
                 }
+                FireOnAttack(target);
             }
-            FireOnAttack((AttackableUnit) args.Target);
+            if (Orbwalking.IsAutoAttackReset(args.SData.Name))
+            {
+                ResetAutoAttack();
+            }
         }
 
         private static void OnCreateMissileClient(GameObject sender, EventArgs args)
@@ -450,11 +449,12 @@ namespace BrianSharp.Common
                     pos,
                     maxDist - randDist <= Player.BoundingRadius ? Player.BoundingRadius + randDist : maxDist - randDist);
             }
-            var angle = 2 * Math.PI * new Random(Utils.GameTimeTickCount).NextDouble();
+            /*var angle = 2 * Math.PI * new Random(Utils.GameTimeTickCount).NextDouble();
             var radius = Player.Distance(Game.CursorPos) < 360 ? 0 : Player.BoundingRadius / 2;
             var x = (float) (pos.X + radius * Math.Cos(angle));
             var y = (float) (pos.Y + radius * Math.Sin(angle));
-            if (Player.IssueOrder(GameObjectOrder.MoveTo, new Vector3(x, y, NavMesh.GetHeightForPosition(x, y))))
+			pos = new Vector3(x, y, NavMesh.GetHeightForPosition(x, y));*/
+            if (Player.IssueOrder(GameObjectOrder.MoveTo, pos))
             {
                 _lastMove = Utils.GameTimeTickCount;
             }
@@ -496,7 +496,7 @@ namespace BrianSharp.Common
 
         private static void ResetAutoAttack()
         {
-            _lastAttack = 0;
+            _lastAttack = _lastMove = 0;
         }
 
         public static float GetAutoAttackRange(AttackableUnit target = null)

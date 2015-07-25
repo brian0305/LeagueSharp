@@ -8,7 +8,6 @@ using LeagueSharp;
 using LeagueSharp.Common;
 using SharpDX;
 using Color = System.Drawing.Color;
-using ItemData = LeagueSharp.Common.Data.ItemData;
 using Orbwalk = BrianSharp.Common.Orbwalker;
 
 namespace BrianSharp.Plugin
@@ -19,13 +18,13 @@ namespace BrianSharp.Plugin
 
         public Yasuo()
         {
-            Q = new Spell(SpellSlot.Q, 490);
+            Q = new Spell(SpellSlot.Q, 500);
             Q2 = new Spell(SpellSlot.Q, 1100);
             W = new Spell(SpellSlot.W, 400);
             E = new Spell(SpellSlot.E, 475, TargetSelector.DamageType.Magical);
             R = new Spell(SpellSlot.R, 1300);
-            Q.SetSkillshot(0.4f, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
-            Q2.SetSkillshot(0.5f, 90, 1500, false, SkillshotType.SkillshotLine);
+            Q.SetSkillshot(GetQDelay, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
+            Q2.SetSkillshot(GetQ2Delay, 90, 1500, false, SkillshotType.SkillshotLine);
             E.SetTargetted(0.05f, 1000);
 
             var champMenu = new Menu("Plugin", Player.ChampionName + "_Plugin");
@@ -125,6 +124,16 @@ namespace BrianSharp.Plugin
             Interrupter.OnPossibleToInterrupt += OnPossibleToInterrupt;
         }
 
+        private static float GetQDelay
+        {
+            get { return 0.4f * (1 - Math.Min((Player.AttackSpeedMod - 1) * 0.58f, 0.66f)); }
+        }
+
+        private static float GetQ2Delay
+        {
+            get { return 0.5f * (1 - Math.Min((Player.AttackSpeedMod - 1) * 0.58f, 0.66f)); }
+        }
+
         private static bool HaveQ3
         {
             get { return Player.HasBuff("YasuoQ3W"); }
@@ -142,6 +151,14 @@ namespace BrianSharp.Plugin
 
         private static void OnUpdate(EventArgs args)
         {
+            if (!Equals(Q.Delay, GetQDelay))
+            {
+                Q.Delay = GetQDelay;
+            }
+            if (!Equals(Q2.Delay, GetQ2Delay))
+            {
+                Q2.Delay = GetQ2Delay;
+            }
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
             {
                 return;
@@ -309,7 +326,7 @@ namespace BrianSharp.Plugin
                             return;
                         }
                         if (!HaveQ3 && mode == "Combo" && GetValue<bool>(mode, "QStack") && GetValue<bool>(mode, "E") &&
-                            GetValue<bool>(mode, "EGap") && Q.GetTarget(100) == null)
+                            GetValue<bool>(mode, "EGap") && Q.GetTarget(200) == null)
                         {
                             var minionObj = GetMinions(
                                 Player.GetDashInfo().EndPos.To3D(), QCirWidth, MinionTypes.All, MinionTeam.NotAlly);
@@ -367,7 +384,7 @@ namespace BrianSharp.Plugin
                             .FirstOrDefault(i => CanKill(i, GetQDmg(i)));
                     if (obj != null)
                     {
-                        Q.Cast(obj, PacketCast);
+                        Q.Cast(obj, PacketCast, true);
                     }
                 }
             }
@@ -429,7 +446,10 @@ namespace BrianSharp.Plugin
                                 return;
                             }
                         }
+                        var qMinHit = Q.MinHitChance;
+                        Q.MinHitChance = HitChance.Medium;
                         var pos = (!HaveQ3 ? Q : Q2).GetLineFarmLocation(minionObj.Cast<Obj_AI_Base>().ToList());
+                        Q.MinHitChance = qMinHit;
                         if (pos.MinionsHit > 0 && (!HaveQ3 ? Q : Q2).Cast(pos.Position, PacketCast))
                         {
                             return;
@@ -466,7 +486,7 @@ namespace BrianSharp.Plugin
                     GetMinions(
                         !HaveQ3 ? QRange : Q2Range, MinionTypes.All, MinionTeam.NotAlly, MinionOrderTypes.MaxHealth)
                         .FirstOrDefault(i => CanKill(i, GetQDmg(i)));
-                if (obj != null && (!HaveQ3 ? Q : Q2).Cast(obj, PacketCast).IsCasted())
+                if (obj != null && (!HaveQ3 ? Q : Q2).Cast(obj, PacketCast, true).IsCasted())
                 {
                     return;
                 }
@@ -590,7 +610,7 @@ namespace BrianSharp.Plugin
             {
                 return;
             }
-            var target = Q.GetTarget(25);
+            var target = Q.GetTarget();
             if (target != null && (!UnderTower(Player.ServerPosition) || !UnderTower(target.ServerPosition)))
             {
                 Q.Cast(target, PacketCast, true);
@@ -606,7 +626,7 @@ namespace BrianSharp.Plugin
                           minionObj.MinOrDefault(i => i.Distance(Player));
                 if (obj != null)
                 {
-                    Q.Cast(obj, PacketCast);
+                    Q.CastIfHitchanceEquals(obj, HitChance.Medium, PacketCast);
                 }
             }
         }
@@ -643,14 +663,12 @@ namespace BrianSharp.Plugin
             {
                 dmgItem = Player.BaseAttackDamage * 2;
             }
-            var haveInfinity = ItemData.Infinity_Edge.GetItem().IsOwned();
-            var maxCrit = Player.Crit >= 0.85f;
-            var dmg = 20 * Q.Level + Player.TotalAttackDamage * (maxCrit ? (haveInfinity ? 1.875 : 1.5) : 1);
-            if (!HaveQ3 || Player.IsDashing())
-            {
-                dmg += dmgItem;
-            }
-            if (ItemData.Blade_of_the_Ruined_King.GetItem().IsOwned())
+            var k = 1d;
+            var reduction = 0d;
+            var dmg = 20 * Q.Level +
+                      Player.TotalAttackDamage * (Player.Crit >= 0.85f ? (Items.HasItem(3031) ? 1.875 : 1.5) : 1) +
+                      dmgItem;
+            if (Items.HasItem(3153))
             {
                 var dmgBotrk = Math.Max(0.08 * target.Health, 10);
                 if (target.IsValid<Obj_AI_Minion>())
@@ -659,10 +677,53 @@ namespace BrianSharp.Plugin
                 }
                 dmg += dmgBotrk;
             }
-            return Player.CalcDamage(target, Damage.DamageType.Physical, dmg) +
+            if (target.IsValid<Obj_AI_Hero>())
+            {
+                var hero = (Obj_AI_Hero) target;
+                if (Items.HasItem(3047, hero))
+                {
+                    k *= 0.9d;
+                }
+                if (hero.ChampionName == "Fizz")
+                {
+                    int f;
+                    if (hero.Level > 0 && hero.Level < 4)
+                    {
+                        f = 4;
+                    }
+                    else if (hero.Level > 3 && hero.Level < 7)
+                    {
+                        f = 6;
+                    }
+                    else if (hero.Level > 6 && hero.Level < 10)
+                    {
+                        f = 8;
+                    }
+                    else if (hero.Level > 9 && hero.Level < 13)
+                    {
+                        f = 10;
+                    }
+                    else if (hero.Level > 12 && hero.Level < 16)
+                    {
+                        f = 12;
+                    }
+                    else
+                    {
+                        f = 14;
+                    }
+                    reduction += f;
+                }
+                var mastery = hero.Masteries.FirstOrDefault(m => m.Page == MasteryPage.Defense && m.Id == 65);
+                if (mastery != null && mastery.Points > 0)
+                {
+                    reduction += 1 * mastery.Points;
+                }
+            }
+            return Player.CalcDamage(target, Damage.DamageType.Physical, (dmg - reduction) * k) +
                    (Player.GetBuffCount("ItemStatikShankCharge") == 100
                        ? Player.CalcDamage(
-                           target, Damage.DamageType.Magical, 100 * (maxCrit ? (haveInfinity ? 2.25 : 1.8) : 1))
+                           target, Damage.DamageType.Magical,
+                           100 * (Player.Crit >= 0.85f ? (Items.HasItem(3031) ? 2.25 : 1.8) : 1))
                        : 0);
         }
 
@@ -1071,7 +1132,7 @@ namespace BrianSharp.Plugin
                                 i.IsAboutToHit(
                                     evadeSpell.Delay - GetValue<Slider>("ESSS_" + evadeSpell.Name, "WDelay").Value,
                                     Player))
-                            .OrderBy(i => i.SpellData.DangerValue)
+                            .OrderByDescending(i => i.SpellData.DangerValue)
                             .Any(i => Player.Spellbook.CastSpell(evadeSpell.Slot, i.Start.To3D())))
                     {
                         return;

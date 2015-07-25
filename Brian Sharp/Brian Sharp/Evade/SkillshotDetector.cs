@@ -52,28 +52,12 @@ namespace BrianSharp.Evade
             {
                 return;
             }
-            var unit = (Obj_AI_Hero) missile.SpellCaster;
             var spellData = SpellDatabase.GetByMissileName(missile.SData.Name);
             if (spellData == null)
             {
                 return;
             }
-            var missilePosition = missile.Position.To2D();
-            var unitPosition = missile.StartPosition.To2D();
-            var endPos = missile.EndPosition.To2D();
-            var direction = (endPos - unitPosition).Normalized();
-            if (unitPosition.Distance(endPos) > spellData.Range || spellData.FixedRange)
-            {
-                endPos = unitPosition + direction * spellData.Range;
-            }
-            if (spellData.ExtraRange != -1)
-            {
-                endPos = endPos +
-                         Math.Min(spellData.ExtraRange, spellData.Range - endPos.Distance(unitPosition)) * direction;
-            }
-            var castTime = Utils.GameTimeTickCount - Game.Ping / 2 - (spellData.MissileDelayed ? 0 : spellData.Delay) -
-                           (int) (1000 * missilePosition.Distance(unitPosition) / spellData.MissileSpeed);
-            TriggerOnDetectSkillshot(DetectionType.RecvPacket, spellData, castTime, unitPosition, endPos, unit);
+            Utility.DelayAction.Add(0, () => ObjMissileClientOnCreateDelayed(missile, spellData));
         }
 
         private static void ObjMissileClientOnDelete(GameObject sender, EventArgs args)
@@ -172,6 +156,27 @@ namespace BrianSharp.Evade
             }
             TriggerOnDetectSkillshot(
                 DetectionType.ProcessSpell, spellData, Utils.GameTimeTickCount - Game.Ping / 2, startPos, endPos, sender);
+        }
+
+        private static void ObjMissileClientOnCreateDelayed(MissileClient missile, SpellData spellData)
+        {
+            var unit = (Obj_AI_Hero) missile.SpellCaster;
+            var missilePosition = missile.Position.To2D();
+            var unitPosition = missile.StartPosition.To2D();
+            var endPos = missile.EndPosition.To2D();
+            var direction = (endPos - unitPosition).Normalized();
+            if (unitPosition.Distance(endPos) > spellData.Range || spellData.FixedRange)
+            {
+                endPos = unitPosition + direction * spellData.Range;
+            }
+            if (spellData.ExtraRange != -1)
+            {
+                endPos = endPos +
+                         Math.Min(spellData.ExtraRange, spellData.Range - endPos.Distance(unitPosition)) * direction;
+            }
+            var castTime = Utils.GameTimeTickCount - Game.Ping / 2 - (spellData.MissileDelayed ? 0 : spellData.Delay) -
+                           (int) (1000 * missilePosition.Distance(unitPosition) / spellData.MissileSpeed);
+            TriggerOnDetectSkillshot(DetectionType.RecvPacket, spellData, castTime, unitPosition, endPos, unit);
         }
 
         public static event OnDetectSkillshotH OnDetectSkillshot;

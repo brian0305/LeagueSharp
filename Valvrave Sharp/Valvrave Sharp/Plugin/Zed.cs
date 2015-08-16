@@ -182,7 +182,7 @@
                 {
                     return R.Instance.Name == "zedult" ? 0 : 1;
                 }
-                return -1;
+                return R.Instance.Name == "zedr2" ? 2 : -1;
             }
         }
 
@@ -658,8 +658,8 @@
                     return;
                 }
             }
-            if (RState == 1 && MainMenu["Orbwalk"]["RSwapIfKill"].GetValue<MenuBool>().Value && DeadByRMark(target)
-                && CountEnemy(Q.Range) > CountEnemy(400, rShadow.Position) && R.Cast())
+            if (RState == 1 && rShadow.IsValid() && MainMenu["Orbwalk"]["RSwapIfKill"].GetValue<MenuBool>().Value
+                && DeadByRMark(target) && CountEnemy(Q.Range) > CountEnemy(400, rShadow.Position) && R.Cast())
             {
                 return;
             }
@@ -691,12 +691,12 @@
                 {
                     CastQ(target, true);
                 }
-                if (Ignite.IsReady() && (HaveRMark(target) || target.HealthPercent < 40)
+                if (Ignite.IsReady() && ((HaveRMark(target) && rShadow.IsValid()) || target.HealthPercent < 30)
                     && Player.Distance(target) <= 600)
                 {
                     Player.Spellbook.CastSpell(Ignite, target);
                 }
-                if (HaveRMark(target) || target.HealthPercent < 40)
+                if ((HaveRMark(target) && rShadow.IsValid()) || target.HealthPercent < 40)
                 {
                     if (Bilgewater.IsReady)
                     {
@@ -706,7 +706,7 @@
                     {
                         BotRuinedKing.Cast(target);
                     }
-                    if (Youmuu.IsReady && CountEnemy(W.Range) > 0)
+                    if (Youmuu.IsReady && CountEnemy(R.Range) > 0)
                     {
                         Youmuu.Cast();
                     }

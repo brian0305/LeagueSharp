@@ -72,7 +72,7 @@
             }
             Bootstrap.Init(null);
             DelayAction.Add(
-                250,
+                500,
                 () =>
                     {
                         Player = GameObjects.Player;

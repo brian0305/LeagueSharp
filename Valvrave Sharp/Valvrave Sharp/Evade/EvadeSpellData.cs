@@ -79,7 +79,7 @@
         {
             get
             {
-                return Program.MainMenu["Evade"]["Spells"][this.Name]["DangerLevel"] != null
+                return Program.MainMenu["Evade"] != null
                            ? Program.MainMenu["Evade"]["Spells"][this.Name]["DangerLevel"].GetValue<MenuSlider>().Value
                            : this.dangerLevel;
             }
@@ -93,8 +93,7 @@
         {
             get
             {
-                return Program.MainMenu["Evade"]["Spells"][this.Name]["Enabled"] == null
-                       || Program.MainMenu["Evade"]["Spells"][this.Name]["Enabled"].GetValue<MenuBool>().Value;
+                return Program.MainMenu["Evade"]["Spells"][this.Name]["Enabled"].GetValue<MenuBool>().Value;
             }
         }
 

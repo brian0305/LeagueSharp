@@ -90,7 +90,7 @@
         {
             get
             {
-                return Config.SkillShotsExtraRadius + this.RawRadius
+                return Configs.SkillShotsExtraRadius + this.RawRadius
                        + (this.AddHitbox ? (int)Program.Player.BoundingRadius : 0);
             }
             set
@@ -105,7 +105,7 @@
             {
                 return this.RawRange
                        + (this.Type == SkillShotType.SkillshotLine || this.Type == SkillShotType.SkillshotMissileLine
-                              ? Config.SkillShotsExtraRange
+                              ? Configs.SkillShotsExtraRange
                               : 0);
             }
             set

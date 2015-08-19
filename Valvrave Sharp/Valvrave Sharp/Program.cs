@@ -10,14 +10,17 @@
     using LeagueSharp.SDK.Core.Enumerations;
     using LeagueSharp.SDK.Core.Events;
     using LeagueSharp.SDK.Core.Extensions;
+    using LeagueSharp.SDK.Core.UI.IMenu.Customizer;
     using LeagueSharp.SDK.Core.UI.IMenu.Values;
     using LeagueSharp.SDK.Core.UI.INotifications;
     using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers;
 
+    using SharpDX;
+
     using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
 
-    public class Program
+    internal class Program
     {
         #region Static Fields
 
@@ -75,11 +78,12 @@
                 500,
                 () =>
                     {
+                        MenuCustomizer.Instance.Parent["orbwalker"]["lasthitKey"].DisplayName = "Last Hit";
                         Player = GameObjects.Player;
-                        MainMenu = new Menu("ValvraveSharp", "Valvrave# [Guilty Crown]", true, Player.ChampionName);
+                        MainMenu = new Menu("ValvraveSharp", "Valvrave Sharp", true, Player.ChampionName).Attach();
+                        AddUI.Separator(MainMenu, "Author", "Author: Brian");
                         AddUI.Separator(MainMenu, "Paypal", "Paypal: dcbrian01@gmail.com");
                         NewInstance(plugin);
-                        MainMenu.Attach();
                         Bilgewater = new Items.Item(ItemId.Bilgewater_Cutlass, 550);
                         BotRuinedKing = new Items.Item(ItemId.Blade_of_the_Ruined_King, 550);
                         Youmuu = new Items.Item(ItemId.Youmuus_Ghostblade, 0);
@@ -102,7 +106,7 @@
         #endregion
     }
 
-    public class AddUI : Program
+    internal class AddUI : Program
     {
         #region Public Methods and Operators
 
@@ -139,6 +143,23 @@
         public static MenuSlider Slider(Menu subMenu, string name, string display, int cur, int min = 0, int max = 100)
         {
             return subMenu.Add(new MenuSlider(name, display, cur, min, max));
+        }
+
+        #endregion
+    }
+
+    internal class Common
+    {
+        #region Public Methods and Operators
+
+        public static bool CanUseSkill(OrbwalkerMode mode)
+        {
+            return Orbwalker.CanMove && (!Orbwalker.CanAttack || Orbwalker.GetTarget(mode) == null);
+        }
+
+        public static int CountEnemy(float range, Vector3 pos = default(Vector3))
+        {
+            return GameObjects.EnemyHeroes.Count(i => i.IsValidTarget(range, true, pos));
         }
 
         #endregion

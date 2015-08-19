@@ -20,11 +20,11 @@
 
         #endregion
 
-        #region Constructors and Destructors
+        #region Public Methods and Operators
 
-        public Evade()
+        public static void Init()
         {
-            Config.CreateMenu();
+            Configs.CreateMenu();
             Collisions.Init();
             Game.OnUpdate += OnUpdate;
             SkillshotDetector.OnDetectSkillshot += OnDetectSkillshot;

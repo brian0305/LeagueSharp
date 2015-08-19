@@ -31,7 +31,7 @@
                 new EvadeSpellData
                     {
                         Name = "YasuoWMovingWall", DangerLevel = 3, Slot = SpellSlot.W, EvadeType = EvadeTypes.WindWall,
-                        CastType = CastTypes.Position, MaxRange = 400, Speed = int.MaxValue, Delay = 500
+                        CastType = CastTypes.Position, MaxRange = 400, Speed = int.MaxValue, Delay = 250
                     });
         }
 

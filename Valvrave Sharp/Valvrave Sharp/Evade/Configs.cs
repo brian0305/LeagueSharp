@@ -7,7 +7,7 @@ namespace Valvrave_Sharp.Evade
 
     using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
 
-    internal static class Config
+    internal static class Configs
     {
         #region Constants
 
@@ -33,14 +33,14 @@ namespace Valvrave_Sharp.Evade
 
         public static void CreateMenu()
         {
-            var evadeMenu = new Menu("Evade", "Evade");
+            var evadeMenu = new Menu("Evade", "Evade Skillshot");
             {
                 AddUI.Separator(evadeMenu, "Credit", "Credit: Evade#");
                 var evadeSpells = new Menu("Spells", "Spells");
                 {
                     foreach (var spell in EvadeSpellDatabase.Spells)
                     {
-                        var sub = new Menu(spell.Name, spell.Name + " (" + spell.Slot + ")");
+                        var sub = new Menu(spell.Name, string.Format("{0} ({1})", spell.Name, spell.Slot));
                         {
                             if (Program.Player.ChampionName == "Yasuo")
                             {
@@ -73,7 +73,7 @@ namespace Valvrave_Sharp.Evade
                 foreach (var spell in
                     SpellDatabase.Spells.Where(i => GameObjects.EnemyHeroes.Any(a => a.ChampionName == i.ChampionName)))
                 {
-                    var sub = new Menu(spell.SpellName, spell.SpellName + " (" + spell.Slot + ")");
+                    var sub = new Menu(spell.SpellName, string.Format("{0} ({1})", spell.SpellName, spell.Slot));
                     {
                         AddUI.Slider(sub, "DangerLevel", "Danger Level", spell.DangerValue, 1, 5);
                         AddUI.Bool(sub, "IsDangerous", "Is Dangerous", spell.IsDangerous);

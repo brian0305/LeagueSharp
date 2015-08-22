@@ -29,12 +29,22 @@
             bool isBlink = false,
             bool onlyGood = false)
         {
-            speed = speed == -1 ? (int)Program.Player.MoveSpeed : speed;
+            speed = speed == -1 ? (int)ObjectManager.Player.MoveSpeed : speed;
             var goodCandidates = new List<Vector2>();
             var badCandidates = new List<Vector2>();
-            var polygonList = Evade.DetectedSkillshots.Where(i => i.Evade).Select(i => i.EvadePolygon).ToList();
+            var polygonList = new List<Polygon>();
+            var takeClosestPath = false;
+            foreach (var skillshot in Evade.DetectedSkillshots.Where(i => i.Evade))
+            {
+                if (skillshot.SpellData.TakeClosestPath
+                    && !skillshot.IsSafePoint(ObjectManager.Player.ServerPosition.ToVector2()))
+                {
+                    takeClosestPath = true;
+                }
+                polygonList.Add(skillshot.EvadePolygon);
+            }
             var dangerPolygons = ClipPolygons(polygonList).ToPolygons();
-            var myPosition = Program.Player.ServerPosition.ToVector2();
+            var myPosition = ObjectManager.Player.ServerPosition.ToVector2();
             foreach (var poly in dangerPolygons)
             {
                 for (var i = 0; i <= poly.Points.Count - 1; i++)
@@ -55,7 +65,7 @@
                         var candidate = originalCandidate
                                         + j * Configs.DiagonalEvadePointsStep * (sideEnd - sideStart).Normalized();
                         var pathToPoint =
-                            Program.Player.GetPath(candidate.ToVector3()).Select(a => a.ToVector2()).ToList();
+                            ObjectManager.Player.GetPath(candidate.ToVector3()).Select(a => a.ToVector2()).ToList();
                         if (!isBlink)
                         {
                             if (IsSafePath(pathToPoint, Configs.EvadingFirstTimeOffset, speed, delay).IsSafe)
@@ -73,12 +83,35 @@
                             {
                                 goodCandidates.Add(candidate);
                             }
-                            if (IsSafeToBlink(pathToPoint[pathToPoint.Count - 1], Configs.EvadingSecondTimeOffset, delay))
+                            if (IsSafeToBlink(
+                                pathToPoint[pathToPoint.Count - 1],
+                                Configs.EvadingSecondTimeOffset,
+                                delay))
                             {
                                 badCandidates.Add(candidate);
                             }
                         }
                     }
+                }
+            }
+            if (takeClosestPath)
+            {
+                if (goodCandidates.Count > 0)
+                {
+                    goodCandidates = new List<Vector2>
+                                         {
+                                             goodCandidates.MinOrDefault(
+                                                 vector2 => ObjectManager.Player.DistanceSquared(vector2))
+                                         };
+                }
+
+                if (badCandidates.Count > 0)
+                {
+                    badCandidates = new List<Vector2>
+                                        {
+                                            badCandidates.MinOrDefault(
+                                                vector2 => ObjectManager.Player.DistanceSquared(vector2))
+                                        };
                 }
             }
             return goodCandidates.Count > 0 ? goodCandidates : (onlyGood ? new List<Vector2>() : badCandidates);
@@ -130,7 +163,10 @@
                         goodTargets.Add(target);
                     }
                     if (Variables.TickCount - LastWardJumpAttempt < 250
-                        || IsSafeToBlink(target.ServerPosition.ToVector2(), Configs.EvadingSecondTimeOffset, spell.Delay))
+                        || IsSafeToBlink(
+                            target.ServerPosition.ToVector2(),
+                            Configs.EvadingSecondTimeOffset,
+                            spell.Delay))
                     {
                         badTargets.Add(target);
                     }
@@ -139,7 +175,7 @@
                 {
                     var pathToTarget = new List<Vector2>
                                            {
-                                               Program.Player.ServerPosition.ToVector2(),
+                                               ObjectManager.Player.ServerPosition.ToVector2(),
                                                target.ServerPosition.ToVector2()
                                            };
                     if (Variables.TickCount - LastWardJumpAttempt < 250
@@ -175,8 +211,8 @@
             {
                 return new SafePathResult(true, intersection);
             }
-            var sortedList = intersections.OrderBy(o => o.Distance).ToList();
-            return new SafePathResult(false, sortedList.Count > 0 ? sortedList[0] : intersection);
+            var intersetion = intersections.MinOrDefault(o => o.Distance);
+            return new SafePathResult(false, intersetion.Valid ? intersetion : intersection);
         }
 
         public static IsSafeResult IsSafePoint(Vector2 point)
@@ -218,7 +254,7 @@
 
         #endregion
 
-        public struct IsSafeResult
+        internal struct IsSafeResult
         {
             #region Fields
 

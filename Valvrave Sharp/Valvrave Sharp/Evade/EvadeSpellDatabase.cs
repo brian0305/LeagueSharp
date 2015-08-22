@@ -16,7 +16,7 @@
 
         static EvadeSpellDatabase()
         {
-            if (Program.Player.ChampionName != "Yasuo")
+            if (ObjectManager.Player.ChampionName != "Yasuo")
             {
                 return;
             }

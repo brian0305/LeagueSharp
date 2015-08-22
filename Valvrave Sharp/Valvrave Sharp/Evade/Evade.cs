@@ -68,7 +68,7 @@
             {
                 return;
             }
-            if (skillshot.Start.Distance(Program.Player.ServerPosition)
+            if (skillshot.Start.Distance(ObjectManager.Player.ServerPosition)
                 > (skillshot.SpellData.Range + skillshot.SpellData.Radius + 1000) * 1.5)
             {
                 return;
@@ -171,6 +171,17 @@
                             skillshot.Unit));
                     return;
                 }
+                if (skillshot.SpellData.SpellName == "DianaArc")
+                {
+                    DetectedSkillshots.Add(
+                        new Skillshot(
+                            skillshot.DetectionType,
+                            SpellDatabase.GetByName("DianaArcArc"),
+                            skillshot.StartTick,
+                            skillshot.Start,
+                            skillshot.End,
+                            skillshot.Unit));
+                }
                 if (skillshot.SpellData.SpellName == "ZiggsQ")
                 {
                     var d1 = skillshot.Start.Distance(skillshot.End);
@@ -210,9 +221,12 @@
                 {
                     var endPos = new Vector2();
                     foreach (var s in
-                        DetectedSkillshots.Where(i => i.Unit.Compare(skillshot.Unit) && i.SpellData.Slot == SpellSlot.E)
-                        )
+                        DetectedSkillshots.Where(i => i.SpellData.Slot == SpellSlot.E))
                     {
+                        if (!s.Unit.Compare(skillshot.Unit))
+                        {
+                            continue;
+                        }
                         var extendedE = new Skillshot(
                             skillshot.DetectionType,
                             skillshot.SpellData,
@@ -227,9 +241,12 @@
                         break;
                     }
                     foreach (var m in
-                        GameObjects.AllyMinions.Where(
-                            i => i.CharData.BaseSkinName == "jarvanivstandard" && i.Team == skillshot.Unit.Team))
+                        GameObjects.Minions.Where(i => i.CharData.BaseSkinName == "jarvanivstandard"))
                     {
+                        if (m.Team != skillshot.Unit.Team)
+                        {
+                            continue;
+                        }
                         var extendedE = new Skillshot(
                             skillshot.DetectionType,
                             skillshot.SpellData,
@@ -267,8 +284,9 @@
                         skillshot.Unit));
             }
             if ((skillshot.SpellData.DisableFowDetection
-                 || Program.MainMenu["Evade"][skillshot.SpellData.ChampionName][skillshot.SpellData.SpellName][
-                     "DisableFoW"].GetValue<MenuBool>().Value) && skillshot.DetectionType == DetectionType.RecvPacket)
+                 || Program.MainMenu["Evade"][skillshot.SpellData.ChampionName.ToLower()][skillshot.SpellData.SpellName]
+                        ["DisableFoW"].GetValue<MenuBool>().Value)
+                && skillshot.DetectionType == DetectionType.RecvPacket)
             {
                 return;
             }

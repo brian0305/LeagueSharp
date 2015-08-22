@@ -70,6 +70,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Core\Config.cs" />
+    <Compile Include="Core\Common.cs" />
+    <Compile Include="Core\Prediction.cs" />
     <Compile Include="Evade\Collisions.cs" />
     <Compile Include="Evade\Configs.cs" />
     <Compile Include="Evade\Evade.cs" />

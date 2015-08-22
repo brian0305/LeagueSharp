@@ -66,7 +66,7 @@
 
         #region Public Methods and Operators
 
-        public static Vector2 GetCollisionPoint(Skillshot skillshot)
+        public static Vector2 GetCollisionPoint(this Skillshot skillshot)
         {
             var collisions = new List<DetectedCollision>();
             var from = skillshot.GetMissilePosition(0);

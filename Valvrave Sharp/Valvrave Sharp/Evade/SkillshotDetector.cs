@@ -185,7 +185,7 @@
                 return;
             }
             var endPos = args.End.ToVector2();
-            if (spellData.SpellName == "LucianQ" && args.Target.Compare(Program.Player))
+            if (spellData.SpellName == "LucianQ" && args.Target.Compare(ObjectManager.Player))
             {
                 return;
             }

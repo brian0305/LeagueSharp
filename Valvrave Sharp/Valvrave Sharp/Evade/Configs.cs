@@ -1,9 +1,13 @@
 namespace Valvrave_Sharp.Evade
 {
+    using System;
     using System.Linq;
     using System.Windows.Forms;
 
+    using LeagueSharp;
     using LeagueSharp.SDK.Core;
+
+    using Valvrave_Sharp.Core;
 
     using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
 
@@ -17,7 +21,7 @@ namespace Valvrave_Sharp.Evade
 
         public const int EvadingFirstTimeOffset = 250;
 
-        public const int EvadingSecondTimeOffset = 0;
+        public const int EvadingSecondTimeOffset = 80;
 
         public const int ExtraEvadeDistance = 15;
 
@@ -35,54 +39,64 @@ namespace Valvrave_Sharp.Evade
         {
             var evadeMenu = new Menu("Evade", "Evade Skillshot");
             {
-                AddUI.Separator(evadeMenu, "Credit", "Credit: Evade#");
+                Config.Separator(evadeMenu, "Credit", "Credit: Evade#");
                 var evadeSpells = new Menu("Spells", "Spells");
                 {
                     foreach (var spell in EvadeSpellDatabase.Spells)
                     {
                         var sub = new Menu(spell.Name, string.Format("{0} ({1})", spell.Name, spell.Slot));
                         {
-                            if (Program.Player.ChampionName == "Yasuo")
+                            if (ObjectManager.Player.ChampionName == "Yasuo")
                             {
                                 if (spell.Name == "YasuoDashWrapper")
                                 {
-                                    AddUI.Bool(sub, "ETower", "Under Tower", false);
+                                    Config.Bool(sub, "ETower", "Under Tower", false);
                                 }
                                 else if (spell.Name == "YasuoWMovingWall")
                                 {
-                                    AddUI.Slider(sub, "WDelay", "Extra Delay", 100, 0, 150);
+                                    Config.Slider(sub, "WDelay", "Extra Delay", 100, 0, 150);
                                 }
                             }
-                            AddUI.Slider(sub, "DangerLevel", "If Danger Level >=", spell.DangerLevel, 1, 5);
+                            Config.Slider(sub, "DangerLevel", "If Danger Level >=", spell.DangerLevel, 1, 5);
                             if (spell.CastType == CastTypes.Target
                                 && spell.ValidTargets.Contains(SpellTargets.AllyWards))
                             {
-                                AddUI.Bool(sub, "WardJump", "Ward Jump");
+                                Config.Bool(sub, "WardJump", "Ward Jump");
                             }
-                            AddUI.Bool(sub, "Enabled", "Enabled", false);
+                            Config.Bool(sub, "Enabled", "Enabled", false);
                             evadeSpells.Add(sub);
                         }
                     }
                     evadeMenu.Add(evadeSpells);
                 }
                 foreach (var hero in
-                    GameObjects.EnemyHeroes.Where(i => SpellDatabase.Spells.Any(a => a.ChampionName == i.ChampionName)))
+                    GameObjects.EnemyHeroes.Where(
+                        i =>
+                        SpellDatabase.Spells.Any(
+                            a =>
+                            string.Equals(a.ChampionName, i.ChampionName, StringComparison.InvariantCultureIgnoreCase)))
+                    )
                 {
-                    evadeMenu.Add(new Menu(hero.ChampionName, "-> " + hero.ChampionName));
+                    evadeMenu.Add(new Menu(hero.ChampionName.ToLower(), "-> " + hero.ChampionName));
                 }
                 foreach (var spell in
-                    SpellDatabase.Spells.Where(i => GameObjects.EnemyHeroes.Any(a => a.ChampionName == i.ChampionName)))
+                    SpellDatabase.Spells.Where(
+                        i =>
+                        GameObjects.EnemyHeroes.Any(
+                            a =>
+                            string.Equals(a.ChampionName, i.ChampionName, StringComparison.InvariantCultureIgnoreCase)))
+                    )
                 {
                     var sub = new Menu(spell.SpellName, string.Format("{0} ({1})", spell.SpellName, spell.Slot));
                     {
-                        AddUI.Slider(sub, "DangerLevel", "Danger Level", spell.DangerValue, 1, 5);
-                        AddUI.Bool(sub, "IsDangerous", "Is Dangerous", spell.IsDangerous);
-                        AddUI.Bool(sub, "DisableFoW", "Disable FoW Dodging", false);
-                        AddUI.Bool(sub, "Enabled", "Enabled", !spell.DisabledByDefault);
-                        ((Menu)evadeMenu[spell.ChampionName]).Add(sub);
+                        Config.Slider(sub, "DangerLevel", "Danger Level", spell.DangerValue, 1, 5);
+                        Config.Bool(sub, "IsDangerous", "Is Dangerous", spell.IsDangerous);
+                        Config.Bool(sub, "DisableFoW", "Disable FoW Dodging", false);
+                        Config.Bool(sub, "Enabled", "Enabled", !spell.DisabledByDefault);
+                        ((Menu)evadeMenu[spell.ChampionName.ToLower()]).Add(sub);
                     }
                 }
-                AddUI.KeyBind(evadeMenu, "OnlyDangerous", "Dodge Only Dangerous", Keys.Space);
+                Config.KeyBind(evadeMenu, "OnlyDangerous", "Dodge Only Dangerous", Keys.Space);
             }
             Program.MainMenu.Add(evadeMenu);
         }

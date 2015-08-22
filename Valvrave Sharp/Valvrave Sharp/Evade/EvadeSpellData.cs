@@ -102,7 +102,7 @@
             get
             {
                 return (this.CheckSpellName == ""
-                        || Program.Player.Spellbook.GetSpell(this.Slot).Name == this.CheckSpellName)
+                        || ObjectManager.Player.Spellbook.GetSpell(this.Slot).Name == this.CheckSpellName)
                        && this.Slot.IsReady();
             }
         }

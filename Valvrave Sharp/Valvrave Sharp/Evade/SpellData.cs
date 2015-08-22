@@ -42,6 +42,8 @@
 
         public bool FixedRange = false;
 
+        public bool FollowCaster = false;
+
         public bool ForceRemove = false;
 
         public string FromObject = "";
@@ -78,6 +80,8 @@
 
         public string SpellName;
 
+        public bool TakeClosestPath = false;
+
         public string ToggleParticleName = "";
 
         public SkillShotType Type;
@@ -91,7 +95,7 @@
             get
             {
                 return Configs.SkillShotsExtraRadius + this.RawRadius
-                       + (this.AddHitbox ? (int)Program.Player.BoundingRadius : 0);
+                       + (this.AddHitbox ? (int)ObjectManager.Player.BoundingRadius : 0);
             }
             set
             {

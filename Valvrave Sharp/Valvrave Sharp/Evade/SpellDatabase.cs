@@ -385,8 +385,16 @@
             Spells.Add(
                 new SpellData
                     {
+                        ChampionName = "Darius", SpellName = "DariusCleave", Slot = SpellSlot.Q,
+                        Type = SkillShotType.SkillshotCircle, Delay = 750, Range = 0, Radius = 425,
+                        MissileSpeed = int.MaxValue, FixedRange = true, AddHitbox = true, DangerValue = 3,
+                        MissileSpellName = "DariusCleave", FollowCaster = true, DisabledByDefault = true
+                    });
+            Spells.Add(
+                new SpellData
+                    {
                         ChampionName = "Darius", SpellName = "DariusAxeGrabCone", Slot = SpellSlot.E,
-                        Type = SkillShotType.SkillshotCone, Delay = 300, Range = 550, Radius = 80,
+                        Type = SkillShotType.SkillshotCone, Delay = 250, Range = 550, Radius = 80,
                         MissileSpeed = int.MaxValue, FixedRange = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "DariusAxeGrabCone"
                     });
@@ -399,9 +407,17 @@
                 new SpellData
                     {
                         ChampionName = "Diana", SpellName = "DianaArc", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 895, Radius = 195, MissileSpeed = 1600,
-                        FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
-                        MissileSpellName = "DianaArc", FromObjects = new[] { "Diana_Q_Trail.troy" },
+                        Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 895, Radius = 195, MissileSpeed = 1400,
+                        AddHitbox = true, DangerValue = 3, IsDangerous = true, MissileSpellName = "DianaArcArc",
+                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                    });
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "Diana", SpellName = "DianaArcArc", Slot = SpellSlot.Q,
+                        Type = SkillShotType.SkillshotArc, Delay = 250, Range = 895, Radius = 195, MissileSpeed = 1400,
+                        DontCross = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
+                        MissileSpellName = "DianaArcArc", TakeClosestPath = true,
                         CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
                     });
 
@@ -1030,14 +1046,14 @@
                 new SpellData
                     {
                         ChampionName = "Leblanc", SpellName = "LeblancSlide", Slot = SpellSlot.W,
-                        Type = SkillShotType.SkillshotCircle, Delay = 0, Range = 600, Radius = 220, MissileSpeed = 1500,
+                        Type = SkillShotType.SkillshotCircle, Delay = 0, Range = 600, Radius = 220, MissileSpeed = 1450,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "LeblancSlide"
                     });
             Spells.Add(
                 new SpellData
                     {
                         ChampionName = "Leblanc", SpellName = "LeblancSlideM", Slot = SpellSlot.R,
-                        Type = SkillShotType.SkillshotCircle, Delay = 0, Range = 600, Radius = 220, MissileSpeed = 1500,
+                        Type = SkillShotType.SkillshotCircle, Delay = 0, Range = 600, Radius = 220, MissileSpeed = 1450,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "LeblancSlideM"
                     });
             Spells.Add(
@@ -1302,7 +1318,7 @@
                 new SpellData
                     {
                         ChampionName = "Nautilus", SpellName = "NautilusAnchorDrag", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1100, Radius = 90,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1250, Radius = 90,
                         MissileSpeed = 2000, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "NautilusAnchorDragMissile", CanBeRemoved = true,
                         CollisionObjects =
@@ -1965,7 +1981,7 @@
                 new SpellData
                     {
                         ChampionName = "Velkoz", SpellName = "VelkozQSplit", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 900, Radius = 55,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1100, Radius = 55,
                         MissileSpeed = 2100, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "VelkozQMissileSplit", CanBeRemoved = true,
                         CollisionObjects =

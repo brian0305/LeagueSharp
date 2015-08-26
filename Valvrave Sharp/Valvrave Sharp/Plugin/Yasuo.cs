@@ -234,23 +234,37 @@
             return target.HasBuffOfType(BuffType.Knockback) || target.HasBuffOfType(BuffType.Knockup);
         }
 
-        private static void CastQ3()
+        private static bool CastQ3(Obj_AI_Hero target = null)
         {
-            var hit = -1;
-            var predPos = new Vector3();
-            foreach (var hero in GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(Q2.Range)))
+            var q3 = Q2;
+            q3.Collision = true;
+            if (target != null)
             {
-                var pred = Common.GetPrediction(Q2, hero, true);
-                if (pred.Hitchance >= Q2.MinHitChance && pred.AoeTargetsHitCount > hit)
+                var pred = Common.GetPrediction(q3, target, true, new[] { CollisionableObjects.YasuoWall });
+                if (pred.Hitchance >= Q2.MinHitChance && Q.Cast(pred.CastPosition))
                 {
-                    hit = pred.AoeTargetsHitCount;
-                    predPos = pred.CastPosition;
+                    return true;
                 }
             }
-            if (predPos.IsValid())
+            else
             {
-                Q.Cast(predPos);
+                var hit = -1;
+                var predPos = new Vector3();
+                foreach (var hero in GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(Q2.Range)))
+                {
+                    var pred = Common.GetPrediction(q3, hero, true, new[] { CollisionableObjects.YasuoWall });
+                    if (pred.Hitchance >= Q2.MinHitChance && pred.AoeTargetsHitCount > hit)
+                    {
+                        hit = pred.AoeTargetsHitCount;
+                        predPos = pred.CastPosition;
+                    }
+                }
+                if (predPos.IsValid() && Q.Cast(predPos))
+                {
+                    return true;
+                }
             }
+            return false;
         }
 
         private static bool CastQCir(Obj_AI_Base target)
@@ -380,7 +394,7 @@
                     var minion =
                         GameObjects.EnemyMinions.Where(
                             i =>
-                            i.IsValidTarget(Q.Range - 30) && Q.GetHealthPrediction(i) > 0
+                            i.IsValidTarget(Q.Range - 20) && Q.GetHealthPrediction(i) > 0
                             && Q.GetHealthPrediction(i) <= GetQDmg(i)).MaxOrDefault(i => i.MaxHealth);
                     if (minion != null)
                     {
@@ -408,11 +422,20 @@
                 }
                 else
                 {
-                    var target = (!HaveQ3 ? Q : Q2).GetTarget();
-                    if (target != null && target.Health <= GetQDmg(target)
-                        && Common.Cast(!HaveQ3 ? Q : Q2, target, true) == CastStates.SuccessfullyCasted)
+                    var target = (!HaveQ3 ? Q : Q2).GetTarget(!HaveQ3 ? 30 : 0);
+                    if (target != null && target.Health <= GetQDmg(target))
                     {
-                        return;
+                        if (!HaveQ3)
+                        {
+                            if (Common.Cast(Q, target, true) == CastStates.SuccessfullyCasted)
+                            {
+                                return;
+                            }
+                        }
+                        else if (CastQ3(target))
+                        {
+                            return;
+                        }
                     }
                 }
             }
@@ -421,7 +444,7 @@
                 var target = E.GetTarget(0, false, GameObjects.EnemyHeroes.Where(i => !CanCastE(i)));
                 if (target != null
                     && (target.Health <= GetEDmg(target)
-                        || (MainMenu["KillSteal"]["Q"].GetValue<MenuBool>().Value && Q.IsReady(50)
+                        || (MainMenu["KillSteal"]["Q"].GetValue<MenuBool>().Value && Q.IsReady(30)
                             && target.Health - GetEDmg(target) <= GetQDmg(target))) && E.CastOnUnit(target))
                 {
                     return;
@@ -458,7 +481,7 @@
                     var obj =
                         minion.FirstOrDefault(
                             i => E.GetHealthPrediction(i) > 0 && E.GetHealthPrediction(i) <= GetEDmg(i));
-                    if (obj == null && Q.IsReady(50)
+                    if (obj == null && Q.IsReady(30)
                         && (!HaveQ3 || MainMenu["LaneClear"]["Q3"].GetValue<MenuBool>().Value))
                     {
                         var sub = new List<Obj_AI_Minion>();
@@ -508,8 +531,8 @@
                 else
                 {
                     var minion = new List<Obj_AI_Minion>();
-                    minion.AddRange(GameObjects.EnemyMinions.Where(i => i.IsValidTarget((!HaveQ3 ? Q : Q2).Range - 30)));
-                    minion.AddRange(GameObjects.Jungle.Where(i => i.IsValidTarget((!HaveQ3 ? Q : Q2).Range - 30)));
+                    minion.AddRange(GameObjects.EnemyMinions.Where(i => i.IsValidTarget((!HaveQ3 ? Q : Q2).Range - 20)));
+                    minion.AddRange(GameObjects.Jungle.Where(i => i.IsValidTarget((!HaveQ3 ? Q : Q2).Range - 20)));
                     minion = minion.OrderByDescending(i => i.MaxHealth).ToList();
                     if (minion.Count > 0)
                     {
@@ -544,7 +567,7 @@
                 var minion =
                     GameObjects.EnemyMinions.Where(
                         i =>
-                        i.IsValidTarget((!HaveQ3 ? Q : Q2).Range - 30) && (!HaveQ3 ? Q : Q2).GetHealthPrediction(i) > 0
+                        i.IsValidTarget((!HaveQ3 ? Q : Q2).Range - 20) && (!HaveQ3 ? Q : Q2).GetHealthPrediction(i) > 0
                         && (!HaveQ3 ? Q : Q2).GetHealthPrediction(i) <= GetQDmg(i)).MaxOrDefault(i => i.MaxHealth);
                 if (minion != null && Common.Cast(!HaveQ3 ? Q : Q2, minion, true) == CastStates.SuccessfullyCasted)
                 {
@@ -735,54 +758,31 @@
                         }
                     }
                 }
-                else if (!HaveQ3)
+                else
                 {
-                    var target = Q.GetTarget(30);
-                    if (target != null && Common.Cast(Q, target, true) == CastStates.SuccessfullyCasted)
+                    if (!HaveQ3)
+                    {
+                        var target = Q.GetTarget(30);
+                        if (target != null && Common.Cast(Q, target, true) == CastStates.SuccessfullyCasted)
+                        {
+                            return;
+                        }
+                    }
+                    else if (CastQ3())
                     {
                         return;
                     }
                 }
-                else
-                {
-                    CastQ3();
-                }
             }
-            var subTarget = Q.GetTarget() ?? Q2.GetTarget();
-            if (subTarget == null)
+            var itemTarget = Q.GetTarget() ?? Q2.GetTarget();
+            UseItem(itemTarget);
+            if (itemTarget == null)
             {
                 return;
             }
-            if (Ignite.IsReady() && subTarget.HealthPercent < 30 && Player.Distance(subTarget) <= 600)
+            if (Ignite.IsReady() && itemTarget.HealthPercent < 30 && Player.Distance(itemTarget) <= 600)
             {
-                Player.Spellbook.CastSpell(Ignite, subTarget);
-            }
-            if (subTarget.HealthPercent < 40 || Player.HealthPercent < 50)
-            {
-                if (Bilgewater.IsReady)
-                {
-                    Bilgewater.Cast(subTarget);
-                }
-                if (BotRuinedKing.IsReady)
-                {
-                    BotRuinedKing.Cast(subTarget);
-                }
-            }
-            if (Youmuu.IsReady && Common.CountEnemy(Q.Range + E.Range / 2) > 0)
-            {
-                Youmuu.Cast();
-            }
-            if (!Common.CanUseSkill(OrbwalkerMode.Orbwalk))
-            {
-                return;
-            }
-            if (Tiamat.IsReady && Common.CountEnemy(Tiamat.Range) > 0)
-            {
-                Tiamat.Cast();
-            }
-            if (Hydra.IsReady && Common.CountEnemy(Hydra.Range) > 0)
-            {
-                Hydra.Cast();
+                Player.Spellbook.CastSpell(Ignite, itemTarget);
             }
         }
 
@@ -805,8 +805,8 @@
                 return;
             }
             var minion = new List<Obj_AI_Minion>();
-            minion.AddRange(GameObjects.EnemyMinions.Where(i => i.IsValidTarget(Q.Range - 30)));
-            minion.AddRange(GameObjects.Jungle.Where(i => i.IsValidTarget(Q.Range - 30)));
+            minion.AddRange(GameObjects.EnemyMinions.Where(i => i.IsValidTarget(Q.Range - 20)));
+            minion.AddRange(GameObjects.Jungle.Where(i => i.IsValidTarget(Q.Range - 20)));
             if (minion.Count == 0)
             {
                 return;
@@ -830,7 +830,7 @@
             var dangerLevel =
                 hitBy.Select(
                     i =>
-                    MainMenu["Evade"][i.SpellData.ChampionName.ToLower()][i.SpellData.SpellName]["DangerLevel"]
+                    MainMenu["Evade"][i.SpellData.ChampionName.ToLowerInvariant()][i.SpellData.SpellName]["DangerLevel"]
                         .GetValue<MenuSlider>().Value).Concat(new[] { 0 }).Max();
             foreach (var evadeSpell in
                 EvadeSpellDatabase.Spells.Where(i => i.Enabled && i.DangerLevel <= dangerLevel && i.IsReady)
@@ -858,7 +858,7 @@
                     var skillshots =
                         Evade.DetectedSkillshots.Where(
                             i =>
-                            i.Evade && i.SpellData.CollisionObjects.Contains(CollisionObjectTypes.YasuoWall)
+                            i.Enabled && i.SpellData.CollisionObjects.Contains(CollisionObjectTypes.YasuoWall)
                             && i.IsAboutToHit(
                                 150 + evadeSpell.Delay
                                 - MainMenu["Evade"]["Spells"][evadeSpell.Name]["WDelay"].GetValue<MenuSlider>().Value,
@@ -868,7 +868,7 @@
                         var dangerousSkillshot =
                             skillshots.MaxOrDefault(
                                 i =>
-                                MainMenu["Evade"][i.SpellData.ChampionName.ToLower()][i.SpellData.SpellName][
+                                MainMenu["Evade"][i.SpellData.ChampionName.ToLowerInvariant()][i.SpellData.SpellName][
                                     "DangerLevel"].GetValue<MenuSlider>().Value);
                         Player.Spellbook.CastSpell(
                             evadeSpell.Slot,
@@ -881,6 +881,41 @@
         private static bool UnderTower(Vector3 pos)
         {
             return GameObjects.EnemyTurrets.Any(i => !i.IsDead && i.Distance(pos) <= 850 + Player.BoundingRadius);
+        }
+
+        private static void UseItem(Obj_AI_Hero target)
+        {
+            if (target != null && (target.HealthPercent < 40 || Player.HealthPercent < 50))
+            {
+                if (Bilgewater.IsReady)
+                {
+                    Bilgewater.Cast(target);
+                }
+                if (BotRuinedKing.IsReady)
+                {
+                    BotRuinedKing.Cast(target);
+                }
+            }
+            if (Youmuu.IsReady && Common.CountEnemy(Q.Range + E.Range) > 0)
+            {
+                Youmuu.Cast();
+            }
+            if (Tiamat.IsReady && Common.CountEnemy(Tiamat.Range) > 0)
+            {
+                Tiamat.Cast();
+            }
+            if (Hydra.IsReady && Common.CountEnemy(Hydra.Range) > 0)
+            {
+                Hydra.Cast();
+            }
+            if (!Common.CanUseSkill(OrbwalkerMode.Orbwalk))
+            {
+                return;
+            }
+            if (Titanic.IsReady && Common.CountEnemy(Titanic.Range) > 0)
+            {
+                Titanic.Cast();
+            }
         }
 
         #endregion

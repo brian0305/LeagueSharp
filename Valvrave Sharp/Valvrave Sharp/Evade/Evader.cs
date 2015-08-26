@@ -34,17 +34,16 @@
             var badCandidates = new List<Vector2>();
             var polygonList = new List<Polygon>();
             var takeClosestPath = false;
-            foreach (var skillshot in Evade.DetectedSkillshots.Where(i => i.Evade))
+            foreach (var skillshot in Evade.DetectedSkillshots.Where(i => i.Enabled))
             {
-                if (skillshot.SpellData.TakeClosestPath
-                    && !skillshot.IsSafePoint(ObjectManager.Player.ServerPosition.ToVector2()))
+                if (skillshot.SpellData.TakeClosestPath && !skillshot.IsSafePoint(Evade.PlayerPosition))
                 {
                     takeClosestPath = true;
                 }
                 polygonList.Add(skillshot.EvadePolygon);
             }
             var dangerPolygons = ClipPolygons(polygonList).ToPolygons();
-            var myPosition = ObjectManager.Player.ServerPosition.ToVector2();
+            var myPosition = Evade.PlayerPosition;
             foreach (var poly in dangerPolygons)
             {
                 for (var i = 0; i <= poly.Points.Count - 1; i++)
@@ -99,19 +98,12 @@
                 if (goodCandidates.Count > 0)
                 {
                     goodCandidates = new List<Vector2>
-                                         {
-                                             goodCandidates.MinOrDefault(
-                                                 vector2 => ObjectManager.Player.DistanceSquared(vector2))
-                                         };
+                                         { goodCandidates.MinOrDefault(i => ObjectManager.Player.DistanceSquared(i)) };
                 }
-
                 if (badCandidates.Count > 0)
                 {
                     badCandidates = new List<Vector2>
-                                        {
-                                            badCandidates.MinOrDefault(
-                                                vector2 => ObjectManager.Player.DistanceSquared(vector2))
-                                        };
+                                        { badCandidates.MinOrDefault(i => ObjectManager.Player.DistanceSquared(i)) };
                 }
             }
             return goodCandidates.Count > 0 ? goodCandidates : (onlyGood ? new List<Vector2>() : badCandidates);
@@ -173,11 +165,7 @@
                 }
                 else
                 {
-                    var pathToTarget = new List<Vector2>
-                                           {
-                                               ObjectManager.Player.ServerPosition.ToVector2(),
-                                               target.ServerPosition.ToVector2()
-                                           };
+                    var pathToTarget = new List<Vector2> { Evade.PlayerPosition, target.ServerPosition.ToVector2() };
                     if (Variables.TickCount - LastWardJumpAttempt < 250
                         || IsSafePath(pathToTarget, Configs.EvadingFirstTimeOffset, spell.Speed, spell.Delay).IsSafe)
                     {
@@ -199,7 +187,8 @@
             var intersections = new List<FoundIntersection>();
             var intersection = new FoundIntersection();
             foreach (var sResult in
-                Evade.DetectedSkillshots.Where(i => i.Evade).Select(i => i.IsSafePath(path, timeOffset, speed, delay)))
+                Evade.DetectedSkillshots.Where(i => i.Enabled).Select(i => i.IsSafePath(path, timeOffset, speed, delay))
+                )
             {
                 isSafe = isSafe && sResult.IsSafe;
                 if (sResult.Intersection.Valid)
@@ -218,17 +207,12 @@
         public static IsSafeResult IsSafePoint(Vector2 point)
         {
             var result = new IsSafeResult { SkillshotList = new List<Skillshot>() };
-            foreach (var skillshot in Evade.DetectedSkillshots.Where(i => i.Evade && !i.IsSafePoint(point)))
+            foreach (var skillshot in Evade.DetectedSkillshots.Where(i => i.Enabled && !i.IsSafePoint(point)))
             {
                 result.SkillshotList.Add(skillshot);
             }
             result.IsSafe = result.SkillshotList.Count == 0;
             return result;
-        }
-
-        public static bool IsSafeToBlink(Vector2 point, int timeOffset, int delay)
-        {
-            return Evade.DetectedSkillshots.Where(i => i.Evade).All(i => i.IsSafeToBlink(point, timeOffset, delay));
         }
 
         #endregion
@@ -250,6 +234,11 @@
             c.AddPaths(clip, PolyType.PtClip, true);
             c.Execute(ClipType.CtUnion, solution, PolyFillType.PftPositive, PolyFillType.PftEvenOdd);
             return solution;
+        }
+
+        private static bool IsSafeToBlink(Vector2 point, int timeOffset, int delay)
+        {
+            return Evade.DetectedSkillshots.Where(i => i.Enabled).All(i => i.IsSafeToBlink(point, timeOffset, delay));
         }
 
         #endregion

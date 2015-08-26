@@ -100,19 +100,17 @@
         private static PredictionOutput GetImmobilePrediction(PredictionInput input, double remainingImmobileT)
         {
             var timeToReachTargetPosition = input.Delay + input.Unit.Distance(input.From) / input.Speed;
-            if (timeToReachTargetPosition <= remainingImmobileT + input.RealRadius / input.Unit.MoveSpeed)
-            {
-                return new PredictionOutput
-                           {
-                               CastPosition = input.Unit.ServerPosition, UnitPosition = input.Unit.Position,
-                               Hitchance = HitChance.Immobile
-                           };
-            }
-            return new PredictionOutput
-                       {
-                           Input = input, CastPosition = input.Unit.ServerPosition,
-                           UnitPosition = input.Unit.ServerPosition, Hitchance = HitChance.High
-                       };
+            return timeToReachTargetPosition <= remainingImmobileT + input.RealRadius / input.Unit.MoveSpeed
+                       ? new PredictionOutput
+                             {
+                                 CastPosition = input.Unit.ServerPosition, UnitPosition = input.Unit.Position,
+                                 Hitchance = HitChance.Immobile
+                             }
+                       : new PredictionOutput
+                             {
+                                 Input = input, CastPosition = input.Unit.ServerPosition,
+                                 UnitPosition = input.Unit.ServerPosition, Hitchance = HitChance.High
+                             };
         }
 
         private static PredictionOutput GetPositionOnPath(PredictionInput input, List<Vector2> path, float speed = -1)
@@ -322,42 +320,44 @@
 
         private static void WayPointAnalysis(PredictionOutput result, PredictionInput input)
         {
-            var totalDelay = Math.Abs(input.Speed - float.MaxValue) < float.Epsilon
-                                 ? input.Delay
-                                 : input.Unit.Distance(input.From) / input.Speed + input.Delay;
+            var totalDelay = input.Delay
+                             + (Math.Abs(input.Speed - float.MaxValue) < float.Epsilon
+                                    ? 0
+                                    : input.Unit.Distance(input.From) / input.Speed);
             var fixRange = (input.Unit.MoveSpeed * totalDelay) / 2;
-            var lastWaypiont = input.Unit.GetWaypoints().Last();
+            var lastWaypiont = input.Unit.GetWaypoints().Last().ToVector3();
             if (input.Type == SkillshotType.SkillshotCircle)
             {
                 fixRange -= input.Radius / 2;
             }
-            if (input.Type == SkillshotType.SkillshotLine)
+            switch (input.Type)
             {
-                if (input.Unit.Path.Count() > 0)
-                {
-                    result.Hitchance = GetAngle(input.From, input.Unit) < 36 ? HitChance.VeryHigh : HitChance.High;
-                }
-            }
-            else if (input.Type == SkillshotType.SkillshotCircle)
-            {
-                if (totalDelay < 1.1)
-                {
-                    if (totalDelay < 0.7 && OnProcessSpellDetection.GetLastAutoAttackTime(input.Unit) < 0.1d)
+                case SkillshotType.SkillshotLine:
+                    if (input.Unit.Path.Count() > 0)
                     {
-                        result.Hitchance = HitChance.VeryHigh;
+                        result.Hitchance = GetAngle(input.From, input.Unit) < 36 ? HitChance.VeryHigh : HitChance.High;
                     }
-                    if (Path.PathTracker.GetCurrentPath(input.Unit).Time < 0.1d)
+                    break;
+                case SkillshotType.SkillshotCircle:
+                    if (totalDelay < 1.1)
                     {
-                        result.Hitchance = HitChance.VeryHigh;
+                        if (totalDelay < 0.7 && OnProcessSpellDetection.GetLastAutoAttackTime(input.Unit) < 0.1d)
+                        {
+                            result.Hitchance = HitChance.VeryHigh;
+                        }
+                        if (Path.PathTracker.GetCurrentPath(input.Unit).Time < 0.1d)
+                        {
+                            result.Hitchance = HitChance.VeryHigh;
+                        }
                     }
-                }
+                    break;
             }
             if (input.Unit.HasBuffOfType(BuffType.Slow) || input.Unit.Distance(input.From) < 300
                 || lastWaypiont.Distance(input.From) < 250)
             {
                 result.Hitchance = HitChance.VeryHigh;
             }
-            if (lastWaypiont.Distance(input.Unit.ServerPosition) > 800)
+            if (input.Unit.Distance(lastWaypiont) > 800)
             {
                 result.Hitchance = HitChance.VeryHigh;
             }
@@ -716,87 +716,94 @@
                 var result = new List<Obj_AI_Base>();
                 foreach (var position in positions)
                 {
-                    if (input.CollisionObjects.HasFlag(CollisionableObjects.Minions))
+                    foreach (var objType in input.CollisionObjects)
                     {
-                        foreach (var minion in
-                            GameObjects.EnemyMinions.Where(
-                                i =>
-                                i.IsValidTarget(
-                                    Math.Min(input.Range + input.Radius + 100, 2000),
-                                    true,
-                                    input.RangeCheckFrom)))
+                        switch (objType)
                         {
-                            input.Unit = minion;
-                            var prediction = GetPrediction(input, false, false);
-                            if (prediction.UnitPosition.ToVector2()
-                                    .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
-                                <= Math.Pow(input.Radius + 15 + minion.BoundingRadius, 2))
-                            {
-                                result.Add(minion);
-                            }
-                        }
-                    }
-                    if (input.CollisionObjects.HasFlag(CollisionableObjects.Heroes))
-                    {
-                        foreach (var hero in
-                            GameObjects.EnemyHeroes.Where(
-                                i =>
-                                i.IsValidTarget(
-                                    Math.Min(input.Range + input.Radius + 100, 2000),
-                                    true,
-                                    input.RangeCheckFrom)))
-                        {
-                            input.Unit = hero;
-                            var prediction = GetPrediction(input, false, false);
-                            if (prediction.UnitPosition.ToVector2()
-                                    .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
-                                <= Math.Pow(input.Radius + 50 + hero.BoundingRadius, 2))
-                            {
-                                result.Add(hero);
-                            }
-                        }
-                    }
-                    if (input.CollisionObjects.HasFlag(CollisionableObjects.Walls))
-                    {
-                        var step = position.Distance(input.From) / 20;
-                        for (var i = 0; i < 20; i++)
-                        {
-                            var p = input.From.ToVector2().Extend(position.ToVector2(), step * i);
-                            if (NavMesh.GetCollisionFlags(p.X, p.Y).HasFlag(CollisionFlags.Wall))
-                            {
-                                result.Add(ObjectManager.Player);
-                            }
-                        }
-                    }
-                    if (input.CollisionObjects.HasFlag(CollisionableObjects.YasuoWall))
-                    {
-                        if (Variables.TickCount - wallCastT > 4000)
-                        {
-                            continue;
-                        }
-                        var wall =
-                            GameObjects.AllGameObjects.FirstOrDefault(
-                                i =>
-                                i.IsValid
-                                && Regex.IsMatch(i.Name, "_w_windwall_enemy_0.\\.troy", RegexOptions.IgnoreCase));
-                        if (wall == null)
-                        {
-                            break;
-                        }
-                        var wallWidth = 300 + 50 * Convert.ToInt32(wall.Name.Substring(wall.Name.Length - 6, 1));
-                        var wallDirection =
-                            (wall.Position.ToVector2() - yasuoWallCastedPos).Normalized().Perpendicular();
-                        var wallStart = wall.Position.ToVector2() + wallWidth / 2f * wallDirection;
-                        var wallEnd = wallStart - wallWidth * wallDirection;
-                        if (wallStart.Intersection(wallEnd, position.ToVector2(), input.From.ToVector2()).Intersects)
-                        {
-                            var t = Variables.TickCount
-                                    + (wallStart.Intersection(wallEnd, position.ToVector2(), input.From.ToVector2())
-                                           .Point.Distance(input.From) / input.Speed + input.Delay) * 1000;
-                            if (t < wallCastT + 4000)
-                            {
-                                result.Add(ObjectManager.Player);
-                            }
+                            case CollisionableObjects.Minions:
+                                foreach (var minion in
+                                    GameObjects.EnemyMinions.Where(
+                                        i =>
+                                        i.IsValidTarget(
+                                            Math.Min(input.Range + input.Radius + 100, 2000),
+                                            true,
+                                            input.RangeCheckFrom)))
+                                {
+                                    input.Unit = minion;
+                                    var pred = GetPrediction(input, false, false);
+                                    if (pred.UnitPosition.ToVector2()
+                                            .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
+                                        <= Math.Pow(input.Radius + 15 + minion.BoundingRadius, 2))
+                                    {
+                                        result.Add(minion);
+                                    }
+                                }
+                                break;
+                            case CollisionableObjects.Heroes:
+                                foreach (var hero in
+                                    GameObjects.EnemyHeroes.Where(
+                                        i =>
+                                        i.IsValidTarget(
+                                            Math.Min(input.Range + input.Radius + 100, 2000),
+                                            true,
+                                            input.RangeCheckFrom)))
+                                {
+                                    input.Unit = hero;
+                                    var pred = GetPrediction(input, false, false);
+                                    if (pred.UnitPosition.ToVector2()
+                                            .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
+                                        <= Math.Pow(input.Radius + 50 + hero.BoundingRadius, 2))
+                                    {
+                                        result.Add(hero);
+                                    }
+                                }
+                                break;
+                            case CollisionableObjects.Walls:
+                                var step = position.Distance(input.From) / 20;
+                                for (var i = 0; i < 20; i++)
+                                {
+                                    var p = input.From.ToVector2().Extend(position.ToVector2(), step * i);
+                                    if (NavMesh.GetCollisionFlags(p.X, p.Y).HasFlag(CollisionFlags.Wall))
+                                    {
+                                        result.Add(ObjectManager.Player);
+                                    }
+                                }
+                                break;
+                            case CollisionableObjects.YasuoWall:
+                                if (Variables.TickCount - wallCastT > 4000)
+                                {
+                                    continue;
+                                }
+                                var wall =
+                                    GameObjects.AllGameObjects.FirstOrDefault(
+                                        i =>
+                                        i.IsValid
+                                        && Regex.IsMatch(i.Name, "_w_windwall_enemy_0.\\.troy", RegexOptions.IgnoreCase));
+                                if (wall == null)
+                                {
+                                    break;
+                                }
+                                var wallWidth = 300 + 50 * Convert.ToInt32(wall.Name.Substring(wall.Name.Length - 6, 1));
+                                var wallDirection =
+                                    (wall.Position.ToVector2() - yasuoWallCastedPos).Normalized().Perpendicular();
+                                var wallStart = wall.Position.ToVector2() + wallWidth / 2f * wallDirection;
+                                var wallEnd = wallStart - wallWidth * wallDirection;
+                                if (
+                                    wallStart.Intersection(wallEnd, position.ToVector2(), input.From.ToVector2())
+                                        .Intersects)
+                                {
+                                    var t = Variables.TickCount
+                                            + (wallStart.Intersection(
+                                                wallEnd,
+                                                position.ToVector2(),
+                                                input.From.ToVector2()).Point.Distance(input.From) / input.Speed
+                                               + input.Delay) * 1000;
+                                    if (t < wallCastT + 4000)
+                                    {
+                                        result.Add(ObjectManager.Player);
+                                    }
+                                }
+                                break;
                         }
                     }
                 }
@@ -844,22 +851,19 @@
             private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
             {
                 var caster = sender as Obj_AI_Hero;
-                if (!caster.IsValid())
+                if (!caster.IsValid() || !AutoAttack.IsAutoAttack(args.SData.Name))
                 {
                     return;
                 }
-                if (AutoAttack.IsAutoAttack(args.SData.Name))
+                var findTime = StoredAutoAttackTimeList.FirstOrDefault(i => i.NetworkId == sender.NetworkId);
+                if (findTime == null)
                 {
-                    var findTime = StoredAutoAttackTimeList.FirstOrDefault(i => i.NetworkId == sender.NetworkId);
-                    if (findTime == null)
-                    {
-                        StoredAutoAttackTimeList.Add(
-                            new StoredAutoAttackTime { NetworkId = sender.NetworkId, Tick = Variables.TickCount });
-                    }
-                    else
-                    {
-                        findTime.Tick = Variables.TickCount;
-                    }
+                    StoredAutoAttackTimeList.Add(
+                        new StoredAutoAttackTime { NetworkId = sender.NetworkId, Tick = Variables.TickCount });
+                }
+                else
+                {
+                    findTime.Tick = Variables.TickCount;
                 }
             }
 
@@ -870,8 +874,11 @@
         {
             #region Fields
 
-            private CollisionableObjects collisionableObjects = CollisionableObjects.Minions
-                                                                | CollisionableObjects.YasuoWall;
+            public CollisionableObjects[] CollisionObjects =
+                {
+                    CollisionableObjects.Minions,
+                    CollisionableObjects.YasuoWall
+                };
 
             private Vector3 @from;
 
@@ -896,18 +903,6 @@
             public bool AoE { get; set; }
 
             public bool Collision { get; set; }
-
-            public CollisionableObjects CollisionObjects
-            {
-                get
-                {
-                    return this.collisionableObjects;
-                }
-                set
-                {
-                    this.collisionableObjects = value;
-                }
-            }
 
             public float Delay { get; set; }
 
@@ -1018,7 +1013,7 @@
             {
                 get
                 {
-                    return this.UseBoundingRadius ? this.Radius + this.Unit.BoundingRadius : this.Radius;
+                    return this.Radius + (this.UseBoundingRadius ? this.Unit.BoundingRadius : 0);
                 }
             }
 
@@ -1069,9 +1064,7 @@
             {
                 get
                 {
-                    return this.castPosition.IsValid() && this.castPosition.IsValid()
-                               ? this.castPosition.SetZ()
-                               : this.Input.Unit.ServerPosition;
+                    return this.castPosition.IsValid() ? this.castPosition.SetZ() : this.Input.Unit.ServerPosition;
                 }
                 set
                 {

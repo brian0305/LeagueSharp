@@ -19,7 +19,7 @@
     {
         #region Static Fields
 
-        public static Items.Item Bilgewater, BotRuinedKing, Youmuu, Hydra, Tiamat;
+        public static Items.Item Bilgewater, BotRuinedKing, Youmuu, Tiamat, Hydra, Titanic;
 
         public static SpellSlot Flash, Ignite, Smite;
 
@@ -87,6 +87,7 @@
                         Youmuu = new Items.Item(ItemId.Youmuus_Ghostblade, 0);
                         Tiamat = new Items.Item(ItemId.Tiamat_Melee_Only, 400);
                         Hydra = new Items.Item(ItemId.Ravenous_Hydra_Melee_Only, 400);
+                        Titanic = new Items.Item(3053, 400);
                         foreach (var spell in
                             Player.Spellbook.Spells.Where(
                                 i =>

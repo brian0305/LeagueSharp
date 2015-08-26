@@ -20,6 +20,18 @@
 
         #endregion
 
+        #region Properties
+
+        internal static Vector2 PlayerPosition
+        {
+            get
+            {
+                return ObjectManager.Player.ServerPosition.ToVector2();
+            }
+        }
+
+        #endregion
+
         #region Public Methods and Operators
 
         public static void Init()
@@ -68,7 +80,7 @@
             {
                 return;
             }
-            if (skillshot.Start.Distance(ObjectManager.Player.ServerPosition)
+            if (skillshot.Start.Distance(PlayerPosition)
                 > (skillshot.SpellData.Range + skillshot.SpellData.Radius + 1000) * 1.5)
             {
                 return;
@@ -284,8 +296,8 @@
                         skillshot.Unit));
             }
             if ((skillshot.SpellData.DisableFowDetection
-                 || Program.MainMenu["Evade"][skillshot.SpellData.ChampionName.ToLower()][skillshot.SpellData.SpellName]
-                        ["DisableFoW"].GetValue<MenuBool>().Value)
+                 || Program.MainMenu["Evade"][skillshot.SpellData.ChampionName.ToLowerInvariant()][
+                     skillshot.SpellData.SpellName]["DisableFoW"].GetValue<MenuBool>().Value)
                 && skillshot.DetectionType == DetectionType.RecvPacket)
             {
                 return;

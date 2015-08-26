@@ -33,9 +33,9 @@ namespace Valvrave_Sharp.Evade
 
         #endregion
 
-        #region Public Methods and Operators
+        #region Methods
 
-        public static void CreateMenu()
+        internal static void CreateMenu()
         {
             var evadeMenu = new Menu("Evade", "Evade Skillshot");
             {
@@ -77,7 +77,7 @@ namespace Valvrave_Sharp.Evade
                             string.Equals(a.ChampionName, i.ChampionName, StringComparison.InvariantCultureIgnoreCase)))
                     )
                 {
-                    evadeMenu.Add(new Menu(hero.ChampionName.ToLower(), "-> " + hero.ChampionName));
+                    evadeMenu.Add(new Menu(hero.ChampionName.ToLowerInvariant(), "-> " + hero.ChampionName));
                 }
                 foreach (var spell in
                     SpellDatabase.Spells.Where(
@@ -93,7 +93,7 @@ namespace Valvrave_Sharp.Evade
                         Config.Bool(sub, "IsDangerous", "Is Dangerous", spell.IsDangerous);
                         Config.Bool(sub, "DisableFoW", "Disable FoW Dodging", false);
                         Config.Bool(sub, "Enabled", "Enabled", !spell.DisabledByDefault);
-                        ((Menu)evadeMenu[spell.ChampionName.ToLower()]).Add(sub);
+                        ((Menu)evadeMenu[spell.ChampionName.ToLowerInvariant()]).Add(sub);
                     }
                 }
                 Config.KeyBind(evadeMenu, "OnlyDangerous", "Dodge Only Dangerous", Keys.Space);

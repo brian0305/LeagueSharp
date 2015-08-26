@@ -50,8 +50,8 @@
             W = new Spell(SpellSlot.W, 550);
             E = new Spell(SpellSlot.E, 290);
             R = new Spell(SpellSlot.R, 625);
-            Q.SetSkillshot(0.25f, 50, 1700, false, SkillshotType.SkillshotLine);
-            Q2.SetSkillshot(0.25f, 50, 1700, false, SkillshotType.SkillshotLine);
+            Q.SetSkillshot(0.25f, 50, 1700, true, SkillshotType.SkillshotLine);
+            Q2.SetSkillshot(0.25f, 50, 1700, true, SkillshotType.SkillshotLine);
             E.SetTargetted(0.05f, float.MaxValue);
             Q.DamageType = Q2.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
             Q.MinHitChance = Q2.MinHitChance = HitChance.VeryHigh;
@@ -85,6 +85,7 @@
             var hybridMenu = new Menu("Hybrid", "Hybrid");
             {
                 Config.List(hybridMenu, "Mode", "Mode", new[] { "W-E-Q", "E-Q", "Q" });
+                Config.Bool(hybridMenu, "QOverW", "Priorize Q Over W", false);
                 Config.Separator(hybridMenu, "blank4", "Auto Q Settings");
                 Config.KeyBind(hybridMenu, "AutoQ", "KeyBind", Keys.T, KeyBindType.Toggle);
                 Config.Slider(hybridMenu, "AutoQMpA", "If Mp >=", 100, 0, 200);
@@ -131,11 +132,11 @@
             get
             {
                 float range = 0;
-                if (wShadow.IsValid() && rShadow.IsValid())
+                if (wShadow.IsValid() && rShadow.IsValid() && Orbwalker.ActiveMode == OrbwalkerMode.Orbwalk)
                 {
                     range += Math.Max(Player.Distance(rShadow), Player.Distance(wShadow));
                 }
-                else if (WState == 0 && rShadow.IsValid())
+                else if (WState == 0 && rShadow.IsValid() && Orbwalker.ActiveMode == OrbwalkerMode.Orbwalk)
                 {
                     range += Math.Max(Player.Distance(rShadow), W.Range);
                 }
@@ -148,40 +149,46 @@
                     range += W.Range;
                 }
                 var target = Q.GetTarget(range);
-                switch (RState)
+                if (Orbwalker.ActiveMode == OrbwalkerMode.Orbwalk)
                 {
-                    case 0:
-                        if (MainMenu["Orbwalk"]["R"].GetValue<MenuBool>().Value)
-                        {
-                            var subTarget = Q.GetTarget(
-                                range,
-                                false,
-                                GameObjects.EnemyHeroes.Where(
-                                    i => !MainMenu["Orbwalk"]["RCast" + i.ChampionName].GetValue<MenuBool>().Value));
-                            if (subTarget != null)
-                            {
-                                target = subTarget;
-                            }
-                        }
-                        break;
-                    case 1:
-                        var markTarget = Q.GetTarget(range, false, GameObjects.EnemyHeroes.Where(i => !HaveRMark(i)));
-                        if (markTarget != null)
-                        {
-                            target = markTarget;
-                            if (DeadByRMark(markTarget))
+                    switch (RState)
+                    {
+                        case 0:
+                            if (MainMenu["Orbwalk"]["R"].GetValue<MenuBool>().Value)
                             {
                                 var subTarget = Q.GetTarget(
                                     range,
                                     false,
-                                    GameObjects.EnemyHeroes.Where(i => i.Compare(markTarget)));
+                                    GameObjects.EnemyHeroes.Where(
+                                        i => !MainMenu["Orbwalk"]["RCast" + i.ChampionName].GetValue<MenuBool>().Value));
                                 if (subTarget != null)
                                 {
                                     target = subTarget;
                                 }
                             }
-                        }
-                        break;
+                            break;
+                        case 1:
+                            var markTarget = Q.GetTarget(
+                                range,
+                                false,
+                                GameObjects.EnemyHeroes.Where(i => !HaveRMark(i)));
+                            if (markTarget != null)
+                            {
+                                target = markTarget;
+                                if (DeadByRMark(markTarget))
+                                {
+                                    var subTarget = Q.GetTarget(
+                                        range,
+                                        false,
+                                        GameObjects.EnemyHeroes.Where(i => i.Compare(markTarget)));
+                                    if (subTarget != null)
+                                    {
+                                        target = subTarget;
+                                    }
+                                }
+                            }
+                            break;
+                    }
                 }
                 return target;
             }
@@ -225,7 +232,11 @@
             var target = Q.GetTarget();
             if (target != null)
             {
-                Common.Cast(Q, target, true);
+                var pred = Common.GetPrediction(Q, target, true, new[] { CollisionableObjects.YasuoWall });
+                if (pred.Hitchance >= Q.MinHitChance)
+                {
+                    Q.Cast(pred.CastPosition);
+                }
             }
         }
 
@@ -299,30 +310,30 @@
             {
                 return;
             }
-            if (Common.Cast(Q, target, true) == CastStates.SuccessfullyCasted)
+            var pred = Common.GetPrediction(Q, target, true, new[] { CollisionableObjects.YasuoWall });
+            if (pred.Hitchance >= Q.MinHitChance)
             {
-                return;
+                Q.Cast(pred.CastPosition);
             }
-            if (!wShadow.IsValid() && !rShadow.IsValid())
+            else if (wShadow.IsValid() || rShadow.IsValid())
             {
-                return;
-            }
-            if (wShadow.IsValid())
-            {
-                Q2.UpdateSourcePosition(wShadow.Position, wShadow.Position);
-                var qPred = Common.GetPrediction(Q2, target, true);
-                if (qPred.Hitchance >= Q2.MinHitChance && Q.Cast(qPred.CastPosition))
+                if (wShadow.IsValid())
                 {
-                    return;
+                    Q2.UpdateSourcePosition(wShadow.Position, wShadow.Position);
+                    var qPred = Common.GetPrediction(Q2, target, true, new[] { CollisionableObjects.YasuoWall });
+                    if (qPred.Hitchance >= Q2.MinHitChance && Q.Cast(qPred.CastPosition))
+                    {
+                        return;
+                    }
                 }
-            }
-            if (rShadow.IsValid())
-            {
-                Q2.UpdateSourcePosition(rShadow.Position, rShadow.Position);
-                var qPred = Common.GetPrediction(Q2, target, true);
-                if (qPred.Hitchance >= Q2.MinHitChance)
+                if (rShadow.IsValid())
                 {
-                    Q.Cast(qPred.CastPosition);
+                    Q2.UpdateSourcePosition(rShadow.Position, rShadow.Position);
+                    var qPred = Common.GetPrediction(Q2, target, true, new[] { CollisionableObjects.YasuoWall });
+                    if (qPred.Hitchance >= Q2.MinHitChance)
+                    {
+                        Q.Cast(qPred.CastPosition);
+                    }
                 }
             }
         }
@@ -338,7 +349,7 @@
                 return;
             }
             var castPos = default(Vector3);
-            if (rShadow.IsValid())
+            if (rShadow.IsValid() && isCombo)
             {
                 switch (MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index)
                 {
@@ -362,6 +373,10 @@
                         if (!subPos1.IsWall() && subPos2.IsWall() && target.Distance(subPos1) < target.Distance(subPos2))
                         {
                             castPos = subPos1;
+                        }
+                        if ((!subPos1.IsWall() && !subPos2.IsWall()) || (subPos1.IsWall() && subPos2.IsWall()))
+                        {
+                            castPos = target.Distance(subPos1) < target.Distance(subPos2) ? subPos1 : subPos2;
                         }
                         if (!castPos.IsValid())
                         {
@@ -387,10 +402,10 @@
                     return;
                 }
             }
-            for (var i = W.Range; i >= 400; i -= 50)
+            for (var i = W.Range; i >= 400; i -= 25)
             {
                 var castPosSub = Player.ServerPosition.Extend(castPos, i);
-                if (castPosSub.IsWall())
+                if (castPosSub.IsWall() && !i.Equals(400))
                 {
                     continue;
                 }
@@ -476,6 +491,8 @@
                 return;
             }
             if (MainMenu["Hybrid"]["Mode"].GetValue<MenuList>().Index == 0
+                && (!MainMenu["Hybrid"]["QOverW"].GetValue<MenuBool>().Value
+                    || (!Q.IsReady() && Player.GetLastCastedSpell().SpellData.Name != "ZedShuriken"))
                 && ((Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost)
                     || (E.IsReady() && Player.Mana >= E.Instance.ManaCost + W.Instance.ManaCost)))
             {
@@ -485,7 +502,8 @@
             {
                 CastE(target);
             }
-            if (MainMenu["Hybrid"]["Mode"].GetValue<MenuList>().Index != 0 || wShadow.IsValid() || !W.IsReady()
+            if (MainMenu["Hybrid"]["Mode"].GetValue<MenuList>().Index != 0
+                || MainMenu["Hybrid"]["QOverW"].GetValue<MenuBool>().Value || wShadow.IsValid() || WState == -1
                 || Player.Mana < Q.Instance.ManaCost + W.Instance.ManaCost)
             {
                 CastQ(target);
@@ -497,26 +515,35 @@
             if (MainMenu["KillSteal"]["Q"].GetValue<MenuBool>().Value && Q.IsReady())
             {
                 foreach (var hero in
-                    GameObjects.EnemyHeroes.Where(i => i.IsValidTarget() && i.Health <= GetQDmg(i))
-                        .TakeWhile(i => Common.Cast(Q, i, true) != CastStates.SuccessfullyCasted)
-                        .Where(i => wShadow.IsValid() || rShadow.IsValid()))
+                    GameObjects.EnemyHeroes.Where(i => i.IsValidTarget() && i.Health <= GetQDmg(i)))
                 {
-                    if (wShadow.IsValid())
+                    var pred = Common.GetPrediction(Q, hero, true, new[] { CollisionableObjects.YasuoWall });
+                    if (pred.Hitchance >= Q.MinHitChance)
                     {
-                        Q2.UpdateSourcePosition(wShadow.Position, wShadow.Position);
-                        var qPred = Common.GetPrediction(Q2, hero, true);
-                        if (qPred.Hitchance >= Q2.MinHitChance && Q.Cast(qPred.CastPosition))
+                        if (Q.Cast(pred.CastPosition))
                         {
                             break;
                         }
                     }
-                    if (rShadow.IsValid())
+                    else if (wShadow.IsValid() || rShadow.IsValid())
                     {
-                        Q2.UpdateSourcePosition(rShadow.Position, rShadow.Position);
-                        var qPred = Common.GetPrediction(Q2, hero, true);
-                        if (qPred.Hitchance >= Q2.MinHitChance)
+                        if (wShadow.IsValid())
                         {
-                            Q.Cast(qPred.CastPosition);
+                            Q2.UpdateSourcePosition(wShadow.Position, wShadow.Position);
+                            var qPred = Common.GetPrediction(Q2, hero, true, new[] { CollisionableObjects.YasuoWall });
+                            if (qPred.Hitchance >= Q2.MinHitChance && Q.Cast(qPred.CastPosition))
+                            {
+                                break;
+                            }
+                        }
+                        if (rShadow.IsValid())
+                        {
+                            Q2.UpdateSourcePosition(rShadow.Position, rShadow.Position);
+                            var qPred = Common.GetPrediction(Q2, hero, true, new[] { CollisionableObjects.YasuoWall });
+                            if (qPred.Hitchance >= Q2.MinHitChance)
+                            {
+                                Q.Cast(qPred.CastPosition);
+                            }
                         }
                     }
                 }
@@ -540,14 +567,27 @@
             }
             if (MainMenu["LastHit"]["Q"].GetValue<MenuBool>().Value && Q.IsReady())
             {
-                var minion =
-                    GameObjects.EnemyMinions.Where(
-                        i =>
-                        i.IsValidTarget(Q.Range) && Q.GetHealthPrediction(i) > 0
-                        && Q.GetHealthPrediction(i) <= GetQDmg(i)).MaxOrDefault(i => i.MaxHealth);
-                if (minion != null && Common.Cast(Q, minion, true) == CastStates.SuccessfullyCasted)
+                foreach (var minion in
+                    GameObjects.EnemyMinions.Where(i => i.IsValidTarget(Q.Range) && Q.GetHealthPrediction(i) > 0)
+                        .OrderByDescending(i => i.MaxHealth))
                 {
-                    return;
+                    var pred = Common.GetPrediction(
+                        Q,
+                        minion,
+                        true,
+                        new[]
+                            {
+                                CollisionableObjects.Heroes, CollisionableObjects.Minions, CollisionableObjects.YasuoWall
+                            });
+                    if (pred.CollisionObjects.Count > 0 && pred.CollisionObjects.Any(i => i.IsMe))
+                    {
+                        break;
+                    }
+                    var qDmg = GetQDmg(minion) * (pred.CollisionObjects.Count == 0 ? 1 : 0.6);
+                    if (Q.GetHealthPrediction(minion) <= qDmg)
+                    {
+                        Q.Cast(pred.CastPosition);
+                    }
                 }
             }
             if (MainMenu["LastHit"]["E"].GetValue<MenuBool>().Value && E.IsReady()
@@ -647,6 +687,20 @@
             {
                 return;
             }
+            if (args.SData.Name == "ZedShuriken" && Orbwalker.ActiveMode == OrbwalkerMode.Hybrid
+                && MainMenu["Hybrid"]["Mode"].GetValue<MenuList>().Index == 0
+                && MainMenu["Hybrid"]["QOverW"].GetValue<MenuBool>().Value && WState == 0 && GetTarget != null)
+            {
+                DelayAction.Add(
+                    Q.Delay * 1000,
+                    () =>
+                        {
+                            if (W.Cast(args.End))
+                            {
+                                W.LastCastAttemptT = Variables.TickCount;
+                            }
+                        });
+            }
             if (args.SData.Name == "ZedPBAOEDummy" && eForced)
             {
                 eForced = false;
@@ -701,7 +755,7 @@
         {
             if (RState == 1 && rShadow.IsValid()
                 && Player.HealthPercent < MainMenu["Orbwalk"]["RSwapIfHpU"].GetValue<MenuSlider>().Value
-                && Common.CountEnemy(W.Range) > Common.CountEnemy(300, rShadow.Position) && R.Cast())
+                && Common.CountEnemy(Q.Range) > Common.CountEnemy(W.Range, rShadow.Position) && R.Cast())
             {
                 return;
             }
@@ -710,6 +764,7 @@
                 return;
             }
             var target = GetTarget;
+            UseItem(target);
             if (target == null)
             {
                 return;
@@ -745,16 +800,14 @@
             {
                 if (MainMenu["Orbwalk"]["RSwapGap"].GetValue<MenuList>().Index == 1)
                 {
-                    var calcCombo = GetComboDmg(
-                        target,
-                        Q.IsReady(),
-                        wShadow.IsValid() || WState == 0,
-                        E.IsReady(),
-                        false);
+                    var calcCombo = GetComboDmg(target, Q.IsReady(), wShadow.IsValid(), E.IsReady(), false);
                     if (((target.Health < calcCombo[0]
                           && (Player.Mana >= calcCombo[1] || Player.Mana * OverkillValue >= calcCombo[1]))
-                         || (MainMenu["Orbwalk"]["WNormal"].GetValue<MenuBool>().Value && WState == 0
-                             && !W.IsInRange(target) && rShadow.Distance(target) < W.Range)) && R.Cast())
+                         || (MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index > 0 && WState == 0
+                             && !W.IsInRange(target) && rShadow.Distance(target) < W.Range
+                             && ((Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost)
+                                 || (E.IsReady() && Player.Mana >= E.Instance.ManaCost + W.Instance.ManaCost))))
+                        && R.Cast())
                     {
                         return;
                     }
@@ -765,14 +818,14 @@
                 }
             }
             if (RState == 1 && rShadow.IsValid() && MainMenu["Orbwalk"]["RSwapIfKill"].GetValue<MenuBool>().Value
-                && DeadByRMark(target) && Common.CountEnemy(Q.Range) > Common.CountEnemy(400, rShadow.Position)
+                && DeadByRMark(target) && Common.CountEnemy(Q.Range) > Common.CountEnemy(W.Range, rShadow.Position)
                 && R.Cast())
             {
                 return;
             }
-            if (RState == 0 && MainMenu["Orbwalk"]["R"].GetValue<MenuBool>().Value && R.IsInRange(target)
-                && (Q.IsReady() || E.IsReady() || target.HealthPercent < 40)
-                && MainMenu["Orbwalk"]["RCast" + target.ChampionName].GetValue<MenuBool>().Value && R.CastOnUnit(target))
+            if (RState == 0 && MainMenu["Orbwalk"]["R"].GetValue<MenuBool>().Value
+                && MainMenu["Orbwalk"]["RCast" + target.ChampionName].GetValue<MenuBool>().Value && R.IsInRange(target)
+                && R.CastOnUnit(target))
             {
                 return;
             }
@@ -781,7 +834,37 @@
             {
                 Player.Spellbook.CastSpell(Ignite, target);
             }
-            if ((HaveRMark(target) && rShadow.IsValid()) || target.HealthPercent < 40 || Player.HealthPercent < 50)
+            if (((MainMenu["Orbwalk"]["WNormal"].GetValue<MenuBool>().Value && RState < 1
+                  && (!MainMenu["Orbwalk"]["R"].GetValue<MenuBool>().Value
+                      || !MainMenu["Orbwalk"]["RCast" + target.ChampionName].GetValue<MenuBool>().Value || RState == -1))
+                 || (MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index > 0 && RState > -1))
+                && ((Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost)
+                    || (E.IsReady() && Player.Mana >= E.Instance.ManaCost + W.Instance.ManaCost)
+                    || (MainMenu["Orbwalk"]["R"].GetValue<MenuBool>().Value
+                        && MainMenu["Orbwalk"]["RCast" + target.ChampionName].GetValue<MenuBool>().Value
+                        && MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index > 0 && RState == 0
+                        && !R.IsInRange(target))))
+            {
+                CastW(target, true);
+            }
+            CastE(target, true);
+            if ((MainMenu["Orbwalk"]["WNormal"].GetValue<MenuBool>().Value
+                 || MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index > 0)
+                && (wShadow.IsValid() || WState == -1 || Player.Mana < Q.Instance.ManaCost + W.Instance.ManaCost))
+            {
+                CastQ(target, true);
+            }
+            else if (!MainMenu["Orbwalk"]["WNormal"].GetValue<MenuBool>().Value
+                     && MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index == 0)
+            {
+                CastQ(target, true);
+            }
+        }
+
+        private static void UseItem(Obj_AI_Hero target)
+        {
+            if (target != null
+                && ((HaveRMark(target) && rShadow.IsValid()) || target.HealthPercent < 40 || Player.HealthPercent < 50))
             {
                 if (Bilgewater.IsReady)
                 {
@@ -796,29 +879,6 @@
             {
                 Youmuu.Cast();
             }
-            if (((MainMenu["Orbwalk"]["WNormal"].GetValue<MenuBool>().Value && RState < 1)
-                 || (MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index > 0 && RState > -1))
-                && ((Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost)
-                    || (E.IsReady() && Player.Mana >= E.Instance.ManaCost + W.Instance.ManaCost) || !W.IsInRange(target)))
-            {
-                CastW(target, true);
-            }
-            CastE(target, true);
-            if ((MainMenu["Orbwalk"]["WNormal"].GetValue<MenuBool>().Value
-                 || MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index > 0)
-                && (wShadow.IsValid() || !W.IsReady() || Player.Mana < Q.Instance.ManaCost + W.Instance.ManaCost))
-            {
-                CastQ(target, true);
-            }
-            else if (!MainMenu["Orbwalk"]["WNormal"].GetValue<MenuBool>().Value
-                     && MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index == 0)
-            {
-                CastQ(target, true);
-            }
-            if (!Common.CanUseSkill(OrbwalkerMode.Orbwalk))
-            {
-                return;
-            }
             if (Tiamat.IsReady && Common.CountEnemy(Tiamat.Range) > 0)
             {
                 Tiamat.Cast();
@@ -826,6 +886,14 @@
             if (Hydra.IsReady && Common.CountEnemy(Hydra.Range) > 0)
             {
                 Hydra.Cast();
+            }
+            if (!Common.CanUseSkill(OrbwalkerMode.Orbwalk))
+            {
+                return;
+            }
+            if (Titanic.IsReady && Common.CountEnemy(Titanic.Range) > 0)
+            {
+                Titanic.Cast();
             }
         }
 

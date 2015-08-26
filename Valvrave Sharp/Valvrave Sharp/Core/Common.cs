@@ -29,17 +29,17 @@ namespace Valvrave_Sharp.Core
             {
                 return CastStates.NotReady;
             }
-            var prediction = GetPrediction(spell, unit, areaOfEffect);
-            if (prediction.CollisionObjects.Count > 0)
+            var pred = GetPrediction(spell, unit, areaOfEffect);
+            if (pred.CollisionObjects.Count > 0)
             {
                 return CastStates.Collision;
             }
-            if (prediction.Hitchance < spell.MinHitChance)
+            if (pred.Hitchance < spell.MinHitChance)
             {
                 return CastStates.LowHitChance;
             }
             spell.LastCastAttemptT = Variables.TickCount;
-            return !ObjectManager.Player.Spellbook.CastSpell(spell.Slot, prediction.CastPosition)
+            return !ObjectManager.Player.Spellbook.CastSpell(spell.Slot, pred.CastPosition)
                        ? CastStates.NotCasted
                        : CastStates.SuccessfullyCasted;
         }
@@ -53,7 +53,7 @@ namespace Valvrave_Sharp.Core
             Spell spell,
             Obj_AI_Base unit,
             bool aoe = false,
-            CollisionableObjects collisionable = CollisionableObjects.Heroes | CollisionableObjects.Minions)
+            CollisionableObjects[] collisionable = null)
         {
             return
                 Prediction.GetPrediction(
@@ -61,7 +61,9 @@ namespace Valvrave_Sharp.Core
                         {
                             Unit = unit, Delay = spell.Delay, Radius = spell.Width, Speed = spell.Speed, From = spell.From,
                             Range = spell.Range, Collision = spell.Collision, Type = spell.Type,
-                            RangeCheckFrom = spell.RangeCheckFrom, AoE = aoe, CollisionObjects = collisionable
+                            RangeCheckFrom = spell.RangeCheckFrom, AoE = aoe,
+                            CollisionObjects =
+                                collisionable ?? new[] { CollisionableObjects.Minions, CollisionableObjects.YasuoWall }
                         });
         }
 

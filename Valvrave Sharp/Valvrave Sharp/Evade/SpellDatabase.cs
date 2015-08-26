@@ -71,7 +71,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -90,7 +90,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -143,14 +143,14 @@
                 new SpellData
                     {
                         ChampionName = "Ashe", SpellName = "Volley", Slot = SpellSlot.W,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1200, Radius = 60,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1250, Radius = 60,
                         MissileSpeed = 1500, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "VolleyAttack", MultipleNumber = 9,
                         MultipleAngle = 4.62f * (float)Math.PI / 180, CanBeRemoved = true,
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -161,7 +161,7 @@
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 20000, Radius = 130,
                         MissileSpeed = 1600, FixedRange = true, AddHitbox = true, DangerValue = 5, IsDangerous = true,
                         MissileSpellName = "EnchantedCrystalArrow", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
                     });
 
             #endregion Ashe
@@ -187,7 +187,7 @@
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 950, Radius = 60,
                         MissileSpeed = 1600, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "BardQMissile", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
                     });
             Spells.Add(
                 new SpellData
@@ -211,7 +211,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -237,7 +237,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -263,7 +263,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -299,7 +299,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -312,7 +312,7 @@
                 new SpellData
                     {
                         ChampionName = "Cassiopeia", SpellName = "CassiopeiaNoxiousBlast", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotCircle, Delay = 600, Range = 850, Radius = 150,
+                        Type = SkillShotType.SkillshotCircle, Delay = 750, Range = 850, Radius = 150,
                         MissileSpeed = int.MaxValue, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "CassiopeiaNoxiousBlast"
                     });
@@ -359,7 +359,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -373,7 +373,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -435,7 +435,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -473,7 +473,7 @@
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 950, Radius = 60,
                         MissileSpeed = 1650, FixedRange = true, AddHitbox = true, DangerValue = 4, IsDangerous = true,
                         MissileSpellName = "ekkoqmis", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
                     });
             Spells.Add(
                 new SpellData
@@ -506,7 +506,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -539,7 +539,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 },
                         Id = 229
@@ -587,7 +587,7 @@
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1300, Radius = 120,
                         MissileSpeed = 1350, AddHitbox = true, DangerValue = 5, IsDangerous = true,
                         MissileSpellName = "FizzMarinerDoomMissile", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
                     });
 
             #endregion Fizz
@@ -700,7 +700,7 @@
                         Type = SkillShotType.SkillshotMissileLine, Delay = 0, Range = 950, Radius = 200,
                         MissileSpeed = 1200, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "GragasE", CanBeRemoved = true, ExtraRange = 300,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.Minion }
+                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.Minion }
                     });
             Spells.Add(
                 new SpellData
@@ -732,7 +732,7 @@
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1100, Radius = 100,
                         MissileSpeed = 2100, FixedRange = true, AddHitbox = true, DangerValue = 5, IsDangerous = true,
                         MissileSpellName = "GravesChargeShotShot",
-                        CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
                     });
 
             #endregion Graves
@@ -825,7 +825,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -839,7 +839,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -858,7 +858,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -869,7 +869,7 @@
                         Type = SkillShotType.SkillshotMissileLine, Delay = 600, Range = 20000, Radius = 140,
                         MissileSpeed = 1700, FixedRange = true, AddHitbox = true, DangerValue = 5, IsDangerous = true,
                         MissileSpellName = "JinxR", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
                     });
 
             #endregion Jinx
@@ -887,7 +887,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -906,7 +906,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -920,7 +920,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -970,7 +970,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -990,7 +990,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1016,7 +1016,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1066,7 +1066,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1080,7 +1080,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1099,7 +1099,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1114,7 +1114,7 @@
                         ChampionName = "Leona", SpellName = "LeonaZenithBlade", Slot = SpellSlot.E,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 905, Radius = 70,
                         MissileSpeed = 2000, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
-                        MissileSpellName = "LeonaZenithBladeMissile",
+                        TakeClosestPath = true, MissileSpellName = "LeonaZenithBladeMissile",
                         CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
                     });
             Spells.Add(
@@ -1284,7 +1284,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1324,7 +1324,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1343,7 +1343,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1433,7 +1433,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1452,7 +1452,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1471,7 +1471,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1505,7 +1505,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1532,7 +1532,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1546,7 +1546,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1561,7 +1561,7 @@
                         ChampionName = "Sejuani", SpellName = "SejuaniArcticAssault", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 0, Range = 900, Radius = 70,
                         MissileSpeed = 1600, AddHitbox = true, DangerValue = 3, IsDangerous = true, ExtraRange = 200,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.Minion }
+                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.Minion }
                     });
             Spells.Add(
                 new SpellData
@@ -1570,7 +1570,7 @@
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1100, Radius = 110,
                         MissileSpeed = 1600, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "sejuaniglacialprison", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
                     });
 
             #endregion Sejuani
@@ -1629,7 +1629,7 @@
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 800, Radius = 80,
                         MissileSpeed = 1800, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "SionEMissile",
-                        CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
                     });
             Spells.Add(
                 new SpellData
@@ -1637,7 +1637,7 @@
                         ChampionName = "Sion", SpellName = "SionR", Slot = SpellSlot.R,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 500, Range = 800, Radius = 120,
                         MissileSpeed = 1000, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champions }
+                        CollisionObjects = new[] { CollisionObjectTypes.Champion }
                     });
 
             #endregion Sion
@@ -1763,7 +1763,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1807,7 +1807,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1887,7 +1887,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1927,7 +1927,7 @@
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1200, Radius = 120,
                         MissileSpeed = 1950, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "VarusRMissile", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champions, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
                     });
 
             #endregion Varus
@@ -1973,7 +1973,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -1987,7 +1987,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -2064,7 +2064,7 @@
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champions, CollisionObjectTypes.Minion,
+                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
                                     CollisionObjectTypes.YasuoWall
                                 }
                     });
@@ -2210,7 +2210,7 @@
                 new SpellData
                     {
                         ChampionName = "Zyra", SpellName = "ZyraQFissure", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotCircle, Delay = 600, Range = 800, Radius = 220,
+                        Type = SkillShotType.SkillshotCircle, Delay = 850, Range = 800, Radius = 220,
                         MissileSpeed = int.MaxValue, AddHitbox = true, DangerValue = 2, MissileSpellName = "ZyraQFissure"
                     });
             Spells.Add(

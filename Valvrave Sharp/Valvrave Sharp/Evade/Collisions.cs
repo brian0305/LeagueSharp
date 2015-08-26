@@ -19,7 +19,7 @@
     {
         Minion,
 
-        Champions,
+        Champion,
 
         YasuoWall
     }
@@ -64,9 +64,9 @@
 
         #endregion
 
-        #region Public Methods and Operators
+        #region Methods
 
-        public static Vector2 GetCollisionPoint(this Skillshot skillshot)
+        internal static Vector2 GetCollisionPoint(this Skillshot skillshot)
         {
             var collisions = new List<DetectedCollision>();
             var from = skillshot.GetMissilePosition(0);
@@ -104,7 +104,7 @@
                                         Distance = pos.Distance(@from), Diff = w
                                     });
                         break;
-                    case CollisionObjectTypes.Champions:
+                    case CollisionObjectTypes.Champion:
                         collisions.AddRange(
                             from hero in GameObjects.AllyHeroes.Where(i => i.IsValidTarget(1200, false) && !i.IsMe)
                             let pred =
@@ -179,14 +179,10 @@
             return collisions.Count > 0 ? collisions.OrderBy(i => i.Distance).ToList()[0].Position : new Vector2();
         }
 
-        public static void Init()
+        internal static void Init()
         {
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
         }
-
-        #endregion
-
-        #region Methods
 
         private static FastPredResult FastPrediction(Vector2 from, Obj_AI_Base unit, int delay, int speed)
         {

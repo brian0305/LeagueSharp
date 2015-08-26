@@ -251,7 +251,7 @@
 
         #region Public Properties
 
-        public bool Evade
+        public bool Enabled
         {
             get
             {
@@ -264,8 +264,8 @@
                     return this.cachedValue;
                 }
                 if (
-                    !Program.MainMenu["Evade"][this.SpellData.ChampionName.ToLower()][this.SpellData.SpellName][
-                        "IsDangerous"].GetValue<MenuBool>().Value
+                    !Program.MainMenu["Evade"][this.SpellData.ChampionName.ToLowerInvariant()][this.SpellData.SpellName]
+                         ["IsDangerous"].GetValue<MenuBool>().Value
                     && Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active)
                 {
                     this.cachedValue = false;
@@ -273,8 +273,8 @@
                     return this.cachedValue;
                 }
                 this.cachedValue =
-                    Program.MainMenu["Evade"][this.SpellData.ChampionName.ToLower()][this.SpellData.SpellName]["Enabled"
-                        ].GetValue<MenuBool>().Value;
+                    Program.MainMenu["Evade"][this.SpellData.ChampionName.ToLowerInvariant()][this.SpellData.SpellName][
+                        "Enabled"].GetValue<MenuBool>().Value;
                 this.cachedValueTick = Variables.TickCount;
                 return this.cachedValue;
             }
@@ -392,7 +392,7 @@
                 || this.SpellData.Type == SkillShotType.SkillshotMissileCone
                 || this.SpellData.Type == SkillShotType.SkillshotArc)
             {
-                if (this.IsSafePoint(ObjectManager.Player.ServerPosition.ToVector2()))
+                if (this.IsSafePoint(Evade.PlayerPosition))
                 {
                     if (allIntersections.Count == 0)
                     {
@@ -448,7 +448,7 @@
             {
                 return new SafePathResult(false, new FoundIntersection());
             }
-            if (this.IsSafePoint(ObjectManager.Player.ServerPosition.ToVector2()) && this.SpellData.DontCross)
+            if (this.IsSafePoint(Evade.PlayerPosition) && this.SpellData.DontCross)
             {
                 return new SafePathResult(false, allIntersections[0]);
             }
@@ -471,15 +471,14 @@
         public bool IsSafeToBlink(Vector2 point, int timeOffset, int delay = 0)
         {
             timeOffset /= 2;
-            if (this.IsSafePoint(ObjectManager.Player.ServerPosition.ToVector2()))
+            if (this.IsSafePoint(Evade.PlayerPosition))
             {
                 return true;
             }
             if (this.SpellData.Type == SkillShotType.SkillshotMissileLine)
             {
                 var missilePositionAfterBlink = this.GetMissilePosition(delay + timeOffset);
-                var myPositionProjection = ObjectManager.Player.ServerPosition.ToVector2()
-                    .ProjectOn(this.Start, this.End);
+                var myPositionProjection = Evade.PlayerPosition.ProjectOn(this.Start, this.End);
                 return missilePositionAfterBlink.Distance(this.End)
                        >= myPositionProjection.SegmentPoint.Distance(this.End);
             }

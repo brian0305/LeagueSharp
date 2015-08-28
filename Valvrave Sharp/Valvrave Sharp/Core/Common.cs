@@ -14,11 +14,6 @@ namespace Valvrave_Sharp.Core
     {
         #region Public Methods and Operators
 
-        public static bool CanUseSkill(OrbwalkerMode mode)
-        {
-            return Orbwalker.CanMove && (!Orbwalker.CanAttack || Orbwalker.GetTarget(mode) == null);
-        }
-
         public static CastStates Cast(Spell spell, Obj_AI_Base unit, bool areaOfEffect = false)
         {
             if (!unit.IsValid())

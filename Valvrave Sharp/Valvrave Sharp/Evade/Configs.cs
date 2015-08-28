@@ -6,6 +6,7 @@ namespace Valvrave_Sharp.Evade
 
     using LeagueSharp;
     using LeagueSharp.SDK.Core;
+    using LeagueSharp.SDK.Core.Enumerations;
 
     using Valvrave_Sharp.Core;
 
@@ -63,7 +64,7 @@ namespace Valvrave_Sharp.Evade
                             {
                                 Config.Bool(sub, "WardJump", "Ward Jump");
                             }
-                            Config.Bool(sub, "Enabled", "Enabled", false);
+                            Config.Bool(sub, "Enabled", "Enabled");
                             evadeSpells.Add(sub);
                         }
                     }
@@ -96,6 +97,8 @@ namespace Valvrave_Sharp.Evade
                         ((Menu)evadeMenu[spell.ChampionName.ToLowerInvariant()]).Add(sub);
                     }
                 }
+                Config.Bool(evadeMenu, "DrawStatus", "Draw Evade Status");
+                Config.KeyBind(evadeMenu, "Enabled", "Enabled", Keys.K, KeyBindType.Toggle);
                 Config.KeyBind(evadeMenu, "OnlyDangerous", "Dodge Only Dangerous", Keys.Space);
             }
             Program.MainMenu.Add(evadeMenu);

@@ -12,6 +12,8 @@
 
     using SharpDX;
 
+    using Color = System.Drawing.Color;
+
     internal class Evade
     {
         #region Static Fields
@@ -39,6 +41,7 @@
             Configs.CreateMenu();
             Collisions.Init();
             Game.OnUpdate += OnUpdate;
+            Drawing.OnDraw += OnDraw;
             SkillshotDetector.OnDetectSkillshot += OnDetectSkillshot;
             SkillshotDetector.OnDeleteMissile += OnDeleteMissile;
         }
@@ -303,6 +306,30 @@
                 return;
             }
             DetectedSkillshots.Add(skillshot);
+        }
+
+        private static void OnDraw(EventArgs args)
+        {
+            if (ObjectManager.Player.IsDead || !Program.MainMenu["Evade"]["DrawStatus"].GetValue<MenuBool>().Value)
+            {
+                return;
+            }
+            var active = Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active;
+            var text = string.Format(
+                "Evade Skillshot: {0}",
+                active
+                    ? (Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active ? "Dangerous" : "On")
+                    : "Off");
+            var pos = Drawing.WorldToScreen(ObjectManager.Player.Position);
+            Drawing.DrawText(
+                pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
+                pos.Y + 40,
+                active
+                    ? (Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active
+                           ? Color.Yellow
+                           : Color.White)
+                    : Color.Gray,
+                text);
         }
 
         private static void OnUpdate(EventArgs args)

@@ -2,7 +2,10 @@
 {
     using System;
     using System.Linq;
+    using System.Net;
+    using System.Reflection;
     using System.Reflection.Emit;
+    using System.Text.RegularExpressions;
 
     using LeagueSharp;
     using LeagueSharp.SDK.Core;
@@ -19,19 +22,19 @@
     {
         #region Static Fields
 
-        public static Items.Item Bilgewater, BotRuinedKing, Youmuu, Tiamat, Hydra, Titanic;
-
-        public static SpellSlot Flash, Ignite, Smite;
-
         public static Menu MainMenu;
 
-        public static Spell Q, Q2, W, W2, E, E2, R, R2;
+        internal static Items.Item Bilgewater, BotRuinedKing, Youmuu, Tiamat, Hydra, Titanic;
+
+        internal static SpellSlot Flash, Ignite, Smite;
+
+        internal static Spell Q, Q2, W, W2, E, E2, R, R2;
 
         #endregion
 
-        #region Public Properties
+        #region Properties
 
-        public static Obj_AI_Hero Player { get; set; }
+        internal static Obj_AI_Hero Player { get; private set; }
 
         #endregion
 
@@ -39,20 +42,12 @@
 
         private static void Main(string[] args)
         {
-            if (args == null)
-            {
-                return;
-            }
             Load.OnLoad += OnLoad;
         }
 
         private static void NewInstance(Type type)
         {
             var target = type.GetConstructor(Type.EmptyTypes);
-            if (target == null || target.DeclaringType == null)
-            {
-                return;
-            }
             var dynamic = new DynamicMethod(string.Empty, type, new Type[0], target.DeclaringType);
             var il = dynamic.GetILGenerator();
             il.DeclareLocal(target.DeclaringType);
@@ -65,11 +60,12 @@
 
         private static void OnLoad(object sender, EventArgs e)
         {
+            UpdateCheck();
             Player = ObjectManager.Player;
             var plugin = Type.GetType("Valvrave_Sharp.Plugin." + Player.ChampionName);
             if (plugin == null)
             {
-                Game.PrintChat(Player.ChampionName + ": Not Load !");
+                Game.PrintChat(string.Format("Valvrave Sharp => {0} Not Support!", Player.ChampionName));
                 return;
             }
             Bootstrap.Init(null);
@@ -98,8 +94,44 @@
                         }
                         Ignite = Player.GetSpellSlot("summonerdot");
                         Flash = Player.GetSpellSlot("summonerflash");
-                        Game.PrintChat(Player.ChampionName + ": Loaded !");
+                        Game.PrintChat(string.Format("Valvrave Sharp => {0} Loaded !", Player.ChampionName));
                     });
+        }
+
+        private static void UpdateCheck()
+        {
+            try
+            {
+                using (var web = new WebClient())
+                {
+                    var rawFile =
+                        web.DownloadString(
+                            "https://raw.githubusercontent.com/brian0305/LeagueSharp/master/Valvrave%20Sharp/Valvrave%20Sharp/Properties/AssemblyInfo.cs");
+                    var checkFile =
+                        new Regex(@"\[assembly\: AssemblyVersion\(""(\d{1,})\.(\d{1,})\.(\d{1,})\.(\d{1,})""\)\]").Match
+                            (rawFile);
+                    if (!checkFile.Success)
+                    {
+                        return;
+                    }
+                    var gitVersion =
+                        new Version(
+                            string.Format(
+                                "{0}.{1}.{2}.{3}",
+                                checkFile.Groups[1],
+                                checkFile.Groups[2],
+                                checkFile.Groups[3],
+                                checkFile.Groups[4]));
+                    if (gitVersion > Assembly.GetExecutingAssembly().GetName().Version)
+                    {
+                        Game.PrintChat(string.Format("Valvrave Sharp => Outdated! Newest Version: {0}", gitVersion));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
 
         #endregion

@@ -339,25 +339,16 @@
                     }
                     break;
                 case SkillshotType.SkillshotCircle:
-                    if (totalDelay < 1.1)
+                    if (totalDelay < 1.1
+                        && ((totalDelay < 0.7 && OnProcessSpellDetection.GetLastAutoAttackTime(input.Unit) < 0.1d)
+                            || Path.PathTracker.GetCurrentPath(input.Unit).Time < 0.1d))
                     {
-                        if (totalDelay < 0.7 && OnProcessSpellDetection.GetLastAutoAttackTime(input.Unit) < 0.1d)
-                        {
-                            result.Hitchance = HitChance.VeryHigh;
-                        }
-                        if (Path.PathTracker.GetCurrentPath(input.Unit).Time < 0.1d)
-                        {
-                            result.Hitchance = HitChance.VeryHigh;
-                        }
+                        result.Hitchance = HitChance.VeryHigh;
                     }
                     break;
             }
             if (input.Unit.HasBuffOfType(BuffType.Slow) || input.Unit.Distance(input.From) < 300
-                || lastWaypiont.Distance(input.From) < 250)
-            {
-                result.Hitchance = HitChance.VeryHigh;
-            }
-            if (input.Unit.Distance(lastWaypiont) > 800)
+                || lastWaypiont.Distance(input.From) < 250 || input.Unit.Distance(lastWaypiont) > 800)
             {
                 result.Hitchance = HitChance.VeryHigh;
             }
@@ -374,17 +365,10 @@
             {
                 result.Hitchance = HitChance.High;
             }
-            var backToFront = input.Unit.MoveSpeed * totalDelay;
-            if (input.Unit.Path.Count() > 0 && input.Unit.Distance(lastWaypiont) < backToFront)
-            {
-                result.Hitchance = HitChance.Medium;
-            }
-            if (totalDelay > 0.7
-                && (input.Unit.IsWindingUp || OnProcessSpellDetection.GetLastAutoAttackTime(input.Unit) < 0.1d))
-            {
-                result.Hitchance = HitChance.Medium;
-            }
-            if (input.Unit.Path.Count() > 1 && input.Type == SkillshotType.SkillshotLine)
+            if ((input.Unit.Path.Count() > 0 && input.Unit.Distance(lastWaypiont) < input.Unit.MoveSpeed * totalDelay)
+                || (totalDelay > 0.7
+                    && (input.Unit.IsWindingUp || OnProcessSpellDetection.GetLastAutoAttackTime(input.Unit) < 0.1d))
+                || (input.Unit.Path.Count() > 1 && input.Type == SkillshotType.SkillshotLine))
             {
                 result.Hitchance = HitChance.Medium;
             }

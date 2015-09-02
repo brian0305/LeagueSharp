@@ -47,17 +47,16 @@
 
         private static double GetAngle(Vector3 from, Obj_AI_Base target)
         {
-            var c = target.ServerPosition.ToVector2();
-            var a = target.GetWaypoints().Last();
-            if (c == a)
+            var posTarget = target.ServerPosition;
+            var lastWaypoint = target.GetWaypoints().Last();
+            if (posTarget.ToVector2() == lastWaypoint)
             {
                 return 60;
             }
-            var b = from.ToVector2();
-            var ab = Math.Pow(a.X - b.X, 2) + Math.Pow(a.Y - b.Y, 2);
-            var bc = Math.Pow(b.X - c.X, 2) + Math.Pow(b.Y - c.Y, 2);
-            var ac = Math.Pow(a.X - c.X, 2) + Math.Pow(a.Y - c.Y, 2);
-            return Math.Cos((ab + bc - ac) / (2 * Math.Sqrt(ab) * Math.Sqrt(bc))) * 180 / Math.PI;
+            var a = Math.Pow(lastWaypoint.X - posTarget.X, 2) + Math.Pow(lastWaypoint.Y - posTarget.Y, 2);
+            var b = Math.Pow(lastWaypoint.X - from.X, 2) + Math.Pow(lastWaypoint.Y - from.Y, 2);
+            var c = Math.Pow(from.X - posTarget.X, 2) + Math.Pow(from.Y - posTarget.Y, 2);
+            return Math.Cos((b + c - a) / (2 * Math.Sqrt(b) * Math.Sqrt(c))) * 180 / Math.PI;
         }
 
         private static PredictionOutput GetDashingPrediction(PredictionInput input)
@@ -324,8 +323,16 @@
                              + (Math.Abs(input.Speed - float.MaxValue) < float.Epsilon
                                     ? 0
                                     : input.Unit.Distance(input.From) / input.Speed);
-            var fixRange = (input.Unit.MoveSpeed * totalDelay) / 2;
-            var lastWaypiont = input.Unit.GetWaypoints().Last().ToVector3();
+            var fixRange = input.Unit.MoveSpeed * totalDelay / 2;
+            var lastWaypoint = input.Unit.GetWaypoints().Last().ToVector3();
+            var minPath = 800;
+            var moveAngle = 30 + input.Radius / 10;
+            if (Path.PathTracker.GetCurrentPath(input.Unit).Time < 0.1)
+            {
+                minPath = 600;
+                moveAngle += 5;
+                fixRange = input.Unit.MoveSpeed * totalDelay / 3;
+            }
             if (input.Type == SkillshotType.SkillshotCircle)
             {
                 fixRange -= input.Radius / 2;
@@ -335,20 +342,31 @@
                 case SkillshotType.SkillshotLine:
                     if (input.Unit.Path.Count() > 0)
                     {
-                        result.Hitchance = GetAngle(input.From, input.Unit) < 36 ? HitChance.VeryHigh : HitChance.High;
+                        result.Hitchance = GetAngle(input.From, input.Unit) < moveAngle
+                                               ? HitChance.VeryHigh
+                                               : HitChance.High;
                     }
                     break;
                 case SkillshotType.SkillshotCircle:
-                    if (totalDelay < 1.1
-                        && ((totalDelay < 0.7 && OnProcessSpellDetection.GetLastAutoAttackTime(input.Unit) < 0.1d)
-                            || Path.PathTracker.GetCurrentPath(input.Unit).Time < 0.1d))
+                    if (totalDelay < 1.1)
                     {
-                        result.Hitchance = HitChance.VeryHigh;
+                        if (totalDelay < 0.7 && OnProcessSpellDetection.GetLastAutoAttackTime(input.Unit) < 0.1)
+                        {
+                            result.Hitchance = HitChance.VeryHigh;
+                        }
+                        if (Path.PathTracker.GetCurrentPath(input.Unit).Time < 0.1)
+                        {
+                            result.Hitchance = HitChance.VeryHigh;
+                        }
                     }
                     break;
             }
             if (input.Unit.HasBuffOfType(BuffType.Slow) || input.Unit.Distance(input.From) < 300
-                || lastWaypiont.Distance(input.From) < 250 || input.Unit.Distance(lastWaypiont) > 800)
+                || lastWaypoint.Distance(input.From) < 250)
+            {
+                result.Hitchance = HitChance.VeryHigh;
+            }
+            if (input.Unit.Distance(lastWaypoint) > minPath)
             {
                 result.Hitchance = HitChance.VeryHigh;
             }
@@ -360,19 +378,28 @@
                                        : HitChance.VeryHigh;
                 return;
             }
-            if (lastWaypiont.Distance(input.From) <= input.Unit.Distance(input.From)
+            if (lastWaypoint.Distance(input.From) <= input.Unit.Distance(input.From)
                 && input.Unit.Distance(input.From) > input.Range - fixRange)
             {
                 result.Hitchance = HitChance.High;
             }
-            if ((input.Unit.Path.Count() > 0 && input.Unit.Distance(lastWaypiont) < input.Unit.MoveSpeed * totalDelay)
-                || (totalDelay > 0.7
-                    && (input.Unit.IsWindingUp || OnProcessSpellDetection.GetLastAutoAttackTime(input.Unit) < 0.1d))
-                || (input.Unit.Path.Count() > 1 && input.Type == SkillshotType.SkillshotLine))
+            if (input.Unit.Path.Count() > 0 && input.Unit.Distance(lastWaypoint) < input.Unit.MoveSpeed * totalDelay)
             {
                 result.Hitchance = HitChance.Medium;
             }
-            if (input.Unit.Distance(input.From) < 300 || lastWaypiont.Distance(input.From) < 250)
+            if (totalDelay > 0.7 && input.Unit.IsWindingUp)
+            {
+                result.Hitchance = HitChance.Medium;
+            }
+            if (totalDelay > 1 && OnProcessSpellDetection.GetLastAutoAttackTime(input.Unit) < 0.1)
+            {
+                result.Hitchance = HitChance.Medium;
+            }
+            if (input.Unit.Path.Count() > 1 && input.Type == SkillshotType.SkillshotLine)
+            {
+                result.Hitchance = HitChance.Medium;
+            }
+            if (input.Unit.Distance(input.From) < 300 || lastWaypoint.Distance(input.From) < 250)
             {
                 result.Hitchance = HitChance.VeryHigh;
             }
@@ -796,7 +823,8 @@
 
             private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
             {
-                if (sender.IsValid && sender.Team != ObjectManager.Player.Team && args.SData.Name == "YasuoWMovingWall")
+                if (sender.IsValid() && sender.Team != ObjectManager.Player.Team
+                    && args.SData.Name == "YasuoWMovingWall")
                 {
                     wallCastT = Variables.TickCount;
                     yasuoWallCastedPos = sender.ServerPosition.ToVector2();

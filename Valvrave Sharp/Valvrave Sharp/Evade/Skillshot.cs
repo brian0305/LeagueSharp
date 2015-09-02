@@ -221,7 +221,7 @@
             switch (spellData.Type)
             {
                 case SkillShotType.SkillshotCircle:
-                    this.Circle = new Circle(this.CollisionEnd, spellData.Radius);
+                    this.Circle = new Circle(this.CollisionEnd, spellData.Radius, 22);
                     break;
                 case SkillShotType.SkillshotLine:
                 case SkillShotType.SkillshotMissileLine:
@@ -232,16 +232,18 @@
                         start,
                         this.CollisionEnd - start,
                         spellData.Radius * (float)Math.PI / 180,
-                        spellData.Range);
+                        spellData.Range,
+                        22);
                     break;
                 case SkillShotType.SkillshotRing:
-                    this.Ring = new Ring(this.CollisionEnd, spellData.Radius, spellData.RingRadius);
+                    this.Ring = new Ring(this.CollisionEnd, spellData.Radius, spellData.RingRadius, 22);
                     break;
                 case SkillShotType.SkillshotArc:
                     this.Arc = new Arc(
                         start,
                         end,
-                        Configs.SkillShotsExtraRadius + (int)ObjectManager.Player.BoundingRadius);
+                        Configs.SkillShotsExtraRadius + (int)ObjectManager.Player.BoundingRadius,
+                        22);
                     break;
             }
             this.UpdatePolygon();
@@ -265,8 +267,7 @@
                 }
                 if (
                     !Program.MainMenu["Evade"][this.SpellData.ChampionName.ToLowerInvariant()][this.SpellData.SpellName]
-                         ["IsDangerous"].GetValue<MenuBool>().Value
-                    && Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active)
+                         ["IsDangerous"] && Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active)
                 {
                     this.cachedValue = false;
                     this.cachedValueTick = Variables.TickCount;
@@ -274,7 +275,7 @@
                 }
                 this.cachedValue =
                     Program.MainMenu["Evade"][this.SpellData.ChampionName.ToLowerInvariant()][this.SpellData.SpellName][
-                        "Enabled"].GetValue<MenuBool>().Value;
+                        "Enabled"];
                 this.cachedValueTick = Variables.TickCount;
                 return this.cachedValue;
             }

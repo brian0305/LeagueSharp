@@ -300,7 +300,7 @@
             }
             if ((skillshot.SpellData.DisableFowDetection
                  || Program.MainMenu["Evade"][skillshot.SpellData.ChampionName.ToLowerInvariant()][
-                     skillshot.SpellData.SpellName]["DisableFoW"].GetValue<MenuBool>().Value)
+                     skillshot.SpellData.SpellName]["DisableFoW"])
                 && skillshot.DetectionType == DetectionType.RecvPacket)
             {
                 return;
@@ -310,7 +310,7 @@
 
         private static void OnDraw(EventArgs args)
         {
-            if (ObjectManager.Player.IsDead || !Program.MainMenu["Evade"]["DrawStatus"].GetValue<MenuBool>().Value)
+            if (ObjectManager.Player.IsDead || !Program.MainMenu["Evade"]["DrawStatus"])
             {
                 return;
             }

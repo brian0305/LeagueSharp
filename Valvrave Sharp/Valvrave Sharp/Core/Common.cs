@@ -16,7 +16,7 @@ namespace Valvrave_Sharp.Core
 
         public static CastStates Cast(Spell spell, Obj_AI_Base unit, bool areaOfEffect = false)
         {
-            if (!unit.IsValid())
+            if (!unit.IsValidTarget())
             {
                 return CastStates.InvalidTarget;
             }

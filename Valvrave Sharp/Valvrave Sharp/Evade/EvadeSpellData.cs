@@ -2,7 +2,6 @@
 {
     using LeagueSharp;
     using LeagueSharp.SDK.Core.Extensions;
-    using LeagueSharp.SDK.Core.UI.IMenu.Values;
 
     public enum CastTypes
     {
@@ -80,7 +79,7 @@
             get
             {
                 return Program.MainMenu["Evade"] != null
-                           ? Program.MainMenu["Evade"]["Spells"][this.Name]["DangerLevel"].GetValue<MenuSlider>().Value
+                           ? Program.MainMenu["Evade"]["Spells"][this.Name]["DangerLevel"]
                            : this.dangerLevel;
             }
             set
@@ -93,7 +92,7 @@
         {
             get
             {
-                return Program.MainMenu["Evade"]["Spells"][this.Name]["Enabled"].GetValue<MenuBool>().Value;
+                return Program.MainMenu["Evade"]["Spells"][this.Name]["Enabled"];
             }
         }
 

@@ -209,7 +209,7 @@
 
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            if (!sender.IsValid || sender.IsEnemy || args.SData.Name != "YasuoWMovingWall")
+            if (!sender.IsValid() || sender.IsEnemy || args.SData.Name != "YasuoWMovingWall")
             {
                 return;
             }

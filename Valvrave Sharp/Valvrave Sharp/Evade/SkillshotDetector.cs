@@ -6,7 +6,6 @@
 
     using LeagueSharp;
     using LeagueSharp.SDK.Core;
-    using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.Extensions.SharpDX;
     using LeagueSharp.SDK.Core.Utils;
 
@@ -52,7 +51,7 @@
                 return;
             }
             var caster = missile.SpellCaster as Obj_AI_Hero;
-            if (caster == null || !caster.IsValid() || caster.IsAlly)
+            if (caster == null || !caster.IsValid || caster.IsAlly)
             {
                 return;
             }
@@ -92,7 +91,7 @@
                 return;
             }
             var caster = missile.SpellCaster as Obj_AI_Hero;
-            if (caster == null || !caster.IsValid() || caster.IsAlly)
+            if (caster == null || !caster.IsValid || caster.IsAlly)
             {
                 return;
             }
@@ -120,7 +119,7 @@
 
         private static void ObjOnDelete(GameObject sender, EventArgs args)
         {
-            if (!sender.IsValid || sender.IsAlly)
+            if (sender == null || !sender.IsValid || sender.IsAlly)
             {
                 return;
             }
@@ -138,7 +137,7 @@
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
             var caster = sender as Obj_AI_Hero;
-            if (caster == null || !caster.IsValid() || caster.IsAlly)
+            if (caster == null || !caster.IsValid || caster.IsAlly)
             {
                 return;
             }

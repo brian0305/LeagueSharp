@@ -1,22 +1,20 @@
 ﻿namespace Valvrave_Sharp
 {
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Net;
     using System.Reflection;
-    using System.Reflection.Emit;
     using System.Text.RegularExpressions;
 
     using LeagueSharp;
-    using LeagueSharp.SDK.Core;
     using LeagueSharp.SDK.Core.Events;
     using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.UI.IMenu;
-    using LeagueSharp.SDK.Core.UI.IMenu.Customizer;
-    using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers;
 
     using Valvrave_Sharp.Core;
+    using Valvrave_Sharp.Plugin;
 
     internal class Program
     {
@@ -30,11 +28,23 @@
 
         internal static Spell Q, Q2, W, W2, E, E2, R, R2;
 
+        private static readonly Dictionary<string, Func<object>> Plugins = new Dictionary<string, Func<object>>
+                                                                               {
+                                                                                   { "Yasuo", () => new Yasuo() },
+                                                                                   { "Zed", () => new Zed() }
+                                                                               };
+
         #endregion
 
         #region Properties
 
-        internal static Obj_AI_Hero Player { get; private set; }
+        internal static Obj_AI_Hero Player
+        {
+            get
+            {
+                return ObjectManager.Player;
+            }
+        }
 
         #endregion
 
@@ -42,60 +52,41 @@
 
         private static void Main(string[] args)
         {
+            if (args == null)
+            {
+                return;
+            }
             Load.OnLoad += OnLoad;
-        }
-
-        private static void NewInstance(Type type)
-        {
-            var target = type.GetConstructor(Type.EmptyTypes);
-            var dynamic = new DynamicMethod(string.Empty, type, new Type[0], target.DeclaringType);
-            var il = dynamic.GetILGenerator();
-            il.DeclareLocal(target.DeclaringType);
-            il.Emit(OpCodes.Newobj, target);
-            il.Emit(OpCodes.Stloc_0);
-            il.Emit(OpCodes.Ldloc_0);
-            il.Emit(OpCodes.Ret);
-            ((Func<object>)dynamic.CreateDelegate(typeof(Func<object>)))();
         }
 
         private static void OnLoad(object sender, EventArgs e)
         {
             UpdateCheck();
-            Player = ObjectManager.Player;
-            var plugin = Type.GetType("Valvrave_Sharp.Plugin." + Player.ChampionName);
-            if (plugin == null)
+            if (!Plugins.ContainsKey(Player.ChampionName))
             {
                 Game.PrintChat(string.Format("Valvrave Sharp => {0} Not Support!", Player.ChampionName));
                 return;
             }
-            Bootstrap.Init(null);
-            DelayAction.Add(
-                1000,
-                () =>
-                    {
-                        MenuCustomizer.Instance.Parent["orbwalker"]["lasthitKey"].DisplayName = "Last Hit";
-                        MainMenu = new Menu("ValvraveSharp", "Valvrave Sharp", true, Player.ChampionName).Attach();
-                        Config.Separator(MainMenu, "Author", "Author: Brian");
-                        Config.Separator(MainMenu, "Paypal", "Paypal: dcbrian01@gmail.com");
-                        NewInstance(plugin);
-                        Bilgewater = new Items.Item(ItemId.Bilgewater_Cutlass, 550);
-                        BotRuinedKing = new Items.Item(ItemId.Blade_of_the_Ruined_King, 550);
-                        Youmuu = new Items.Item(ItemId.Youmuus_Ghostblade, 0);
-                        Tiamat = new Items.Item(ItemId.Tiamat_Melee_Only, 400);
-                        Hydra = new Items.Item(ItemId.Ravenous_Hydra_Melee_Only, 400);
-                        Titanic = new Items.Item(3053, 400);
-                        foreach (var spell in
-                            Player.Spellbook.Spells.Where(
-                                i =>
-                                i.Name.ToLower().Contains("smite")
-                                && (i.Slot == SpellSlot.Summoner1 || i.Slot == SpellSlot.Summoner2)))
-                        {
-                            Smite = spell.Slot;
-                        }
-                        Ignite = Player.GetSpellSlot("summonerdot");
-                        Flash = Player.GetSpellSlot("summonerflash");
-                        Game.PrintChat(string.Format("Valvrave Sharp => {0} Loaded !", Player.ChampionName));
-                    });
+            Bilgewater = new Items.Item(ItemId.Bilgewater_Cutlass, 550);
+            BotRuinedKing = new Items.Item(ItemId.Blade_of_the_Ruined_King, 550);
+            Youmuu = new Items.Item(ItemId.Youmuus_Ghostblade, 0);
+            Tiamat = new Items.Item(ItemId.Tiamat_Melee_Only, 400);
+            Hydra = new Items.Item(ItemId.Ravenous_Hydra_Melee_Only, 400);
+            Titanic = new Items.Item(3053, 400);
+            foreach (var spell in
+                Player.Spellbook.Spells.Where(
+                    i =>
+                    i.Name.ToLower().Contains("smite")
+                    && (i.Slot == SpellSlot.Summoner1 || i.Slot == SpellSlot.Summoner2)))
+            {
+                Smite = spell.Slot;
+            }
+            Ignite = Player.GetSpellSlot("summonerdot");
+            Flash = Player.GetSpellSlot("summonerflash");
+            MainMenu = new Menu("ValvraveSharp", "Valvrave Sharp", true, Player.ChampionName).Attach();
+            Config.Separator(MainMenu, "Author", "Author: Brian");
+            Config.Separator(MainMenu, "Paypal", "Paypal: dcbrian01@gmail.com");
+            Plugins[Player.ChampionName].Invoke();
         }
 
         private static void UpdateCheck()

@@ -4,7 +4,6 @@
     using System.Linq;
 
     using LeagueSharp;
-    using LeagueSharp.SDK.Clipper;
     using LeagueSharp.SDK.Core;
     using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.Extensions.SharpDX;
@@ -42,7 +41,7 @@
                 }
                 polygonList.Add(skillshot.EvadePolygon);
             }
-            var dangerPolygons = ClipPolygons(polygonList).ToPolygons();
+            var dangerPolygons = MathUtils.ClipPolygons(polygonList).ToPolygons();
             var myPosition = Evade.PlayerPosition;
             foreach (var poly in dangerPolygons)
             {
@@ -218,23 +217,6 @@
         #endregion
 
         #region Methods
-
-        private static List<List<IntPoint>> ClipPolygons(IReadOnlyCollection<Polygon> polygons)
-        {
-            var subj = new List<List<IntPoint>>(polygons.Count);
-            var clip = new List<List<IntPoint>>(polygons.Count);
-            foreach (var polygon in polygons)
-            {
-                subj.Add(polygon.ToClipperPath());
-                clip.Add(polygon.ToClipperPath());
-            }
-            var solution = new List<List<IntPoint>>();
-            var c = new Clipper();
-            c.AddPaths(subj, PolyType.PtSubject, true);
-            c.AddPaths(clip, PolyType.PtClip, true);
-            c.Execute(ClipType.CtUnion, solution, PolyFillType.PftPositive, PolyFillType.PftEvenOdd);
-            return solution;
-        }
 
         private static bool IsSafeToBlink(Vector2 point, int timeOffset, int delay)
         {

@@ -199,8 +199,8 @@
             {
                 return new SafePathResult(true, intersection);
             }
-            var intersetion = intersections.MinOrDefault(o => o.Distance);
-            return new SafePathResult(false, intersetion.Valid ? intersetion : intersection);
+            var inter = intersections.MinOrDefault(o => o.Distance);
+            return new SafePathResult(false, inter.Valid ? inter : intersection);
         }
 
         public static IsSafeResult IsSafePoint(Vector2 point)

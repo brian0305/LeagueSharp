@@ -1,22 +1,34 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using LeagueSharp;
-using LeagueSharp.Common;
-using LeagueSharp.Common.Data;
-using SharpDX;
-
-namespace BrianSharp.Common
+﻿namespace BrianSharp.Common
 {
+    using System.Collections.Generic;
+    using System.Linq;
+
+    using LeagueSharp;
+    using LeagueSharp.Common;
+    using LeagueSharp.Common.Data;
+
+    using SharpDX;
+
     internal class Helper : Program
     {
+        #region Enums
+
         public enum SmiteType
         {
             Grey,
+
             Purple,
+
             Red,
+
             Blue,
+
             None
         }
+
+        #endregion
+
+        #region Public Properties
 
         public static SmiteType CurrentSmiteType
         {
@@ -38,9 +50,16 @@ namespace BrianSharp.Common
             }
         }
 
-        public static bool PacketCast
+        public static float GetWardRange
         {
-            get { return GetValue<bool>("Misc", "UsePacket"); }
+            get
+            {
+                return 600
+                       * (Player.HasMastery(MasteryData.Scout) && GetWardSlot != null
+                          && new[] { 3340, 3361, 3362 }.Contains((int)GetWardSlot.Id)
+                              ? 1.15f
+                              : 1);
+            }
         }
 
         public static InventorySlot GetWardSlot
@@ -53,7 +72,7 @@ namespace BrianSharp.Common
                     var wardPink = new[] { 3362, 2043 };
                     foreach (var item in
                         wardPink.Where(Items.CanUseItem)
-                            .Select(i => Player.InventoryItems.FirstOrDefault(a => a.Id == (ItemId) i))
+                            .Select(i => Player.InventoryItems.FirstOrDefault(a => a.Id == (ItemId)i))
                             .Where(i => i != null))
                     {
                         ward = item;
@@ -63,86 +82,76 @@ namespace BrianSharp.Common
             }
         }
 
-        public static float GetWardRange
+        public static bool PacketCast
         {
             get
             {
-                return 600 *
-                       (Player.HasMastery(MasteryData.Scout) && GetWardSlot != null &&
-                        new[] { 3340, 3361, 3362 }.Contains((int) GetWardSlot.Id)
-                           ? 1.15f
-                           : 1);
+                return GetValue<bool>("Misc", "UsePacket");
             }
         }
 
-        public static List<Obj_AI_Minion> GetMinions(Vector3 from,
-            float range,
-            MinionTypes type = MinionTypes.All,
-            MinionTeam team = MinionTeam.Enemy,
-            MinionOrderTypes order = MinionOrderTypes.Health)
+        #endregion
+
+        #region Public Methods and Operators
+
+        public static MenuItem AddBool(Menu subMenu, string item, string display, bool state = true)
         {
-            var result = from minion in ObjectManager.Get<Obj_AI_Minion>()
-                where minion.IsValidTarget(range, false, @from)
-                let minionTeam = minion.Team
-                where
-                    (team == MinionTeam.Neutral && minionTeam == GameObjectTeam.Neutral) ||
-                    (team == MinionTeam.Ally &&
-                     minionTeam == (Player.Team == GameObjectTeam.Chaos ? GameObjectTeam.Chaos : GameObjectTeam.Order)) ||
-                    (team == MinionTeam.Enemy &&
-                     minionTeam == (Player.Team == GameObjectTeam.Chaos ? GameObjectTeam.Order : GameObjectTeam.Chaos)) ||
-                    (team == MinionTeam.NotAlly && minionTeam != Player.Team) ||
-                    (team == MinionTeam.NotAllyForEnemy &&
-                     (minionTeam == Player.Team || minionTeam == GameObjectTeam.Neutral)) || team == MinionTeam.All
-                where
-                    (minion.IsMelee() && type == MinionTypes.Melee) || (!minion.IsMelee() && type == MinionTypes.Ranged) ||
-                    type == MinionTypes.All
-                where MinionManager.IsMinion(minion) || minionTeam == GameObjectTeam.Neutral || IsPet(minion)
-                select minion;
-            switch (order)
-            {
-                case MinionOrderTypes.Health:
-                    result = result.OrderBy(i => i.Health);
-                    break;
-                case MinionOrderTypes.MaxHealth:
-                    result = result.OrderBy(i => i.MaxHealth).Reverse();
-                    break;
-            }
-            return result.ToList();
+            return subMenu.AddItem(new MenuItem("_" + subMenu.Name + "_" + item, display, true).SetValue(state));
         }
 
-        public static List<Obj_AI_Minion> GetMinions(float range,
-            MinionTypes type = MinionTypes.All,
-            MinionTeam team = MinionTeam.Enemy,
-            MinionOrderTypes order = MinionOrderTypes.Health)
+        public static MenuItem AddKeybind(
+            Menu subMenu,
+            string item,
+            string display,
+            string key,
+            KeyBindType type = KeyBindType.Press,
+            bool state = false)
         {
-            return GetMinions(Player.ServerPosition, range, type, team, order);
+            return
+                subMenu.AddItem(
+                    new MenuItem("_" + subMenu.Name + "_" + item, display, true).SetValue(
+                        new KeyBind(key.ToCharArray()[0], type, state)));
         }
 
-        public static bool IsPet(Obj_AI_Minion obj)
+        public static MenuItem AddList(Menu subMenu, string item, string display, string[] text, int defaultIndex = 0)
         {
-            var pets = new[]
-            {
-                "annietibbers", "elisespiderling", "heimertyellow", "heimertblue", "leblanc", "malzaharvoidling",
-                "shacobox", "shaco", "yorickspectralghoul", "yorickdecayedghoul", "yorickravenousghoul",
-                "zyrathornplant", "zyragraspingplant"
-            };
-            return pets.Contains(obj.CharData.BaseSkinName.ToLower());
+            return
+                subMenu.AddItem(
+                    new MenuItem("_" + subMenu.Name + "_" + item, display, true).SetValue(
+                        new StringList(text, defaultIndex)));
         }
 
-        public static bool IsWard(Obj_AI_Minion obj)
+        public static void AddNotif(string msg, int dur)
         {
-            return obj.Team != GameObjectTeam.Neutral && !MinionManager.IsMinion(obj) && !IsPet(obj) &&
-                   MinionManager.IsMinion(obj, true);
+            Notifications.AddNotification(new Notification(msg, dur, true));
         }
 
-        public static bool IsSmiteable(Obj_AI_Minion obj)
+        public static MenuItem AddSlider(Menu subMenu, string item, string display, int cur, int min = 1, int max = 100)
         {
-            return MinionManager.IsMinion(obj) || obj.Team == GameObjectTeam.Neutral || IsPet(obj);
+            return
+                subMenu.AddItem(
+                    new MenuItem("_" + subMenu.Name + "_" + item, display, true).SetValue(new Slider(cur, min, max)));
         }
 
-        public static void CustomOrbwalk(Obj_AI_Base target)
+        public static void AddSmiteMob(Menu menu)
         {
-            Orbwalker.Orbwalk(Orbwalker.InAutoAttackRange(target) ? target : null);
+            var smiteMob = new Menu("Smite Mob If Killable", "SmiteMob");
+            AddBool(smiteMob, "Smite", "Use Smite");
+            AddBool(smiteMob, "Auto", "-> Auto Smite");
+            AddBool(smiteMob, "Baron", "-> Baron Nashor");
+            AddBool(smiteMob, "Dragon", "-> Dragon");
+            AddBool(smiteMob, "Red", "-> Red Brambleback");
+            AddBool(smiteMob, "Blue", "-> Blue Sentinel");
+            AddBool(smiteMob, "Krug", "-> Ancient Krug");
+            AddBool(smiteMob, "Gromp", "-> Gromp");
+            AddBool(smiteMob, "Raptor", "-> Crimson Raptor");
+            AddBool(smiteMob, "Wolf", "-> Greater Murk Wolf");
+            menu.AddSubMenu(smiteMob);
+        }
+
+        public static MenuItem AddText(Menu subMenu, string item, string display)
+        {
+            return subMenu.AddItem(new MenuItem("_" + subMenu.Name + "_" + item, display, true));
         }
 
         public static bool CanKill(Obj_AI_Base target, double subDmg)
@@ -155,18 +164,103 @@ namespace BrianSharp.Common
             return Flash.IsReady() && pos.IsValid() && Player.Spellbook.CastSpell(Flash, pos);
         }
 
-        public static bool CastSmite(Obj_AI_Base target, bool killable = true)
-        {
-            return Smite.IsReady() && target.IsValidTarget(760) &&
-                   (!killable || target.Health < Player.GetSummonerSpellDamage(target, Damage.SummonerSpell.Smite)) &&
-                   Player.Spellbook.CastSpell(Smite, target);
-        }
-
         public static bool CastIgnite(Obj_AI_Hero target)
         {
-            return Ignite.IsReady() && target.IsValidTarget(600) &&
-                   target.Health + 5 < Player.GetSummonerSpellDamage(target, Damage.SummonerSpell.Ignite) &&
-                   Player.Spellbook.CastSpell(Ignite, target);
+            return Ignite.IsReady() && target.IsValidTarget(600)
+                   && target.Health + 5 < Player.GetSummonerSpellDamage(target, Damage.SummonerSpell.Ignite)
+                   && Player.Spellbook.CastSpell(Ignite, target);
+        }
+
+        public static bool CastSmite(Obj_AI_Base target, bool killable = true)
+        {
+            return Smite.IsReady() && target.IsValidTarget(760)
+                   && (!killable || target.Health < Player.GetSummonerSpellDamage(target, Damage.SummonerSpell.Smite))
+                   && Player.Spellbook.CastSpell(Smite, target);
+        }
+
+        public static void CustomOrbwalk(Obj_AI_Base target)
+        {
+            Orbwalker.Orbwalk(Orbwalker.InAutoAttackRange(target) ? target : null);
+        }
+
+        public static MenuItem GetItem(string subMenu, string item)
+        {
+            return MainMenu.Item("_" + subMenu + "_" + item, true);
+        }
+
+        public static List<Obj_AI_Minion> GetMinions(
+            Vector3 from,
+            float range,
+            MinionTypes type = MinionTypes.All,
+            MinionTeam team = MinionTeam.Enemy,
+            MinionOrderTypes order = MinionOrderTypes.Health)
+        {
+            var result = from minion in ObjectManager.Get<Obj_AI_Minion>()
+                         where minion.IsValidTarget(range, false, @from)
+                         let minionTeam = minion.Team
+                         where
+                             (team == MinionTeam.Neutral && minionTeam == GameObjectTeam.Neutral)
+                             || (team == MinionTeam.Ally
+                                 && minionTeam
+                                 == (Player.Team == GameObjectTeam.Chaos ? GameObjectTeam.Chaos : GameObjectTeam.Order))
+                             || (team == MinionTeam.Enemy
+                                 && minionTeam
+                                 == (Player.Team == GameObjectTeam.Chaos ? GameObjectTeam.Order : GameObjectTeam.Chaos))
+                             || (team == MinionTeam.NotAlly && minionTeam != Player.Team)
+                             || (team == MinionTeam.NotAllyForEnemy
+                                 && (minionTeam == Player.Team || minionTeam == GameObjectTeam.Neutral))
+                             || team == MinionTeam.All
+                         where
+                             (minion.IsMelee() && type == MinionTypes.Melee)
+                             || (!minion.IsMelee() && type == MinionTypes.Ranged) || type == MinionTypes.All
+                         where MinionManager.IsMinion(minion) || minionTeam == GameObjectTeam.Neutral || IsPet(minion)
+                         select minion;
+            switch (order)
+            {
+                case MinionOrderTypes.Health:
+                    result = result.OrderBy(i => i.Health);
+                    break;
+                case MinionOrderTypes.MaxHealth:
+                    result = result.OrderBy(i => i.MaxHealth).Reverse();
+                    break;
+            }
+            return result.ToList();
+        }
+
+        public static List<Obj_AI_Minion> GetMinions(
+            float range,
+            MinionTypes type = MinionTypes.All,
+            MinionTeam team = MinionTeam.Enemy,
+            MinionOrderTypes order = MinionOrderTypes.Health)
+        {
+            return GetMinions(Player.ServerPosition, range, type, team, order);
+        }
+
+        public static T GetValue<T>(string subMenu, string item)
+        {
+            return MainMenu.Item("_" + subMenu + "_" + item, true).GetValue<T>();
+        }
+
+        public static bool IsPet(Obj_AI_Minion obj)
+        {
+            var pets = new[]
+                           {
+                               "annietibbers", "elisespiderling", "heimertyellow", "heimertblue", "leblanc",
+                               "malzaharvoidling", "shacobox", "shaco", "yorickspectralghoul", "yorickdecayedghoul",
+                               "yorickravenousghoul", "zyrathornplant", "zyragraspingplant"
+                           };
+            return pets.Contains(obj.CharData.BaseSkinName.ToLower());
+        }
+
+        public static bool IsSmiteable(Obj_AI_Minion obj)
+        {
+            return MinionManager.IsMinion(obj) || obj.Team == GameObjectTeam.Neutral || IsPet(obj);
+        }
+
+        public static bool IsWard(Obj_AI_Minion obj)
+        {
+            return obj.Team != GameObjectTeam.Neutral && !MinionManager.IsMinion(obj) && !IsPet(obj)
+                   && MinionManager.IsMinion(obj, true);
         }
 
         public static void SmiteMob()
@@ -184,6 +278,10 @@ namespace BrianSharp.Common
             }
             CastSmite(obj);
         }
+
+        #endregion
+
+        #region Methods
 
         private static bool CanSmiteMob(string name)
         {
@@ -220,77 +318,6 @@ namespace BrianSharp.Common
                 return true;
             }
             return GetValue<bool>("SmiteMob", "Wolf") && name.StartsWith("SRU_Murkwolf");
-        }
-
-        #region Menu
-
-        public static void AddSmiteMob(Menu menu)
-        {
-            var smiteMob = new Menu("Smite Mob If Killable", "SmiteMob");
-            AddBool(smiteMob, "Smite", "Use Smite");
-            AddBool(smiteMob, "Auto", "-> Auto Smite");
-            AddBool(smiteMob, "Baron", "-> Baron Nashor");
-            AddBool(smiteMob, "Dragon", "-> Dragon");
-            AddBool(smiteMob, "Red", "-> Red Brambleback");
-            AddBool(smiteMob, "Blue", "-> Blue Sentinel");
-            AddBool(smiteMob, "Krug", "-> Ancient Krug");
-            AddBool(smiteMob, "Gromp", "-> Gromp");
-            AddBool(smiteMob, "Raptor", "-> Crimson Raptor");
-            AddBool(smiteMob, "Wolf", "-> Greater Murk Wolf");
-            menu.AddSubMenu(smiteMob);
-        }
-
-        public static void AddNotif(string msg, int dur)
-        {
-            Notifications.AddNotification(new Notification(msg, dur, true));
-        }
-
-        public static MenuItem AddText(Menu subMenu, string item, string display)
-        {
-            return subMenu.AddItem(new MenuItem("_" + subMenu.Name + "_" + item, display, true));
-        }
-
-        public static MenuItem AddKeybind(Menu subMenu,
-            string item,
-            string display,
-            string key,
-            KeyBindType type = KeyBindType.Press,
-            bool state = false)
-        {
-            return
-                subMenu.AddItem(
-                    new MenuItem("_" + subMenu.Name + "_" + item, display, true).SetValue(
-                        new KeyBind(key.ToCharArray()[0], type, state)));
-        }
-
-        public static MenuItem AddBool(Menu subMenu, string item, string display, bool state = true)
-        {
-            return subMenu.AddItem(new MenuItem("_" + subMenu.Name + "_" + item, display, true).SetValue(state));
-        }
-
-        public static MenuItem AddSlider(Menu subMenu, string item, string display, int cur, int min = 1, int max = 100)
-        {
-            return
-                subMenu.AddItem(
-                    new MenuItem("_" + subMenu.Name + "_" + item, display, true).SetValue(new Slider(cur, min, max)));
-        }
-
-        public static MenuItem AddList(Menu subMenu, string item, string display, string[] text, int defaultIndex = 0)
-        {
-            return
-                subMenu.AddItem(
-                    new MenuItem("_" + subMenu.Name + "_" + item, display, true).SetValue(
-                        new StringList(text, defaultIndex)));
-        }
-
-        public static T GetValue<T>(string subMenu, string item)
-        {
-            return MainMenu.Item("_" + subMenu + "_" + item, true).GetValue<T>();
-        }
-
-        public static MenuItem GetItem(string subMenu, string item)
-        {
-            return MainMenu.Item("_" + subMenu + "_" + item, true);
         }
 
         #endregion

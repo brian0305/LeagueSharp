@@ -453,13 +453,13 @@
                 {
                     lastAttack = Utils.GameTimeTickCount + Game.Ping + 100 - (int)(Player.AttackCastDelay * 1000);
                     missileLaunched = false;
-                    if (Player.Distance(target, true) > Math.Pow(GetAutoAttackRange(target) - 65, 2))
+                    if (Player.Distance(target, true) > Math.Pow(GetAutoAttackRange(target) - 65, 2) && !Player.IsMelee)
                     {
                         lastAttack = Utils.GameTimeTickCount + Game.Ping + 400 - (int)(Player.AttackCastDelay * 1000);
                     }
                     if (!Player.IssueOrder(GameObjectOrder.AttackUnit, target))
                     {
-                        ResetAutoAttack();
+                        //ResetAutoAttack();
                     }
                     lastTarget = target;
                     return;

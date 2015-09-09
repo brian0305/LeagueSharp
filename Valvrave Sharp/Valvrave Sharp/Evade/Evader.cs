@@ -56,35 +56,32 @@
                         continue;
                     }
                     var s = distanceToEvadePoint < 200 && sideEnd.Distance(sideStart) > 90
-                                ? Configs.DiagonalEvadePointsCount
+                                ? Config.DiagonalEvadePointsCount
                                 : 0;
                     for (var j = -s; j <= s; j++)
                     {
                         var candidate = originalCandidate
-                                        + j * Configs.DiagonalEvadePointsStep * (sideEnd - sideStart).Normalized();
+                                        + j * Config.DiagonalEvadePointsStep * (sideEnd - sideStart).Normalized();
                         var pathToPoint =
                             ObjectManager.Player.GetPath(candidate.ToVector3()).Select(a => a.ToVector2()).ToList();
                         if (!isBlink)
                         {
-                            if (IsSafePath(pathToPoint, Configs.EvadingFirstTimeOffset, speed, delay).IsSafe)
+                            if (IsSafePath(pathToPoint, Config.EvadingFirstTimeOffset, speed, delay).IsSafe)
                             {
                                 goodCandidates.Add(candidate);
                             }
-                            if (IsSafePath(pathToPoint, Configs.EvadingSecondTimeOffset, speed, delay).IsSafe && j == 0)
+                            if (IsSafePath(pathToPoint, Config.EvadingSecondTimeOffset, speed, delay).IsSafe && j == 0)
                             {
                                 badCandidates.Add(candidate);
                             }
                         }
                         else
                         {
-                            if (IsSafeToBlink(pathToPoint[pathToPoint.Count - 1], Configs.EvadingFirstTimeOffset, delay))
+                            if (IsSafeToBlink(pathToPoint[pathToPoint.Count - 1], Config.EvadingFirstTimeOffset, delay))
                             {
                                 goodCandidates.Add(candidate);
                             }
-                            if (IsSafeToBlink(
-                                pathToPoint[pathToPoint.Count - 1],
-                                Configs.EvadingSecondTimeOffset,
-                                delay))
+                            if (IsSafeToBlink(pathToPoint[pathToPoint.Count - 1], Config.EvadingSecondTimeOffset, delay))
                             {
                                 badCandidates.Add(candidate);
                             }
@@ -149,15 +146,12 @@
                 if (isBlink)
                 {
                     if (Variables.TickCount - LastWardJumpAttempt < 250
-                        || IsSafeToBlink(target.ServerPosition.ToVector2(), Configs.EvadingFirstTimeOffset, spell.Delay))
+                        || IsSafeToBlink(target.ServerPosition.ToVector2(), Config.EvadingFirstTimeOffset, spell.Delay))
                     {
                         goodTargets.Add(target);
                     }
                     if (Variables.TickCount - LastWardJumpAttempt < 250
-                        || IsSafeToBlink(
-                            target.ServerPosition.ToVector2(),
-                            Configs.EvadingSecondTimeOffset,
-                            spell.Delay))
+                        || IsSafeToBlink(target.ServerPosition.ToVector2(), Config.EvadingSecondTimeOffset, spell.Delay))
                     {
                         badTargets.Add(target);
                     }
@@ -166,12 +160,12 @@
                 {
                     var pathToTarget = new List<Vector2> { Evade.PlayerPosition, target.ServerPosition.ToVector2() };
                     if (Variables.TickCount - LastWardJumpAttempt < 250
-                        || IsSafePath(pathToTarget, Configs.EvadingFirstTimeOffset, spell.Speed, spell.Delay).IsSafe)
+                        || IsSafePath(pathToTarget, Config.EvadingFirstTimeOffset, spell.Speed, spell.Delay).IsSafe)
                     {
                         goodTargets.Add(target);
                     }
                     if (Variables.TickCount - LastWardJumpAttempt < 250
-                        || IsSafePath(pathToTarget, Configs.EvadingSecondTimeOffset, spell.Speed, spell.Delay).IsSafe)
+                        || IsSafePath(pathToTarget, Config.EvadingSecondTimeOffset, spell.Speed, spell.Delay).IsSafe)
                     {
                         badTargets.Add(target);
                     }
@@ -199,7 +193,7 @@
             {
                 return new SafePathResult(true, intersection);
             }
-            var inter = intersections.MinOrDefault(o => o.Distance);
+            var inter = intersections.MinOrDefault(i => i.Distance);
             return new SafePathResult(false, inter.Valid ? inter : intersection);
         }
 

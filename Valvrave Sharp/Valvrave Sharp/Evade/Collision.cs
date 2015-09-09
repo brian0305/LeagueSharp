@@ -54,11 +54,11 @@
         #endregion
     }
 
-    internal static class Collisions
+    internal static class Collision
     {
         #region Static Fields
 
-        private static Vector3 yasuoWallCastedPos;
+        private static Vector2 yasuoWallCastedPos;
 
         private static int yasuoWallCastT;
 
@@ -80,12 +80,12 @@
                             from minion in
                                 GameObjects.Minions.Where(
                                     i =>
-                                    i.IsValidTarget(1200, false, @from.ToVector3()) && skillshot.Unit.IsAlly
-                                        ? i.IsEnemy
-                                        : i.IsAlly)
+                                    i.IsValidTarget(1200, false, @from.ToVector3())
+                                    && (skillshot.Unit.Team == ObjectManager.Player.Team
+                                            ? i.Team != ObjectManager.Player.Team
+                                            : i.Team == ObjectManager.Player.Team || i.Team == GameObjectTeam.Neutral))
                             let pred =
-                                FastPrediction(
-                                    @from,
+                                @from.FastPrediction(
                                     minion,
                                     Math.Max(0, skillshot.SpellData.Delay - (Variables.TickCount - skillshot.StartTick)),
                                     skillshot.SpellData.MissileSpeed)
@@ -108,8 +108,7 @@
                         collisions.AddRange(
                             from hero in GameObjects.AllyHeroes.Where(i => i.IsValidTarget(1200, false) && !i.IsMe)
                             let pred =
-                                FastPrediction(
-                                    @from,
+                                @from.FastPrediction(
                                     hero,
                                     Math.Max(0, skillshot.SpellData.Delay - (Variables.TickCount - skillshot.StartTick)),
                                     skillshot.SpellData.MissileSpeed)
@@ -141,8 +140,9 @@
                             break;
                         }
                         var wallWidth = 300 + 50 * Convert.ToInt32(wall.Name.Substring(wall.Name.Length - 6, 1));
-                        var wallDirection = (wall.Position - yasuoWallCastedPos).Normalized().Perpendicular();
-                        var wallStart = wall.Position + wallWidth / 2f * wallDirection;
+                        var wallDirection =
+                            (wall.Position.ToVector2() - yasuoWallCastedPos).Normalized().Perpendicular();
+                        var wallStart = wall.Position.ToVector2() + wallWidth / 2f * wallDirection;
                         var wallEnd = wallStart - wallWidth * wallDirection;
                         var wallPolygon = new Rectangle(wallStart, wallEnd, 75);
                         var intersections = new List<Vector2>();
@@ -160,7 +160,7 @@
                         }
                         if (intersections.Count > 0)
                         {
-                            var intersection = intersections.OrderBy(i => i.Distance(@from)).ToList()[0];
+                            var intersection = intersections.MinOrDefault(i => i.Distance(@from));
                             if (Variables.TickCount
                                 + Math.Max(0, skillshot.SpellData.Delay - (Variables.TickCount - skillshot.StartTick))
                                 + 100 + (1000 * intersection.Distance(@from)) / skillshot.SpellData.MissileSpeed
@@ -176,7 +176,7 @@
                         break;
                 }
             }
-            return collisions.Count > 0 ? collisions.OrderBy(i => i.Distance).ToList()[0].Position : new Vector2();
+            return collisions.Count > 0 ? collisions.MinOrDefault(i => i.Distance).Position : new Vector2();
         }
 
         internal static void Init()
@@ -184,7 +184,7 @@
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
         }
 
-        private static FastPredResult FastPrediction(Vector2 from, Obj_AI_Base unit, int delay, int speed)
+        private static FastPredResult FastPrediction(this Vector2 from, Obj_AI_Base unit, int delay, int speed)
         {
             var d = (delay / 1000f + unit.Distance(from) / speed) * unit.MoveSpeed;
             var path = unit.GetWaypoints();
@@ -194,27 +194,20 @@
                                  IsMoving = true, CurrentPos = unit.ServerPosition.ToVector2(),
                                  PredictedPos = path.CutPath((int)d)[0]
                              }
-                       : (path.Count == 0
-                              ? new FastPredResult
-                                    {
-                                        IsMoving = false, CurrentPos = unit.ServerPosition.ToVector2(),
-                                        PredictedPos = unit.ServerPosition.ToVector2()
-                                    }
-                              : new FastPredResult
-                                    {
-                                        IsMoving = false, CurrentPos = path[path.Count - 1],
-                                        PredictedPos = path[path.Count - 1]
-                                    });
+                       : new FastPredResult
+                             {
+                                 IsMoving = false, CurrentPos = path[path.Count - 1], PredictedPos = path[path.Count - 1]
+                             };
         }
 
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            if (!sender.IsValid() || sender.IsEnemy || args.SData.Name != "YasuoWMovingWall")
+            if (!sender.IsValid() || sender.Team != ObjectManager.Player.Team || args.SData.Name != "YasuoWMovingWall")
             {
                 return;
             }
             yasuoWallCastT = Variables.TickCount;
-            yasuoWallCastedPos = sender.ServerPosition;
+            yasuoWallCastedPos = sender.ServerPosition.ToVector2();
         }
 
         #endregion

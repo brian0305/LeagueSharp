@@ -17,7 +17,7 @@
 
     using SharpDX;
 
-    internal class Prediction
+    internal static class Prediction
     {
         #region Public Methods and Operators
 
@@ -38,14 +38,14 @@
 
         public static PredictionOutput GetPrediction(PredictionInput input)
         {
-            return GetPrediction(input, true, true);
+            return input.GetPrediction(true, true);
         }
 
         #endregion
 
         #region Methods
 
-        private static double GetAngle(Vector3 from, Obj_AI_Base target)
+        private static double GetAngle(this Vector3 from, Obj_AI_Base target)
         {
             var posTarget = target.ServerPosition;
             var lastWaypoint = target.GetWaypoints().Last();
@@ -59,17 +59,17 @@
             return Math.Cos((b + c - a) / (2 * Math.Sqrt(b) * Math.Sqrt(c))) * 180 / Math.PI;
         }
 
-        private static PredictionOutput GetDashingPrediction(PredictionInput input)
+        private static PredictionOutput GetDashingPrediction(this PredictionInput input)
         {
             var dashData = input.Unit.GetDashInfo();
             var result = new PredictionOutput { Input = input };
             input.Delay += 0.1f;
             if (!dashData.IsBlink)
             {
-                var dashPred = GetPositionOnPath(
-                    input,
-                    new List<Vector2> { input.Unit.ServerPosition.ToVector2(), dashData.Path.Last() },
-                    dashData.Speed);
+                var dashPred =
+                    input.GetPositionOnPath(
+                        new List<Vector2> { input.Unit.ServerPosition.ToVector2(), dashData.Path.Last() },
+                        dashData.Speed);
                 if (dashPred.Hitchance >= HitChance.High)
                 {
                     dashPred.CastPosition = dashPred.UnitPosition;
@@ -96,7 +96,7 @@
             return result;
         }
 
-        private static PredictionOutput GetImmobilePrediction(PredictionInput input, double remainingImmobileT)
+        private static PredictionOutput GetImmobilePrediction(this PredictionInput input, double remainingImmobileT)
         {
             var timeToReachTargetPosition = input.Delay + input.Unit.Distance(input.From) / input.Speed;
             return timeToReachTargetPosition <= remainingImmobileT + input.RealRadius / input.Unit.MoveSpeed
@@ -112,7 +112,10 @@
                              };
         }
 
-        private static PredictionOutput GetPositionOnPath(PredictionInput input, List<Vector2> path, float speed = -1)
+        private static PredictionOutput GetPositionOnPath(
+            this PredictionInput input,
+            List<Vector2> path,
+            float speed = -1)
         {
             speed = Math.Abs(speed - (-1)) < float.Epsilon ? input.Unit.MoveSpeed : speed;
             if (path.Count <= 1)
@@ -213,7 +216,7 @@
                        };
         }
 
-        private static PredictionOutput GetPrediction(PredictionInput input, bool ft, bool checkCollision)
+        private static PredictionOutput GetPrediction(this PredictionInput input, bool ft, bool checkCollision)
         {
             PredictionOutput result = null;
             if (!input.Unit.IsValidTarget(float.MaxValue, false))
@@ -235,19 +238,24 @@
             }
             if (input.Unit.IsDashing())
             {
-                result = GetDashingPrediction(input);
+                result = input.GetDashingPrediction();
             }
             else
             {
-                var remainingImmobileT = UnitIsImmobileUntil(input.Unit);
-                if (remainingImmobileT >= 0d)
+                var remainingImmobileT = input.Unit.UnitIsImmobileUntil();
+                if (remainingImmobileT >= 0)
                 {
-                    result = GetImmobilePrediction(input, remainingImmobileT);
+                    result = input.GetImmobilePrediction(remainingImmobileT);
                 }
             }
             if (result == null)
             {
-                result = GetStandardPrediction(input);
+                result = input.GetStandardPrediction();
+            }
+            if (result.Hitchance >= HitChance.High && result.Hitchance <= HitChance.VeryHigh
+                && input.Unit is Obj_AI_Hero)
+            {
+                input.WayPointAnalysis(result);
             }
             if (Math.Abs(input.Range - float.MaxValue) > float.Epsilon)
             {
@@ -262,23 +270,13 @@
                 {
                     result.Hitchance = HitChance.OutOfRange;
                 }
-                if (input.RangeCheckFrom.DistanceSquared(result.CastPosition) > Math.Pow(input.Range, 2))
+                if (input.RangeCheckFrom.DistanceSquared(result.CastPosition) > Math.Pow(input.Range, 2)
+                    && result.Hitchance != HitChance.OutOfRange)
                 {
-                    if (result.Hitchance != HitChance.OutOfRange)
-                    {
-                        result.CastPosition = input.RangeCheckFrom
-                                              + input.Range
-                                              * (result.UnitPosition - input.RangeCheckFrom).Normalized().SetZ();
-                    }
-                    else
-                    {
-                        result.Hitchance = HitChance.OutOfRange;
-                    }
+                    result.CastPosition = input.RangeCheckFrom
+                                          + input.Range
+                                          * (result.UnitPosition - input.RangeCheckFrom).Normalized().SetZ();
                 }
-            }
-            if (result.Hitchance > HitChance.Medium)
-            {
-                WayPointAnalysis(result, input);
             }
             if (checkCollision && input.Collision)
             {
@@ -291,21 +289,17 @@
             return result;
         }
 
-        private static PredictionOutput GetStandardPrediction(PredictionInput input)
+        private static PredictionOutput GetStandardPrediction(this PredictionInput input)
         {
             var speed = input.Unit.MoveSpeed;
             if (input.Unit.DistanceSquared(input.From) < 200 * 200)
             {
                 speed /= 1.5f;
             }
-            var result = GetPositionOnPath(input, input.Unit.GetWaypoints(), speed);
-            if (result.Hitchance >= HitChance.High && input.Unit is Obj_AI_Hero)
-            {
-            }
-            return result;
+            return input.GetPositionOnPath(input.Unit.GetWaypoints(), speed);
         }
 
-        private static double UnitIsImmobileUntil(Obj_AI_Base unit)
+        private static double UnitIsImmobileUntil(this Obj_AI_Base unit)
         {
             var result =
                 unit.Buffs.Where(
@@ -317,21 +311,22 @@
             return result - Game.Time;
         }
 
-        private static void WayPointAnalysis(PredictionOutput result, PredictionInput input)
+        private static void WayPointAnalysis(this PredictionInput input, PredictionOutput result)
         {
             var totalDelay = input.Delay
                              + (Math.Abs(input.Speed - float.MaxValue) < float.Epsilon
                                     ? 0
                                     : input.Unit.Distance(input.From) / input.Speed);
-            var fixRange = input.Unit.MoveSpeed * totalDelay / 2;
             var lastWaypoint = input.Unit.GetWaypoints().Last().ToVector3();
-            var minPath = 800;
+            var totalMoveSpeed = input.Unit.MoveSpeed * totalDelay;
+            var minPath = 400;
             var moveAngle = 30 + input.Radius / 10;
+            var fixRange = totalMoveSpeed * 0.6;
             if (Path.PathTracker.GetCurrentPath(input.Unit).Time < 0.1)
             {
-                minPath = 600;
-                moveAngle += 5;
-                fixRange = input.Unit.MoveSpeed * totalDelay / 3;
+                minPath = 500;
+                moveAngle += 10;
+                fixRange = totalMoveSpeed * 0.4;
             }
             if (input.Type == SkillshotType.SkillshotCircle)
             {
@@ -342,31 +337,33 @@
                 case SkillshotType.SkillshotLine:
                     if (input.Unit.Path.Count() > 0)
                     {
-                        result.Hitchance = GetAngle(input.From, input.Unit) < moveAngle
-                                               ? HitChance.VeryHigh
-                                               : HitChance.High;
+                        result.Hitchance = input.Unit.Path.Count() > 1
+                                               ? HitChance.Medium
+                                               : (input.From.GetAngle(input.Unit) < moveAngle
+                                                      ? HitChance.VeryHigh
+                                                      : HitChance.High);
                     }
                     break;
                 case SkillshotType.SkillshotCircle:
-                    if (totalDelay < 1.1)
+                    if (totalDelay < 0.7 && AutoAttackDetection.GetLastAutoAttackTime(input.Unit) < 0.1)
                     {
-                        if (totalDelay < 0.7 && OnProcessSpellDetection.GetLastAutoAttackTime(input.Unit) < 0.1)
-                        {
-                            result.Hitchance = HitChance.VeryHigh;
-                        }
-                        if (Path.PathTracker.GetCurrentPath(input.Unit).Time < 0.1)
-                        {
-                            result.Hitchance = HitChance.VeryHigh;
-                        }
+                        result.Hitchance = HitChance.VeryHigh;
+                    }
+                    if (totalDelay < 1.1 && Path.PathTracker.GetCurrentPath(input.Unit).Time < 0.1)
+                    {
+                        result.Hitchance = HitChance.VeryHigh;
                     }
                     break;
             }
-            if (input.Unit.HasBuffOfType(BuffType.Slow) || input.Unit.Distance(input.From) < 300
-                || lastWaypoint.Distance(input.From) < 250)
+            if (input.Unit.MoveSpeed < 250)
             {
                 result.Hitchance = HitChance.VeryHigh;
             }
             if (input.Unit.Distance(lastWaypoint) > minPath)
+            {
+                result.Hitchance = HitChance.VeryHigh;
+            }
+            if (totalDelay < 0.7 + input.Radius / 500 && AutoAttackDetection.GetLastAutoAttackTime(input.Unit) < 0.1)
             {
                 result.Hitchance = HitChance.VeryHigh;
             }
@@ -383,29 +380,70 @@
             {
                 result.Hitchance = HitChance.High;
             }
-            if (input.Unit.Path.Count() > 0 && input.Unit.Distance(lastWaypoint) < input.Unit.MoveSpeed * totalDelay)
+            if (input.Unit.Path.Count() > 0 && input.Unit.Distance(lastWaypoint) < totalMoveSpeed
+                && Path.PathTracker.GetCurrentPath(input.Unit).Time > 0.1)
             {
                 result.Hitchance = HitChance.Medium;
             }
-            if (totalDelay > 0.7 && input.Unit.IsWindingUp)
+            if (totalDelay > 0.7 + input.Radius / 500 && input.Unit.IsWindingUp)
             {
                 result.Hitchance = HitChance.Medium;
             }
-            if (totalDelay > 1 && OnProcessSpellDetection.GetLastAutoAttackTime(input.Unit) < 0.1)
-            {
-                result.Hitchance = HitChance.Medium;
-            }
-            if (input.Unit.Path.Count() > 1 && input.Type == SkillshotType.SkillshotLine)
-            {
-                result.Hitchance = HitChance.Medium;
-            }
-            if (input.Unit.Distance(input.From) < 300 || lastWaypoint.Distance(input.From) < 250)
+            if (input.Unit.Distance(input.From) < 300 || lastWaypoint.Distance(input.From) < 250
+                || input.Unit.MoveSpeed < 200)
             {
                 result.Hitchance = HitChance.VeryHigh;
             }
         }
 
         #endregion
+
+        private static class AutoAttackDetection
+        {
+            #region Static Fields
+
+            private static readonly List<StoredAutoAttackTime> StoredList = new List<StoredAutoAttackTime>();
+
+            #endregion
+
+            #region Constructors and Destructors
+
+            static AutoAttackDetection()
+            {
+                Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
+            }
+
+            #endregion
+
+            #region Methods
+
+            internal static double GetLastAutoAttackTime(Obj_AI_Base unit)
+            {
+                var findTime = StoredList.FirstOrDefault(i => i.NetworkId == unit.NetworkId);
+                return findTime == null ? 1 : findTime.Time;
+            }
+
+            private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+            {
+                var caster = sender as Obj_AI_Hero;
+                if (!caster.IsValid() || !AutoAttack.IsAutoAttack(args.SData.Name))
+                {
+                    return;
+                }
+                var findTime = StoredList.FirstOrDefault(i => i.NetworkId == sender.NetworkId);
+                if (findTime == null)
+                {
+                    StoredList.Add(
+                        new StoredAutoAttackTime { NetworkId = sender.NetworkId, Tick = Variables.TickCount });
+                }
+                else
+                {
+                    findTime.Tick = Variables.TickCount;
+                }
+            }
+
+            #endregion
+        }
 
         private static class Cluster
         {
@@ -436,7 +474,7 @@
                         && i.IsValidTarget(input.Range + 200 + input.RealRadius, true, input.RangeCheckFrom)))
                 {
                     input.Unit = enemy;
-                    var prediction = GetPrediction(input, false, false);
+                    var prediction = input.GetPrediction(false, false);
                     if (prediction.Hitchance >= HitChance.High)
                     {
                         result.Add(new PossibleTarget { Position = prediction.UnitPosition.ToVector2(), Unit = enemy });
@@ -453,7 +491,7 @@
 
                 internal static PredictionOutput GetCirclePrediction(PredictionInput input)
                 {
-                    var mainTargetPrediction = GetPrediction(input, false, true);
+                    var mainTargetPrediction = input.GetPrediction(false, true);
                     var posibleTargets = new List<PossibleTarget>
                                              {
                                                  new PossibleTarget
@@ -507,7 +545,7 @@
 
                 internal static PredictionOutput GetConePrediction(PredictionInput input)
                 {
-                    var mainTargetPrediction = GetPrediction(input, false, true);
+                    var mainTargetPrediction = input.GetPrediction(false, true);
                     var posibleTargets = new List<PossibleTarget>
                                              {
                                                  new PossibleTarget
@@ -586,7 +624,7 @@
 
                 internal static PredictionOutput GetLinePrediction(PredictionInput input)
                 {
-                    var mainTargetPrediction = GetPrediction(input, false, true);
+                    var mainTargetPrediction = input.GetPrediction(false, true);
                     var posibleTargets = new List<PossibleTarget>
                                              {
                                                  new PossibleTarget
@@ -741,7 +779,7 @@
                                             input.RangeCheckFrom)))
                                 {
                                     input.Unit = minion;
-                                    var pred = GetPrediction(input, false, false);
+                                    var pred = input.GetPrediction(false, false);
                                     if (pred.UnitPosition.ToVector2()
                                             .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
                                         <= Math.Pow(input.Radius + 15 + minion.BoundingRadius, 2))
@@ -760,7 +798,7 @@
                                             input.RangeCheckFrom)))
                                 {
                                     input.Unit = hero;
-                                    var pred = GetPrediction(input, false, false);
+                                    var pred = input.GetPrediction(false, false);
                                     if (pred.UnitPosition.ToVector2()
                                             .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
                                         <= Math.Pow(input.Radius + 50 + hero.BoundingRadius, 2))
@@ -828,54 +866,6 @@
                 {
                     wallCastT = Variables.TickCount;
                     yasuoWallCastedPos = sender.ServerPosition.ToVector2();
-                }
-            }
-
-            #endregion
-        }
-
-        private static class OnProcessSpellDetection
-        {
-            #region Static Fields
-
-            private static readonly List<StoredAutoAttackTime> StoredAutoAttackTimeList =
-                new List<StoredAutoAttackTime>();
-
-            #endregion
-
-            #region Constructors and Destructors
-
-            static OnProcessSpellDetection()
-            {
-                Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
-            }
-
-            #endregion
-
-            #region Methods
-
-            internal static double GetLastAutoAttackTime(Obj_AI_Base unit)
-            {
-                var findTime = StoredAutoAttackTimeList.FirstOrDefault(i => i.NetworkId == unit.NetworkId);
-                return findTime == null ? 1 : findTime.Time;
-            }
-
-            private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
-            {
-                var caster = sender as Obj_AI_Hero;
-                if (!caster.IsValid() || !AutoAttack.IsAutoAttack(args.SData.Name))
-                {
-                    return;
-                }
-                var findTime = StoredAutoAttackTimeList.FirstOrDefault(i => i.NetworkId == sender.NetworkId);
-                if (findTime == null)
-                {
-                    StoredAutoAttackTimeList.Add(
-                        new StoredAutoAttackTime { NetworkId = sender.NetworkId, Tick = Variables.TickCount });
-                }
-                else
-                {
-                    findTime.Tick = Variables.TickCount;
                 }
             }
 

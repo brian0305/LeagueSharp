@@ -50,6 +50,30 @@
 
         #region Methods
 
+        private static void InitItem()
+        {
+            Bilgewater = new Items.Item(ItemId.Bilgewater_Cutlass, 550);
+            BotRuinedKing = new Items.Item(ItemId.Blade_of_the_Ruined_King, 550);
+            Youmuu = new Items.Item(ItemId.Youmuus_Ghostblade, 0);
+            Tiamat = new Items.Item(ItemId.Tiamat_Melee_Only, 400);
+            Hydra = new Items.Item(ItemId.Ravenous_Hydra_Melee_Only, 400);
+            Titanic = new Items.Item(3053, 400);
+        }
+
+        private static void InitSummonerSpell()
+        {
+            foreach (var spell in
+                Player.Spellbook.Spells.Where(
+                    i =>
+                    i.Name.ToLower().Contains("smite")
+                    && (i.Slot == SpellSlot.Summoner1 || i.Slot == SpellSlot.Summoner2)))
+            {
+                Smite = spell.Slot;
+            }
+            Ignite = Player.GetSpellSlot("summonerdot");
+            Flash = Player.GetSpellSlot("summonerflash");
+        }
+
         private static void Main(string[] args)
         {
             if (args == null)
@@ -67,25 +91,11 @@
                 Game.PrintChat(string.Format("Valvrave Sharp => {0} Not Support!", Player.ChampionName));
                 return;
             }
-            Bilgewater = new Items.Item(ItemId.Bilgewater_Cutlass, 550);
-            BotRuinedKing = new Items.Item(ItemId.Blade_of_the_Ruined_King, 550);
-            Youmuu = new Items.Item(ItemId.Youmuus_Ghostblade, 0);
-            Tiamat = new Items.Item(ItemId.Tiamat_Melee_Only, 400);
-            Hydra = new Items.Item(ItemId.Ravenous_Hydra_Melee_Only, 400);
-            Titanic = new Items.Item(3053, 400);
-            foreach (var spell in
-                Player.Spellbook.Spells.Where(
-                    i =>
-                    i.Name.ToLower().Contains("smite")
-                    && (i.Slot == SpellSlot.Summoner1 || i.Slot == SpellSlot.Summoner2)))
-            {
-                Smite = spell.Slot;
-            }
-            Ignite = Player.GetSpellSlot("summonerdot");
-            Flash = Player.GetSpellSlot("summonerflash");
+            InitItem();
+            InitSummonerSpell();
             MainMenu = new Menu("ValvraveSharp", "Valvrave Sharp", true, Player.ChampionName).Attach();
-            Config.Separator(MainMenu, "Author", "Author: Brian");
-            Config.Separator(MainMenu, "Paypal", "Paypal: dcbrian01@gmail.com");
+            MainMenu.Separator("Author", "Author: Brian");
+            MainMenu.Separator("Paypal", "Paypal: dcbrian01@gmail.com");
             Plugins[Player.ChampionName].Invoke();
         }
 

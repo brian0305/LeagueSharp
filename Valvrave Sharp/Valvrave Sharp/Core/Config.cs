@@ -7,17 +7,17 @@
 
     using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
 
-    internal class Config
+    internal static class Config
     {
         #region Public Methods and Operators
 
-        public static MenuBool Bool(Menu subMenu, string name, string display, bool state = true)
+        public static MenuBool Bool(this Menu subMenu, string name, string display, bool state = true)
         {
             return subMenu.Add(new MenuBool(name, display, state));
         }
 
         public static MenuKeyBind KeyBind(
-            Menu subMenu,
+            this Menu subMenu,
             string name,
             string display,
             Keys key,
@@ -26,17 +26,23 @@
             return subMenu.Add(new MenuKeyBind(name, display, key, type));
         }
 
-        public static MenuList List(Menu subMenu, string name, string display, string[] array)
+        public static MenuList List(this Menu subMenu, string name, string display, string[] array, int value = 0)
         {
-            return subMenu.Add(new MenuList<string>(name, display, array));
+            return subMenu.Add(new MenuList<string>(name, display, array) { Index = value });
         }
 
-        public static MenuSeparator Separator(Menu subMenu, string name, string display)
+        public static MenuSeparator Separator(this Menu subMenu, string name, string display)
         {
             return subMenu.Add(new MenuSeparator(name, display));
         }
 
-        public static MenuSlider Slider(Menu subMenu, string name, string display, int cur, int min = 0, int max = 100)
+        public static MenuSlider Slider(
+            this Menu subMenu,
+            string name,
+            string display,
+            int cur,
+            int min = 0,
+            int max = 100)
         {
             return subMenu.Add(new MenuSlider(name, display, cur, min, max));
         }

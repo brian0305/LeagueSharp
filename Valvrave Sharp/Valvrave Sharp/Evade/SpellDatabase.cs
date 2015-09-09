@@ -166,18 +166,6 @@
 
             #endregion Ashe
 
-            #region Azir
-
-            Spells.Add(
-                new SpellData
-                    {
-                        ChampionName = "Azir", SpellName = "AzirQ", Slot = SpellSlot.Q, Type = SkillShotType.SkillshotLine,
-                        Delay = 250, Range = 875, Radius = 80, MissileSpeed = 1000, AddHitbox = true, DangerValue = 2,
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
-                    });
-
-            #endregion Azir
-
             #region Bard
 
             Spells.Add(
@@ -2125,12 +2113,11 @@
             Spells.Add(
                 new SpellData
                     {
-                        ChampionName = "Zed", SpellName = "ZedShuriken", Slot = SpellSlot.Q,
+                        ChampionName = "Zed", SpellName = "ZedQ", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 925, Radius = 50,
                         MissileSpeed = 1700, FixedRange = true, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "zedshurikenmisone",
-                        FromObjects = new[] { "Zed_Clone_idle.troy", "Zed_Clone_Idle.troy" },
-                        ExtraMissileNames = new[] { "zedshurikenmistwo", "zedshurikenmisthree" },
+                        MissileSpellName = "ZedQMissile",
+                        FromObjects = new[] { "Zed_Base_W_tar.troy", "Zed_Base_W_cloneswap_buf.troy" },
                         CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
                     });
 
@@ -2237,9 +2224,9 @@
 
         #endregion
 
-        #region Public Methods and Operators
+        #region Methods
 
-        public static SpellData GetByMissileName(string missileSpellName)
+        internal static SpellData GetByMissileName(string missileSpellName)
         {
             return
                 Spells.FirstOrDefault(
@@ -2249,7 +2236,7 @@
                     || i.ExtraMissileNames.Contains(missileSpellName.ToLower()));
         }
 
-        public static SpellData GetByName(string spellName)
+        internal static SpellData GetByName(string spellName)
         {
             return
                 Spells.FirstOrDefault(

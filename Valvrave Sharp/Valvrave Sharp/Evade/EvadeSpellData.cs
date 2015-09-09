@@ -1,7 +1,6 @@
 ﻿namespace Valvrave_Sharp.Evade
 {
     using LeagueSharp;
-    using LeagueSharp.SDK.Core.Extensions;
 
     public enum CastTypes
     {
@@ -102,7 +101,7 @@
             {
                 return (this.CheckSpellName == ""
                         || ObjectManager.Player.Spellbook.GetSpell(this.Slot).Name == this.CheckSpellName)
-                       && this.Slot.IsReady();
+                       && ObjectManager.Player.Spellbook.CanUseSpell(this.Slot) == SpellState.Ready;
             }
         }
 

@@ -14,7 +14,7 @@
 
     using Color = System.Drawing.Color;
 
-    internal class Evade
+    internal static class Evade
     {
         #region Static Fields
 
@@ -38,8 +38,8 @@
 
         public static void Init()
         {
-            Configs.CreateMenu();
-            Collisions.Init();
+            Program.MainMenu.CreateMenu();
+            Collision.Init();
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
             SkillshotDetector.OnDetectSkillshot += OnDetectSkillshot;
@@ -76,10 +76,10 @@
             var alreadyAdded =
                 DetectedSkillshots.Any(
                     i =>
-                    i.SpellData.SpellName == skillshot.SpellData.SpellName && i.Unit.Compare(skillshot.Unit)
-                    && skillshot.Direction.AngleBetween(i.Direction) < 5
+                    i.SpellData.SpellName == skillshot.SpellData.SpellName
+                    && i.Unit.NetworkId == skillshot.Unit.NetworkId && skillshot.Direction.AngleBetween(i.Direction) < 5
                     && (skillshot.Start.Distance(i.Start) < 100 || skillshot.SpellData.FromObjects.Length == 0));
-            if (skillshot.Unit.IsAlly)
+            if (skillshot.Unit.Team == ObjectManager.Player.Team)
             {
                 return;
             }
@@ -238,7 +238,7 @@
                     foreach (var s in
                         DetectedSkillshots.Where(i => i.SpellData.Slot == SpellSlot.E))
                     {
-                        if (!s.Unit.Compare(skillshot.Unit))
+                        if (s.Unit.NetworkId != skillshot.Unit.NetworkId)
                         {
                             continue;
                         }

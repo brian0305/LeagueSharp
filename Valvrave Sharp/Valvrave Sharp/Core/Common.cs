@@ -6,15 +6,16 @@ namespace Valvrave_Sharp.Core
     using LeagueSharp.SDK.Core;
     using LeagueSharp.SDK.Core.Enumerations;
     using LeagueSharp.SDK.Core.Extensions;
+    using LeagueSharp.SDK.Core.Extensions.SharpDX;
     using LeagueSharp.SDK.Core.Wrappers;
 
     using SharpDX;
 
-    internal class Common
+    internal static class Common
     {
         #region Public Methods and Operators
 
-        public static CastStates Cast(Spell spell, Obj_AI_Base unit, bool areaOfEffect = false)
+        public static CastStates Casting(this Spell spell, Obj_AI_Base unit, bool areaOfEffect = false)
         {
             if (!unit.IsValidTarget())
             {
@@ -24,7 +25,7 @@ namespace Valvrave_Sharp.Core
             {
                 return CastStates.NotReady;
             }
-            var pred = GetPrediction(spell, unit, areaOfEffect);
+            var pred = spell.VPrediction(unit, areaOfEffect);
             if (pred.CollisionObjects.Count > 0)
             {
                 return CastStates.Collision;
@@ -39,13 +40,28 @@ namespace Valvrave_Sharp.Core
                        : CastStates.SuccessfullyCasted;
         }
 
-        public static int CountEnemy(float range, Vector3 pos = default(Vector3))
+        public static CastStates CastingBestTarget(this Spell spell, float extraRange = 0, bool aoe = false)
+        {
+            return spell.Casting(spell.GetTarget(extraRange), aoe);
+        }
+
+        public static int CountEnemy(this Vector2 pos, float range)
+        {
+            return CountEnemy(pos.ToVector3(), range);
+        }
+
+        public static int CountEnemy(this Vector3 pos, float range)
         {
             return GameObjects.EnemyHeroes.Count(i => i.IsValidTarget(range, true, pos));
         }
 
-        public static Prediction.PredictionOutput GetPrediction(
-            Spell spell,
+        public static int CountEnemy(this Obj_AI_Base unit, float range)
+        {
+            return CountEnemy(unit.ServerPosition, range);
+        }
+
+        public static Prediction.PredictionOutput VPrediction(
+            this Spell spell,
             Obj_AI_Base unit,
             bool aoe = false,
             CollisionableObjects[] collisionable = null)

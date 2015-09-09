@@ -51,7 +51,7 @@
                 return;
             }
             var caster = missile.SpellCaster as Obj_AI_Hero;
-            if (caster == null || !caster.IsValid || caster.IsAlly)
+            if (caster == null || !caster.IsValid || caster.Team == ObjectManager.Player.Team)
             {
                 return;
             }
@@ -76,11 +76,12 @@
             }
             if (spellData.ExtraRange != -1)
             {
-                endPos += Math.Min(spellData.ExtraRange, spellData.Range - endPos.Distance(unitPosition)) * direction;
+                endPos = endPos
+                         + Math.Min(spellData.ExtraRange, spellData.Range - endPos.Distance(unitPosition)) * direction;
             }
             var castTime = Variables.TickCount - Game.Ping / 2 - (spellData.MissileDelayed ? 0 : spellData.Delay)
                            - (int)(1000f * missilePosition.Distance(unitPosition) / spellData.MissileSpeed);
-            TriggerOnDetectSkillshot(DetectionType.RecvPacket, spellData, castTime, unitPosition, endPos, unit);
+            spellData.TriggerOnDetectSkillshot(DetectionType.RecvPacket, castTime, unitPosition, endPos, unit);
         }
 
         private static void ObjMissileClientOnDelete(GameObject sender, EventArgs args)
@@ -91,7 +92,7 @@
                 return;
             }
             var caster = missile.SpellCaster as Obj_AI_Hero;
-            if (caster == null || !caster.IsValid || caster.IsAlly)
+            if (caster == null || !caster.IsValid || caster.Team == ObjectManager.Player.Team)
             {
                 return;
             }
@@ -101,8 +102,8 @@
                 foreach (var skillshot in
                     Evade.DetectedSkillshots.Where(
                         i =>
-                        i.SpellData.MissileSpellName == spellName && i.Unit.Compare(caster)
-                        && (missile.EndPosition - missile.StartPosition).AngleBetween(i.Direction) < 10
+                        i.SpellData.MissileSpellName == spellName && i.Unit.NetworkId == caster.NetworkId
+                        && (missile.EndPosition - missile.StartPosition).ToVector2().AngleBetween(i.Direction) < 10
                         && i.SpellData.CanBeRemoved))
                 {
                     OnDeleteMissile(skillshot, missile);
@@ -112,14 +113,14 @@
             Evade.DetectedSkillshots.RemoveAll(
                 i =>
                 (i.SpellData.MissileSpellName == spellName || i.SpellData.ExtraMissileNames.Contains(spellName))
-                && i.Unit.Compare(caster)
-                && (missile.EndPosition - missile.StartPosition).AngleBetween(i.Direction) < 10
+                && i.Unit.NetworkId == caster.NetworkId
+                && (missile.EndPosition - missile.StartPosition).ToVector2().AngleBetween(i.Direction) < 10
                 && (i.SpellData.CanBeRemoved || i.SpellData.ForceRemove));
         }
 
         private static void ObjOnDelete(GameObject sender, EventArgs args)
         {
-            if (sender == null || !sender.IsValid || sender.IsAlly)
+            if (sender == null || !sender.IsValid || sender.Team == ObjectManager.Player.Team)
             {
                 return;
             }
@@ -137,14 +138,14 @@
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
             var caster = sender as Obj_AI_Hero;
-            if (caster == null || !caster.IsValid || caster.IsAlly)
+            if (caster == null || !caster.IsValid || caster.Team == ObjectManager.Player.Team)
             {
                 return;
             }
             if (args.SData.Name == "dravenrdoublecast")
             {
                 Evade.DetectedSkillshots.RemoveAll(
-                    i => i.Unit.Compare(caster) && i.SpellData.SpellName == "DravenRCast");
+                    i => i.Unit.NetworkId == caster.NetworkId && i.SpellData.SpellName == "DravenRCast");
             }
             var spellData = SpellDatabase.GetByName(args.SData.Name);
             if (spellData == null)
@@ -169,10 +170,9 @@
                     GameObjects.AllGameObjects.Where(i => i.IsEnemy && spellData.FromObject.Contains(i.Name)))
                 {
                     var start = obj.Position.ToVector2();
-                    var end = start + spellData.Range * (args.End - obj.Position).Normalized().ToVector2();
-                    TriggerOnDetectSkillshot(
+                    var end = start + spellData.Range * (args.End - obj.Position).ToVector2().Normalized();
+                    spellData.TriggerOnDetectSkillshot(
                         DetectionType.ProcessSpell,
-                        spellData,
                         Variables.TickCount - Game.Ping / 2,
                         start,
                         end,
@@ -195,11 +195,11 @@
             }
             if (spellData.ExtraRange != -1)
             {
-                endPos += Math.Min(spellData.ExtraRange, spellData.Range - endPos.Distance(startPos)) * direction;
+                endPos = endPos
+                         + Math.Min(spellData.ExtraRange, spellData.Range - endPos.Distance(startPos)) * direction;
             }
-            TriggerOnDetectSkillshot(
+            spellData.TriggerOnDetectSkillshot(
                 DetectionType.ProcessSpell,
-                spellData,
                 Variables.TickCount - Game.Ping / 2,
                 startPos,
                 endPos,
@@ -207,8 +207,8 @@
         }
 
         private static void TriggerOnDetectSkillshot(
+            this SpellData spellData,
             DetectionType detectionType,
-            SpellData spellData,
             int startT,
             Vector2 start,
             Vector2 end,

@@ -84,7 +84,7 @@
             this.Distance = distance;
             this.ComingFrom = comingFrom;
             this.Valid = point.IsValid();
-            this.Point = point + Configs.GridSize * (this.ComingFrom - point).Normalized();
+            this.Point = point + Config.GridSize * (this.ComingFrom - point).Normalized();
             this.Time = time;
         }
 
@@ -242,7 +242,7 @@
                     this.Arc = new Arc(
                         start,
                         end,
-                        Configs.SkillShotsExtraRadius + (int)ObjectManager.Player.BoundingRadius,
+                        Config.SkillShotsExtraRadius + (int)ObjectManager.Player.BoundingRadius,
                         22);
                     break;
             }
@@ -567,32 +567,32 @@
                 case SkillShotType.SkillshotCircle:
                     this.Circle.UpdatePolygon();
                     this.Polygon = this.Circle;
-                    this.Circle.UpdatePolygon(Configs.ExtraEvadeDistance);
+                    this.Circle.UpdatePolygon(Config.ExtraEvadeDistance);
                     this.EvadePolygon = this.Circle;
                     break;
                 case SkillShotType.SkillshotLine:
                 case SkillShotType.SkillshotMissileLine:
                     this.Rectangle.UpdatePolygon();
                     this.Polygon = this.Rectangle;
-                    this.Rectangle.UpdatePolygon(Configs.ExtraEvadeDistance);
+                    this.Rectangle.UpdatePolygon(Config.ExtraEvadeDistance);
                     this.EvadePolygon = this.Rectangle;
                     break;
                 case SkillShotType.SkillshotCone:
                     this.Sector.UpdatePolygon();
                     this.Polygon = this.Sector;
-                    this.Sector.UpdatePolygon(Configs.ExtraEvadeDistance);
+                    this.Sector.UpdatePolygon(Config.ExtraEvadeDistance);
                     this.EvadePolygon = this.Sector;
                     break;
                 case SkillShotType.SkillshotRing:
                     this.Ring.UpdatePolygon();
                     this.Polygon = this.Ring;
-                    this.Ring.UpdatePolygon(Configs.ExtraEvadeDistance);
+                    this.Ring.UpdatePolygon(Config.ExtraEvadeDistance);
                     this.EvadePolygon = this.Ring;
                     break;
                 case SkillShotType.SkillshotArc:
                     this.Arc.UpdatePolygon();
                     this.Polygon = this.Arc;
-                    this.Arc.UpdatePolygon(Configs.ExtraEvadeDistance);
+                    this.Arc.UpdatePolygon(Config.ExtraEvadeDistance);
                     this.EvadePolygon = this.Arc;
                     break;
             }

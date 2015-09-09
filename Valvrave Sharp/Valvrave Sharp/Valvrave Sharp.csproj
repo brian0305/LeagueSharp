@@ -73,8 +73,8 @@
     <Compile Include="Core\Config.cs" />
     <Compile Include="Core\Common.cs" />
     <Compile Include="Core\Prediction.cs" />
-    <Compile Include="Evade\Collisions.cs" />
-    <Compile Include="Evade\Configs.cs" />
+    <Compile Include="Evade\Collision.cs" />
+    <Compile Include="Evade\Config.cs" />
     <Compile Include="Evade\Evade.cs" />
     <Compile Include="Evade\Evader.cs" />
     <Compile Include="Evade\EvadeSpellData.cs" />

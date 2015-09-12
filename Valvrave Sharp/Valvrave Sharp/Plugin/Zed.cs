@@ -10,6 +10,7 @@
     using LeagueSharp.SDK.Core.Enumerations;
     using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.Extensions.SharpDX;
+    using LeagueSharp.SDK.Core.Math.Prediction;
     using LeagueSharp.SDK.Core.UI.IMenu.Values;
     using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers;
@@ -25,7 +26,7 @@
     {
         #region Constants
 
-        private const float OverkillValue = 1.15f;
+        private const float OverkillValue = 1.2f;
 
         #endregion
 
@@ -56,12 +57,15 @@
 
             var orbwalkMenu = new Menu("Orbwalk", "Orbwalk");
             {
-                orbwalkMenu.Separator("blank0", "Q/E/Ignite/Item: Always On");
-                orbwalkMenu.Separator("blank1", "W Settings");
+                orbwalkMenu.Separator("Q/E: Always On");
+                orbwalkMenu.Separator("Sub Settings");
+                orbwalkMenu.Bool("Ignite", "Use Ignite");
+                orbwalkMenu.Bool("Item", "Use Item");
+                orbwalkMenu.Separator("W Settings");
                 orbwalkMenu.Bool("WNormal", "Use For Non-R Combo");
                 orbwalkMenu.List("WAdv", "Use For R Combo", new[] { "OFF", "Line", "Triangle", "Mouse" }, 1);
                 orbwalkMenu.List("WSwapGap", "Swap To Gap Close", new[] { "OFF", "Smart", "Always" }, 1);
-                orbwalkMenu.Separator("blank2", "R Settings");
+                orbwalkMenu.Separator("R Settings");
                 orbwalkMenu.Bool("R", "Use R");
                 orbwalkMenu.Slider(
                     "RStopRange",
@@ -72,7 +76,7 @@
                 orbwalkMenu.List("RSwapGap", "Swap To Gap Close", new[] { "OFF", "Smart", "Always" }, 1);
                 orbwalkMenu.Slider("RSwapIfHpU", "Swap If Hp < (%)", 20);
                 orbwalkMenu.Bool("RSwapIfKill", "Swap If Mark Can Kill Target");
-                orbwalkMenu.Separator("blank3", "Extra R Settings");
+                orbwalkMenu.Separator("Extra R Settings");
                 foreach (var enemy in GameObjects.EnemyHeroes)
                 {
                     orbwalkMenu.Bool("RCast" + enemy.ChampionName, "Cast On " + enemy.ChampionName, false);
@@ -82,7 +86,7 @@
             var hybridMenu = new Menu("Hybrid", "Hybrid");
             {
                 hybridMenu.List("Mode", "Mode", new[] { "W-E-Q", "E-Q", "Q" });
-                hybridMenu.Separator("blank4", "Auto Q Settings");
+                hybridMenu.Separator("Auto Q Settings");
                 hybridMenu.KeyBind("AutoQ", "KeyBind", Keys.T, KeyBindType.Toggle);
                 hybridMenu.Slider("AutoQMpA", "If Mp >=", 100, 0, 200);
                 MainMenu.Add(hybridMenu);
@@ -196,7 +200,9 @@
         {
             get
             {
-                return R.IsReady() ? (R.Instance.Name == "ZedR" ? 0 : 1) : (R.Instance.Name == "zedr2" ? 2 : -1);
+                return R.IsReady()
+                           ? (R.Instance.Name == "ZedR" ? 0 : 1)
+                           : (rShadow.IsValid() && R.Instance.Name != "ZedR" ? 2 : -1);
             }
         }
 
@@ -204,9 +210,7 @@
         {
             get
             {
-                return W.IsReady()
-                           ? (W.Instance.Name == "ZedW" && Variables.TickCount - W.LastCastAttemptT > 500 ? 0 : 1)
-                           : -1;
+                return W.IsReady() ? (W.Instance.Name == "ZedW" ? 0 : 1) : -1;
             }
         }
 
@@ -289,7 +293,7 @@
 
         private static void CastW(Obj_AI_Hero target, bool isCombo = false)
         {
-            if (WState != 0 || Variables.TickCount - W.LastCastAttemptT <= 500)
+            if (wShadow.IsValid() || Variables.TickCount - W.LastCastAttemptT <= 500)
             {
                 return;
             }
@@ -302,13 +306,13 @@
                 switch (MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index)
                 {
                     case 1:
-                        castPos = Player.ServerPosition + (posPred - rShadow.ServerPosition).Normalized() * W.Range;
+                        castPos = Player.ServerPosition + (posPred - rShadow.ServerPosition).Normalized() * 400;
                         break;
                     case 2:
                         var subPos1 = Player.ServerPosition
-                                      + (posPred - rShadow.ServerPosition).Normalized().Perpendicular() * W.Range;
+                                      + (posPred - rShadow.ServerPosition).Normalized().Perpendicular() * 500;
                         var subPos2 = Player.ServerPosition
-                                      + (rShadow.ServerPosition - posPred).Normalized().Perpendicular() * W.Range;
+                                      + (rShadow.ServerPosition - posPred).Normalized().Perpendicular() * 500;
                         if (subPos1.IsWall() && !subPos2.IsWall() && target.Distance(subPos2) < target.Distance(subPos1))
                         {
                             castPos = subPos2;
@@ -339,8 +343,10 @@
             {
                 return;
             }
-            W.Cast(castPos);
-            W.LastCastAttemptT = Variables.TickCount;
+            if (W.Cast(castPos))
+            {
+                W.LastCastAttemptT = Variables.TickCount;
+            }
         }
 
         private static bool DeadByRMark(Obj_AI_Hero target)
@@ -353,7 +359,13 @@
             if (MainMenu["Farm"]["Q"] && Q.IsReady())
             {
                 foreach (var minion in
-                    GameObjects.EnemyMinions.Where(i => i.IsValidTarget(Q.Range) && Q.GetHealthPrediction(i) > 0)
+                    GameObjects.EnemyMinions.Where(
+                        i =>
+                        i.IsValidTarget(Q.Range)
+                        && (!i.InAutoAttackRange()
+                                ? Q.GetHealthPrediction(i) + i.PhysicalShield > 0
+                                : Health.GetPrediction(i, (int)i.GetTimeToHit()) + i.PhysicalShield
+                                  > Player.GetAutoAttackDamage(i, true) + GetPDmg(i)))
                         .OrderByDescending(i => i.MaxHealth))
                 {
                     var pred = Q.VPrediction(
@@ -363,7 +375,7 @@
                             {
                                 CollisionableObjects.Heroes, CollisionableObjects.Minions, CollisionableObjects.YasuoWall
                             });
-                    if (pred.CollisionObjects.Count != 0 && pred.CollisionObjects.Any(i => i.IsMe))
+                    if (pred.CollisionObjects.Count > 0 && pred.CollisionObjects.Any(i => i.IsMe))
                     {
                         continue;
                     }
@@ -388,21 +400,27 @@
         {
             var dmgTotal = 0d;
             var manaTotal = 0f;
-            if (Bilgewater.IsReady)
+            if (MainMenu["Orbwalk"]["Item"])
             {
-                dmgTotal += Player.CalculateDamage(target, DamageType.Magical, 100);
-            }
-            if (BotRuinedKing.IsReady)
-            {
-                dmgTotal += Player.CalculateDamage(target, DamageType.Physical, Math.Max(target.MaxHealth * 0.1, 100));
-            }
-            if (Tiamat.IsReady)
-            {
-                dmgTotal += Player.CalculateDamage(target, DamageType.Physical, Player.TotalAttackDamage);
-            }
-            if (Hydra.IsReady)
-            {
-                dmgTotal += Player.CalculateDamage(target, DamageType.Physical, Player.TotalAttackDamage);
+                if (Bilgewater.IsReady)
+                {
+                    dmgTotal += Player.CalculateDamage(target, DamageType.Magical, 100);
+                }
+                if (BotRuinedKing.IsReady)
+                {
+                    dmgTotal += Player.CalculateDamage(
+                        target,
+                        DamageType.Physical,
+                        Math.Max(target.MaxHealth * 0.1, 100));
+                }
+                if (Tiamat.IsReady)
+                {
+                    dmgTotal += Player.CalculateDamage(target, DamageType.Physical, Player.TotalAttackDamage);
+                }
+                if (Hydra.IsReady)
+                {
+                    dmgTotal += Player.CalculateDamage(target, DamageType.Physical, Player.TotalAttackDamage);
+                }
             }
             if (useQ)
             {
@@ -425,14 +443,7 @@
                 dmgTotal += GetEDmg(target);
                 manaTotal += E.Instance.ManaCost;
             }
-            dmgTotal += Player.GetAutoAttackDamage(target, true);
-            if (target.HealthPercent <= 50 && !target.HasBuff("ZedPassiveCD"))
-            {
-                dmgTotal += Player.CalculateDamage(
-                    target,
-                    DamageType.Magical,
-                    target.MaxHealth * (Player.Level > 16 ? 0.1 : (Player.Level > 6 ? 0.08 : 0.06)));
-            }
+            dmgTotal += Player.GetAutoAttackDamage(target, true) * 2 + GetPDmg(target);
             if (useR || HaveRMark(target))
             {
                 dmgTotal += new[] { 0.2, 0.35, 0.5 }[R.Level - 1] * dmgTotal + Player.TotalAttackDamage;
@@ -448,6 +459,16 @@
                 new[] { 60, 90, 120, 150, 180 }[E.Level - 1] + 0.8f * Player.FlatPhysicalDamageMod);
         }
 
+        private static double GetPDmg(Obj_AI_Base target)
+        {
+            return target.HealthPercent <= 50 && !target.HasBuff("ZedPassiveCD")
+                       ? Player.CalculateDamage(
+                           target,
+                           DamageType.Magical,
+                           target.MaxHealth * (Player.Level > 16 ? 0.1 : (Player.Level > 6 ? 0.08 : 0.06)))
+                       : 0;
+        }
+
         private static double GetQDmg(Obj_AI_Base target)
         {
             return Player.CalculateDamage(
@@ -458,7 +479,7 @@
 
         private static bool HaveRMark(Obj_AI_Hero target)
         {
-            return target.HasBuff("zedulttargetmark");
+            return target.HasBuff("zedrtargetmark");
         }
 
         private static void Hybrid()
@@ -468,7 +489,7 @@
             {
                 return;
             }
-            if (MainMenu["Hybrid"]["Mode"].GetValue<MenuList>().Index == 0
+            if (MainMenu["Hybrid"]["Mode"].GetValue<MenuList>().Index == 0 && WState == 0
                 && ((Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost
                      && Player.Distance(target) < W.Range + Q.Range)
                     || (E.IsReady() && Player.Mana >= E.Instance.ManaCost + W.Instance.ManaCost
@@ -568,8 +589,7 @@
         private static void OnDelete(GameObject sender, EventArgs args)
         {
             var mark = sender as Obj_GeneralParticleEmitter;
-            if (mark != null && mark.IsValid && mark.Name == "Zed_Base_R_buf_tell.troy" && deathMark != null
-                && deathMark.NetworkId == mark.NetworkId)
+            if (mark != null && mark.IsValid && mark.Name == "Zed_Base_R_buf_tell.troy" && deathMark.Compare(mark))
             {
                 deathMark = null;
             }
@@ -680,8 +700,8 @@
             var target = GetTarget;
             if (target != null)
             {
-                if (MainMenu["Orbwalk"]["WSwapGap"].GetValue<MenuList>().Index > 0 && WState == 1 && wShadow.IsValid()
-                    && Player.Distance(target) > wShadow.Distance(target) && !E.IsInRange(target)
+                if (MainMenu["Orbwalk"]["WSwapGap"].GetValue<MenuList>().Index > 0 && WState == 1
+                    && Player.Distance(target) > wShadow.Distance(target) && !target.InAutoAttackRange()
                     && !DeadByRMark(target))
                 {
                     if (MainMenu["Orbwalk"]["WSwapGap"].GetValue<MenuList>().Index == 1)
@@ -709,7 +729,7 @@
                     }
                 }
                 if (MainMenu["Orbwalk"]["RSwapGap"].GetValue<MenuList>().Index > 0 && RState == 1
-                    && Player.Distance(target) > rShadow.Distance(target) && !E.IsInRange(target)
+                    && Player.Distance(target) > rShadow.Distance(target) && !target.InAutoAttackRange()
                     && !DeadByRMark(target))
                 {
                     if (MainMenu["Orbwalk"]["RSwapGap"].GetValue<MenuList>().Index == 1)
@@ -723,11 +743,11 @@
                             false);
                         if (((target.Health + target.PhysicalShield < calcCombo[0]
                               && (Player.Mana >= calcCombo[1] || Player.Mana * OverkillValue >= calcCombo[1]))
-                             || (MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index > 0 && WState == 0
-                                 && !W.IsInRange(target) && rShadow.Distance(target) < W.Range + E.Range
-                                 && ((Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost)
-                                     || (E.IsReady() && Player.Mana >= E.Instance.ManaCost + W.Instance.ManaCost))))
-                            && R.Cast())
+                             || (MainMenu["Orbwalk"]["WNormal"] && WState == 0 && !W.IsInRange(target)
+                                 && ((Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost
+                                      && rShadow.Distance(target) < W.Range + Q.Range)
+                                     || (E.IsReady() && Player.Mana >= E.Instance.ManaCost + W.Instance.ManaCost
+                                         && rShadow.Distance(target) < W.Range + E.Range)))) && R.Cast())
                         {
                             return;
                         }
@@ -747,21 +767,19 @@
                 {
                     return;
                 }
-                if (!Player.IsVisible)
+                if (MainMenu["Orbwalk"]["Ignite"] && Ignite.IsReady()
+                    && (HaveRMark(target) || target.HealthPercent < 30) && Player.Distance(target) <= 600
+                    && Player.Spellbook.CastSpell(Ignite, target))
                 {
                     return;
                 }
-                if (Ignite.IsReady() && (HaveRMark(target) || target.HealthPercent < 30)
-                    && Player.Distance(target) <= 600 && Player.Spellbook.CastSpell(Ignite, target))
+                if (WState == 0
+                    && ((Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost
+                         && Player.Distance(target) < W.Range + Q.Range)
+                        || (E.IsReady() && Player.Mana >= E.Instance.ManaCost + W.Instance.ManaCost
+                            && Player.Distance(target) < W.Range + E.Range)))
                 {
-                    return;
-                }
-                if ((Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost
-                     && Player.Distance(target) < W.Range + Q.Range)
-                    || (E.IsReady() && Player.Mana >= E.Instance.ManaCost + W.Instance.ManaCost
-                        && Player.Distance(target) < W.Range + E.Range))
-                {
-                    if (MainMenu["Orbwalk"]["WNormal"])
+                    if (MainMenu["Orbwalk"]["WNormal"] && !target.InAutoAttackRange())
                     {
                         if (RState < 1
                             && (!MainMenu["Orbwalk"]["R"] || !MainMenu["Orbwalk"]["RCast" + target.ChampionName]
@@ -774,6 +792,12 @@
                         {
                             CastW(target);
                         }
+                        if (RState == 0 && MainMenu["Orbwalk"]["R"]
+                            && MainMenu["Orbwalk"]["RCast" + target.ChampionName]
+                            && Player.Distance(target) > MainMenu["Orbwalk"]["RStopRange"])
+                        {
+                            CastW(target);
+                        }
                     }
                     if (MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index > 0 && RState > 0
                         && MainMenu["Orbwalk"]["R"] && MainMenu["Orbwalk"]["RCast" + target.ChampionName]
@@ -782,10 +806,13 @@
                         CastW(target, true);
                     }
                 }
-                CastE();
                 CastQ(target, true);
+                CastE();
             }
-            UseItem(target);
+            if (MainMenu["Orbwalk"]["Item"])
+            {
+                UseItem(target);
+            }
         }
 
         private static void UseItem(Obj_AI_Hero target)

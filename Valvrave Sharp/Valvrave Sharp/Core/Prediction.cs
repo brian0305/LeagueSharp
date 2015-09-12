@@ -319,29 +319,39 @@
                                     : input.Unit.Distance(input.From) / input.Speed);
             var lastWaypoint = input.Unit.GetWaypoints().Last().ToVector3();
             var totalMoveSpeed = input.Unit.MoveSpeed * totalDelay;
-            var minPath = 400;
+            var minPath = 550;
             var moveAngle = 30 + input.Radius / 10;
             var fixRange = totalMoveSpeed * 0.6;
             if (Path.PathTracker.GetCurrentPath(input.Unit).Time < 0.1)
             {
-                minPath = 500;
-                moveAngle += 10;
+                minPath = 650;
+                moveAngle += 5;
                 fixRange = totalMoveSpeed * 0.4;
             }
             if (input.Type == SkillshotType.SkillshotCircle)
             {
                 fixRange -= input.Radius / 2;
             }
+            if (input.Unit.Distance(lastWaypoint) > minPath)
+            {
+                result.Hitchance = HitChance.VeryHigh;
+            }
+            if (totalDelay < 0.7 + input.Radius / 500 && AutoAttackDetection.GetLastAutoAttackTime(input.Unit) < 0.1)
+            {
+                result.Hitchance = HitChance.VeryHigh;
+            }
+            if (input.Unit.Path.Count() > 0 && input.Unit.Distance(lastWaypoint) < totalMoveSpeed)
+            {
+                result.Hitchance = HitChance.Medium;
+            }
             switch (input.Type)
             {
                 case SkillshotType.SkillshotLine:
                     if (input.Unit.Path.Count() > 0)
                     {
-                        result.Hitchance = input.Unit.Path.Count() > 1
-                                               ? HitChance.Medium
-                                               : (input.From.GetAngle(input.Unit) < moveAngle
-                                                      ? HitChance.VeryHigh
-                                                      : HitChance.High);
+                        result.Hitchance = input.From.GetAngle(input.Unit) < moveAngle
+                                               ? HitChance.VeryHigh
+                                               : HitChance.High;
                     }
                     break;
                 case SkillshotType.SkillshotCircle:
@@ -355,18 +365,6 @@
                     }
                     break;
             }
-            if (input.Unit.MoveSpeed < 250)
-            {
-                result.Hitchance = HitChance.VeryHigh;
-            }
-            if (input.Unit.Distance(lastWaypoint) > minPath)
-            {
-                result.Hitchance = HitChance.VeryHigh;
-            }
-            if (totalDelay < 0.7 + input.Radius / 500 && AutoAttackDetection.GetLastAutoAttackTime(input.Unit) < 0.1)
-            {
-                result.Hitchance = HitChance.VeryHigh;
-            }
             if (input.Unit.Path.Count() == 0 && input.Unit.Position == input.Unit.ServerPosition
                 && !input.Unit.IsWindingUp)
             {
@@ -378,11 +376,6 @@
             if (lastWaypoint.Distance(input.From) <= input.Unit.Distance(input.From)
                 && input.Unit.Distance(input.From) > input.Range - fixRange)
             {
-                result.Hitchance = HitChance.High;
-            }
-            if (input.Unit.Path.Count() > 0 && input.Unit.Distance(lastWaypoint) < totalMoveSpeed
-                && Path.PathTracker.GetCurrentPath(input.Unit).Time > 0.1)
-            {
                 result.Hitchance = HitChance.Medium;
             }
             if (totalDelay > 0.7 + input.Radius / 500 && input.Unit.IsWindingUp)
@@ -390,7 +383,7 @@
                 result.Hitchance = HitChance.Medium;
             }
             if (input.Unit.Distance(input.From) < 300 || lastWaypoint.Distance(input.From) < 250
-                || input.Unit.MoveSpeed < 200)
+                || input.Unit.MoveSpeed < 250)
             {
                 result.Hitchance = HitChance.VeryHigh;
             }

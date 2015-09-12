@@ -40,7 +40,7 @@ namespace Valvrave_Sharp.Evade
         {
             var evadeMenu = new Menu("Evade", "Evade Skillshot");
             {
-                evadeMenu.Separator("Credit", "Credit: Evade#");
+                evadeMenu.Separator("Credit: Evade#");
                 var evadeSpells = new Menu("Spells", "Spells");
                 {
                     foreach (var spell in EvadeSpellDatabase.Spells)

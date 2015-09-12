@@ -94,8 +94,8 @@
             InitItem();
             InitSummonerSpell();
             MainMenu = new Menu("ValvraveSharp", "Valvrave Sharp", true, Player.ChampionName).Attach();
-            MainMenu.Separator("Author", "Author: Brian");
-            MainMenu.Separator("Paypal", "Paypal: dcbrian01@gmail.com");
+            MainMenu.Separator("Author: Brian");
+            MainMenu.Separator("Paypal: dcbrian01@gmail.com");
             Plugins[Player.ChampionName].Invoke();
         }
 

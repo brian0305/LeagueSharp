@@ -9,6 +9,12 @@
 
     internal static class Config
     {
+        #region Static Fields
+
+        private static int cBlank = -1;
+
+        #endregion
+
         #region Public Methods and Operators
 
         public static MenuBool Bool(this Menu subMenu, string name, string display, bool state = true)
@@ -31,9 +37,10 @@
             return subMenu.Add(new MenuList<string>(name, display, array) { Index = value });
         }
 
-        public static MenuSeparator Separator(this Menu subMenu, string name, string display)
+        public static MenuSeparator Separator(this Menu subMenu, string display)
         {
-            return subMenu.Add(new MenuSeparator(name, display));
+            cBlank += 1;
+            return subMenu.Add(new MenuSeparator("blank" + cBlank, display));
         }
 
         public static MenuSlider Slider(

@@ -13,6 +13,8 @@
 
     using SharpDX;
 
+    using Valvrave_Sharp.Core;
+
     using Rectangle = LeagueSharp.SDK.Core.Math.Polygons.Rectangle;
 
     public enum CollisionObjectTypes
@@ -83,7 +85,7 @@
                                     i.IsValidTarget(1200, false, @from.ToVector3())
                                     && (skillshot.Unit.Team == ObjectManager.Player.Team
                                             ? i.Team != ObjectManager.Player.Team
-                                            : i.Team == ObjectManager.Player.Team || i.Team == GameObjectTeam.Neutral))
+                                            : i.Team == ObjectManager.Player.Team) && i.IsMinion())
                             let pred =
                                 @from.FastPrediction(
                                     minion,
@@ -103,6 +105,33 @@
                                         Unit = minion, Type = cObject,
                                         Distance = pos.Distance(@from), Diff = w
                                     });
+                        if (skillshot.Unit.Team != ObjectManager.Player.Team)
+                        {
+                            collisions.AddRange(
+                                from minion in
+                                    GameObjects.Jungle.Where(i => i.IsValidTarget(1200, true, @from.ToVector3()))
+                                let pred =
+                                    @from.FastPrediction(
+                                        minion,
+                                        Math.Max(
+                                            0,
+                                            skillshot.SpellData.Delay - (Variables.TickCount - skillshot.StartTick)),
+                                        skillshot.SpellData.MissileSpeed)
+                                let pos = pred.PredictedPos
+                                let w =
+                                    skillshot.SpellData.RawRadius + (!pred.IsMoving ? minion.BoundingRadius - 15 : 0)
+                                    - pos.Distance(@from, skillshot.End, true)
+                                where w > 0
+                                select
+                                    new DetectedCollision
+                                        {
+                                            Position =
+                                                pos.ProjectOn(skillshot.End, skillshot.Start).LinePoint
+                                                + skillshot.Direction * 30,
+                                            Unit = minion, Type = cObject,
+                                            Distance = pos.Distance(@from), Diff = w
+                                        });
+                        }
                         break;
                     case CollisionObjectTypes.Champion:
                         collisions.AddRange(
@@ -181,7 +210,16 @@
 
         internal static void Init()
         {
-            Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
+            Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
+                {
+                    if (!sender.IsValid() || sender.Team != ObjectManager.Player.Team
+                        || args.SData.Name != "YasuoWMovingWall")
+                    {
+                        return;
+                    }
+                    yasuoWallCastT = Variables.TickCount;
+                    yasuoWallCastedPos = sender.ServerPosition.ToVector2();
+                };
         }
 
         private static FastPredResult FastPrediction(this Vector2 from, Obj_AI_Base unit, int delay, int speed)
@@ -198,16 +236,6 @@
                              {
                                  IsMoving = false, CurrentPos = path[path.Count - 1], PredictedPos = path[path.Count - 1]
                              };
-        }
-
-        private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
-        {
-            if (!sender.IsValid() || sender.Team != ObjectManager.Player.Team || args.SData.Name != "YasuoWMovingWall")
-            {
-                return;
-            }
-            yasuoWallCastT = Variables.TickCount;
-            yasuoWallCastedPos = sender.ServerPosition.ToVector2();
         }
 
         #endregion

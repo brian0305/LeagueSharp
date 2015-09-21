@@ -49,11 +49,15 @@
 
         public CastTypes CastType;
 
+        public string CheckBuffName = "";
+
         public string CheckSpellName = "";
 
         public int Delay;
 
         public EvadeTypes EvadeType;
+
+        public bool ExtraDelay;
 
         public bool FixedRange;
 
@@ -64,6 +68,8 @@
         public SpellSlot Slot;
 
         public int Speed;
+
+        public bool UnderTower;
 
         public SpellTargets[] ValidTargets;
 

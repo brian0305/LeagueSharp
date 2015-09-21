@@ -63,14 +63,14 @@
         {
             var dashData = input.Unit.GetDashInfo();
             var result = new PredictionOutput { Input = input };
-            input.Delay += 0.1f;
             if (!dashData.IsBlink)
             {
-                var dashPred =
-                    input.GetPositionOnPath(
-                        new List<Vector2> { input.Unit.ServerPosition.ToVector2(), dashData.Path.Last() },
-                        dashData.Speed);
-                if (dashPred.Hitchance >= HitChance.High)
+                var endP = dashData.Path.Last();
+                var dashPred = input.GetPositionOnPath(
+                    new List<Vector2> { input.Unit.ServerPosition.ToVector2(), endP },
+                    dashData.Speed);
+                if (dashPred.Hitchance >= HitChance.High
+                    && dashPred.UnitPosition.ToVector2().Distance(input.Unit.Position.ToVector2(), endP, true) < 200)
                 {
                     dashPred.CastPosition = dashPred.UnitPosition;
                     dashPred.Hitchance = HitChance.Dashing;
@@ -78,8 +78,7 @@
                 }
                 if (dashData.Path.PathLength() > 200)
                 {
-                    var endP = dashData.Path.Last();
-                    var timeToPoint = input.Delay + input.From.ToVector2().Distance(endP) / input.Speed;
+                    var timeToPoint = input.Delay / 2 + input.From.ToVector2().Distance(endP) / input.Speed - 0.25f;
                     if (timeToPoint
                         <= input.Unit.Distance(endP) / dashData.Speed + input.RealRadius / input.Unit.MoveSpeed)
                     {
@@ -252,11 +251,6 @@
             {
                 result = input.GetStandardPrediction();
             }
-            if (result.Hitchance >= HitChance.High && result.Hitchance <= HitChance.VeryHigh
-                && input.Unit is Obj_AI_Hero)
-            {
-                input.WayPointAnalysis(result);
-            }
             if (Math.Abs(input.Range - float.MaxValue) > float.Epsilon)
             {
                 if (result.Hitchance >= HitChance.High
@@ -286,6 +280,11 @@
                 result.CollisionObjects.RemoveAll(i => i.NetworkId == originalUnit.NetworkId);
                 result.Hitchance = result.CollisionObjects.Count > 0 ? HitChance.Collision : result.Hitchance;
             }
+            if ((result.Hitchance == HitChance.High || result.Hitchance == HitChance.VeryHigh)
+                && input.Unit is Obj_AI_Hero)
+            {
+                result = input.WayPointAnalysis(result);
+            }
             return result;
         }
 
@@ -311,132 +310,106 @@
             return result - Game.Time;
         }
 
-        private static void WayPointAnalysis(this PredictionInput input, PredictionOutput result)
+        private static PredictionOutput WayPointAnalysis(this PredictionInput input, PredictionOutput result)
         {
+            result.Hitchance = HitChance.High;
+            var lastWaypoint = input.Unit.GetWaypoints().Last().ToVector3();
+            var distUnitToWaypoint = input.Unit.Distance(lastWaypoint);
+            var distUnitToFrom = input.Unit.Distance(input.From);
+            var distFromToWaypoint = input.From.Distance(lastWaypoint);
             var totalDelay = input.Delay
                              + (Math.Abs(input.Speed - float.MaxValue) < float.Epsilon
                                     ? 0
-                                    : input.Unit.Distance(input.From) / input.Speed);
-            var lastWaypoint = input.Unit.GetWaypoints().Last().ToVector3();
-            var totalMoveSpeed = input.Unit.MoveSpeed * totalDelay;
-            var minPath = 550;
-            var moveAngle = 30 + input.Radius / 10;
-            var fixRange = totalMoveSpeed * 0.6;
-            if (Path.PathTracker.GetCurrentPath(input.Unit).Time < 0.1)
+                                    : distUnitToFrom / input.Speed);
+            var moveArea = input.Unit.MoveSpeed * totalDelay;
+            var fixRange = moveArea * 0.6;
+            var moveAngle = 30 + input.Radius / 15;
+            var backToFront = moveArea * 1.5;
+            var minPath = 500 + backToFront;
+            if (UnitTracker.GetLastNewPathTime(input.Unit) < 0.1)
             {
-                minPath = 650;
-                moveAngle += 5;
-                fixRange = totalMoveSpeed * 0.4;
+                fixRange = moveArea * 0.4;
+                moveAngle += 15;
+                backToFront = moveArea;
+                minPath = backToFront;
             }
             if (input.Type == SkillshotType.SkillshotCircle)
             {
                 fixRange -= input.Radius / 2;
             }
-            if (input.Unit.Distance(lastWaypoint) > minPath)
+            if (distUnitToWaypoint > minPath)
             {
                 result.Hitchance = HitChance.VeryHigh;
             }
-            if (totalDelay < 0.7 + input.Radius / 500 && AutoAttackDetection.GetLastAutoAttackTime(input.Unit) < 0.1)
+            else if (input.Type == SkillshotType.SkillshotLine)
             {
-                result.Hitchance = HitChance.VeryHigh;
-            }
-            if (input.Unit.Path.Count() > 0 && input.Unit.Distance(lastWaypoint) < totalMoveSpeed)
-            {
-                result.Hitchance = HitChance.Medium;
-            }
-            switch (input.Type)
-            {
-                case SkillshotType.SkillshotLine:
-                    if (input.Unit.Path.Count() > 0)
-                    {
-                        result.Hitchance = input.From.GetAngle(input.Unit) < moveAngle
-                                               ? HitChance.VeryHigh
-                                               : HitChance.High;
-                    }
-                    break;
-                case SkillshotType.SkillshotCircle:
-                    if (totalDelay < 0.7 && AutoAttackDetection.GetLastAutoAttackTime(input.Unit) < 0.1)
-                    {
-                        result.Hitchance = HitChance.VeryHigh;
-                    }
-                    if (totalDelay < 1.1 && Path.PathTracker.GetCurrentPath(input.Unit).Time < 0.1)
-                    {
-                        result.Hitchance = HitChance.VeryHigh;
-                    }
-                    break;
-            }
-            if (input.Unit.Path.Count() == 0 && input.Unit.Position == input.Unit.ServerPosition
-                && !input.Unit.IsWindingUp)
-            {
-                result.Hitchance = input.Unit.Distance(input.From) > input.Range - fixRange
-                                       ? HitChance.High
-                                       : HitChance.VeryHigh;
-                return;
-            }
-            if (lastWaypoint.Distance(input.From) <= input.Unit.Distance(input.From)
-                && input.Unit.Distance(input.From) > input.Range - fixRange)
-            {
-                result.Hitchance = HitChance.Medium;
-            }
-            if (totalDelay > 0.7 + input.Radius / 500 && input.Unit.IsWindingUp)
-            {
-                result.Hitchance = HitChance.Medium;
-            }
-            if (input.Unit.Distance(input.From) < 300 || lastWaypoint.Distance(input.From) < 250
-                || input.Unit.MoveSpeed < 250)
-            {
-                result.Hitchance = HitChance.VeryHigh;
-            }
-        }
-
-        #endregion
-
-        private static class AutoAttackDetection
-        {
-            #region Static Fields
-
-            private static readonly List<StoredAutoAttackTime> StoredList = new List<StoredAutoAttackTime>();
-
-            #endregion
-
-            #region Constructors and Destructors
-
-            static AutoAttackDetection()
-            {
-                Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
-            }
-
-            #endregion
-
-            #region Methods
-
-            internal static double GetLastAutoAttackTime(Obj_AI_Base unit)
-            {
-                var findTime = StoredList.FirstOrDefault(i => i.NetworkId == unit.NetworkId);
-                return findTime == null ? 1 : findTime.Time;
-            }
-
-            private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
-            {
-                var caster = sender as Obj_AI_Hero;
-                if (!caster.IsValid() || !AutoAttack.IsAutoAttack(args.SData.Name))
+                if (input.Unit.Path.Length > 1)
                 {
-                    return;
+                    result.Hitchance = HitChance.Medium;
                 }
-                var findTime = StoredList.FirstOrDefault(i => i.NetworkId == sender.NetworkId);
-                if (findTime == null)
+                else if (input.Unit.Path.Length > 0)
                 {
-                    StoredList.Add(
-                        new StoredAutoAttackTime { NetworkId = sender.NetworkId, Tick = Variables.TickCount });
+                    if (input.From.GetAngle(input.Unit) < moveAngle)
+                    {
+                        backToFront = moveArea / 2;
+                        result.Hitchance = HitChance.VeryHigh;
+                    }
+                    else
+                    {
+                        result.Hitchance = HitChance.High;
+                    }
+                }
+            }
+            if (input.Unit.Path.Length == 0 && input.Unit.Position == input.Unit.ServerPosition)
+            {
+                if (UnitTracker.GetLastStopMoveTime(input.Unit) < 0.6)
+                {
+                    result.Hitchance = HitChance.High;
                 }
                 else
                 {
-                    findTime.Tick = Variables.TickCount;
+                    result.Hitchance = distUnitToFrom > input.Range - fixRange ? HitChance.Medium : HitChance.VeryHigh;
                 }
             }
-
-            #endregion
+            else if (distFromToWaypoint <= distUnitToFrom && distUnitToFrom > input.Range - fixRange)
+            {
+                result.Hitchance = HitChance.Medium;
+            }
+            if (UnitTracker.GetLastAttackTime(input.Unit) < 0.1)
+            {
+                result.Hitchance = input.Type == SkillshotType.SkillshotLine && totalDelay < 0.8
+                                       ? HitChance.VeryHigh
+                                       : (totalDelay < 0.6 ? HitChance.VeryHigh : HitChance.Medium);
+            }
+            if (input.Type == SkillshotType.SkillshotCircle && totalDelay < 1.1
+                && UnitTracker.GetLastNewPathTime(input.Unit) < 0.1)
+            {
+                result.Hitchance = HitChance.VeryHigh;
+            }
+            if (result.Hitchance != HitChance.Medium)
+            {
+                if (input.Unit.IsWindingUp && UnitTracker.GetLastAttackTime(input.Unit) > 0.1)
+                {
+                    result.Hitchance = HitChance.Medium;
+                }
+                else if (input.Unit.Path.Length == 0 && input.Unit.Position != input.Unit.ServerPosition)
+                {
+                    result.Hitchance = HitChance.Medium;
+                }
+                else if (input.Unit.Path.Length > 0
+                         && (distUnitToWaypoint < backToFront || input.Unit.Position == input.Unit.ServerPosition))
+                {
+                    result.Hitchance = HitChance.Medium;
+                }
+            }
+            if (distUnitToFrom < 300 || distFromToWaypoint < 400 || input.Unit.MoveSpeed < 200)
+            {
+                result.Hitchance = HitChance.VeryHigh;
+            }
+            return result;
         }
+
+        #endregion
 
         private static class Cluster
         {
@@ -746,7 +719,16 @@
 
             static Collisions()
             {
-                Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
+                Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
+                    {
+                        if (!sender.IsValid() || sender.Team == ObjectManager.Player.Team
+                            || args.SData.Name != "YasuoWMovingWall")
+                        {
+                            return;
+                        }
+                        wallCastT = Variables.TickCount;
+                        yasuoWallCastedPos = sender.ServerPosition.ToVector2();
+                    };
             }
 
             #endregion
@@ -765,6 +747,23 @@
                             case CollisionableObjects.Minions:
                                 foreach (var minion in
                                     GameObjects.EnemyMinions.Where(
+                                        i =>
+                                        i.IsValidTarget(
+                                            Math.Min(input.Range + input.Radius + 100, 2000),
+                                            true,
+                                            input.RangeCheckFrom) && i.IsMinion()))
+                                {
+                                    input.Unit = minion;
+                                    var pred = input.GetPrediction(false, false);
+                                    if (pred.UnitPosition.ToVector2()
+                                            .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
+                                        <= Math.Pow(input.Radius + 15 + minion.BoundingRadius, 2))
+                                    {
+                                        result.Add(minion);
+                                    }
+                                }
+                                foreach (var minion in
+                                    GameObjects.Jungle.Where(
                                         i =>
                                         i.IsValidTarget(
                                             Math.Min(input.Range + input.Radius + 100, 2000),
@@ -852,14 +851,75 @@
                 return result.Distinct().ToList();
             }
 
-            private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+            #endregion
+        }
+
+        private static class UnitTracker
+        {
+            #region Static Fields
+
+            private static readonly List<UnitTrackerInfo> StoredList = new List<UnitTrackerInfo>();
+
+            #endregion
+
+            #region Constructors and Destructors
+
+            static UnitTracker()
             {
-                if (sender.IsValid() && sender.Team != ObjectManager.Player.Team
-                    && args.SData.Name == "YasuoWMovingWall")
+                foreach (var hero in GameObjects.Heroes)
                 {
-                    wallCastT = Variables.TickCount;
-                    yasuoWallCastedPos = sender.ServerPosition.ToVector2();
+                    StoredList.Add(
+                        new UnitTrackerInfo
+                            {
+                                NetworkId = hero.NetworkId, AttackTick = Variables.TickCount,
+                                NewPathTick = Variables.TickCount, StopMoveTick = Variables.TickCount
+                            });
                 }
+                Game.OnUpdate += args =>
+                    {
+                        foreach (
+                            var hero in GameObjects.Heroes.Where(i => i.IsValid() && i.IsVisible && i.Path.Length > 0))
+                        {
+                            StoredList.First(i => i.NetworkId == hero.NetworkId).StopMoveTick = Variables.TickCount;
+                        }
+                    };
+                Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
+                    {
+                        var caster = sender as Obj_AI_Hero;
+                        if (!caster.IsValid() || !AutoAttack.IsAutoAttack(args.SData.Name))
+                        {
+                            return;
+                        }
+                        StoredList.First(i => i.NetworkId == sender.NetworkId).AttackTick = Variables.TickCount;
+                    };
+                Obj_AI_Base.OnNewPath += (sender, args) =>
+                    {
+                        var unit = sender as Obj_AI_Hero;
+                        if (!unit.IsValid())
+                        {
+                            return;
+                        }
+                        StoredList.First(i => i.NetworkId == sender.NetworkId).NewPathTick = Variables.TickCount;
+                    };
+            }
+
+            #endregion
+
+            #region Methods
+
+            internal static double GetLastAttackTime(Obj_AI_Base unit)
+            {
+                return (Variables.TickCount - StoredList.First(i => i.NetworkId == unit.NetworkId).AttackTick) / 1000d;
+            }
+
+            internal static double GetLastNewPathTime(Obj_AI_Base unit)
+            {
+                return (Variables.TickCount - StoredList.First(i => i.NetworkId == unit.NetworkId).NewPathTick) / 1000d;
+            }
+
+            internal static double GetLastStopMoveTime(Obj_AI_Base unit)
+            {
+                return (Variables.TickCount - StoredList.First(i => i.NetworkId == unit.NetworkId).StopMoveTick) / 1000d;
             }
 
             #endregion
@@ -993,7 +1053,6 @@
                 {
                     return this.useBoundingRadius;
                 }
-
                 set
                 {
                     this.useBoundingRadius = value;
@@ -1025,7 +1084,7 @@
 
             private List<Obj_AI_Base> collisionObjects = new List<Obj_AI_Base>();
 
-            private HitChance hitChance = HitChance.Impossible;
+            private HitChance hitchance = HitChance.Impossible;
 
             private Vector3 unitPosition;
 
@@ -1083,11 +1142,11 @@
             {
                 get
                 {
-                    return this.hitChance;
+                    return this.hitchance;
                 }
                 set
                 {
-                    this.hitChance = value;
+                    this.hitchance = value;
                 }
             }
 
@@ -1112,21 +1171,17 @@
             #endregion
         }
 
-        private class StoredAutoAttackTime
+        private class UnitTrackerInfo
         {
             #region Properties
 
+            internal int AttackTick { get; set; }
+
             internal int NetworkId { get; set; }
 
-            internal int Tick { private get; set; }
+            internal int NewPathTick { get; set; }
 
-            internal double Time
-            {
-                get
-                {
-                    return (Variables.TickCount - this.Tick) / 1000d;
-                }
-            }
+            internal int StopMoveTick { get; set; }
 
             #endregion
         }

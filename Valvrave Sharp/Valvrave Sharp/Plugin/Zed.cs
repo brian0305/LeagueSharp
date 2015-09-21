@@ -10,7 +10,6 @@
     using LeagueSharp.SDK.Core.Enumerations;
     using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.Extensions.SharpDX;
-    using LeagueSharp.SDK.Core.Math.Prediction;
     using LeagueSharp.SDK.Core.UI.IMenu.Values;
     using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers;
@@ -18,6 +17,7 @@
     using SharpDX;
 
     using Valvrave_Sharp.Core;
+    using Valvrave_Sharp.Evade;
 
     using Color = System.Drawing.Color;
     using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
@@ -51,7 +51,7 @@
             R = new Spell(SpellSlot.R, 700);
             Q.SetSkillshot(0.25f, 50, 1700, true, SkillshotType.SkillshotLine);
             Q2.SetSkillshot(0.25f, 50, 1700, true, SkillshotType.SkillshotLine);
-            E.SetTargetted(0, float.MaxValue);
+            E.SetTargetted(0.05f, float.MaxValue);
             Q.DamageType = Q2.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
             Q.MinHitChance = Q2.MinHitChance = HitChance.VeryHigh;
 
@@ -103,6 +103,10 @@
                 ksMenu.Bool("E", "Use E");
                 MainMenu.Add(ksMenu);
             }
+            if (GameObjects.EnemyHeroes.Any())
+            {
+                Evade.Init();
+            }
             var drawMenu = new Menu("Draw", "Draw");
             {
                 drawMenu.Bool("Q", "Q Range");
@@ -116,11 +120,36 @@
             }
             MainMenu.KeyBind("FleeW", "Use W To Flee", Keys.C);
 
+            Game.OnUpdate += OnUpdateEvade;
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
-            Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
             GameObject.OnCreate += OnCreate;
-            GameObject.OnDelete += OnDelete;
+            GameObject.OnDelete += (sender, args) =>
+                {
+                    var mark = sender as Obj_GeneralParticleEmitter;
+                    if (mark != null && mark.IsValid && mark.Name == "Zed_Base_R_buf_tell.troy"
+                        && deathMark.Compare(mark))
+                    {
+                        deathMark = null;
+                    }
+                };
+            Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
+                {
+                    if (!sender.IsMe)
+                    {
+                        return;
+                    }
+                    if (args.SData.Name == "ZedW")
+                    {
+                        rCasted = false;
+                        wCasted = true;
+                    }
+                    if (args.SData.Name == "ZedR")
+                    {
+                        wCasted = false;
+                        rCasted = true;
+                    }
+                };
         }
 
         #endregion
@@ -150,7 +179,7 @@
                 }
                 else
                 {
-                    range += 50;
+                    range += Q.Width;
                 }
                 var target = Q.GetTarget(range);
                 if (RState == 0 && MainMenu["Orbwalk"]["R"])
@@ -171,11 +200,10 @@
                 }
                 if (RState > 0)
                 {
-                    var targets =
-                        GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(Q.Range + range) && HaveRMark(i)).ToList();
-                    if (targets.Count > 0)
+                    var markTarget =
+                        GameObjects.EnemyHeroes.FirstOrDefault(i => i.IsValidTarget(Q.Range + range) && HaveRMark(i));
+                    if (markTarget != null)
                     {
-                        var markTarget = TargetSelector.GetTarget(targets);
                         target = markTarget;
                         if (DeadByRMark(markTarget))
                         {
@@ -306,7 +334,7 @@
                 switch (MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index)
                 {
                     case 1:
-                        castPos = Player.ServerPosition + (posPred - rShadow.ServerPosition).Normalized() * 400;
+                        castPos = Player.ServerPosition + (posPred - rShadow.ServerPosition).Normalized() * 500;
                         break;
                     case 2:
                         var subPos1 = Player.ServerPosition
@@ -321,13 +349,16 @@
                         {
                             castPos = subPos1;
                         }
-                        if ((!subPos1.IsWall() && !subPos2.IsWall()) || (subPos1.IsWall() && subPos2.IsWall()))
-                        {
-                            castPos = target.Distance(subPos1) < target.Distance(subPos2) ? subPos1 : subPos2;
-                        }
                         if (!castPos.IsValid())
                         {
-                            castPos = subPos1;
+                            if (!subPos1.IsWall() && !subPos2.IsWall())
+                            {
+                                castPos = target.Distance(subPos1) < target.Distance(subPos2) ? subPos1 : subPos2;
+                            }
+                            else
+                            {
+                                castPos = Player.ServerPosition + (posPred - rShadow.ServerPosition).Normalized() * 500;
+                            }
                         }
                         break;
                     case 3:
@@ -351,7 +382,7 @@
 
         private static bool DeadByRMark(Obj_AI_Hero target)
         {
-            return deathMark != null && target.Distance(deathMark) < target.BoundingRadius * 1.5;
+            return deathMark != null && target.Distance(deathMark) <= target.BoundingRadius;
         }
 
         private static void Farm()
@@ -361,11 +392,10 @@
                 foreach (var minion in
                     GameObjects.EnemyMinions.Where(
                         i =>
-                        i.IsValidTarget(Q.Range)
+                        i.IsValidTarget(Q.Range) && i.IsMinion()
                         && (!i.InAutoAttackRange()
-                                ? Q.GetHealthPrediction(i) + i.PhysicalShield > 0
-                                : Health.GetPrediction(i, (int)i.GetTimeToHit()) + i.PhysicalShield
-                                  > Player.GetAutoAttackDamage(i, true) + GetPDmg(i)))
+                                ? Q.GetHealthPrediction(i) > 0
+                                : i.Health > Player.GetAutoAttackDamage(i, true) + GetPDmg(i)))
                         .OrderByDescending(i => i.MaxHealth))
                 {
                     var pred = Q.VPrediction(
@@ -389,7 +419,7 @@
             if (MainMenu["Farm"]["E"] && E.IsReady()
                 && GameObjects.EnemyMinions.Any(
                     i =>
-                    i.IsValidTarget(E.Range) && E.GetHealthPrediction(i) > 0
+                    i.IsValidTarget(E.Range) && i.IsMinion() && E.GetHealthPrediction(i) > 0
                     && E.GetHealthPrediction(i) + i.PhysicalShield <= GetEDmg(i)))
             {
                 E.Cast();
@@ -586,15 +616,6 @@
             }
         }
 
-        private static void OnDelete(GameObject sender, EventArgs args)
-        {
-            var mark = sender as Obj_GeneralParticleEmitter;
-            if (mark != null && mark.IsValid && mark.Name == "Zed_Base_R_buf_tell.troy" && deathMark.Compare(mark))
-            {
-                deathMark = null;
-            }
-        }
-
         private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
@@ -639,24 +660,6 @@
             }
         }
 
-        private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
-        {
-            if (!sender.IsMe)
-            {
-                return;
-            }
-            if (args.SData.Name == "ZedW")
-            {
-                rCasted = false;
-                wCasted = true;
-            }
-            if (args.SData.Name == "ZedR")
-            {
-                wCasted = false;
-                rCasted = true;
-            }
-        }
-
         private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
@@ -686,6 +689,32 @@
                 if (W.IsReady())
                 {
                     W.Cast(Game.CursorPos);
+                }
+            }
+        }
+
+        private static void OnUpdateEvade(EventArgs args)
+        {
+            if (Player.IsDead || !MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active)
+            {
+                return;
+            }
+            if (Player.HasBuffOfType(BuffType.SpellShield) || Player.HasBuffOfType(BuffType.SpellImmunity))
+            {
+                return;
+            }
+            var zedR = EvadeSpellDatabase.Spells.FirstOrDefault(i => i.Enabled && i.IsReady && i.Slot == SpellSlot.R);
+            if (zedR != null)
+            {
+                var skillshot =
+                    Evade.DetectedSkillshots.Where(
+                        i =>
+                        i.Enabled && zedR.DangerLevel <= i.DangerLevel
+                        && i.IsAboutToHit(150 + zedR.Delay - MainMenu["Evade"]["Spells"][zedR.Name]["RDelay"], Player))
+                        .MaxOrDefault(i => i.DangerLevel);
+                if (skillshot != null)
+                {
+                    Player.Spellbook.CastSpell(zedR.Slot);
                 }
             }
         }
@@ -779,22 +808,17 @@
                         || (E.IsReady() && Player.Mana >= E.Instance.ManaCost + W.Instance.ManaCost
                             && Player.Distance(target) < W.Range + E.Range)))
                 {
-                    if (MainMenu["Orbwalk"]["WNormal"] && !target.InAutoAttackRange())
+                    if (MainMenu["Orbwalk"]["WNormal"])
                     {
                         if (RState < 1
                             && (!MainMenu["Orbwalk"]["R"] || !MainMenu["Orbwalk"]["RCast" + target.ChampionName]
+                                || (RState == 0 && Player.Distance(target) > MainMenu["Orbwalk"]["RStopRange"])
                                 || RState == -1))
                         {
                             CastW(target);
                         }
                         if (RState > 0 && MainMenu["Orbwalk"]["R"] && MainMenu["Orbwalk"]["RCast" + target.ChampionName]
                             && !HaveRMark(target))
-                        {
-                            CastW(target);
-                        }
-                        if (RState == 0 && MainMenu["Orbwalk"]["R"]
-                            && MainMenu["Orbwalk"]["RCast" + target.ChampionName]
-                            && Player.Distance(target) > MainMenu["Orbwalk"]["RStopRange"])
                         {
                             CastW(target);
                         }

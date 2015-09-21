@@ -80,23 +80,21 @@
             {
                 return;
             }
-            Load.OnLoad += OnLoad;
-        }
-
-        private static void OnLoad(object sender, EventArgs e)
-        {
-            UpdateCheck();
-            if (!Plugins.ContainsKey(Player.ChampionName))
-            {
-                Game.PrintChat(string.Format("Valvrave Sharp => {0} Not Support!", Player.ChampionName));
-                return;
-            }
-            InitItem();
-            InitSummonerSpell();
-            MainMenu = new Menu("ValvraveSharp", "Valvrave Sharp", true, Player.ChampionName).Attach();
-            MainMenu.Separator("Author: Brian");
-            MainMenu.Separator("Paypal: dcbrian01@gmail.com");
-            Plugins[Player.ChampionName].Invoke();
+            Load.OnLoad += (sender, eventArgs) =>
+                {
+                    UpdateCheck();
+                    if (!Plugins.ContainsKey(Player.ChampionName))
+                    {
+                        Game.PrintChat(string.Format("Valvrave Sharp => {0} Not Support!", Player.ChampionName));
+                        return;
+                    }
+                    InitItem();
+                    InitSummonerSpell();
+                    MainMenu = new Menu("ValvraveSharp", "Valvrave Sharp", true, Player.ChampionName).Attach();
+                    MainMenu.Separator("Author: Brian");
+                    MainMenu.Separator("Paypal: dcbrian01@gmail.com");
+                    Plugins[Player.ChampionName].Invoke();
+                };
         }
 
         private static void UpdateCheck()

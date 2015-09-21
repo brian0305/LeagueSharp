@@ -1935,7 +1935,7 @@
                 new SpellData
                     {
                         ChampionName = "Veigar", SpellName = "VeigarDarkMatter", Slot = SpellSlot.W,
-                        Type = SkillShotType.SkillshotCircle, Delay = 1350, Range = 900, Radius = 225,
+                        Type = SkillShotType.SkillshotCircle, Delay = 1100, Range = 900, Radius = 225,
                         MissileSpeed = int.MaxValue, AddHitbox = true, DangerValue = 2
                     });
             Spells.Add(

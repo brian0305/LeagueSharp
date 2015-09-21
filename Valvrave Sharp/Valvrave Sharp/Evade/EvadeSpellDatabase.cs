@@ -16,23 +16,35 @@
 
         static EvadeSpellDatabase()
         {
-            if (ObjectManager.Player.ChampionName != "Yasuo")
+            switch (ObjectManager.Player.ChampionName)
             {
-                return;
+                case "Yasuo":
+                    Spells.Add(
+                        new EvadeSpellData
+                            {
+                                Name = "YasuoDashWrapper", CheckBuffName = "YasuoDashWrapper", DangerLevel = 2,
+                                Slot = SpellSlot.E, EvadeType = EvadeTypes.Dash, CastType = CastTypes.Target,
+                                MaxRange = 475, Speed = 1000, Delay = 50, FixedRange = true, UnderTower = true,
+                                ValidTargets = new[] { SpellTargets.EnemyChampions, SpellTargets.EnemyMinions }
+                            });
+                    Spells.Add(
+                        new EvadeSpellData
+                            {
+                                Name = "YasuoWMovingWall", DangerLevel = 3, Slot = SpellSlot.W,
+                                EvadeType = EvadeTypes.WindWall, CastType = CastTypes.Position, MaxRange = 400,
+                                Speed = int.MaxValue, Delay = 250, ExtraDelay = true
+                            });
+                    break;
+                case "Zed":
+                    Spells.Add(
+                        new EvadeSpellData
+                            {
+                                Name = "ZedRShadow", CheckSpellName = "zedr2", DangerLevel = 4, Slot = SpellSlot.R,
+                                EvadeType = EvadeTypes.Blink, CastType = CastTypes.Self, MaxRange = 25000,
+                                Speed = int.MaxValue, Delay = 50, ExtraDelay = true
+                            });
+                    break;
             }
-            Spells.Add(
-                new EvadeSpellData
-                    {
-                        Name = "YasuoDashWrapper", DangerLevel = 2, Slot = SpellSlot.E, EvadeType = EvadeTypes.Dash,
-                        CastType = CastTypes.Target, MaxRange = 475, Speed = 1000, Delay = 50, FixedRange = true,
-                        ValidTargets = new[] { SpellTargets.EnemyChampions, SpellTargets.EnemyMinions }
-                    });
-            Spells.Add(
-                new EvadeSpellData
-                    {
-                        Name = "YasuoWMovingWall", DangerLevel = 3, Slot = SpellSlot.W, EvadeType = EvadeTypes.WindWall,
-                        CastType = CastTypes.Position, MaxRange = 400, Speed = int.MaxValue, Delay = 250
-                    });
         }
 
         #endregion

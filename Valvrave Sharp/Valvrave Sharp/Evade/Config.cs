@@ -4,7 +4,6 @@ namespace Valvrave_Sharp.Evade
     using System.Linq;
     using System.Windows.Forms;
 
-    using LeagueSharp;
     using LeagueSharp.SDK.Core;
     using LeagueSharp.SDK.Core.Enumerations;
 
@@ -47,16 +46,13 @@ namespace Valvrave_Sharp.Evade
                     {
                         var subMenu = new Menu(spell.Name, string.Format("{0} ({1})", spell.Name, spell.Slot));
                         {
-                            if (ObjectManager.Player.ChampionName == "Yasuo")
+                            if (spell.UnderTower)
                             {
-                                if (spell.Name == "YasuoDashWrapper")
-                                {
-                                    subMenu.Bool("ETower", "Under Tower", false);
-                                }
-                                else if (spell.Name == "YasuoWMovingWall")
-                                {
-                                    subMenu.Slider("WDelay", "Extra Delay", 100, 0, 150);
-                                }
+                                subMenu.Bool(spell.Slot + "Tower", "Under Tower", false);
+                            }
+                            if (spell.ExtraDelay)
+                            {
+                                subMenu.Slider(spell.Slot + "Delay", "Extra Delay", 100, 0, 150);
                             }
                             subMenu.Slider("DangerLevel", "If Danger Level >=", spell.DangerLevel, 1, 5);
                             if (spell.CastType == CastTypes.Target

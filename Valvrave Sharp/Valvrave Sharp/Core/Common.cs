@@ -7,6 +7,7 @@ namespace Valvrave_Sharp.Core
     using LeagueSharp.SDK.Core.Enumerations;
     using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.Extensions.SharpDX;
+    using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers;
 
     using SharpDX;
@@ -35,7 +36,7 @@ namespace Valvrave_Sharp.Core
                 return CastStates.LowHitChance;
             }
             spell.LastCastAttemptT = Variables.TickCount;
-            return !ObjectManager.Player.Spellbook.CastSpell(spell.Slot, pred.CastPosition)
+            return !Program.Player.Spellbook.CastSpell(spell.Slot, pred.CastPosition)
                        ? CastStates.NotCasted
                        : CastStates.SuccessfullyCasted;
         }
@@ -58,6 +59,17 @@ namespace Valvrave_Sharp.Core
         public static int CountEnemy(this Obj_AI_Base unit, float range)
         {
             return CountEnemy(unit.ServerPosition, range);
+        }
+
+        public static bool IsMinion(this Obj_AI_Minion minion)
+        {
+            var pets = new[]
+                           {
+                               "annietibbers", "elisespiderling", "heimertyellow", "heimertblue", "leblanc",
+                               "malzaharvoidling", "shacobox", "shaco", "yorickspectralghoul", "yorickdecayedghoul",
+                               "yorickravenousghoul", "zyrathornplant", "zyragraspingplant"
+                           };
+            return Minion.IsMinion(minion) || pets.Contains(minion.CharData.BaseSkinName.ToLower());
         }
 
         public static Prediction.PredictionOutput VPrediction(

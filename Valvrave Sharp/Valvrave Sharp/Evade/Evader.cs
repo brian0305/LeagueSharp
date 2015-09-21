@@ -12,6 +12,8 @@
 
     using SharpDX;
 
+    using Valvrave_Sharp.Core;
+
     internal class Evader
     {
         #region Static Fields
@@ -106,52 +108,59 @@
         }
 
         public static List<Obj_AI_Base> GetEvadeTargets(
-            EvadeSpellData spell,
+            SpellTargets[] validTargets,
+            int speed,
+            int delay,
+            float range,
             bool isBlink = false,
             bool onlyGood = false,
-            bool dontCheckForSafety = false)
+            bool dontCheckForSafety = false,
+            string buffName = "")
         {
             var badTargets = new List<Obj_AI_Base>();
             var goodTargets = new List<Obj_AI_Base>();
             var allTargets = new List<Obj_AI_Base>();
-            foreach (var targetType in spell.ValidTargets)
+            foreach (var targetType in validTargets)
             {
                 switch (targetType)
                 {
                     case SpellTargets.AllyChampions:
-                        allTargets.AddRange(
-                            GameObjects.AllyHeroes.Where(i => i.IsValidTarget(spell.MaxRange, false) && !i.IsMe));
+                        allTargets.AddRange(GameObjects.AllyHeroes.Where(i => i.IsValidTarget(range, false) && !i.IsMe));
                         break;
                     case SpellTargets.AllyMinions:
-                        allTargets.AddRange(GameObjects.AllyMinions.Where(i => i.IsValidTarget(spell.MaxRange, false)));
+                        allTargets.AddRange(
+                            GameObjects.AllyMinions.Where(i => i.IsValidTarget(range, false) && i.IsMinion()));
                         break;
                     case SpellTargets.AllyWards:
-                        allTargets.AddRange(GameObjects.AllyWards.Where(i => i.IsValidTarget(spell.MaxRange, false)));
+                        allTargets.AddRange(GameObjects.AllyWards.Where(i => i.IsValidTarget(range, false)));
                         break;
                     case SpellTargets.EnemyChampions:
-                        allTargets.AddRange(GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(spell.MaxRange)));
+                        allTargets.AddRange(GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(range)));
                         break;
                     case SpellTargets.EnemyMinions:
-                        allTargets.AddRange(GameObjects.EnemyMinions.Where(i => i.IsValidTarget(spell.MaxRange)));
+                        allTargets.AddRange(GameObjects.EnemyMinions.Where(i => i.IsValidTarget(range) && i.IsMinion()));
+                        allTargets.AddRange(GameObjects.Jungle.Where(i => i.IsValidTarget(range)));
                         break;
                     case SpellTargets.EnemyWards:
-                        allTargets.AddRange(GameObjects.EnemyWards.Where(i => i.IsValidTarget(spell.MaxRange)));
+                        allTargets.AddRange(GameObjects.EnemyWards.Where(i => i.IsValidTarget(range)));
                         break;
                 }
             }
             foreach (var target in
-                allTargets.Where(i => dontCheckForSafety || IsSafePoint(i.ServerPosition.ToVector2()).IsSafe)
-                    .Where(i => spell.Name != "YasuoDashWrapper" || !i.HasBuff("YasuoDashWrapper")))
+                allTargets.Where(
+                    i =>
+                    (dontCheckForSafety || IsSafePoint(i.ServerPosition.ToVector2()).IsSafe)
+                    && (buffName == "" || !i.HasBuff(buffName))))
             {
                 if (isBlink)
                 {
                     if (Variables.TickCount - LastWardJumpAttempt < 250
-                        || IsSafeToBlink(target.ServerPosition.ToVector2(), Config.EvadingFirstTimeOffset, spell.Delay))
+                        || IsSafeToBlink(target.ServerPosition.ToVector2(), Config.EvadingFirstTimeOffset, delay))
                     {
                         goodTargets.Add(target);
                     }
                     if (Variables.TickCount - LastWardJumpAttempt < 250
-                        || IsSafeToBlink(target.ServerPosition.ToVector2(), Config.EvadingSecondTimeOffset, spell.Delay))
+                        || IsSafeToBlink(target.ServerPosition.ToVector2(), Config.EvadingSecondTimeOffset, delay))
                     {
                         badTargets.Add(target);
                     }
@@ -160,12 +169,12 @@
                 {
                     var pathToTarget = new List<Vector2> { Evade.PlayerPosition, target.ServerPosition.ToVector2() };
                     if (Variables.TickCount - LastWardJumpAttempt < 250
-                        || IsSafePath(pathToTarget, Config.EvadingFirstTimeOffset, spell.Speed, spell.Delay).IsSafe)
+                        || IsSafePath(pathToTarget, Config.EvadingFirstTimeOffset, speed, delay).IsSafe)
                     {
                         goodTargets.Add(target);
                     }
                     if (Variables.TickCount - LastWardJumpAttempt < 250
-                        || IsSafePath(pathToTarget, Config.EvadingSecondTimeOffset, spell.Speed, spell.Delay).IsSafe)
+                        || IsSafePath(pathToTarget, Config.EvadingSecondTimeOffset, speed, delay).IsSafe)
                     {
                         badTargets.Add(target);
                     }

@@ -95,7 +95,15 @@
     {
         #region Fields
 
+        private readonly float distance;
+
+        private readonly Vector2 end;
+
         private readonly int quality;
+
+        private readonly int radius;
+
+        private Vector2 start;
 
         #endregion
 
@@ -103,28 +111,12 @@
 
         public Arc(Vector2 start, Vector2 end, int radius, int quality = 20)
         {
-            this.Start = start;
-            this.End = end;
-            this.Radius = radius;
-            this.Distance = this.Start.Distance(this.End);
+            this.start = start;
+            this.end = end;
+            this.radius = radius;
+            this.distance = this.start.Distance(this.end);
             this.quality = quality;
         }
-
-        #endregion
-
-        #region Public Properties
-
-        public Vector2 End { get; private set; }
-
-        public int Radius { get; private set; }
-
-        public Vector2 Start { get; private set; }
-
-        #endregion
-
-        #region Properties
-
-        private float Distance { get; set; }
 
         #endregion
 
@@ -133,21 +125,21 @@
         public void UpdatePolygon(int offset = 0)
         {
             this.Points.Clear();
-            offset += this.Radius;
-            var innerRadius = -0.1562f * this.Distance + 687.31f;
-            var outerRadius = 0.35256f * this.Distance + 133f;
+            offset += this.radius;
+            var innerRadius = -0.1562f * this.distance + 687.31f;
+            var outerRadius = 0.35256f * this.distance + 133f;
             outerRadius = outerRadius / (float)Math.Cos(2 * Math.PI / this.quality);
-            var innerCenter = this.Start.CircleCircleIntersection(this.End, innerRadius, innerRadius)[0];
-            var outerCenter = this.Start.CircleCircleIntersection(this.End, outerRadius, outerRadius)[0];
-            var direction = (this.End - outerCenter).Normalized();
-            var step = -(float)(direction.AngleBetween((this.Start - outerCenter).Normalized()) * Math.PI / 180)
+            var innerCenter = this.start.CircleCircleIntersection(this.end, innerRadius, innerRadius)[0];
+            var outerCenter = this.start.CircleCircleIntersection(this.end, outerRadius, outerRadius)[0];
+            var direction = (this.end - outerCenter).Normalized();
+            var step = -(float)(direction.AngleBetween((this.start - outerCenter).Normalized()) * Math.PI / 180)
                        / this.quality;
             for (var i = 0; i < this.quality; i++)
             {
                 this.Points.Add(outerCenter + (outerRadius + offset + 15f) * direction.Rotated(step * i));
             }
-            direction = (this.Start - innerCenter).Normalized();
-            step = (float)(direction.AngleBetween((this.End - innerCenter).Normalized()) * Math.PI / 180) / this.quality;
+            direction = (this.start - innerCenter).Normalized();
+            step = (float)(direction.AngleBetween((this.end - innerCenter).Normalized()) * Math.PI / 180) / this.quality;
             for (var i = 0; i < this.quality; i++)
             {
                 this.Points.Add(innerCenter + Math.Max(0, innerRadius - offset - 100) * direction.Rotated(step * i));
@@ -252,6 +244,16 @@
         #endregion
 
         #region Public Properties
+
+        public int DangerLevel
+        {
+            get
+            {
+                return
+                    Program.MainMenu["Evade"][this.SpellData.ChampionName.ToLowerInvariant()][this.SpellData.SpellName][
+                        "DangerLevel"];
+            }
+        }
 
         public bool Enabled
         {
@@ -491,7 +493,7 @@
 
         public void OnUpdate()
         {
-            if (this.SpellData.CollisionObjects.Count() > 0 && this.SpellData.CollisionObjects != null
+            if (this.SpellData.CollisionObjects.Length > 0 && this.SpellData.CollisionObjects != null
                 && Variables.TickCount - this.lastCollisionCalc > 50)
             {
                 this.lastCollisionCalc = Variables.TickCount;

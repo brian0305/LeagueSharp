@@ -6,11 +6,11 @@
     {
         #region Fields
 
-        public bool AddHitbox = false;
+        public bool AddHitbox;
 
         public bool CanBeRemoved = false;
 
-        public bool Centered = false;
+        public bool Centered;
 
         public CollisionObjectTypes[] CollisionObjects = { };
 
@@ -24,7 +24,7 @@
 
         public bool DisableFowDetection = false;
 
-        public bool DontAddExtraDuration = false;
+        public bool DontAddExtraDuration;
 
         public bool DontCross = false;
 
@@ -40,7 +40,7 @@
 
         public string[] ExtraSpellNames = { };
 
-        public bool FixedRange = false;
+        public bool FixedRange;
 
         public bool FollowCaster = false;
 
@@ -50,17 +50,15 @@
 
         public string[] FromObjects = { };
 
-        public int Id = -1;
-
-        public bool Invert = false;
+        public bool Invert;
 
         public bool IsDangerous = false;
 
         public int MissileAccel = 0;
 
-        public bool MissileDelayed = false;
+        public bool MissileDelayed;
 
-        public bool MissileFollowsUnit = false;
+        public bool MissileFollowsUnit;
 
         public int MissileMaxSpeed;
 
@@ -94,8 +92,9 @@
         {
             get
             {
-                return Config.SkillShotsExtraRadius + this.RawRadius
-                       + (this.AddHitbox ? (int)ObjectManager.Player.BoundingRadius : 0);
+                return (!this.AddHitbox)
+                           ? this.RawRadius + Config.SkillShotsExtraRadius
+                           : Config.SkillShotsExtraRadius + this.RawRadius + (int)ObjectManager.Player.BoundingRadius;
             }
             set
             {

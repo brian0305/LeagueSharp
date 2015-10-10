@@ -44,10 +44,10 @@
 
         public Zed()
         {
-            Q = new Spell(SpellSlot.Q, 975);
-            Q2 = new Spell(SpellSlot.Q, 975);
+            Q = new Spell(SpellSlot.Q, 925);
+            Q2 = new Spell(SpellSlot.Q, 925);
             W = new Spell(SpellSlot.W, 600);
-            E = new Spell(SpellSlot.E, 290);
+            E = new Spell(SpellSlot.E, 280);
             R = new Spell(SpellSlot.R, 700);
             Q.SetSkillshot(0.25f, 50, 1700, true, SkillshotType.SkillshotLine);
             Q2.SetSkillshot(0.25f, 50, 1700, true, SkillshotType.SkillshotLine);
@@ -120,10 +120,19 @@
             }
             MainMenu.KeyBind("FleeW", "Use W To Flee", Keys.C);
 
-            Game.OnUpdate += OnUpdateEvade;
+            Evade.TryEvading += TryEvading;
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
-            GameObject.OnCreate += OnCreate;
+            GameObject.OnCreate += OnCreateShadow;
+            GameObject.OnCreate += (sender, args) =>
+                {
+                    var mark = sender as Obj_GeneralParticleEmitter;
+                    if (mark != null && mark.IsValid && mark.Name == "Zed_Base_R_buf_tell.troy" && rShadow.IsValid()
+                        && deathMark == null)
+                    {
+                        deathMark = mark;
+                    }
+                };
             GameObject.OnDelete += (sender, args) =>
                 {
                     var mark = sender as Obj_GeneralParticleEmitter;
@@ -296,25 +305,32 @@
             {
                 Q.Cast(pred.CastPosition);
             }
-            else if (wShadow.IsValid() || rShadow.IsValid())
+            else if (wShadow.IsValid() && rShadow.IsValid())
             {
-                if (wShadow.IsValid())
+                var shadow = target.Distance(wShadow) < target.Distance(rShadow) ? wShadow : rShadow;
+                Q2.UpdateSourcePosition(shadow.ServerPosition, shadow.ServerPosition);
+                var predQ = Q2.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall });
+                if (predQ.Hitchance >= Q2.MinHitChance)
                 {
-                    Q2.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
-                    var predQ = Q2.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall });
-                    if (predQ.Hitchance >= Q2.MinHitChance && Q.Cast(predQ.CastPosition))
-                    {
-                        return;
-                    }
+                    Q.Cast(predQ.CastPosition);
                 }
-                if (rShadow.IsValid())
+            }
+            else if (wShadow.IsValid())
+            {
+                Q2.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
+                var predQ = Q2.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall });
+                if (predQ.Hitchance >= Q2.MinHitChance)
                 {
-                    Q2.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
-                    var predQ = Q2.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall });
-                    if (predQ.Hitchance >= Q2.MinHitChance)
-                    {
-                        Q.Cast(predQ.CastPosition);
-                    }
+                    Q.Cast(predQ.CastPosition);
+                }
+            }
+            else if (rShadow.IsValid())
+            {
+                Q2.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
+                var predQ = Q2.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall });
+                if (predQ.Hitchance >= Q2.MinHitChance)
+                {
+                    Q.Cast(predQ.CastPosition);
                 }
             }
         }
@@ -325,8 +341,8 @@
             {
                 return;
             }
-            var castPos = default(Vector3);
-            var spellQ = new Spell(SpellSlot.Q, Q.Range);
+            var castPos = Vector3.Zero;
+            var spellQ = new Spell(SpellSlot.Q, Q.Range + (isCombo ? W.Range : 0));
             spellQ.SetSkillshot(Q.Delay, Q.Width, Q.Speed - 100, Q.Collision, Q.Type);
             var posPred = spellQ.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall }).CastPosition;
             if (isCombo)
@@ -334,31 +350,24 @@
                 switch (MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index)
                 {
                     case 1:
-                        castPos = Player.ServerPosition + (posPred - rShadow.ServerPosition).Normalized() * 500;
+                        castPos = Player.ServerPosition + (posPred - rShadow.ServerPosition).Normalized() * W.Range;
                         break;
                     case 2:
                         var subPos1 = Player.ServerPosition
-                                      + (posPred - rShadow.ServerPosition).Normalized().Perpendicular() * 500;
+                                      + (posPred - rShadow.ServerPosition).Normalized().Perpendicular() * W.Range;
                         var subPos2 = Player.ServerPosition
-                                      + (rShadow.ServerPosition - posPred).Normalized().Perpendicular() * 500;
-                        if (subPos1.IsWall() && !subPos2.IsWall() && target.Distance(subPos2) < target.Distance(subPos1))
-                        {
-                            castPos = subPos2;
-                        }
-                        if (!subPos1.IsWall() && subPos2.IsWall() && target.Distance(subPos1) < target.Distance(subPos2))
+                                      + (rShadow.ServerPosition - posPred).Normalized().Perpendicular() * W.Range;
+                        if (!subPos1.IsWall() && subPos2.IsWall())
                         {
                             castPos = subPos1;
                         }
-                        if (!castPos.IsValid())
+                        else if (subPos1.IsWall() && !subPos2.IsWall())
                         {
-                            if (!subPos1.IsWall() && !subPos2.IsWall())
-                            {
-                                castPos = target.Distance(subPos1) < target.Distance(subPos2) ? subPos1 : subPos2;
-                            }
-                            else
-                            {
-                                castPos = Player.ServerPosition + (posPred - rShadow.ServerPosition).Normalized() * 500;
-                            }
+                            castPos = subPos2;
+                        }
+                        else
+                        {
+                            castPos = subPos1;
                         }
                         break;
                     case 3:
@@ -553,25 +562,32 @@
                             break;
                         }
                     }
-                    else if (wShadow.IsValid() || rShadow.IsValid())
+                    else if (wShadow.IsValid() && rShadow.IsValid())
                     {
-                        if (wShadow.IsValid())
+                        var shadow = hero.Distance(wShadow) < hero.Distance(rShadow) ? wShadow : rShadow;
+                        Q2.UpdateSourcePosition(shadow.ServerPosition, shadow.ServerPosition);
+                        var predQ = Q2.VPrediction(hero, true, new[] { CollisionableObjects.YasuoWall });
+                        if (predQ.Hitchance >= Q2.MinHitChance && Q.Cast(predQ.CastPosition))
                         {
-                            Q2.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
-                            var predQ = Q2.VPrediction(hero, true, new[] { CollisionableObjects.YasuoWall });
-                            if (predQ.Hitchance >= Q2.MinHitChance && Q.Cast(predQ.CastPosition))
-                            {
-                                break;
-                            }
+                            break;
                         }
-                        if (rShadow.IsValid())
+                    }
+                    else if (wShadow.IsValid())
+                    {
+                        Q2.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
+                        var predQ = Q2.VPrediction(hero, true, new[] { CollisionableObjects.YasuoWall });
+                        if (predQ.Hitchance >= Q2.MinHitChance && Q.Cast(predQ.CastPosition))
                         {
-                            Q2.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
-                            var predQ = Q2.VPrediction(hero, true, new[] { CollisionableObjects.YasuoWall });
-                            if (predQ.Hitchance >= Q2.MinHitChance)
-                            {
-                                Q.Cast(predQ.CastPosition);
-                            }
+                            break;
+                        }
+                    }
+                    else if (rShadow.IsValid())
+                    {
+                        Q2.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
+                        var predQ = Q2.VPrediction(hero, true, new[] { CollisionableObjects.YasuoWall });
+                        if (predQ.Hitchance >= Q2.MinHitChance && Q.Cast(predQ.CastPosition))
+                        {
+                            break;
                         }
                     }
                 }
@@ -587,14 +603,8 @@
             }
         }
 
-        private static void OnCreate(GameObject sender, EventArgs args)
+        private static void OnCreateShadow(GameObject sender, EventArgs args)
         {
-            var mark = sender as Obj_GeneralParticleEmitter;
-            if (mark != null && mark.IsValid && mark.Name == "Zed_Base_R_buf_tell.troy" && rShadow.IsValid()
-                && deathMark == null)
-            {
-                deathMark = mark;
-            }
             var shadow = sender as Obj_AI_Minion;
             if (shadow == null || !shadow.IsValid || shadow.Name != "Shadow" || shadow.IsEnemy)
             {
@@ -605,14 +615,14 @@
                 wShadow = shadow;
                 wCasted = false;
                 rCasted = false;
-                DelayAction.Add(4500, () => wShadow = null);
+                DelayAction.Add(4450, () => wShadow = null);
             }
             else if (rCasted)
             {
                 rShadow = shadow;
                 rCasted = false;
                 wCasted = false;
-                DelayAction.Add(7500, () => rShadow = null);
+                DelayAction.Add(7450, () => rShadow = null);
             }
         }
 
@@ -689,32 +699,6 @@
                 if (W.IsReady())
                 {
                     W.Cast(Game.CursorPos);
-                }
-            }
-        }
-
-        private static void OnUpdateEvade(EventArgs args)
-        {
-            if (Player.IsDead || !MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active)
-            {
-                return;
-            }
-            if (Player.HasBuffOfType(BuffType.SpellShield) || Player.HasBuffOfType(BuffType.SpellImmunity))
-            {
-                return;
-            }
-            var zedR = EvadeSpellDatabase.Spells.FirstOrDefault(i => i.Enabled && i.IsReady && i.Slot == SpellSlot.R);
-            if (zedR != null)
-            {
-                var skillshot =
-                    Evade.DetectedSkillshots.Where(
-                        i =>
-                        i.Enabled && zedR.DangerLevel <= i.DangerLevel
-                        && i.IsAboutToHit(150 + zedR.Delay - MainMenu["Evade"]["Spells"][zedR.Name]["RDelay"], Player))
-                        .MaxOrDefault(i => i.DangerLevel);
-                if (skillshot != null)
-                {
-                    Player.Spellbook.CastSpell(zedR.Slot);
                 }
             }
         }
@@ -825,7 +809,7 @@
                     }
                     if (MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index > 0 && RState > 0
                         && MainMenu["Orbwalk"]["R"] && MainMenu["Orbwalk"]["RCast" + target.ChampionName]
-                        && HaveRMark(target) && Q.IsInRange(target))
+                        && HaveRMark(target) /*&& Q.IsInRange(target)*/)
                     {
                         CastW(target, true);
                     }
@@ -836,6 +820,22 @@
             if (MainMenu["Orbwalk"]["Item"])
             {
                 UseItem(target);
+            }
+        }
+
+        private static void TryEvading(List<Skillshot> hitBy, Vector2 to)
+        {
+            var dangerLevel = hitBy.Select(i => i.DangerLevel).Concat(new[] { 0 }).Max();
+            var zedR =
+                EvadeSpellDatabase.Spells.FirstOrDefault(
+                    i => i.Enable && i.DangerLevel <= dangerLevel && i.IsReady && i.Slot == SpellSlot.R);
+            if (zedR == null)
+            {
+                return;
+            }
+            if (Evade.IsAboutToHit(Player, zedR.Delay - MainMenu["Evade"]["Spells"][zedR.Name]["RDelay"]))
+            {
+                Player.Spellbook.CastSpell(zedR.Slot);
             }
         }
 

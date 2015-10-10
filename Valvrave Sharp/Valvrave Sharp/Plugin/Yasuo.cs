@@ -27,7 +27,7 @@
     {
         #region Constants
 
-        private const int QCirWidth = 250, RWidth = 400;
+        private const int QCirWidth = 300, RWidth = 400;
 
         #endregion
 
@@ -42,7 +42,7 @@
         public Yasuo()
         {
             Q = new Spell(SpellSlot.Q, 500);
-            Q2 = new Spell(SpellSlot.Q, 1150);
+            Q2 = new Spell(SpellSlot.Q, 1100);
             W = new Spell(SpellSlot.W, 400);
             E = new Spell(SpellSlot.E, 475);
             R = new Spell(SpellSlot.R, 1300);
@@ -61,8 +61,7 @@
                 orbwalkMenu.Bool("Item", "Use Item");
                 orbwalkMenu.Separator("E Gap Settings");
                 orbwalkMenu.Bool("EGap", "Use E");
-                orbwalkMenu.Bool("EMouse", "Follow Mouse", false);
-                orbwalkMenu.Slider("ERange", "-> If Distance >", 300, 0, (int)E.Range);
+                orbwalkMenu.Slider("ERange", "If Distance >", 300, 0, (int)E.Range);
                 orbwalkMenu.Bool("ETower", "Under Tower");
                 orbwalkMenu.Bool("EStackQ", "Stack Q While Gap", false);
                 orbwalkMenu.Separator("R Settings");
@@ -135,47 +134,27 @@
             }
             MainMenu.KeyBind("StackQ", "Auto Stack Q", Keys.Z, KeyBindType.Toggle);
 
-            Game.OnUpdate += OnUpdateEvade;
+            Evade.Evading += Evading;
+            Evade.TryEvading += TryEvading;
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
-            Spellbook.OnStopCast += (sender, args) =>
+            Obj_AI_Base.OnPlayAnimation += (sender, args) =>
                 {
-                    if (sender.Owner.IsMe && args.DestroyMissile && args.StopAnimation)
-                    {
-                        isDashing = false;
-                    }
-                };
-            Obj_AI_Base.OnBuffAdd += (sender, args) =>
-                {
-                    if (!sender.IsMe || !isDashing)
-                    {
-                        return;
-                    }
-                    if (args.Buff.Type == BuffType.Knockback || args.Buff.Type == BuffType.Knockup
-                        || args.Buff.Type == BuffType.Charm || args.Buff.Type == BuffType.Fear
-                        || args.Buff.Type == BuffType.Flee || args.Buff.Type == BuffType.Taunt
-                        || args.Buff.Type == BuffType.Snare || args.Buff.Type == BuffType.Stun
-                        || args.Buff.Type == BuffType.Suppression)
-                    {
-                        isDashing = false;
-                    }
-                };
-            Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
-                {
-                    if (!sender.IsMe || args.SData.Name != "YasuoDashWrapper")
+                    if (!sender.IsMe || args.Animation != "Spell3")
                     {
                         return;
                     }
                     isDashing = true;
                     DelayAction.Add(
-                        470000 / E.Speed,
+                        200,
                         () =>
                             {
-                                if (isDashing)
+                                if (Player.IsDashing())
                                 {
                                     isDashing = false;
                                 }
                             });
+                    DelayAction.Add(340, () => isDashing = false);
                 };
         }
 
@@ -213,10 +192,10 @@
             {
                 var pos = Player.GetDashInfo().EndPos.ToVector3();
                 var obj = new List<Obj_AI_Base>();
-                obj.AddRange(GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(QCirWidth, true, pos)));
-                obj.AddRange(GameObjects.EnemyMinions.Where(i => i.IsValidTarget(QCirWidth, true, pos) && i.IsMinion()));
-                obj.AddRange(GameObjects.Jungle.Where(i => i.IsValidTarget(QCirWidth, true, pos)));
-                return obj;
+                obj.AddRange(GameObjects.EnemyHeroes);
+                obj.AddRange(GameObjects.EnemyMinions.Where(i => i.IsMinion()));
+                obj.AddRange(GameObjects.Jungle);
+                return obj.Where(i => i.IsValidTarget(QCirWidth, true, pos)).ToList();
             }
         }
 
@@ -236,7 +215,7 @@
         {
             get
             {
-                return (float)(1 - Math.Min(Math.Round(Player.AttackSpeedMod - 1, 2) * 0.06, 0.66));
+                return 1 - Math.Min((Player.AttackSpeedMod - 1) * 0.006f, 0.66f);
             }
         }
 
@@ -268,7 +247,7 @@
         {
             get
             {
-                return isDashing;
+                return isDashing || Player.IsDashing();
             }
         }
 
@@ -324,7 +303,7 @@
             else
             {
                 int[] hit = { -1 };
-                var predPos = new Vector3();
+                var predPos = Vector3.Zero;
                 foreach (var pred in
                     GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(Q2.Range))
                         .Select(i => spellQ.VPrediction(i, true, new[] { CollisionableObjects.YasuoWall }))
@@ -345,6 +324,24 @@
         {
             return target.Distance(Player.GetDashInfo().EndPos) < QCirWidth - target.BoundingRadius / 2
                    && Q.Cast(target.ServerPosition);
+        }
+
+        private static void Evading()
+        {
+            var windWall = EvadeSpellDatabase.Spells.FirstOrDefault(i => i.Enable && i.IsReady && i.Slot == SpellSlot.W);
+            if (windWall == null)
+            {
+                return;
+            }
+            var skillshot =
+                Evade.SkillshotAboutToHit(
+                    Player,
+                    windWall.Delay - MainMenu["Evade"]["Spells"][windWall.Name]["WDelay"],
+                    true).FirstOrDefault(i => windWall.DangerLevel <= i.DangerLevel);
+            if (skillshot != null)
+            {
+                Player.Spellbook.CastSpell(windWall.Slot, Player.ServerPosition.Extend(skillshot.Start, 100));
+            }
         }
 
         private static void Farm()
@@ -368,9 +365,9 @@
                 var minion =
                     GameObjects.EnemyMinions.Where(
                         i =>
-                        CanCastE(i) && i.IsMinion() && Evader.IsSafePoint(PosAfterE(i)).IsSafe
-                        && (!UnderTower(PosAfterE(i)) || MainMenu["Farm"]["ETower"]) && E.GetHealthPrediction(i) > 0
-                        && E.GetHealthPrediction(i) + i.MagicalShield <= GetEDmg(i)).MaxOrDefault(i => i.MaxHealth);
+                        CanCastE(i) && i.IsMinion() && (!UnderTower(PosAfterE(i)) || MainMenu["Farm"]["ETower"])
+                        && E.GetHealthPrediction(i) > 0 && E.GetHealthPrediction(i) + i.MagicalShield <= GetEDmg(i))
+                        .MaxOrDefault(i => i.MaxHealth);
                 if (minion != null)
                 {
                     E.CastOnUnit(minion);
@@ -417,15 +414,15 @@
                           ? Prediction.GetPrediction(target, E.Delay, 1, E.Speed).UnitPosition
                           : Game.CursorPos;
             var obj = new List<Obj_AI_Base>();
-            obj.AddRange(GameObjects.EnemyHeroes.Where(CanCastE));
-            obj.AddRange(GameObjects.EnemyMinions.Where(i => CanCastE(i) && i.IsMinion()));
-            obj.AddRange(GameObjects.Jungle.Where(CanCastE));
+            obj.AddRange(GameObjects.EnemyHeroes);
+            obj.AddRange(GameObjects.EnemyMinions.Where(i => i.IsMinion()));
+            obj.AddRange(GameObjects.Jungle);
             return
                 obj.Where(
                     i =>
-                    (!UnderTower(PosAfterE(i)) || underTower)
-                    && PosAfterE(i).Distance(pos) < (inQCir ? QCirWidth : Player.Distance(pos))
-                    && Evader.IsSafePoint(PosAfterE(i)).IsSafe).MinOrDefault(i => PosAfterE(i).Distance(pos));
+                    CanCastE(i) && (!UnderTower(PosAfterE(i)) || underTower)
+                    && PosAfterE(i).Distance(pos) < (inQCir ? QCirWidth : Player.Distance(pos)))
+                    .MinOrDefault(i => PosAfterE(i).Distance(pos));
         }
 
         private static double GetQDmg(Obj_AI_Base target)
@@ -602,10 +599,10 @@
             if (MainMenu["LaneClear"]["E"] && E.IsReady() && !IsDashing)
             {
                 var minion = new List<Obj_AI_Minion>();
-                minion.AddRange(GameObjects.EnemyMinions.Where(i => CanCastE(i) && i.IsMinion()));
-                minion.AddRange(GameObjects.Jungle.Where(CanCastE));
+                minion.AddRange(GameObjects.EnemyMinions.Where(i => i.IsMinion()));
+                minion.AddRange(GameObjects.Jungle);
                 minion =
-                    minion.Where(i => !UnderTower(PosAfterE(i)) || MainMenu["LaneClear"]["ETower"])
+                    minion.Where(i => CanCastE(i) && (!UnderTower(PosAfterE(i)) || MainMenu["LaneClear"]["ETower"]))
                         .OrderByDescending(i => i.MaxHealth)
                         .ToList();
                 if (minion.Count > 0)
@@ -627,17 +624,16 @@
                                 sub.Add(mob);
                             }
                             var nearMinion = new List<Obj_AI_Minion>();
-                            nearMinion.AddRange(
-                                GameObjects.EnemyMinions.Where(
-                                    i => i.IsValidTarget(QCirWidth, true, PosAfterE(mob).ToVector3()) && i.IsMinion()));
-                            nearMinion.AddRange(
-                                GameObjects.Jungle.Where(
-                                    i => i.IsValidTarget(QCirWidth, true, PosAfterE(mob).ToVector3())));
+                            nearMinion.AddRange(GameObjects.EnemyMinions.Where(i => i.IsMinion()));
+                            nearMinion.AddRange(GameObjects.Jungle);
+                            nearMinion =
+                                nearMinion.Where(i => i.IsValidTarget(QCirWidth, true, PosAfterE(mob).ToVector3()))
+                                    .ToList();
                             if (nearMinion.Count > 2
-                                || nearMinion.Any(
+                                || nearMinion.Count(
                                     i =>
                                     E.GetHealthPrediction(mob) > 0
-                                    && E.GetHealthPrediction(mob) + i.PhysicalShield <= GetQDmg(mob)))
+                                    && E.GetHealthPrediction(mob) + i.PhysicalShield <= GetQDmg(mob)) > 1)
                             {
                                 sub.Add(mob);
                             }
@@ -667,11 +663,12 @@
                 else
                 {
                     var minion = new List<Obj_AI_Minion>();
-                    minion.AddRange(
-                        GameObjects.EnemyMinions.Where(
-                            i => i.IsValidTarget((!HaveQ3 ? Q : Q2).Range - Q.Width) && i.IsMinion()));
-                    minion.AddRange(GameObjects.Jungle.Where(i => i.IsValidTarget((!HaveQ3 ? Q : Q2).Range - Q.Width)));
-                    minion = minion.OrderByDescending(i => i.MaxHealth).ToList();
+                    minion.AddRange(GameObjects.EnemyMinions.Where(i => i.IsMinion()));
+                    minion.AddRange(GameObjects.Jungle);
+                    minion =
+                        minion.Where(i => i.IsValidTarget((!HaveQ3 ? Q : Q2).Range - Q.Width))
+                            .OrderByDescending(i => i.MaxHealth)
+                            .ToList();
                     if (minion.Count == 0)
                     {
                         return;
@@ -787,41 +784,6 @@
             }
         }
 
-        private static void OnUpdateEvade(EventArgs args)
-        {
-            if (Player.IsDead || !MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active)
-            {
-                return;
-            }
-            if (Player.HasBuffOfType(BuffType.SpellShield) || Player.HasBuffOfType(BuffType.SpellImmunity))
-            {
-                return;
-            }
-            var windWall = EvadeSpellDatabase.Spells.FirstOrDefault(
-                i => i.Enabled && i.IsReady && i.Slot == SpellSlot.W);
-            if (windWall != null)
-            {
-                var skillshot =
-                    Evade.DetectedSkillshots.Where(
-                        i =>
-                        i.Enabled && windWall.DangerLevel <= i.DangerLevel
-                        && i.SpellData.CollisionObjects.Contains(CollisionObjectTypes.YasuoWall)
-                        && i.IsAboutToHit(
-                            150 + windWall.Delay - MainMenu["Evade"]["Spells"][windWall.Name]["WDelay"],
-                            Player)).MaxOrDefault(i => i.DangerLevel);
-                if (skillshot != null)
-                {
-                    Player.Spellbook.CastSpell(windWall.Slot, Player.ServerPosition.Extend(skillshot.Start, 100));
-                }
-            }
-            var safePoint = Evader.IsSafePoint(Player.ServerPosition.ToVector2());
-            var safePath = Evader.IsSafePath(Player.GetWaypoints(), 100);
-            if (!safePath.IsSafe && !safePoint.IsSafe)
-            {
-                TryToEvade(safePoint.SkillshotList, Game.CursorPos.ToVector2());
-            }
-        }
-
         private static void Orbwalk()
         {
             if (MainMenu["Orbwalk"]["R"] && R.IsReady() && GetRTarget.Count > 0)
@@ -849,7 +811,7 @@
             }
             if (MainMenu["Orbwalk"]["EGap"] && E.IsReady() && !IsDashing)
             {
-                var target = Q.GetTarget(Q.Width);
+                var target = Q.GetTarget(QCirWidth);
                 if (target != null && HaveQ3 && Q.IsReady(20))
                 {
                     var nearObj = GetNearObj(target, true);
@@ -860,26 +822,16 @@
                         return;
                     }
                 }
-                target = target ?? Q2.GetTarget();
+                target = Q.GetTarget(Q.Width) ?? Q2.GetTarget();
                 if (target != null)
                 {
-                    if (!E.IsInRange(target))
+                    var nearObj = GetNearObj(target, false, MainMenu["Orbwalk"]["ETower"]);
+                    if (nearObj != null
+                        && (nearObj.Compare(target)
+                                ? !target.InAutoAttackRange()
+                                : Player.Distance(target) > MainMenu["Orbwalk"]["ERange"]) && E.CastOnUnit(nearObj))
                     {
-                        var nearObj = GetNearObj(target, true)
-                                      ?? GetNearObj(target, false, MainMenu["Orbwalk"]["ETower"]);
-                        if (nearObj != null && E.CastOnUnit(nearObj))
-                        {
-                            return;
-                        }
-                    }
-                    if (MainMenu["Orbwalk"]["EMouse"] && Player.Distance(target) >= MainMenu["Orbwalk"]["ERange"])
-                    {
-                        var nearObj = GetNearObj(null, false, MainMenu["Orbwalk"]["ETower"]);
-                        if (nearObj != null && (!target.Compare(nearObj) || !target.InAutoAttackRange())
-                            && E.CastOnUnit(nearObj))
-                        {
-                            return;
-                        }
+                        return;
                     }
                 }
             }
@@ -935,11 +887,7 @@
 
         private static Vector2 PosAfterE(Obj_AI_Base target)
         {
-            var pos = Prediction.GetPrediction(target, E.Delay, 1, E.Speed).UnitPosition;
-            return
-                Player.ServerPosition.Extend(
-                    pos,
-                    Player.Distance(pos) < 410 ? E.Range : Player.Distance(pos) + target.BoundingRadius).ToVector2();
+            return Player.ServerPosition.Extend(target.ServerPosition, E.Range).ToVector2();
         }
 
         private static void StackQ()
@@ -955,10 +903,12 @@
                     return;
                 case CastStates.InvalidTarget:
                     var minion = new List<Obj_AI_Minion>();
-                    minion.AddRange(
-                        GameObjects.EnemyMinions.Where(i => i.IsValidTarget(Q.Range - Q.Width) && i.IsMinion()));
-                    minion.AddRange(GameObjects.Jungle.Where(i => i.IsValidTarget(Q.Range - Q.Width)));
-                    minion = minion.OrderByDescending(i => i.MaxHealth).ToList();
+                    minion.AddRange(GameObjects.EnemyMinions.Where(i => i.IsMinion()));
+                    minion.AddRange(GameObjects.Jungle);
+                    minion =
+                        minion.Where(i => i.IsValidTarget(Q.Range - Q.Width))
+                            .OrderByDescending(i => i.MaxHealth)
+                            .ToList();
                     if (minion.Count == 0)
                     {
                         return;
@@ -981,48 +931,39 @@
             }
         }
 
-        private static void TryToEvade(List<Skillshot> hitBy, Vector2 to)
+        private static void TryEvading(List<Skillshot> hitBy, Vector2 to)
         {
             var dangerLevel = hitBy.Select(i => i.DangerLevel).Concat(new[] { 0 }).Max();
-            var dashE =
+            var dashWrapper =
                 EvadeSpellDatabase.Spells.FirstOrDefault(
-                    i => i.Enabled && i.DangerLevel <= dangerLevel && i.IsReady && i.Slot == SpellSlot.E);
-            if (dashE == null)
+                    i => i.Enable && i.DangerLevel <= dangerLevel && i.IsReady && i.Slot == SpellSlot.E);
+            if (dashWrapper == null)
             {
                 return;
             }
             var target =
                 Evader.GetEvadeTargets(
-                    dashE.ValidTargets,
-                    (int)E.Speed,
-                    dashE.Delay,
-                    dashE.MaxRange,
+                    dashWrapper.ValidTargets,
+                    dashWrapper.Speed,
+                    dashWrapper.Delay,
+                    dashWrapper.MaxRange,
                     false,
                     false,
-                    false,
-                    dashE.CheckBuffName)
-                    .Select(
-                        obj =>
-                        new
-                            {
-                                obj, point = Player.ServerPosition.Extend(obj.ServerPosition, dashE.MaxRange).ToVector2()
-                            })
+                    true)
                     .Where(
                         i =>
-                        Evader.IsSafePoint(i.point).IsSafe
-                        && (!UnderTower(i.point) || MainMenu["Evade"]["Spells"][dashE.Name]["ETower"]))
-                    .OrderBy(i => to.Distance(i.point))
-                    .Select(i => i.obj)
-                    .FirstOrDefault();
+                        Evade.IsSafePoint(PosAfterE(i)).IsSafe
+                        && (!UnderTower(PosAfterE(i)) || MainMenu["Evade"]["Spells"][dashWrapper.Name]["ETower"]))
+                    .MinOrDefault(i => i.DistanceSquared(to));
             if (target != null)
             {
-                Player.Spellbook.CastSpell(dashE.Slot, target);
+                Player.Spellbook.CastSpell(dashWrapper.Slot, target);
             }
         }
 
         private static bool UnderTower(Vector2 pos)
         {
-            return GameObjects.EnemyTurrets.Any(i => !i.IsDead && i.Distance(pos) <= 900 + Player.BoundingRadius);
+            return GameObjects.EnemyTurrets.Any(i => !i.IsDead && i.Position.Distance(pos) <= 950);
         }
 
         private static void UseItem(Obj_AI_Hero target)
@@ -1050,7 +991,7 @@
             {
                 Hydra.Cast();
             }
-            if (Titanic.IsReady && Player.CountEnemy(Titanic.Range) > 0)
+            if (Titanic.IsReady && Player.CountEnemy(Player.GetRealAutoAttackRange()) > 0)
             {
                 Titanic.Cast();
             }
@@ -1246,7 +1187,8 @@
                             Slot = SpellSlot.Q
                         });
                 Spells.Add(
-                    new SpellData { ChampionName = "Vayne", SpellNames = new[] { "vaynecondemn" }, Slot = SpellSlot.E });
+                    new SpellData
+                        { ChampionName = "Vayne", SpellNames = new[] { "vaynecondemnmissile" }, Slot = SpellSlot.E });
                 Spells.Add(
                     new SpellData
                         { ChampionName = "Veigar", SpellNames = new[] { "veigarprimordialburst" }, Slot = SpellSlot.R });

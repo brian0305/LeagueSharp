@@ -274,14 +274,13 @@
             }
             if (checkCollision && input.Collision)
             {
-                var positions = new List<Vector3> { result.UnitPosition, result.CastPosition, input.Unit.Position };
                 var originalUnit = input.Unit;
-                result.CollisionObjects = Collisions.GetCollision(positions, input);
+                result.CollisionObjects =
+                    Collisions.GetCollision(new List<Vector3> { result.UnitPosition, result.CastPosition }, input);
                 result.CollisionObjects.RemoveAll(i => i.NetworkId == originalUnit.NetworkId);
                 result.Hitchance = result.CollisionObjects.Count > 0 ? HitChance.Collision : result.Hitchance;
             }
-            if ((result.Hitchance == HitChance.High || result.Hitchance == HitChance.VeryHigh)
-                && input.Unit is Obj_AI_Hero)
+            if (result.Hitchance == HitChance.High || result.Hitchance == HitChance.VeryHigh)
             {
                 result = input.WayPointAnalysis(result);
             }
@@ -312,6 +311,16 @@
 
         private static PredictionOutput WayPointAnalysis(this PredictionInput input, PredictionOutput result)
         {
+            if (!(input.Unit is Obj_AI_Hero))
+            {
+                result.Hitchance = HitChance.VeryHigh;
+                return result;
+            }
+            if (UnitTracker.GetLastSpecialSpellTime(input.Unit) > 0)
+            {
+                result.Hitchance = HitChance.VeryHigh;
+                return result;
+            }
             result.Hitchance = HitChance.High;
             var lastWaypoint = input.Unit.GetWaypoints().Last().ToVector3();
             var distUnitToWaypoint = input.Unit.Distance(lastWaypoint);
@@ -322,16 +331,14 @@
                                     ? 0
                                     : distUnitToFrom / input.Speed);
             var moveArea = input.Unit.MoveSpeed * totalDelay;
-            var fixRange = moveArea * 0.6;
-            var moveAngle = 30 + input.Radius / 15;
-            var backToFront = moveArea * 1.5;
-            var minPath = 500 + backToFront;
+            var fixRange = moveArea * 0.6f;
+            var moveAngle = 30 + input.Radius / 10 - input.Delay * 5;
+            var backToFront = moveArea * 1.5f;
+            var minPath = 700 + backToFront;
             if (UnitTracker.GetLastNewPathTime(input.Unit) < 0.1)
             {
-                fixRange = moveArea * 0.4;
-                moveAngle += 15;
+                fixRange = moveArea * (0.2f + input.Delay);
                 backToFront = moveArea;
-                minPath = backToFront;
             }
             if (input.Type == SkillshotType.SkillshotCircle)
             {
@@ -343,18 +350,13 @@
             }
             else if (input.Type == SkillshotType.SkillshotLine)
             {
-                if (input.Unit.Path.Length > 1)
-                {
-                    result.Hitchance = HitChance.Medium;
-                }
-                else if (input.Unit.Path.Length > 0)
+                if (input.Unit.Path.Length > 0)
                 {
                     if (input.From.GetAngle(input.Unit) < moveAngle)
                     {
-                        backToFront = moveArea / 2;
                         result.Hitchance = HitChance.VeryHigh;
                     }
-                    else
+                    else if (UnitTracker.GetLastNewPathTime(input.Unit) > 0.1)
                     {
                         result.Hitchance = HitChance.High;
                     }
@@ -362,7 +364,7 @@
             }
             if (input.Unit.Path.Length == 0 && input.Unit.Position == input.Unit.ServerPosition)
             {
-                if (UnitTracker.GetLastStopMoveTime(input.Unit) < 0.6)
+                if (UnitTracker.GetLastStopMoveTime(input.Unit) < 0.4)
                 {
                     result.Hitchance = HitChance.High;
                 }
@@ -371,20 +373,28 @@
                     result.Hitchance = distUnitToFrom > input.Range - fixRange ? HitChance.Medium : HitChance.VeryHigh;
                 }
             }
-            else if (distFromToWaypoint <= distUnitToFrom && distUnitToFrom > input.Range - fixRange)
+            else if (distFromToWaypoint <= input.Unit.Distance(input.From) && distUnitToFrom > input.Range - fixRange)
             {
                 result.Hitchance = HitChance.Medium;
             }
             if (UnitTracker.GetLastAttackTime(input.Unit) < 0.1)
             {
-                result.Hitchance = input.Type == SkillshotType.SkillshotLine && totalDelay < 0.8
+                result.Hitchance = (input.Type == SkillshotType.SkillshotLine && totalDelay < 0.8 + input.Radius * 0.001)
+                                   || (input.Type == SkillshotType.SkillshotCircle
+                                       && totalDelay < 0.6 + input.Radius * 0.001)
                                        ? HitChance.VeryHigh
-                                       : (totalDelay < 0.6 ? HitChance.VeryHigh : HitChance.Medium);
+                                       : HitChance.Medium;
             }
-            if (input.Type == SkillshotType.SkillshotCircle && totalDelay < 1.1
-                && UnitTracker.GetLastNewPathTime(input.Unit) < 0.1)
+            if (input.Type == SkillshotType.SkillshotCircle)
             {
-                result.Hitchance = HitChance.VeryHigh;
+                if (UnitTracker.GetLastNewPathTime(input.Unit) < 0.1)
+                {
+                    result.Hitchance = HitChance.VeryHigh;
+                }
+                else if (distUnitToFrom < input.Range - fixRange)
+                {
+                    result.Hitchance = HitChance.VeryHigh;
+                }
             }
             if (result.Hitchance != HitChance.Medium)
             {
@@ -396,13 +406,24 @@
                 {
                     result.Hitchance = HitChance.Medium;
                 }
-                else if (input.Unit.Path.Length > 0
-                         && (distUnitToWaypoint < backToFront || input.Unit.Position == input.Unit.ServerPosition))
+                else if (input.Unit.Path.Length > 0 && distUnitToWaypoint < backToFront)
+                {
+                    result.Hitchance = HitChance.Medium;
+                }
+                else if (input.Unit.Path.Length > 1)
+                {
+                    result.Hitchance = HitChance.Medium;
+                }
+                else if (UnitTracker.GetLastVisableTime(input.Unit) < 0.05)
                 {
                     result.Hitchance = HitChance.Medium;
                 }
             }
-            if (distUnitToFrom < 300 || distFromToWaypoint < 400 || input.Unit.MoveSpeed < 200)
+            if (distFromToWaypoint > input.Unit.Distance(input.From) && input.From.GetAngle(input.Unit) > moveAngle)
+            {
+                result.Hitchance = HitChance.VeryHigh;
+            }
+            if (input.Unit.Distance(input.From) < 400 || distFromToWaypoint < 300 || input.Unit.MoveSpeed < 200)
             {
                 result.Hitchance = HitChance.VeryHigh;
             }
@@ -546,7 +567,7 @@
                             }
                         }
                         var bestCandidateHits = -1;
-                        var bestCandidate = new Vector2();
+                        var bestCandidate = Vector2.Zero;
                         var positionsList = posibleTargets.Select(i => i.Position).ToList();
                         foreach (var candidate in candidates)
                         {
@@ -576,7 +597,7 @@
                             let edge1 = end.Rotated(-angle / 2)
                             let edge2 = edge1.Rotated(angle)
                             where
-                                point.DistanceSquared(new Vector2()) < range * range && edge1.CrossProduct(point) > 0
+                                point.DistanceSquared(Vector2.Zero) < range * range && edge1.CrossProduct(point) > 0
                                 && point.CrossProduct(edge2) > 0
                             select point).Count();
                 }
@@ -613,7 +634,7 @@
                             candidates.AddRange(targetCandidates);
                         }
                         var bestCandidateHits = -1;
-                        var bestCandidate = new Vector2();
+                        var bestCandidate = Vector2.Zero;
                         var bestCandidateHitPoints = new List<Vector2>();
                         var positionsList = posibleTargets.Select(i => i.Position).ToList();
                         foreach (var candidate in candidates)
@@ -638,7 +659,7 @@
                         if (bestCandidateHits > 1)
                         {
                             float maxDistance = -1;
-                            Vector2 p1 = new Vector2(), p2 = new Vector2();
+                            Vector2 p1 = Vector2.Zero, p2 = Vector2.Zero;
                             for (var i = 0; i < bestCandidateHitPoints.Count; i++)
                             {
                                 for (var j = 0; j < bestCandidateHitPoints.Count; j++)
@@ -745,36 +766,46 @@
                         switch (objType)
                         {
                             case CollisionableObjects.Minions:
-                                foreach (var minion in
+                                var minions = new List<Obj_AI_Minion>();
+                                minions.AddRange(
                                     GameObjects.EnemyMinions.Where(
                                         i =>
                                         i.IsValidTarget(
                                             Math.Min(input.Range + input.Radius + 100, 2000),
                                             true,
-                                            input.RangeCheckFrom) && i.IsMinion()))
-                                {
-                                    input.Unit = minion;
-                                    var pred = input.GetPrediction(false, false);
-                                    if (pred.UnitPosition.ToVector2()
-                                            .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
-                                        <= Math.Pow(input.Radius + 15 + minion.BoundingRadius, 2))
-                                    {
-                                        result.Add(minion);
-                                    }
-                                }
-                                foreach (var minion in
+                                            input.RangeCheckFrom) && i.IsMinion()));
+                                minions.AddRange(
                                     GameObjects.Jungle.Where(
                                         i =>
                                         i.IsValidTarget(
                                             Math.Min(input.Range + input.Radius + 100, 2000),
                                             true,
-                                            input.RangeCheckFrom)))
+                                            input.RangeCheckFrom)));
+                                foreach (var minion in
+                                    minions)
                                 {
                                     input.Unit = minion;
-                                    var pred = input.GetPrediction(false, false);
-                                    if (pred.UnitPosition.ToVector2()
-                                            .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
-                                        <= Math.Pow(input.Radius + 15 + minion.BoundingRadius, 2))
+                                    if (minion.Path.Length > 0)
+                                    {
+                                        var pred = input.GetPrediction(false, false);
+                                        if (pred.CastPosition.ToVector2()
+                                                .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
+                                            <= Math.Pow(
+                                                input.Radius + 20 + minion.Path.Length * minion.BoundingRadius,
+                                                2))
+                                        {
+                                            result.Add(minion);
+                                        }
+                                    }
+                                    else if (minion.ServerPosition.ToVector2()
+                                                 .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
+                                             <= Math.Pow(
+                                                 (input.Radius
+                                                  + (minion.ServerPosition.ToVector2().Distance(input.From.ToVector2())
+                                                     < input.Radius / 2
+                                                         ? 40
+                                                         : 20) + minion.BoundingRadius),
+                                                 2))
                                     {
                                         result.Add(minion);
                                     }
@@ -813,7 +844,7 @@
                             case CollisionableObjects.YasuoWall:
                                 if (Variables.TickCount - wallCastT > 4000)
                                 {
-                                    continue;
+                                    break;
                                 }
                                 var wall =
                                     GameObjects.AllGameObjects.FirstOrDefault(
@@ -829,16 +860,15 @@
                                     (wall.Position.ToVector2() - yasuoWallCastedPos).Normalized().Perpendicular();
                                 var wallStart = wall.Position.ToVector2() + wallWidth / 2f * wallDirection;
                                 var wallEnd = wallStart - wallWidth * wallDirection;
-                                if (
-                                    wallStart.Intersection(wallEnd, position.ToVector2(), input.From.ToVector2())
-                                        .Intersects)
+                                var wallIntersect = wallStart.Intersection(
+                                    wallEnd,
+                                    position.ToVector2(),
+                                    input.From.ToVector2());
+                                if (wallIntersect.Intersects)
                                 {
                                     var t = Variables.TickCount
-                                            + (wallStart.Intersection(
-                                                wallEnd,
-                                                position.ToVector2(),
-                                                input.From.ToVector2()).Point.Distance(input.From) / input.Speed
-                                               + input.Delay) * 1000;
+                                            + (wallIntersect.Point.Distance(input.From) / input.Speed + input.Delay)
+                                            * 1000;
                                     if (t < wallCastT + 4000)
                                     {
                                         result.Add(ObjectManager.Player);
@@ -858,7 +888,9 @@
         {
             #region Static Fields
 
-            private static readonly List<UnitTrackerInfo> StoredList = new List<UnitTrackerInfo>();
+            private static readonly List<SpellInfo> Spells = new List<SpellInfo>();
+
+            private static readonly List<TrackerInfo> StoredList = new List<TrackerInfo>();
 
             #endregion
 
@@ -866,31 +898,81 @@
 
             static UnitTracker()
             {
+                Spells.Add(new SpellInfo { Name = "katarinar", Duration = 1 }); //Kata R
+                Spells.Add(new SpellInfo { Name = "drain", Duration = 1 }); //Fiddle W
+                Spells.Add(new SpellInfo { Name = "crowstorm", Duration = 1 }); //Fiddle R
+                Spells.Add(new SpellInfo { Name = "consume", Duration = 0.5 }); //Nunu Q
+                Spells.Add(new SpellInfo { Name = "absolutezero", Duration = 1 }); //Nunu R
+                Spells.Add(new SpellInfo { Name = "staticfield", Duration = 0.5 }); //Blitz R
+                Spells.Add(new SpellInfo { Name = "cassiopeiapetrifyinggaze", Duration = 0.5 }); //Cass R
+                Spells.Add(new SpellInfo { Name = "ezrealtrueshotbarrage", Duration = 1 }); //Ez R
+                Spells.Add(new SpellInfo { Name = "galioidolofdurand", Duration = 1 }); //Galio R
+                Spells.Add(new SpellInfo { Name = "luxmalicecannon", Duration = 1 }); //Lux R
+                Spells.Add(new SpellInfo { Name = "reapthewhirlwind", Duration = 1 }); //Janna R
+                Spells.Add(new SpellInfo { Name = "jinxw", Duration = 0.6 }); //Jinx W
+                Spells.Add(new SpellInfo { Name = "jinxr", Duration = 0.6 }); //Jinx R
+                Spells.Add(new SpellInfo { Name = "missfortunebullettime", Duration = 1 }); //MF R
+                Spells.Add(new SpellInfo { Name = "shenstandunited", Duration = 1 }); //Shen R
+                Spells.Add(new SpellInfo { Name = "threshe", Duration = 0.4 }); //Thresh E
+                Spells.Add(new SpellInfo { Name = "threshrpenta", Duration = 0.75 }); //Thresh R
+                Spells.Add(new SpellInfo { Name = "threshq", Duration = 0.75 }); //Thresh Q
+                Spells.Add(new SpellInfo { Name = "infiniteduress", Duration = 1 }); //WW R
+                Spells.Add(new SpellInfo { Name = "meditate", Duration = 1 }); //Yi W
+                Spells.Add(new SpellInfo { Name = "alzaharnethergrasp", Duration = 1 }); //Malza R
+                Spells.Add(new SpellInfo { Name = "lucianq", Duration = 0.5 }); //Lucian Q
+                Spells.Add(new SpellInfo { Name = "caitlynpiltoverpeacemaker", Duration = 0.5 }); //Caitlyn Q
+                Spells.Add(new SpellInfo { Name = "velkozr", Duration = 0.5 }); //Velkoz R
                 foreach (var hero in GameObjects.Heroes)
                 {
                     StoredList.Add(
-                        new UnitTrackerInfo
+                        new TrackerInfo
                             {
                                 NetworkId = hero.NetworkId, AttackTick = Variables.TickCount,
-                                NewPathTick = Variables.TickCount, StopMoveTick = Variables.TickCount
+                                NewPathTick = Variables.TickCount, StopMoveTick = Variables.TickCount,
+                                LastInviTick = Variables.TickCount, EndSpecialSpellTick = Variables.TickCount
                             });
                 }
                 Game.OnUpdate += args =>
                     {
-                        foreach (
-                            var hero in GameObjects.Heroes.Where(i => i.IsValid() && i.IsVisible && i.Path.Length > 0))
+                        foreach (var hero in GameObjects.Heroes.Where(i => i.IsValid()))
                         {
-                            StoredList.First(i => i.NetworkId == hero.NetworkId).StopMoveTick = Variables.TickCount;
+                            if (hero.IsVisible)
+                            {
+                                if (hero.Path.Length > 0)
+                                {
+                                    StoredList.First(i => i.NetworkId == hero.NetworkId).StopMoveTick =
+                                        Variables.TickCount;
+                                }
+                            }
+                            else
+                            {
+                                StoredList.First(i => i.NetworkId == hero.NetworkId).LastInviTick = Variables.TickCount;
+                            }
                         }
                     };
                 Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                     {
                         var caster = sender as Obj_AI_Hero;
-                        if (!caster.IsValid() || !AutoAttack.IsAutoAttack(args.SData.Name))
+                        if (!caster.IsValid())
                         {
                             return;
                         }
-                        StoredList.First(i => i.NetworkId == sender.NetworkId).AttackTick = Variables.TickCount;
+                        if (AutoAttack.IsAutoAttack(args.SData.Name))
+                        {
+                            StoredList.First(i => i.NetworkId == sender.NetworkId).AttackTick = Variables.TickCount;
+                        }
+                        else
+                        {
+                            var specialSpell =
+                                Spells.FirstOrDefault(
+                                    i =>
+                                    string.Equals(i.Name, args.SData.Name, StringComparison.CurrentCultureIgnoreCase));
+                            if (specialSpell != null)
+                            {
+                                StoredList.First(i => i.NetworkId == sender.NetworkId).EndSpecialSpellTick =
+                                    Variables.TickCount + (int)(specialSpell.Duration * 1000);
+                            }
+                        }
                     };
                 Obj_AI_Base.OnNewPath += (sender, args) =>
                     {
@@ -917,12 +999,53 @@
                 return (Variables.TickCount - StoredList.First(i => i.NetworkId == unit.NetworkId).NewPathTick) / 1000d;
             }
 
+            internal static double GetLastSpecialSpellTime(Obj_AI_Base unit)
+            {
+                return (StoredList.First(i => i.NetworkId == unit.NetworkId).EndSpecialSpellTick - Variables.TickCount)
+                       / 1000d;
+            }
+
             internal static double GetLastStopMoveTime(Obj_AI_Base unit)
             {
                 return (Variables.TickCount - StoredList.First(i => i.NetworkId == unit.NetworkId).StopMoveTick) / 1000d;
             }
 
+            internal static double GetLastVisableTime(Obj_AI_Base unit)
+            {
+                return (Variables.TickCount - StoredList.First(i => i.NetworkId == unit.NetworkId).LastInviTick) / 1000d;
+            }
+
             #endregion
+
+            private class SpellInfo
+            {
+                #region Properties
+
+                internal double Duration { get; set; }
+
+                internal string Name { get; set; }
+
+                #endregion
+            }
+
+            private class TrackerInfo
+            {
+                #region Properties
+
+                internal int AttackTick { get; set; }
+
+                internal int EndSpecialSpellTick { get; set; }
+
+                internal int LastInviTick { get; set; }
+
+                internal int NetworkId { get; set; }
+
+                internal int NewPathTick { get; set; }
+
+                internal int StopMoveTick { get; set; }
+
+                #endregion
+            }
         }
 
         internal class PredictionInput
@@ -1167,21 +1290,6 @@
             #region Properties
 
             internal PredictionInput Input { get; set; }
-
-            #endregion
-        }
-
-        private class UnitTrackerInfo
-        {
-            #region Properties
-
-            internal int AttackTick { get; set; }
-
-            internal int NetworkId { get; set; }
-
-            internal int NewPathTick { get; set; }
-
-            internal int StopMoveTick { get; set; }
 
             #endregion
         }

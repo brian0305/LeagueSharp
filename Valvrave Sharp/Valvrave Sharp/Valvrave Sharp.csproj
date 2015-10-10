@@ -80,6 +80,7 @@
     <Compile Include="Evade\Evader.cs" />
     <Compile Include="Evade\EvadeSpellData.cs" />
     <Compile Include="Evade\EvadeSpellDatabase.cs" />
+    <Compile Include="Evade\Geometry.cs" />
     <Compile Include="Evade\Skillshot.cs" />
     <Compile Include="Evade\SkillshotDetector.cs" />
     <Compile Include="Evade\SpellData.cs" />

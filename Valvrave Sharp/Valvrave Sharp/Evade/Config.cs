@@ -1,4 +1,4 @@
-namespace Valvrave_Sharp.Evade
+﻿namespace Valvrave_Sharp.Evade
 {
     using System;
     using System.Linq;
@@ -15,27 +15,27 @@ namespace Valvrave_Sharp.Evade
     {
         #region Constants
 
-        internal const int DiagonalEvadePointsCount = 7;
+        public const int DiagonalEvadePointsCount = 7;
 
-        internal const int DiagonalEvadePointsStep = 20;
+        public const int DiagonalEvadePointsStep = 20;
 
-        internal const int EvadingFirstTimeOffset = 250;
+        public const int EvadingFirstTimeOffset = 250;
 
-        internal const int EvadingSecondTimeOffset = 80;
+        public const int EvadingSecondTimeOffset = 80;
 
-        internal const int ExtraEvadeDistance = 15;
+        public const int ExtraEvadeDistance = 15;
 
-        internal const int GridSize = 10;
+        public const int GridSize = 10;
 
-        internal const int SkillShotsExtraRadius = 9;
+        public const int SkillShotsExtraRadius = 9;
 
-        internal const int SkillShotsExtraRange = 20;
+        public const int SkillShotsExtraRange = 20;
 
         #endregion
 
-        #region Methods
+        #region Public Methods and Operators
 
-        internal static void CreateMenu(this Menu mainMenu)
+        public static void CreateMenu(Menu mainMenu)
         {
             var evadeMenu = new Menu("Evade", "Evade Skillshot");
             {
@@ -44,7 +44,7 @@ namespace Valvrave_Sharp.Evade
                 {
                     foreach (var spell in EvadeSpellDatabase.Spells)
                     {
-                        var subMenu = new Menu(spell.Name, string.Format("{0} ({1})", spell.Name, spell.Slot));
+                        var subMenu = new Menu(spell.Name, spell.Name);
                         {
                             if (spell.UnderTower)
                             {
@@ -55,8 +55,7 @@ namespace Valvrave_Sharp.Evade
                                 subMenu.Slider(spell.Slot + "Delay", "Extra Delay", 100, 0, 150);
                             }
                             subMenu.Slider("DangerLevel", "If Danger Level >=", spell.DangerLevel, 1, 5);
-                            if (spell.CastType == CastTypes.Target
-                                && spell.ValidTargets.Contains(SpellTargets.AllyWards))
+                            if (spell.IsTargetted && spell.ValidTargets.Contains(SpellValidTargets.AllyWards))
                             {
                                 subMenu.Bool("WardJump", "Ward Jump");
                             }
@@ -89,11 +88,17 @@ namespace Valvrave_Sharp.Evade
                         subMenu.Slider("DangerLevel", "Danger Level", spell.DangerValue, 1, 5);
                         subMenu.Bool("IsDangerous", "Is Dangerous", spell.IsDangerous);
                         subMenu.Bool("DisableFoW", "Disable FoW Dodging", false);
+                        subMenu.Bool("Draw", "Draw");
                         subMenu.Bool("Enabled", "Enabled", !spell.DisabledByDefault);
                         ((Menu)evadeMenu[spell.ChampionName.ToLowerInvariant()]).Add(subMenu);
                     }
                 }
-                evadeMenu.Bool("DrawStatus", "Draw Evade Status");
+                var drawMenu = new Menu("Draw", "Draw");
+                {
+                    drawMenu.Bool("Skillshot", "Skillshot");
+                    drawMenu.Bool("Status", "Evade Status");
+                    evadeMenu.Add(drawMenu);
+                }
                 evadeMenu.KeyBind("Enabled", "Enabled", Keys.K, KeyBindType.Toggle);
                 evadeMenu.KeyBind("OnlyDangerous", "Dodge Only Dangerous", Keys.Space);
             }

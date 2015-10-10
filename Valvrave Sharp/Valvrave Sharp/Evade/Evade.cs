@@ -6,25 +6,45 @@
 
     using LeagueSharp;
     using LeagueSharp.SDK.Core;
+    using LeagueSharp.SDK.Core.Events;
     using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.Extensions.SharpDX;
     using LeagueSharp.SDK.Core.UI.IMenu.Values;
+    using LeagueSharp.SDK.Core.Utils;
 
     using SharpDX;
 
     using Color = System.Drawing.Color;
 
-    internal static class Evade
+    internal class Evade
     {
         #region Static Fields
 
         public static List<Skillshot> DetectedSkillshots = new List<Skillshot>();
 
+        public static int LastWardJumpAttempt = 0;
+
         #endregion
 
-        #region Properties
+        #region Delegates
 
-        internal static Vector2 PlayerPosition
+        public delegate void EvadingH();
+
+        public delegate void TryEvadingH(List<Skillshot> skillshot, Vector2 to);
+
+        #endregion
+
+        #region Public Events
+
+        public static event EvadingH Evading;
+
+        public static event TryEvadingH TryEvading;
+
+        #endregion
+
+        #region Public Properties
+
+        public static Vector2 PlayerPosition
         {
             get
             {
@@ -38,7 +58,7 @@
 
         public static void Init()
         {
-            Program.MainMenu.CreateMenu();
+            Config.CreateMenu(Program.MainMenu);
             Collision.Init();
             Game.OnUpdate += args =>
                 {
@@ -47,69 +67,169 @@
                     {
                         skillshot.OnUpdate();
                     }
-                };
-            Drawing.OnDraw += args =>
-                {
-                    if (ObjectManager.Player.IsDead || !Program.MainMenu["Evade"]["DrawStatus"])
+                    if (!Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active)
                     {
                         return;
                     }
-                    var active = Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active;
-                    var text = string.Format(
-                        "Evade Skillshot: {0}",
-                        active
-                            ? (Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active
-                                   ? "Dangerous"
-                                   : "On")
-                            : "Off");
-                    var pos = Drawing.WorldToScreen(ObjectManager.Player.Position);
-                    Drawing.DrawText(
-                        pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
-                        pos.Y + 40,
-                        active
-                            ? (Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active
-                                   ? Color.Yellow
-                                   : Color.White)
-                            : Color.Gray,
-                        text);
+                    if (ObjectManager.Player.IsDead)
+                    {
+                        return;
+                    }
+                    if (InterruptableSpell.IsCastingInterruptableSpell(ObjectManager.Player, true))
+                    {
+                        return;
+                    }
+                    if (ObjectManager.Player.HasBuffOfType(BuffType.SpellShield)
+                        || ObjectManager.Player.HasBuffOfType(BuffType.SpellImmunity))
+                    {
+                        return;
+                    }
+                    if (Evading != null)
+                    {
+                        Evading();
+                    }
+                    var currentPath = ObjectManager.Player.GetWaypoints();
+                    var safePoint = IsSafePoint(PlayerPosition);
+                    var safePath = IsSafePath(currentPath, 100);
+                    if (!safePath.IsSafe && !safePoint.IsSafe && TryEvading != null)
+                    {
+                        TryEvading(safePoint.SkillshotList, Game.CursorPos.ToVector2());
+                    }
                 };
             SkillshotDetector.OnDetectSkillshot += OnDetectSkillshot;
-            SkillshotDetector.OnDeleteMissile += OnDeleteMissile;
+            SkillshotDetector.OnDeleteSkillshot += (skillshot, missile) =>
+                {
+                    if (skillshot.SpellData.SpellName == "VelkozQ")
+                    {
+                        var spellData = SpellDatabase.GetByName("VelkozQSplit");
+                        var direction = skillshot.Direction.Perpendicular();
+                        if (DetectedSkillshots.Count(i => i.SpellData.SpellName == "VelkozQSplit") == 0)
+                        {
+                            for (var i = -1; i <= 1; i = i + 2)
+                            {
+                                var skillshotToAdd = new Skillshot(
+                                    DetectionType.ProcessSpell,
+                                    spellData,
+                                    Variables.TickCount,
+                                    missile.Position.ToVector2(),
+                                    missile.Position.ToVector2() + i * direction * spellData.Range,
+                                    skillshot.Unit);
+                                DetectedSkillshots.Add(skillshotToAdd);
+                            }
+                        }
+                    }
+                };
+            Drawing.OnDraw += args =>
+                {
+                    if (Program.MainMenu["Evade"]["Draw"]["Status"])
+                    {
+                        var active = Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active;
+                        var text = string.Format(
+                            "Evade Skillshot: {0}",
+                            active
+                                ? (Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active
+                                       ? "Dangerous"
+                                       : "On")
+                                : "Off");
+                        var pos = Drawing.WorldToScreen(ObjectManager.Player.Position);
+                        Drawing.DrawText(
+                            pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
+                            pos.Y + 40,
+                            active
+                                ? (Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active
+                                       ? Color.Yellow
+                                       : Color.White)
+                                : Color.Gray,
+                            text);
+                    }
+                    if (Program.MainMenu["Evade"]["Draw"]["Skillshot"])
+                    {
+                        foreach (var skillshot in DetectedSkillshots)
+                        {
+                            skillshot.Draw(
+                                skillshot.Enable && Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active
+                                    ? Color.White
+                                    : Color.Red,
+                                Color.LimeGreen);
+                        }
+                    }
+                };
+        }
+
+        public static bool IsAboutToHit(Obj_AI_Base unit, int time)
+        {
+            return SkillshotAboutToHit(unit, time).Count > 0;
+        }
+
+        public static SafePathResult IsSafePath(List<Vector2> path, int timeOffset, int speed = -1, int delay = 0)
+        {
+            var isSafe = true;
+            var intersections = new List<FoundIntersection>();
+            var intersection = new FoundIntersection();
+            foreach (var sResult in
+                from skillshot in DetectedSkillshots
+                where skillshot.Enable
+                select skillshot.IsSafePath(path, timeOffset, speed, delay))
+            {
+                isSafe = isSafe && sResult.IsSafe;
+                if (sResult.Intersection.Valid)
+                {
+                    intersections.Add(sResult.Intersection);
+                }
+            }
+            if (isSafe)
+            {
+                return new SafePathResult(true, intersection);
+            }
+            var intersetion = intersections.MinOrDefault(i => i.Distance);
+            return new SafePathResult(false, intersetion.Valid ? intersetion : intersection);
+        }
+
+        public static IsSafeResult IsSafePoint(Vector2 point)
+        {
+            var result = new IsSafeResult { SkillshotList = new List<Skillshot>() };
+            foreach (var skillshot in DetectedSkillshots.Where(i => i.Enable && i.IsDanger(point)))
+            {
+                result.SkillshotList.Add(skillshot);
+            }
+            result.IsSafe = result.SkillshotList.Count == 0;
+            return result;
+        }
+
+        public static bool IsSafeToBlink(Vector2 point, int timeOffset, int delay)
+        {
+            return DetectedSkillshots.Where(i => i.Enable).All(i => i.IsSafeToBlink(point, timeOffset, delay));
+        }
+
+        public static List<Skillshot> SkillshotAboutToHit(Obj_AI_Base unit, int time, bool onlyWindWall = false)
+        {
+            time += 150;
+            return
+                DetectedSkillshots.Where(
+                    i =>
+                    i.Enable && i.IsAboutToHit(time, unit)
+                    && (!onlyWindWall || i.SpellData.CollisionObjects.Contains(CollisionObjectTypes.YasuoWall)))
+                    .OrderBy(i => i.DangerLevel)
+                    .ToList();
         }
 
         #endregion
 
         #region Methods
 
-        private static void OnDeleteMissile(Skillshot skillshot, MissileClient missile)
-        {
-            if (skillshot.SpellData.SpellName != "VelkozQ"
-                || DetectedSkillshots.Count(i => i.SpellData.SpellName == "VelkozQSplit") != 0)
-            {
-                return;
-            }
-            var spellData = SpellDatabase.GetByName("VelkozQSplit");
-            for (var i = -1; i <= 1; i = i + 2)
-            {
-                DetectedSkillshots.Add(
-                    new Skillshot(
-                        DetectionType.ProcessSpell,
-                        spellData,
-                        Variables.TickCount,
-                        missile.Position.ToVector2(),
-                        missile.Position.ToVector2() + i * skillshot.Direction.Perpendicular() * spellData.Range,
-                        skillshot.Unit));
-            }
-        }
-
         private static void OnDetectSkillshot(Skillshot skillshot)
         {
-            var alreadyAdded =
-                DetectedSkillshots.Any(
-                    i =>
-                    i.SpellData.SpellName == skillshot.SpellData.SpellName
-                    && i.Unit.NetworkId == skillshot.Unit.NetworkId && skillshot.Direction.AngleBetween(i.Direction) < 5
-                    && (skillshot.Start.Distance(i.Start) < 100 || skillshot.SpellData.FromObjects.Length == 0));
+            var alreadyAdded = false;
+            foreach (var item in DetectedSkillshots)
+            {
+                if (item.SpellData.SpellName == skillshot.SpellData.SpellName
+                    && item.Unit.NetworkId == skillshot.Unit.NetworkId
+                    && skillshot.Direction.AngleBetween(item.Direction) < 5
+                    && (skillshot.Start.Distance(item.Start) < 100 || skillshot.SpellData.FromObjects.Length == 0))
+                {
+                    alreadyAdded = true;
+                }
+            }
             if (skillshot.Unit.Team == ObjectManager.Player.Team)
             {
                 return;
@@ -132,16 +252,17 @@
                          i <= (skillshot.SpellData.MultipleNumber - 1) / 2;
                          i++)
                     {
-                        DetectedSkillshots.Add(
-                            new Skillshot(
-                                skillshot.DetectionType,
-                                skillshot.SpellData,
-                                skillshot.StartTick,
-                                skillshot.Start,
-                                skillshot.Start
-                                + skillshot.SpellData.Range
-                                * originalDirection.Rotated(skillshot.SpellData.MultipleAngle * i),
-                                skillshot.Unit));
+                        var end = skillshot.Start
+                                  + skillshot.SpellData.Range
+                                  * originalDirection.Rotated(skillshot.SpellData.MultipleAngle * i);
+                        var skillshotToAdd = new Skillshot(
+                            skillshot.DetectionType,
+                            skillshot.SpellData,
+                            skillshot.StartTick,
+                            skillshot.Start,
+                            end,
+                            skillshot.Unit);
+                        DetectedSkillshots.Add(skillshotToAdd);
                     }
                     return;
                 }
@@ -155,27 +276,30 @@
                 }
                 if (skillshot.SpellData.Invert)
                 {
-                    DetectedSkillshots.Add(
-                        new Skillshot(
-                            skillshot.DetectionType,
-                            skillshot.SpellData,
-                            skillshot.StartTick,
-                            skillshot.Start,
-                            skillshot.Start
-                            + -(skillshot.End - skillshot.Start).Normalized() * skillshot.Start.Distance(skillshot.End),
-                            skillshot.Unit));
+                    var newDirection = -(skillshot.End - skillshot.Start).Normalized();
+                    var end = skillshot.Start + newDirection * skillshot.Start.Distance(skillshot.End);
+                    var skillshotToAdd = new Skillshot(
+                        skillshot.DetectionType,
+                        skillshot.SpellData,
+                        skillshot.StartTick,
+                        skillshot.Start,
+                        end,
+                        skillshot.Unit);
+                    DetectedSkillshots.Add(skillshotToAdd);
                     return;
                 }
                 if (skillshot.SpellData.Centered)
                 {
-                    DetectedSkillshots.Add(
-                        new Skillshot(
-                            skillshot.DetectionType,
-                            skillshot.SpellData,
-                            skillshot.StartTick,
-                            skillshot.Start - skillshot.Direction * skillshot.SpellData.Range,
-                            skillshot.Start + skillshot.Direction * skillshot.SpellData.Range,
-                            skillshot.Unit));
+                    var start = skillshot.Start - skillshot.Direction * skillshot.SpellData.Range;
+                    var end = skillshot.Start + skillshot.Direction * skillshot.SpellData.Range;
+                    var skillshotToAdd = new Skillshot(
+                        skillshot.DetectionType,
+                        skillshot.SpellData,
+                        skillshot.StartTick,
+                        start,
+                        end,
+                        skillshot.Unit);
+                    DetectedSkillshots.Add(skillshotToAdd);
                     return;
                 }
                 if (skillshot.SpellData.SpellName == "SyndraE" || skillshot.SpellData.SpellName == "syndrae5")
@@ -186,19 +310,23 @@
                             -Angle / 2f * (float)Math.PI / 180);
                     var edge2 = edge1.Rotated(Angle * (float)Math.PI / 180);
                     foreach (var skillshotToAdd in
-                        from orb in
+                        from minion in
                             GameObjects.EnemyMinions.Where(i => i.Name == "Seed" && i.Distance(skillshot.Unit) < 800)
-                        let v = (orb.ServerPosition - skillshot.Unit.ServerPosition).ToVector2()
+                        let v = minion.ServerPosition.ToVector2() - skillshot.Unit.ServerPosition.ToVector2()
                         where edge1.CrossProduct(v) > 0 && v.CrossProduct(edge2) > 0
+                        let start = minion.ServerPosition.ToVector2()
+                        let end =
+                            skillshot.Unit.ServerPosition.ToVector2()
+                            .Extend(
+                                minion.ServerPosition.ToVector2(),
+                                skillshot.Unit.Distance(minion) > 200 ? 1300 : 1000)
                         select
                             new Skillshot(
                             skillshot.DetectionType,
                             skillshot.SpellData,
                             skillshot.StartTick,
-                            orb.ServerPosition.ToVector2(),
-                            skillshot.Unit.ServerPosition.Extend(
-                                orb.ServerPosition,
-                                skillshot.Unit.Distance(orb) > 200 ? 1300 : 1000).ToVector2(),
+                            start,
+                            end,
                             skillshot.Unit))
                     {
                         DetectedSkillshots.Add(skillshotToAdd);
@@ -207,26 +335,29 @@
                 }
                 if (skillshot.SpellData.SpellName == "AlZaharCalloftheVoid")
                 {
-                    DetectedSkillshots.Add(
-                        new Skillshot(
-                            skillshot.DetectionType,
-                            skillshot.SpellData,
-                            skillshot.StartTick,
-                            skillshot.End - skillshot.Direction.Perpendicular() * 400,
-                            skillshot.End + skillshot.Direction.Perpendicular() * 400,
-                            skillshot.Unit));
+                    var start = skillshot.End - skillshot.Direction.Perpendicular() * 400;
+                    var end = skillshot.End + skillshot.Direction.Perpendicular() * 400;
+                    var skillshotToAdd = new Skillshot(
+                        skillshot.DetectionType,
+                        skillshot.SpellData,
+                        skillshot.StartTick,
+                        start,
+                        end,
+                        skillshot.Unit);
+                    DetectedSkillshots.Add(skillshotToAdd);
                     return;
                 }
                 if (skillshot.SpellData.SpellName == "DianaArc")
                 {
-                    DetectedSkillshots.Add(
-                        new Skillshot(
-                            skillshot.DetectionType,
-                            SpellDatabase.GetByName("DianaArcArc"),
-                            skillshot.StartTick,
-                            skillshot.Start,
-                            skillshot.End,
-                            skillshot.Unit));
+                    var skillshotToAdd = new Skillshot(
+                        skillshot.DetectionType,
+                        SpellDatabase.GetByName("DianaArcArc"),
+                        skillshot.StartTick,
+                        skillshot.Start,
+                        skillshot.End,
+                        skillshot.Unit);
+
+                    DetectedSkillshots.Add(skillshotToAdd);
                 }
                 if (skillshot.SpellData.SpellName == "ZiggsQ")
                 {
@@ -241,22 +372,22 @@
                         (int)(skillshot.SpellData.Delay + d1 * 1000f / skillshot.SpellData.MissileSpeed + 500);
                     bounce2SpellData.Delay =
                         (int)(bounce1SpellData.Delay + d2 * 1000f / bounce1SpellData.MissileSpeed + 500);
-                    DetectedSkillshots.Add(
-                        new Skillshot(
-                            skillshot.DetectionType,
-                            bounce1SpellData,
-                            skillshot.StartTick,
-                            skillshot.End,
-                            bounce1Pos,
-                            skillshot.Unit));
-                    DetectedSkillshots.Add(
-                        new Skillshot(
-                            skillshot.DetectionType,
-                            bounce2SpellData,
-                            skillshot.StartTick,
-                            bounce1Pos,
-                            bounce2Pos,
-                            skillshot.Unit));
+                    var bounce1 = new Skillshot(
+                        skillshot.DetectionType,
+                        bounce1SpellData,
+                        skillshot.StartTick,
+                        skillshot.End,
+                        bounce1Pos,
+                        skillshot.Unit);
+                    var bounce2 = new Skillshot(
+                        skillshot.DetectionType,
+                        bounce2SpellData,
+                        skillshot.StartTick,
+                        bounce1Pos,
+                        bounce2Pos,
+                        skillshot.Unit);
+                    DetectedSkillshots.Add(bounce1);
+                    DetectedSkillshots.Add(bounce2);
                 }
                 if (skillshot.SpellData.SpellName == "ZiggsR")
                 {
@@ -265,46 +396,42 @@
                 }
                 if (skillshot.SpellData.SpellName == "JarvanIVDragonStrike")
                 {
-                    var endPos = new Vector2();
-                    foreach (var s in
-                        DetectedSkillshots.Where(i => i.SpellData.Slot == SpellSlot.E))
+                    var endPos = Vector2.Zero;
+                    foreach (var s in DetectedSkillshots)
                     {
-                        if (s.Unit.NetworkId != skillshot.Unit.NetworkId)
+                        if (s.Unit.NetworkId == skillshot.Unit.NetworkId && s.SpellData.Slot == SpellSlot.E)
                         {
-                            continue;
+                            var extendedE = new Skillshot(
+                                skillshot.DetectionType,
+                                skillshot.SpellData,
+                                skillshot.StartTick,
+                                skillshot.Start,
+                                skillshot.End + skillshot.Direction * 100,
+                                skillshot.Unit);
+                            if (!extendedE.IsSafe(s.End))
+                            {
+                                endPos = s.End;
+                            }
+                            break;
                         }
-                        var extendedE = new Skillshot(
-                            skillshot.DetectionType,
-                            skillshot.SpellData,
-                            skillshot.StartTick,
-                            skillshot.Start,
-                            skillshot.End + skillshot.Direction * 100,
-                            skillshot.Unit);
-                        if (!extendedE.IsSafePoint(s.End))
-                        {
-                            endPos = s.End;
-                        }
-                        break;
                     }
-                    foreach (var m in
-                        GameObjects.Minions.Where(i => i.CharData.BaseSkinName == "jarvanivstandard"))
+                    foreach (var m in ObjectManager.Get<Obj_AI_Minion>())
                     {
-                        if (m.Team != skillshot.Unit.Team)
+                        if (m.CharData.BaseSkinName == "jarvanivstandard" && m.Team == skillshot.Unit.Team)
                         {
-                            continue;
+                            var extendedE = new Skillshot(
+                                skillshot.DetectionType,
+                                skillshot.SpellData,
+                                skillshot.StartTick,
+                                skillshot.Start,
+                                skillshot.End + skillshot.Direction * 100,
+                                skillshot.Unit);
+                            if (!extendedE.IsSafe(m.Position.ToVector2()))
+                            {
+                                endPos = m.Position.ToVector2();
+                            }
+                            break;
                         }
-                        var extendedE = new Skillshot(
-                            skillshot.DetectionType,
-                            skillshot.SpellData,
-                            skillshot.StartTick,
-                            skillshot.Start,
-                            skillshot.End + skillshot.Direction * 100,
-                            skillshot.Unit);
-                        if (!extendedE.IsSafePoint(m.Position.ToVector2()))
-                        {
-                            endPos = m.Position.ToVector2();
-                        }
-                        break;
                     }
                     if (endPos.IsValid())
                     {
@@ -313,26 +440,25 @@
                             SpellDatabase.GetByName("JarvanIVEQ"),
                             Variables.TickCount,
                             skillshot.Start,
-                            endPos + 200 * (endPos - skillshot.Start).Normalized(),
+                            endPos,
                             skillshot.Unit);
+                        skillshot.End = endPos + 200 * (endPos - skillshot.Start).Normalized();
+                        skillshot.Direction = (skillshot.End - skillshot.Start).Normalized();
                     }
                 }
             }
             if (skillshot.SpellData.SpellName == "OriannasQ")
             {
-                DetectedSkillshots.Add(
-                    new Skillshot(
-                        skillshot.DetectionType,
-                        SpellDatabase.GetByName("OriannaQend"),
-                        skillshot.StartTick,
-                        skillshot.Start,
-                        skillshot.End,
-                        skillshot.Unit));
+                var skillshotToAdd = new Skillshot(
+                    skillshot.DetectionType,
+                    SpellDatabase.GetByName("OriannaQend"),
+                    skillshot.StartTick,
+                    skillshot.Start,
+                    skillshot.End,
+                    skillshot.Unit);
+                DetectedSkillshots.Add(skillshotToAdd);
             }
-            if ((skillshot.SpellData.DisableFowDetection
-                 || Program.MainMenu["Evade"][skillshot.SpellData.ChampionName.ToLowerInvariant()][
-                     skillshot.SpellData.SpellName]["DisableFoW"])
-                && skillshot.DetectionType == DetectionType.RecvPacket)
+            if (skillshot.SpellData.DisableFowDetection && skillshot.DetectionType == DetectionType.RecvPacket)
             {
                 return;
             }
@@ -340,5 +466,16 @@
         }
 
         #endregion
+
+        public struct IsSafeResult
+        {
+            #region Fields
+
+            public bool IsSafe;
+
+            public List<Skillshot> SkillshotList;
+
+            #endregion
+        }
     }
 }

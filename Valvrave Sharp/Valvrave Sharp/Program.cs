@@ -57,7 +57,15 @@
             Youmuu = new Items.Item(ItemId.Youmuus_Ghostblade, 0);
             Tiamat = new Items.Item(ItemId.Tiamat_Melee_Only, 400);
             Hydra = new Items.Item(ItemId.Ravenous_Hydra_Melee_Only, 400);
-            Titanic = new Items.Item(3053, 400);
+            Titanic = new Items.Item(3748, 0);
+        }
+
+        private static void InitMenu()
+        {
+            MainMenu = new Menu("ValvraveSharp", "Valvrave Sharp", true, Player.ChampionName).Attach();
+            MainMenu.Separator("Author: Brian");
+            MainMenu.Separator("Paypal: dcbrian01@gmail.com");
+            Plugins[Player.ChampionName].Invoke();
         }
 
         private static void InitSummonerSpell()
@@ -85,16 +93,19 @@
                     UpdateCheck();
                     if (!Plugins.ContainsKey(Player.ChampionName))
                     {
-                        Game.PrintChat(string.Format("Valvrave Sharp => {0} Not Support!", Player.ChampionName));
+                        PrintChat(Player.ChampionName + " Not Support!");
                         return;
                     }
                     InitItem();
                     InitSummonerSpell();
-                    MainMenu = new Menu("ValvraveSharp", "Valvrave Sharp", true, Player.ChampionName).Attach();
-                    MainMenu.Separator("Author: Brian");
-                    MainMenu.Separator("Paypal: dcbrian01@gmail.com");
-                    Plugins[Player.ChampionName].Invoke();
+                    InitMenu();
+                    PrintChat("LeeSin Will Back Soon !!!");
                 };
+        }
+
+        private static void PrintChat(string text)
+        {
+            Game.PrintChat("Valvrave Sharp => {0}", text);
         }
 
         private static void UpdateCheck()
@@ -123,7 +134,7 @@
                                 checkFile.Groups[4]));
                     if (gitVersion > Assembly.GetExecutingAssembly().GetName().Version)
                     {
-                        Game.PrintChat(string.Format("Valvrave Sharp => Outdated! Newest Version: {0}", gitVersion));
+                        PrintChat("Outdated! Newest Version: " + gitVersion);
                     }
                 }
             }

@@ -421,6 +421,7 @@
                 obj.Where(
                     i =>
                     CanCastE(i) && (!UnderTower(PosAfterE(i)) || underTower)
+                    && i.Distance(pos) < Player.Distance(target != null ? i.ServerPosition : pos)
                     && PosAfterE(i).Distance(pos) < (inQCir ? QCirWidth : Player.Distance(pos)))
                     .MinOrDefault(i => PosAfterE(i).Distance(pos));
         }
@@ -443,8 +444,7 @@
             if (Items.HasItem(3153))
             {
                 var dmgBotrk = Math.Max(0.08 * target.Health, 10);
-                var minion = target as Obj_AI_Minion;
-                if (minion != null)
+                if (target is Obj_AI_Minion)
                 {
                     dmgBotrk = Math.Min(dmgBotrk, 60);
                 }
@@ -459,11 +459,7 @@
                 }
                 if (hero.ChampionName == "Fizz")
                 {
-                    reduction += hero.Level > 15
-                                     ? 14
-                                     : (hero.Level > 12
-                                            ? 12
-                                            : (hero.Level > 9 ? 10 : (hero.Level > 6 ? 8 : (hero.Level > 3 ? 6 : 4))));
+                    reduction += 4 + (hero.Level - 1 / 3) * 2;
                 }
                 var mastery = hero.Masteries.FirstOrDefault(i => i.Page == MasteryPage.Defense && i.Id == 68);
                 if (mastery != null && mastery.Points > 0)
@@ -779,7 +775,7 @@
             StackQ();
             if (MainMenu["Flee"]["E"].GetValue<MenuKeyBind>().Active)
             {
-                Player.IssueOrder(GameObjectOrder.MoveTo, Game.CursorPos);
+                Orbwalker.MoveOrder(Game.CursorPos);
                 Flee();
             }
         }
@@ -879,7 +875,7 @@
                 return;
             }
             if (MainMenu["Orbwalk"]["Ignite"] && Ignite.IsReady() && subTarget.HealthPercent < 30
-                && Player.Distance(subTarget) <= 600)
+                && Player.Distance(subTarget) <= IgniteRange)
             {
                 Player.Spellbook.CastSpell(Ignite, subTarget);
             }

@@ -695,7 +695,7 @@
             }
             if (MainMenu["FleeW"].GetValue<MenuKeyBind>().Active)
             {
-                Player.IssueOrder(GameObjectOrder.MoveTo, Game.CursorPos);
+                Orbwalker.MoveOrder(Game.CursorPos);
                 if (W.IsReady())
                 {
                     W.Cast(Game.CursorPos);
@@ -781,7 +781,7 @@
                     return;
                 }
                 if (MainMenu["Orbwalk"]["Ignite"] && Ignite.IsReady()
-                    && (HaveRMark(target) || target.HealthPercent < 30) && Player.Distance(target) <= 600
+                    && (HaveRMark(target) || target.HealthPercent < 30) && Player.Distance(target) <= IgniteRange
                     && Player.Spellbook.CastSpell(Ignite, target))
                 {
                     return;

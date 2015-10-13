@@ -18,6 +18,12 @@
 
     internal class Program
     {
+        #region Constants
+
+        internal const int FlashRange = 450, IgniteRange = 600, SmiteRange = 780;
+
+        #endregion
+
         #region Static Fields
 
         public static Menu MainMenu;
@@ -30,6 +36,7 @@
 
         private static readonly Dictionary<string, Func<object>> Plugins = new Dictionary<string, Func<object>>
                                                                                {
+                                                                                   { "LeeSin", () => new LeeSin() },
                                                                                    { "Yasuo", () => new Yasuo() },
                                                                                    { "Zed", () => new Zed() }
                                                                                };
@@ -99,7 +106,6 @@
                     InitItem();
                     InitSummonerSpell();
                     InitMenu();
-                    PrintChat("LeeSin Will Back Soon !!!");
                 };
         }
 

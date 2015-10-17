@@ -302,7 +302,7 @@
             var result =
                 unit.Buffs.Where(
                     i =>
-                    i.IsActive && Game.Time <= i.EndTime
+                    i.IsValid
                     && (i.Type == BuffType.Charm || i.Type == BuffType.Knockup || i.Type == BuffType.Stun
                         || i.Type == BuffType.Suppression || i.Type == BuffType.Snare))
                     .Aggregate(0d, (current, buff) => Math.Max(current, buff.EndTime));

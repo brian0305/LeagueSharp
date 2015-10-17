@@ -20,6 +20,7 @@
 
     using Color = System.Drawing.Color;
     using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+    using Rectangle = LeagueSharp.SDK.Core.Math.Polygons.Rectangle;
 
     internal class LeeSin : Program
     {
@@ -40,9 +41,9 @@
             E2 = new Spell(SpellSlot.E, 550);
             R = new Spell(SpellSlot.R, 375);
             R2 = new Spell(SpellSlot.R, 800);
-            Q.SetSkillshot(0.25f, 55, 1800, true, SkillshotType.SkillshotLine);
-            W.SetSkillshot(0, 1, 1500, false, SkillshotType.SkillshotLine);
-            R2.SetSkillshot(0.25f, 100, 1500, false, SkillshotType.SkillshotLine);
+            Q.SetSkillshot(0.25f, 60, 1750, true, SkillshotType.SkillshotLine);
+            W.SetSkillshot(0.25f, 0, 2000, false, SkillshotType.SkillshotLine);
+            R2.SetSkillshot(0.25f, 0, 2000, false, SkillshotType.SkillshotLine);
             Q.DamageType = Q2.DamageType = W.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
             Q.MinHitChance = R2.MinHitChance = HitChance.VeryHigh;
@@ -126,6 +127,15 @@
 
         #region Properties
 
+        private static bool CanCastInOrbwalk
+        {
+            get
+            {
+                return (!MainMenu["Orbwalk"]["Q"] || Variables.TickCount - Q.LastCastAttemptT > 300)
+                       && (!MainMenu["Orbwalk"]["E"] || Variables.TickCount - E.LastCastAttemptT > 300);
+            }
+        }
+
         private static bool CanR
         {
             get
@@ -196,13 +206,13 @@
         private static bool CanE2(Obj_AI_Base target)
         {
             var buff = target.GetBuff("BlindMonkTempest");
-            return buff != null && buff.EndTime - Game.Time <= 0.1f;
+            return buff != null && buff.EndTime - Game.Time <= 0.15f;
         }
 
         private static bool CanQ2(Obj_AI_Base target)
         {
             var buff = target.GetBuff("BlindMonkSonicWave");
-            return buff != null && buff.EndTime - Game.Time <= 0.1f;
+            return buff != null && buff.EndTime - Game.Time <= 0.15f;
         }
 
         private static void Farm()
@@ -403,7 +413,7 @@
 
         private static void Orbwalk()
         {
-            if (MainMenu["Orbwalk"]["Q"] && Q.IsReady())
+            if (MainMenu["Orbwalk"]["Q"] && Q.IsReady() && CanCastInOrbwalk)
             {
                 if (IsQOne)
                 {
@@ -457,7 +467,7 @@
                     }
                 }
             }
-            if (MainMenu["Orbwalk"]["E"] && E.IsReady())
+            if (MainMenu["Orbwalk"]["E"] && E.IsReady() && CanCastInOrbwalk)
             {
                 if (IsEOne)
                 {
@@ -493,17 +503,16 @@
                     GameObjects.EnemyHeroes.Where(
                         i => i.IsValidTarget(R.Range) && i.Health + i.PhysicalShield > GetRDmg(i)))
                 {
-                    R2.UpdateSourcePosition(hero.ServerPosition, hero.ServerPosition);
+                    var rect = new Rectangle(
+                        hero.ServerPosition,
+                        hero.ServerPosition + (hero.ServerPosition - Player.ServerPosition).Normalized() * R2.Range,
+                        hero.BoundingRadius * 2);
                     var heroBehind =
                         (from behind in
                              GameObjects.EnemyHeroes.Where(
-                                 i => i.IsValidTarget(R2.Range, true, R2.From) && !i.Compare(hero))
+                                 i => i.IsValidTarget(R2.Range, true, hero.ServerPosition) && !i.Compare(hero))
                          let predPos = Prediction.GetPrediction(behind, R2.Delay, 1, R2.Speed).UnitPosition
-                         where
-                             R2.WillHit(
-                                 predPos,
-                                 hero.ServerPosition.Extend(Player.ServerPosition, -R2.Range),
-                                 (int)hero.BoundingRadius)
+                         where rect.IsInside(predPos)
                          select behind).ToList();
                     if (heroBehind.Count == 0)
                     {
@@ -561,7 +570,8 @@
                     return;
                 }
             }
-            if (E.IsReady() && IsEOne && E.IsInRange(target) && HaveQ(target) && CanR && Player.Mana >= 80 && E.Cast())
+            if (E.CanCast(target) && IsEOne && HaveQ(target) && !R.IsReady()
+                && Variables.TickCount - R.LastCastAttemptT < 1500 && Player.Mana >= 80 && E.Cast())
             {
                 return;
             }
@@ -575,7 +585,7 @@
             }
             else if (Player.Distance(target) <= W.Range + R.Range - 100 && Player.Mana >= 60)
             {
-                Flee(Prediction.GetPrediction(target, W.Delay, W.Width, W.Speed).UnitPosition, true);
+                Flee(Prediction.GetPrediction(target, W.Delay, 1, W.Speed).UnitPosition, true);
             }
         }
 
@@ -616,11 +626,9 @@
         {
             #region Static Fields
 
-            private static readonly int KickRange = (int)R2.Range;
+            private static Vector3 insecFlashPos = Vector3.Zero;
 
             private static Vector3 insecPos = Vector3.Zero;
-
-            private static Vector3 insecPosAdv = Vector3.Zero;
 
             private static Obj_AI_Hero insecTarget;
 
@@ -631,6 +639,14 @@
             #endregion
 
             #region Properties
+
+            private static bool AdvancedReady
+            {
+                get
+                {
+                    return Flash.IsReady() && R.IsReady() && insecTarget != null && PosInsecTo.IsValid();
+                }
+            }
 
             private static float DistBehind
             {
@@ -644,29 +660,13 @@
                 }
             }
 
-            private static bool IsReadyAdvanced
-            {
-                get
-                {
-                    return Flash.IsReady() && R.IsReady() && insecTarget != null && PosInsecTo.IsValid();
-                }
-            }
-
-            private static bool IsReadyNormal
+            private static bool NormalReady
             {
                 get
                 {
                     return ((W.IsReady() && IsWOne && Items.GetWardSlot() != null)
                             || (MainMenu["Insec"]["Flash"] && Flash.IsReady()) || RecentInsec(4000)) && R.IsReady()
                            && insecTarget != null && PosInsecTo.IsValid();
-                }
-            }
-
-            private static Vector3 PosAfterInsec
-            {
-                get
-                {
-                    return insecTarget.ServerPosition.Extend(PosInsecTo, KickRange);
                 }
             }
 
@@ -681,15 +681,15 @@
                             var hero =
                                 GameObjects.AllyHeroes.Where(
                                     i =>
-                                    i.IsValidTarget(KickRange + 500, false, insecTarget.ServerPosition) && !i.IsMe
-                                    && i.Distance(insecTarget) > 500)
+                                    i.IsValidTarget(R2.Range + 500, false, insecTarget.ServerPosition) && !i.IsMe
+                                    && i.HealthPercent > 10 && i.Distance(insecTarget) > 500)
                                     .OrderBy(i => i.MaxHealth)
                                     .MinOrDefault(i => i.Distance(insecTarget));
                             var turret =
                                 GameObjects.AllyTurrets.Where(
                                     i =>
-                                    !i.IsDead && i.Distance(Player) < 3000 && i.Distance(insecTarget) - KickRange < 1150)
-                                    .MinOrDefault(i => i.Distance(insecTarget));
+                                    !i.IsDead && i.Distance(Player) < 3000 && i.Distance(insecTarget) - R2.Range < 1150
+                                    && i.Distance(insecTarget) > 500).MinOrDefault(i => i.Distance(insecTarget));
                             if (turret != null)
                             {
                                 pos = turret.ServerPosition;
@@ -724,12 +724,12 @@
             {
                 var insecMenu = new Menu("Insec", "Insec");
                 {
-                    insecMenu.Separator("Settings");
-                    insecMenu.Bool("Flash", "Use Flash", false);
-                    insecMenu.Bool("PriorFlash", "Priorize Flash Over WardJump", false);
+                    insecMenu.Bool("Line", "Draw Line");
                     insecMenu.List("Mode", "Mode", new[] { "Tower/Hero", "Mouse Position", "Current Position" }, 2);
                     insecMenu.Slider("Dist", "Extra Distance Behind (%)", 20);
-                    insecMenu.Bool("Line", "Draw Line");
+                    insecMenu.Separator("Normal Settings");
+                    insecMenu.Bool("Flash", "Use Flash If Can't WardJump", false);
+                    insecMenu.Bool("PriorFlash", "Priorize Flash Over WardJump", false);
                     insecMenu.Separator("Keybinds");
                     insecMenu.KeyBind("Normal", "Normal Insec", Keys.T);
                     insecMenu.KeyBind("Advanced", "Advanced Insec (R-Flash)", Keys.Z);
@@ -742,23 +742,29 @@
                         {
                             return;
                         }
-                        insecTarget = Q2.GetTarget();
+                        insecTarget = (Q.IsReady() ? Q2 : W).GetTarget();
                         if (!R.IsReady())
                         {
                             insecPos = Vector3.Zero;
+                            insecFlashPos = Vector3.Zero;
                         }
-                        if (MainMenu["Insec"]["Normal"].GetValue<MenuKeyBind>().Active
-                            || MainMenu["Insec"]["Advanced"].GetValue<MenuKeyBind>().Active)
+                        if (!MainMenu["Insec"]["Normal"].GetValue<MenuKeyBind>().Active
+                            && !MainMenu["Insec"]["Advanced"].GetValue<MenuKeyBind>().Active)
                         {
-                            Orbwalker.Orbwalk(insecTarget.InAutoAttackRange() ? insecTarget : null);
-                            if (MainMenu["Insec"]["Normal"].GetValue<MenuKeyBind>().Active && IsReadyNormal)
-                            {
-                                Normal();
-                            }
-                            if (MainMenu["Insec"]["Advanced"].GetValue<MenuKeyBind>().Active && IsReadyAdvanced)
-                            {
-                                Advanced();
-                            }
+                            insecPos = Vector3.Zero;
+                            insecFlashPos = Vector3.Zero;
+                            return;
+                        }
+                        Orbwalker.Orbwalk(insecTarget.InAutoAttackRange() ? insecTarget : null);
+                        if (MainMenu["Insec"]["Normal"].GetValue<MenuKeyBind>().Active && NormalReady)
+                        {
+                            Normal();
+                            insecFlashPos = Vector3.Zero;
+                        }
+                        if (MainMenu["Insec"]["Advanced"].GetValue<MenuKeyBind>().Active && AdvancedReady)
+                        {
+                            Advanced();
+                            insecPos = Vector3.Zero;
                         }
                     };
                 Drawing.OnDraw += args =>
@@ -771,7 +777,7 @@
                         Drawing.DrawCircle(insecTarget.Position, insecTarget.BoundingRadius * 1.5f, Color.BlueViolet);
                         Drawing.DrawLine(
                             Drawing.WorldToScreen(insecTarget.ServerPosition),
-                            Drawing.WorldToScreen(PosAfterInsec),
+                            Drawing.WorldToScreen(insecTarget.ServerPosition.Extend(PosInsecTo, R2.Range)),
                             2,
                             Color.BlueViolet);
                     };
@@ -784,6 +790,10 @@
                         if (args.SData.Name == "summonerflash")
                         {
                             lastFlash = Variables.TickCount;
+                            if (MainMenu["Insec"]["Advanced"].GetValue<MenuKeyBind>().Active && insecFlashPos.IsValid())
+                            {
+                                insecFlashPos = Vector3.Zero;
+                            }
                         }
                         if (args.SData.Name == "ItemGhostWard" || args.SData.Name == "sightward"
                             || args.SData.Name.StartsWith("TrinketTotemLvl"))
@@ -791,21 +801,15 @@
                             lastWard = Variables.TickCount;
                         }
                         if (MainMenu["Insec"]["Advanced"].GetValue<MenuKeyBind>().Active
-                            && args.SData.Name == "BlindMonkRKick" && Flash.IsReady() && insecPosAdv.IsValid())
+                            && args.SData.Name == "BlindMonkRKick" && Flash.IsReady() && insecFlashPos.IsValid())
                         {
-                            DelayAction.Add(
-                                R.Delay / 2 * 1000,
-                                () =>
-                                    {
-                                        Player.Spellbook.CastSpell(Flash, insecPosAdv);
-                                        insecPosAdv = Vector3.Zero;
-                                    });
+                            DelayAction.Add(500, () => Player.Spellbook.CastSpell(Flash, insecFlashPos));
                         }
                     };
                 GameObject.OnCreate += (sender, args) =>
                     {
-                        if (!MainMenu["Insec"]["Normal"].GetValue<MenuKeyBind>().Active || !IsReadyNormal
-                            || !W.IsReady() || !IsWOne)
+                        if (!MainMenu["Insec"]["Normal"].GetValue<MenuKeyBind>().Active || !NormalReady || !W.IsReady()
+                            || !IsWOne)
                         {
                             return;
                         }
@@ -823,37 +827,38 @@
 
             private static void Advanced()
             {
+                if (R.IsInRange(insecTarget))
+                {
+                    var posAfter = insecTarget.ServerPosition.Extend(PosInsecTo, R2.Range);
+                    var posPred = Prediction.GetPrediction(insecTarget, 0.05f, 1, float.MaxValue).UnitPosition;
+                    var posBehind = posPred + (posPred - posAfter).Normalized() * DistBehind;
+                    if (Player.Distance(posBehind) >= FlashRange)
+                    {
+                        return;
+                    }
+                    SetInsecPos(posAfter);
+                    insecFlashPos = posBehind;
+                    R.CastOnUnit(insecTarget);
+                }
                 CastQ(true);
-                if (!R.IsInRange(insecTarget))
-                {
-                    return;
-                }
-                var posPred = Prediction.GetPrediction(insecTarget, 0.05f, 1, float.MaxValue).UnitPosition;
-                var posBehind = posPred + (posPred - PosAfterInsec).Normalized() * DistBehind;
-                if (Player.Distance(posBehind) >= FlashRange)
-                {
-                    return;
-                }
-                insecPos = PosAfterInsec;
-                DelayAction.Add(5000, () => insecPos = Vector3.Zero);
-                R.CastOnUnit(insecTarget);
-                insecPosAdv = posBehind;
             }
 
             private static void CastQ(bool isAdvanced = false)
             {
-                if (Q.IsReady())
+                if (!Q.IsReady())
                 {
-                    if (IsQOne)
+                    return;
+                }
+                if (IsQOne)
+                {
+                    var state = Q.Casting(insecTarget);
+                    switch (state)
                     {
-                        var state = Q.Casting(insecTarget);
-                        if (state == CastStates.SuccessfullyCasted)
-                        {
+                        case CastStates.SuccessfullyCasted:
                             return;
-                        }
-                        if (state == CastStates.OutOfRange || state == CastStates.Collision
-                            || state == CastStates.LowHitChance)
-                        {
+                        case CastStates.OutOfRange:
+                        case CastStates.Collision:
+                        case CastStates.LowHitChance:
                             var nearObj = new List<Obj_AI_Base>();
                             nearObj.AddRange(GameObjects.EnemyHeroes);
                             nearObj.AddRange(GameObjects.EnemyMinions.Where(i => i.IsMinion()));
@@ -870,27 +875,29 @@
                                 return;
                             }
                             var bestObj =
-                                nearObj.Select(i => Q.VPrediction(i)).FirstOrDefault(i => i.Hitchance >= Q.MinHitChance);
+                                nearObj.Select(i => Q.VPrediction(i))
+                                    .Where(i => i.Hitchance >= Q.MinHitChance)
+                                    .MaxOrDefault(i => i.Hitchance);
                             if (bestObj != null)
                             {
                                 Q.Cast(bestObj.CastPosition);
                             }
-                        }
+                            break;
                     }
-                    else if (GetQObj != null
-                             && (isAdvanced
-                                     ? Flash.IsReady()
-                                     : (W.IsReady() && IsWOne && Items.GetWardSlot() != null && Player.Mana >= 80)
-                                       || (MainMenu["Insec"]["Flash"] && Flash.IsReady()))
-                             && Player.Distance(insecTarget) > (isAdvanced ? R.Range : 600 - DistBehind)
-                             && GetQObj.Distance(insecTarget) < (isAdvanced ? R.Range - 50 : 600 - DistBehind))
-                    {
-                        Q.Cast();
-                    }
+                }
+                else if (GetQObj != null
+                         && (isAdvanced
+                                 ? Flash.IsReady()
+                                 : (W.IsReady() && IsWOne && Items.GetWardSlot() != null && Player.Mana >= 80)
+                                   || (MainMenu["Insec"]["Flash"] && Flash.IsReady()))
+                         && Player.Distance(insecTarget) > (isAdvanced ? R.Range : 600 - DistBehind)
+                         && GetQObj.Distance(insecTarget) < (isAdvanced ? R.Range - 50 : 600 - DistBehind))
+                {
+                    Q.Cast();
                 }
             }
 
-            private static void GapClose(bool isFlash = false)
+            private static void GapClose(Vector3 posAfter, bool isFlash = false)
             {
                 var posPred =
                     Prediction.GetPrediction(
@@ -898,9 +905,8 @@
                         isFlash ? 0.05f : W.Delay,
                         1,
                         isFlash ? float.MaxValue : W.Speed).UnitPosition;
-                var posBehind = posPred + (posPred - PosAfterInsec).Normalized() * DistBehind;
-                if (posBehind.Distance(PosAfterInsec) <= insecTarget.Distance(PosAfterInsec)
-                    || posBehind.Distance(posPred) < 80)
+                var posBehind = posPred + (posPred - posAfter).Normalized() * DistBehind;
+                if (posBehind.Distance(posAfter) <= insecTarget.Distance(posAfter) || posBehind.Distance(posPred) < 80)
                 {
                     return;
                 }
@@ -910,65 +916,79 @@
                     {
                         return;
                     }
-                    insecPos = PosAfterInsec;
-                    DelayAction.Add(5000, () => insecPos = Vector3.Zero);
+                    SetInsecPos(posAfter);
                     Player.Spellbook.CastSpell(Flash, posBehind);
                 }
-                else if (Player.Distance(posBehind) < 600 && posBehind.Distance(posPred) < R.Range - 75)
+                else if (posBehind.Distance(posPred) < R.Range - 75 && Player.Distance(posBehind) < 600)
                 {
-                    insecPos = PosAfterInsec;
-                    DelayAction.Add(5000, () => insecPos = Vector3.Zero);
-                    Player.Spellbook.CastSpell(
-                        Items.GetWardSlot().SpellSlot,
-                        Player.ServerPosition.Extend(posBehind, Math.Min(600, Player.Position.Distance(posBehind))));
+                    SetInsecPos(posAfter);
+                    var posPlace = Player.ServerPosition.Extend(
+                        posBehind,
+                        Math.Min(590, Player.Position.Distance(posBehind)));
+                    Player.Spellbook.CastSpell(Items.GetWardSlot().SpellSlot, posPlace);
                 }
             }
 
             private static void Normal()
             {
-                CastQ();
+                var posAfter = insecTarget.ServerPosition.Extend(PosInsecTo, R2.Range);
+                if (R.IsInRange(insecTarget) && Player.Distance(posAfter) > insecTarget.Distance(posAfter))
+                {
+                    var project = posAfter.ProjectOn(
+                        Player.ServerPosition,
+                        Player.ServerPosition.Extend(insecTarget.ServerPosition, R2.Range));
+                    if (project.LinePoint.Distance(posAfter) < R2.Range * 0.5)
+                    {
+                        R.CastOnUnit(insecTarget);
+                    }
+                }
                 if (Player.Distance(insecTarget) < 600 - DistBehind
-                    && Player.Distance(PosAfterInsec) < insecTarget.Distance(PosAfterInsec) && !RecentInsec())
+                    && Player.Distance(posAfter) < insecTarget.Distance(posAfter) && !RecentInsec())
                 {
                     if (MainMenu["Insec"]["PriorFlash"])
                     {
                         if (MainMenu["Insec"]["Flash"] && Flash.IsReady())
                         {
-                            GapClose(true);
+                            GapClose(posAfter, true);
                         }
                         else if (Items.GetWardSlot() != null && W.IsReady() && IsWOne)
                         {
-                            GapClose();
+                            GapClose(posAfter);
                         }
                     }
                     else
                     {
                         if (Items.GetWardSlot() != null && W.IsReady() && IsWOne)
                         {
-                            GapClose();
+                            GapClose(posAfter);
                         }
                         else if (MainMenu["Insec"]["Flash"] && Flash.IsReady())
                         {
-                            GapClose(true);
+                            GapClose(posAfter, true);
                         }
                     }
                 }
-                if (R.IsInRange(insecTarget) && Player.Distance(PosAfterInsec) > insecTarget.Distance(PosAfterInsec))
-                {
-                    var project = PosAfterInsec.ProjectOn(
-                        Player.ServerPosition,
-                        Player.ServerPosition.Extend(insecTarget.ServerPosition, KickRange));
-                    if (project.LinePoint.Distance(PosAfterInsec) < KickRange * 0.5)
-                    {
-                        R.CastOnUnit(insecTarget);
-                    }
-                }
+                CastQ();
             }
 
             private static bool RecentInsec(int time = 1000)
             {
                 return Variables.TickCount - lastWard < time
                        || (MainMenu["Insec"]["Flash"] && Variables.TickCount - lastFlash < time);
+            }
+
+            private static void SetInsecPos(Vector3 pos)
+            {
+                insecPos = pos;
+                DelayAction.Add(
+                    5000,
+                    () =>
+                        {
+                            if (insecPos.IsValid())
+                            {
+                                insecPos = Vector3.Zero;
+                            }
+                        });
             }
 
             #endregion

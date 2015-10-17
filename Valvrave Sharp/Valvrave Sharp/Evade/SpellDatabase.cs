@@ -415,7 +415,7 @@ namespace Valvrave_Sharp.Evade
                 new SpellData
                     {
                         ChampionName = "Darius", SpellName = "DariusCleave", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotCircle, Delay = 750, Radius = 425, MissileSpeed = int.MaxValue,
+                        Type = SkillShotType.SkillshotCircle, Delay = 750, Radius = 375, MissileSpeed = int.MaxValue,
                         FixedRange = true, AddHitbox = true, DangerValue = 3, MissileSpellName = "DariusCleave",
                         FollowCaster = true, DisabledByDefault = true
                     });

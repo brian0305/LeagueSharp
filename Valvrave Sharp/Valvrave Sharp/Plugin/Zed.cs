@@ -123,7 +123,28 @@
             Evade.TryEvading += TryEvading;
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
-            GameObject.OnCreate += OnCreateShadow;
+            GameObject.OnCreate += (sender, args) =>
+                {
+                    var shadow = sender as Obj_AI_Minion;
+                    if (shadow == null || !shadow.IsValid || shadow.Name != "Shadow" || shadow.IsEnemy)
+                    {
+                        return;
+                    }
+                    if (wCasted)
+                    {
+                        wShadow = shadow;
+                        wCasted = false;
+                        rCasted = false;
+                        DelayAction.Add(4450, () => wShadow = null);
+                    }
+                    else if (rCasted)
+                    {
+                        rShadow = shadow;
+                        rCasted = false;
+                        wCasted = false;
+                        DelayAction.Add(7450, () => rShadow = null);
+                    }
+                };
             GameObject.OnCreate += (sender, args) =>
                 {
                     var mark = sender as Obj_GeneralParticleEmitter;
@@ -603,29 +624,6 @@
             }
         }
 
-        private static void OnCreateShadow(GameObject sender, EventArgs args)
-        {
-            var shadow = sender as Obj_AI_Minion;
-            if (shadow == null || !shadow.IsValid || shadow.Name != "Shadow" || shadow.IsEnemy)
-            {
-                return;
-            }
-            if (wCasted)
-            {
-                wShadow = shadow;
-                wCasted = false;
-                rCasted = false;
-                DelayAction.Add(4450, () => wShadow = null);
-            }
-            else if (rCasted)
-            {
-                rShadow = shadow;
-                rCasted = false;
-                wCasted = false;
-                DelayAction.Add(7450, () => rShadow = null);
-            }
-        }
-
         private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
@@ -809,7 +807,7 @@
                     }
                     if (MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index > 0 && RState > 0
                         && MainMenu["Orbwalk"]["R"] && MainMenu["Orbwalk"]["RCast" + target.ChampionName]
-                        && HaveRMark(target) /*&& Q.IsInRange(target)*/)
+                        && HaveRMark(target))
                     {
                         CastW(target, true);
                     }

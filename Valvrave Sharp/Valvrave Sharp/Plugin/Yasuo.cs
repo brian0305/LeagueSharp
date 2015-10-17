@@ -274,8 +274,12 @@
 
         private static bool CanCastDelayR(Obj_AI_Hero target)
         {
-            var buff = target.Buffs.FirstOrDefault(i => i.Type == BuffType.Knockback || i.Type == BuffType.Knockup);
-            return buff != null && buff.EndTime - Game.Time <= (buff.EndTime - buff.StartTime) / 3;
+            var buff =
+                target.Buffs.FirstOrDefault(
+                    i => i.IsValid && (i.Type == BuffType.Knockback || i.Type == BuffType.Knockup));
+            return buff != null
+                   && buff.EndTime - Game.Time
+                   <= (buff.EndTime - buff.StartTime) / (buff.EndTime - buff.StartTime <= 0.5 ? 1.5 : 3);
         }
 
         private static bool CanCastE(Obj_AI_Base target)
@@ -383,7 +387,7 @@
                 {
                     return;
                 }
-                var obj = GetQCirObj.MinOrDefault(i => i.Distance(Player));
+                var obj = GetQCirObj.Where(i => Q.GetHealthPrediction(i) > 0).MinOrDefault(i => i.Distance(Player));
                 if (obj != null)
                 {
                     CastQCir(obj);
@@ -843,7 +847,8 @@
                     if (!HaveQ3 && MainMenu["Orbwalk"]["EGap"] && MainMenu["Orbwalk"]["EStackQ"]
                         && Q.GetTarget(50) == null)
                     {
-                        var obj = GetQCirObj.MinOrDefault(i => i.Distance(Player));
+                        var obj =
+                            GetQCirObj.Where(i => Q.GetHealthPrediction(i) > 0).MinOrDefault(i => i.Distance(Player));
                         if (obj != null && CastQCir(obj))
                         {
                             return;

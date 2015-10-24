@@ -41,8 +41,8 @@
 
         public Yasuo()
         {
-            Q = new Spell(SpellSlot.Q, 500);
-            Q2 = new Spell(SpellSlot.Q, 1100);
+            Q = new Spell(SpellSlot.Q, 505);
+            Q2 = new Spell(SpellSlot.Q, 1150);
             W = new Spell(SpellSlot.W, 400);
             E = new Spell(SpellSlot.E, 475);
             R = new Spell(SpellSlot.R, 1300);
@@ -61,6 +61,7 @@
                 orbwalkMenu.Bool("Item", "Use Item");
                 orbwalkMenu.Separator("E Gap Settings");
                 orbwalkMenu.Bool("EGap", "Use E");
+                orbwalkMenu.List("EMode", "Follow Mode", new[] { "Enemy", "Mouse" });
                 orbwalkMenu.Slider("ERange", "If Distance >", 300, 0, (int)E.Range);
                 orbwalkMenu.Bool("ETower", "Under Tower");
                 orbwalkMenu.Bool("EStackQ", "Stack Q While Gap", false);
@@ -139,7 +140,7 @@
                     }
                     isDashing = true;
                     DelayAction.Add(
-                        200,
+                        300,
                         () =>
                             {
                                 if (Player.IsDashing())
@@ -147,7 +148,7 @@
                                     isDashing = false;
                                 }
                             });
-                    DelayAction.Add(340, () => isDashing = false);
+                    DelayAction.Add(450, () => isDashing = false);
                 };
         }
 
@@ -806,25 +807,37 @@
             }
             if (MainMenu["Orbwalk"]["EGap"] && E.IsReady() && !IsDashing)
             {
-                var target = Q.GetTarget(QCirWidth);
-                if (target != null && HaveQ3 && Q.IsReady(20))
+                if (MainMenu["Orbwalk"]["EMode"].GetValue<MenuList>().Index == 0)
                 {
-                    var nearObj = GetNearObj(target, true, MainMenu["Orbwalk"]["ETower"]);
-                    if (nearObj != null
-                        && (PosAfterE(nearObj).CountEnemy(QCirWidth) > 1 || Player.CountEnemy(Q2.Range) < 3)
-                        && E.CastOnUnit(nearObj))
+                    var target = Q.GetTarget(QCirWidth);
+                    if (target != null && HaveQ3 && Q.IsReady(20))
                     {
-                        return;
+                        var nearObj = GetNearObj(target, true, MainMenu["Orbwalk"]["ETower"]);
+                        if (nearObj != null
+                            && (PosAfterE(nearObj).CountEnemy(QCirWidth) > 1 || Player.CountEnemy(Q2.Range) < 3)
+                            && E.CastOnUnit(nearObj))
+                        {
+                            return;
+                        }
+                    }
+                    target = Q.GetTarget(Q.Width) ?? Q2.GetTarget();
+                    if (target != null)
+                    {
+                        var nearObj = GetNearObj(target, false, MainMenu["Orbwalk"]["ETower"]);
+                        if (nearObj != null
+                            && (nearObj.NetworkId == target.NetworkId
+                                    ? !target.InAutoAttackRange()
+                                    : Player.Distance(target) > MainMenu["Orbwalk"]["ERange"]) && E.CastOnUnit(nearObj))
+                        {
+                            return;
+                        }
                     }
                 }
-                target = Q.GetTarget(Q.Width) ?? Q2.GetTarget();
-                if (target != null)
+                else
                 {
-                    var nearObj = GetNearObj(target, false, MainMenu["Orbwalk"]["ETower"]);
-                    if (nearObj != null
-                        && (nearObj.NetworkId == target.NetworkId
-                                ? !target.InAutoAttackRange()
-                                : Player.Distance(target) > MainMenu["Orbwalk"]["ERange"]) && E.CastOnUnit(nearObj))
+                    var nearObj = GetNearObj(null, false, MainMenu["Orbwalk"]["ETower"]);
+                    if (nearObj != null && Player.Distance(Game.CursorPos) > MainMenu["Orbwalk"]["ERange"]
+                        && E.CastOnUnit(nearObj))
                     {
                         return;
                     }
@@ -959,7 +972,7 @@
 
         private static bool UnderTower(Vector2 pos)
         {
-            return GameObjects.EnemyTurrets.Any(i => i.Distance(pos) <= 950);
+            return GameObjects.EnemyTurrets.Any(i => i.Health > 0 && i.Distance(pos) <= 950);
         }
 
         private static void UseItem(Obj_AI_Hero target)

@@ -79,9 +79,7 @@
         {
             get
             {
-                return Program.MainMenu["Evade"] != null
-                           ? Program.MainMenu["Evade"]["Spells"][this.Name]["DangerLevel"]
-                           : this.dangerLevel;
+                return Program.MainMenu["Evade"]["Spells"][this.Name]["DangerLevel"] ?? this.dangerLevel;
             }
             set
             {

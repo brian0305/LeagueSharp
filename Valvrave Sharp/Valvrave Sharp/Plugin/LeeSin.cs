@@ -707,7 +707,7 @@
                             var turret =
                                 GameObjects.AllyTurrets.Where(
                                     i =>
-                                    !i.IsDead && i.Distance(Player) < 3000
+                                    i.Health > 0 && i.Distance(Player) < 3000
                                     && i.Distance(insecTarget) - RKickRange < i.AttackRange + 200
                                     && i.Distance(insecTarget) > 400).MinOrDefault(i => i.Distance(insecTarget));
                             if (turret != null)

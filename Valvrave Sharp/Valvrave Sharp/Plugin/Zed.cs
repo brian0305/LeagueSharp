@@ -55,7 +55,7 @@
             Q.DamageType = Q2.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
             Q.MinHitChance = Q2.MinHitChance = HitChance.VeryHigh;
 
-            var orbwalkMenu = new Menu("Orbwalk", "Orbwalk");
+            var orbwalkMenu = MainMenu.Add(new Menu("Orbwalk", "Orbwalk"));
             {
                 orbwalkMenu.Separator("Q/E: Always On");
                 orbwalkMenu.Separator("Sub Settings");
@@ -81,33 +81,29 @@
                 {
                     orbwalkMenu.Bool("RCast" + enemy.ChampionName, "Cast On " + enemy.ChampionName, false);
                 }
-                MainMenu.Add(orbwalkMenu);
             }
-            var hybridMenu = new Menu("Hybrid", "Hybrid");
+            var hybridMenu = MainMenu.Add(new Menu("Hybrid", "Hybrid"));
             {
                 hybridMenu.List("Mode", "Mode", new[] { "W-E-Q", "E-Q", "Q" });
                 hybridMenu.Separator("Auto Q Settings");
                 hybridMenu.KeyBind("AutoQ", "KeyBind", Keys.T, KeyBindType.Toggle);
                 hybridMenu.Slider("AutoQMpA", "If Mp >=", 100, 0, 200);
-                MainMenu.Add(hybridMenu);
             }
-            var farmMenu = new Menu("Farm", "Farm");
+            var farmMenu = MainMenu.Add(new Menu("Farm", "Farm"));
             {
                 farmMenu.Bool("Q", "Use Q");
                 farmMenu.Bool("E", "Use E", false);
-                MainMenu.Add(farmMenu);
             }
-            var ksMenu = new Menu("KillSteal", "Kill Steal");
+            var ksMenu = MainMenu.Add(new Menu("KillSteal", "Kill Steal"));
             {
                 ksMenu.Bool("Q", "Use Q");
                 ksMenu.Bool("E", "Use E");
-                MainMenu.Add(ksMenu);
             }
             if (GameObjects.EnemyHeroes.Any())
             {
                 Evade.Init();
             }
-            var drawMenu = new Menu("Draw", "Draw");
+            var drawMenu = MainMenu.Add(new Menu("Draw", "Draw"));
             {
                 drawMenu.Bool("Q", "Q Range");
                 drawMenu.Bool("W", "W Range");
@@ -116,7 +112,6 @@
                 drawMenu.Bool("Target", "Target");
                 drawMenu.Bool("WPos", "W Shadow");
                 drawMenu.Bool("RPos", "R Shadow");
-                MainMenu.Add(drawMenu);
             }
             MainMenu.KeyBind("FleeW", "Use W To Flee", Keys.C);
 
@@ -158,7 +153,7 @@
                 {
                     var mark = sender as Obj_GeneralParticleEmitter;
                     if (mark != null && mark.IsValid && mark.Name == "Zed_Base_R_buf_tell.troy"
-                        && deathMark.Compare(mark))
+                        && deathMark.NetworkId == mark.NetworkId)
                     {
                         deathMark = null;
                     }
@@ -435,7 +430,8 @@
                             {
                                 CollisionableObjects.Heroes, CollisionableObjects.Minions, CollisionableObjects.YasuoWall
                             });
-                    if (pred.CollisionObjects.Count > 0 && pred.CollisionObjects.Any(i => i.IsMe))
+                    if (pred.CollisionObjects.Count > 0
+                        && pred.CollisionObjects.All(i => i.NetworkId == Player.NetworkId))
                     {
                         continue;
                     }
@@ -670,7 +666,7 @@
 
         private static void OnUpdate(EventArgs args)
         {
-            if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
+            if (Player.IsDead || MenuGUI.IsChatOpen || MenuGUI.IsShopOpen || Player.IsRecalling())
             {
                 return;
             }
@@ -686,18 +682,20 @@
                 case OrbwalkerMode.LastHit:
                     Farm();
                     break;
+                case OrbwalkerMode.None:
+                    if (MainMenu["FleeW"].GetValue<MenuKeyBind>().Active)
+                    {
+                        Orbwalker.MoveOrder(Game.CursorPos);
+                        if (W.IsReady())
+                        {
+                            W.Cast(Game.CursorPos);
+                        }
+                    }
+                    break;
             }
             if (Orbwalker.ActiveMode != OrbwalkerMode.Orbwalk && Orbwalker.ActiveMode != OrbwalkerMode.Hybrid)
             {
                 AutoQ();
-            }
-            if (MainMenu["FleeW"].GetValue<MenuKeyBind>().Active)
-            {
-                Orbwalker.MoveOrder(Game.CursorPos);
-                if (W.IsReady())
-                {
-                    W.Cast(Game.CursorPos);
-                }
             }
         }
 

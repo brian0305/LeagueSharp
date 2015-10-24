@@ -11,6 +11,7 @@
     using LeagueSharp.SDK.Core.Events;
     using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.UI.IMenu;
+    using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers;
 
     using Valvrave_Sharp.Core;
@@ -105,7 +106,7 @@
                     }
                     InitItem();
                     InitSummonerSpell();
-                    InitMenu();
+                    DelayAction.Add(1000, InitMenu);
                 };
         }
 

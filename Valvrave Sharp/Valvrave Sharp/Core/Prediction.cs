@@ -294,7 +294,12 @@
             {
                 speed /= 1.5f;
             }
-            return input.GetPositionOnPath(input.Unit.GetWaypoints(), speed);
+            return
+                input.GetPositionOnPath(
+                    input.Unit is Obj_AI_Hero && UnitTracker.CalcPath(input.Unit)
+                        ? UnitTracker.CalcWay(input.Unit)
+                        : input.Unit.GetWaypoints(),
+                    speed);
         }
 
         private static double UnitIsImmobileUntil(this Obj_AI_Base unit)
@@ -335,6 +340,11 @@
             var moveAngle = 30 + input.Radius / 10 - input.Delay * 5;
             var backToFront = moveArea * 1.5f;
             var minPath = 700 + backToFront;
+            if (UnitTracker.CalcPath(input.Unit))
+            {
+                result.Hitchance = distUnitToFrom < input.Range - fixRange ? HitChance.VeryHigh : HitChance.High;
+                return result;
+            }
             if (UnitTracker.GetLastNewPathTime(input.Unit) < 0.1)
             {
                 fixRange = moveArea * (0.2f + input.Delay);
@@ -364,7 +374,7 @@
             }
             if (input.Unit.Path.Length == 0 && input.Unit.Position == input.Unit.ServerPosition)
             {
-                if (UnitTracker.GetLastStopMoveTime(input.Unit) < 0.4)
+                if (UnitTracker.GetLastStopMoveTime(input.Unit) < 0.5)
                 {
                     result.Hitchance = HitChance.High;
                 }
@@ -981,13 +991,37 @@
                         {
                             return;
                         }
-                        StoredList.First(i => i.NetworkId == sender.NetworkId).NewPathTick = Variables.TickCount;
+                        var info = StoredList.First(i => i.NetworkId == sender.NetworkId);
+                        info.NewPathTick = Variables.TickCount;
+                        info.Path.Add(new PathInfo { Position = args.Path.Last().ToVector2(), Time = Game.Time });
+                        if (info.Path.Count > 3)
+                        {
+                            info.Path.Remove(info.Path.First());
+                        }
                     };
             }
 
             #endregion
 
             #region Methods
+
+            internal static bool CalcPath(Obj_AI_Base unit)
+            {
+                var info = StoredList.First(i => i.NetworkId == unit.NetworkId);
+                return info.Path.Count >= 3 && info.Path[2].Time - info.Path[0].Time < 0.5
+                       && info.Path[2].Time + 0.2 < Game.Time;
+            }
+
+            internal static List<Vector2> CalcWay(Obj_AI_Base unit)
+            {
+                var info = StoredList.First(x => x.NetworkId == unit.NetworkId);
+                return new List<Vector2>
+                           {
+                               new Vector2(
+                                   (info.Path[0].Position.X + info.Path[1].Position.X + info.Path[2].Position.X) / 3,
+                                   (info.Path[0].Position.Y + info.Path[1].Position.Y + info.Path[2].Position.Y) / 3)
+                           };
+            }
 
             internal static double GetLastAttackTime(Obj_AI_Base unit)
             {
@@ -1017,6 +1051,17 @@
 
             #endregion
 
+            private class PathInfo
+            {
+                #region Properties
+
+                internal Vector2 Position { get; set; }
+
+                internal float Time { get; set; }
+
+                #endregion
+            }
+
             private class SpellInfo
             {
                 #region Properties
@@ -1030,6 +1075,12 @@
 
             private class TrackerInfo
             {
+                #region Fields
+
+                internal readonly List<PathInfo> Path = new List<PathInfo>();
+
+                #endregion
+
                 #region Properties
 
                 internal int AttackTick { get; set; }

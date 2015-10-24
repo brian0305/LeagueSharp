@@ -37,14 +37,14 @@
 
         public static void CreateMenu(Menu mainMenu)
         {
-            var evadeMenu = new Menu("Evade", "Evade Skillshot");
+            var evadeMenu = mainMenu.Add(new Menu("Evade", "Evade Skillshot"));
             {
                 evadeMenu.Separator("Credit: Evade#");
-                var evadeSpells = new Menu("Spells", "Spells");
+                var evadeSpells = evadeMenu.Add(new Menu("Spells", "Spells"));
                 {
                     foreach (var spell in EvadeSpellDatabase.Spells)
                     {
-                        var subMenu = new Menu(spell.Name, spell.Name);
+                        var subMenu = evadeSpells.Add(new Menu(spell.Name, spell.Name));
                         {
                             if (spell.UnderTower)
                             {
@@ -60,10 +60,8 @@
                                 subMenu.Bool("WardJump", "Ward Jump");
                             }
                             subMenu.Bool("Enabled", "Enabled");
-                            evadeSpells.Add(subMenu);
                         }
                     }
-                    evadeMenu.Add(evadeSpells);
                 }
                 foreach (var hero in
                     GameObjects.EnemyHeroes.Where(
@@ -83,26 +81,25 @@
                             string.Equals(a.ChampionName, i.ChampionName, StringComparison.InvariantCultureIgnoreCase)))
                     )
                 {
-                    var subMenu = new Menu(spell.SpellName, string.Format("{0} ({1})", spell.SpellName, spell.Slot));
+                    var subMenu =
+                        ((Menu)evadeMenu[spell.ChampionName.ToLowerInvariant()]).Add(
+                            new Menu(spell.SpellName, string.Format("{0} ({1})", spell.SpellName, spell.Slot)));
                     {
                         subMenu.Slider("DangerLevel", "Danger Level", spell.DangerValue, 1, 5);
                         subMenu.Bool("IsDangerous", "Is Dangerous", spell.IsDangerous);
                         subMenu.Bool("DisableFoW", "Disable FoW Dodging", false);
                         subMenu.Bool("Draw", "Draw");
                         subMenu.Bool("Enabled", "Enabled", !spell.DisabledByDefault);
-                        ((Menu)evadeMenu[spell.ChampionName.ToLowerInvariant()]).Add(subMenu);
                     }
                 }
-                var drawMenu = new Menu("Draw", "Draw");
+                var drawMenu = evadeMenu.Add(new Menu("Draw", "Draw"));
                 {
                     drawMenu.Bool("Skillshot", "Skillshot");
                     drawMenu.Bool("Status", "Evade Status");
-                    evadeMenu.Add(drawMenu);
                 }
                 evadeMenu.KeyBind("Enabled", "Enabled", Keys.K, KeyBindType.Toggle);
                 evadeMenu.KeyBind("OnlyDangerous", "Dodge Only Dangerous", Keys.Space);
             }
-            mainMenu.Add(evadeMenu);
         }
 
         #endregion

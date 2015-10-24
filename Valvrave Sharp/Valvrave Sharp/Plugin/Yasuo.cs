@@ -53,7 +53,7 @@
             E.DamageType = DamageType.Magical;
             Q.MinHitChance = Q2.MinHitChance = HitChance.VeryHigh;
 
-            var orbwalkMenu = new Menu("Orbwalk", "Orbwalk");
+            var orbwalkMenu = MainMenu.Add(new Menu("Orbwalk", "Orbwalk"));
             {
                 orbwalkMenu.Separator("Q: Always On");
                 orbwalkMenu.Separator("Sub Settings");
@@ -69,9 +69,8 @@
                 orbwalkMenu.Bool("RDelay", "Delay Casting");
                 orbwalkMenu.Slider("RHpU", "If Enemy Hp < (%)", 60);
                 orbwalkMenu.Slider("RCountA", "Or Enemy >=", 2, 1, 5);
-                MainMenu.Add(orbwalkMenu);
             }
-            var hybridMenu = new Menu("Hybrid", "Hybrid");
+            var hybridMenu = MainMenu.Add(new Menu("Hybrid", "Hybrid"));
             {
                 hybridMenu.Separator("Q: Always On");
                 hybridMenu.Bool("Q3", "Also Q3");
@@ -79,9 +78,8 @@
                 hybridMenu.Separator("Auto Q Settings");
                 hybridMenu.KeyBind("AutoQ", "KeyBind", Keys.T, KeyBindType.Toggle);
                 hybridMenu.Bool("AutoQ3", "Also Q3", false);
-                MainMenu.Add(hybridMenu);
             }
-            var lcMenu = new Menu("LaneClear", "Lane Clear");
+            var lcMenu = MainMenu.Add(new Menu("LaneClear", "Lane Clear"));
             {
                 lcMenu.Separator("Q: Always On");
                 lcMenu.Bool("Q3", "Also Q3");
@@ -89,9 +87,8 @@
                 lcMenu.Bool("E", "Use E");
                 lcMenu.Bool("ELastHit", "Last Hit Only", false);
                 lcMenu.Bool("ETower", "Under Tower", false);
-                MainMenu.Add(lcMenu);
             }
-            var farmMenu = new Menu("Farm", "Farm");
+            var farmMenu = MainMenu.Add(new Menu("Farm", "Farm"));
             {
                 farmMenu.Separator("Q Settings");
                 farmMenu.Bool("Q", "Use Q");
@@ -99,9 +96,8 @@
                 farmMenu.Separator("E Settings");
                 farmMenu.Bool("E", "Use E");
                 farmMenu.Bool("ETower", "Under Tower", false);
-                MainMenu.Add(farmMenu);
             }
-            var ksMenu = new Menu("KillSteal", "Kill Steal");
+            var ksMenu = MainMenu.Add(new Menu("KillSteal", "Kill Steal"));
             {
                 ksMenu.Bool("Q", "Use Q");
                 ksMenu.Bool("E", "Use E");
@@ -111,26 +107,23 @@
                 {
                     ksMenu.Bool("RCast" + enemy.ChampionName, "Cast On " + enemy.ChampionName, false);
                 }
-                MainMenu.Add(ksMenu);
             }
-            var fleeMenu = new Menu("Flee", "Flee");
+            var fleeMenu = MainMenu.Add(new Menu("Flee", "Flee"));
             {
                 fleeMenu.KeyBind("E", "Use E", Keys.C);
                 fleeMenu.Bool("Q", "Stack Q While Dash");
-                MainMenu.Add(fleeMenu);
             }
             if (GameObjects.EnemyHeroes.Any())
             {
                 Evade.Init();
                 EvadeTarget.Init();
             }
-            var drawMenu = new Menu("Draw", "Draw");
+            var drawMenu = MainMenu.Add(new Menu("Draw", "Draw"));
             {
                 drawMenu.Bool("Q", "Q Range");
                 drawMenu.Bool("E", "E Range", false);
                 drawMenu.Bool("R", "R Range");
                 drawMenu.Bool("StackQ", "Auto Stack Q Status");
-                MainMenu.Add(drawMenu);
             }
             MainMenu.KeyBind("StackQ", "Auto Stack Q", Keys.Z, KeyBindType.Toggle);
 
@@ -418,7 +411,7 @@
                           ? Prediction.GetPrediction(target, E.Delay, 1, E.Speed).UnitPosition
                           : Game.CursorPos;
             var obj = new List<Obj_AI_Base>();
-            obj.AddRange(GameObjects.EnemyHeroes);
+            obj.AddRange(GameObjects.EnemyHeroes.Where(i => !i.InFountain()));
             obj.AddRange(GameObjects.EnemyMinions.Where(i => i.IsMinion()));
             obj.AddRange(GameObjects.Jungle);
             return
@@ -752,7 +745,7 @@
             {
                 E.Speed = GetESpeed;
             }
-            if (Player.IsDead || MenuGUI.IsChatOpen || Player.IsRecalling())
+            if (Player.IsDead || MenuGUI.IsChatOpen || MenuGUI.IsShopOpen || Player.IsRecalling())
             {
                 return;
             }
@@ -771,17 +764,19 @@
                 case OrbwalkerMode.LastHit:
                     Farm();
                     break;
+                case OrbwalkerMode.None:
+                    if (MainMenu["Flee"]["E"].GetValue<MenuKeyBind>().Active)
+                    {
+                        Orbwalker.MoveOrder(Game.CursorPos);
+                        Flee();
+                    }
+                    break;
             }
             if (Orbwalker.ActiveMode != OrbwalkerMode.Orbwalk && Orbwalker.ActiveMode != OrbwalkerMode.Hybrid)
             {
                 AutoQ();
             }
             StackQ();
-            if (MainMenu["Flee"]["E"].GetValue<MenuKeyBind>().Active)
-            {
-                Orbwalker.MoveOrder(Game.CursorPos);
-                Flee();
-            }
         }
 
         private static void Orbwalk()
@@ -814,7 +809,7 @@
                 var target = Q.GetTarget(QCirWidth);
                 if (target != null && HaveQ3 && Q.IsReady(20))
                 {
-                    var nearObj = GetNearObj(target, true);
+                    var nearObj = GetNearObj(target, true, MainMenu["Orbwalk"]["ETower"]);
                     if (nearObj != null
                         && (PosAfterE(nearObj).CountEnemy(QCirWidth) > 1 || Player.CountEnemy(Q2.Range) < 3)
                         && E.CastOnUnit(nearObj))
@@ -827,7 +822,7 @@
                 {
                     var nearObj = GetNearObj(target, false, MainMenu["Orbwalk"]["ETower"]);
                     if (nearObj != null
-                        && (nearObj.Compare(target)
+                        && (nearObj.NetworkId == target.NetworkId
                                 ? !target.InAutoAttackRange()
                                 : Player.Distance(target) > MainMenu["Orbwalk"]["ERange"]) && E.CastOnUnit(nearObj))
                     {
@@ -964,7 +959,7 @@
 
         private static bool UnderTower(Vector2 pos)
         {
-            return GameObjects.EnemyTurrets.Any(i => !i.IsDead && i.Position.Distance(pos) <= 950);
+            return GameObjects.EnemyTurrets.Any(i => i.Distance(pos) <= 950);
         }
 
         private static void UseItem(Obj_AI_Hero target)
@@ -1015,7 +1010,7 @@
             internal static void Init()
             {
                 LoadSpellData();
-                var evadeMenu = new Menu("EvadeTarget", "Evade Target");
+                var evadeMenu = MainMenu.Add(new Menu("EvadeTarget", "Evade Target"));
                 {
                     evadeMenu.Bool("W", "Use W");
                     var aaMenu = new Menu("AA", "Auto Attack");
@@ -1054,7 +1049,6 @@
                             false);
                     }
                 }
-                MainMenu.Add(evadeMenu);
                 Game.OnUpdate += OnUpdateTarget;
                 GameObject.OnCreate += ObjSpellMissileOnCreate;
                 GameObject.OnDelete += ObjSpellMissileOnDelete;

@@ -20,6 +20,7 @@
 
     using Color = System.Drawing.Color;
     using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+    using Orbwalker = Valvrave_Sharp.Core.Orbwalker;
     using Rectangle = LeagueSharp.SDK.Core.Math.Polygons.Rectangle;
 
     internal class LeeSin : Program
@@ -124,6 +125,19 @@
                         Drawing.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.LimeGreen : Color.IndianRed);
                     }
                 };
+            Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
+                {
+                    if (!sender.IsMe)
+                    {
+                        return;
+                    }
+                    if (MainMenu["Orbwalk"]["Star"].GetValue<MenuKeyBind>().Active
+                        && args.SData.Name == "BlindMonkRKick" && E.IsReady() && IsEOne
+                        && HaveQ((Obj_AI_Hero)args.Target) && Player.Mana >= 80)
+                    {
+                        DelayAction.Add(R.Delay * 1000, () => E.Cast());
+                    }
+                };
         }
 
         #endregion
@@ -134,8 +148,8 @@
         {
             get
             {
-                return (!MainMenu["Orbwalk"]["Q"] || Variables.TickCount - Q.LastCastAttemptT > 300)
-                       && (!MainMenu["Orbwalk"]["E"] || Variables.TickCount - E.LastCastAttemptT > 300);
+                return (!MainMenu["Orbwalk"]["Q"] || Variables.TickCount - Q.LastCastAttemptT >= 250)
+                       && (!MainMenu["Orbwalk"]["E"] || Variables.TickCount - E.LastCastAttemptT >= 250);
             }
         }
 
@@ -143,7 +157,7 @@
         {
             get
             {
-                return !R.IsReady() && Variables.TickCount - R.LastCastAttemptT > 300
+                return !R.IsReady() && Variables.TickCount - R.LastCastAttemptT >= 280
                        && Variables.TickCount - R.LastCastAttemptT < 1500;
             }
         }
@@ -209,13 +223,13 @@
         private static bool CanE2(Obj_AI_Base target)
         {
             var buff = target.GetBuff("BlindMonkTempest");
-            return buff != null && buff.EndTime - Game.Time <= 0.15f;
+            return buff != null && buff.EndTime - Game.Time < 0.15;
         }
 
         private static bool CanQ2(Obj_AI_Base target)
         {
             var buff = target.GetBuff("BlindMonkSonicWave");
-            return buff != null && buff.EndTime - Game.Time <= 0.15f;
+            return buff != null && buff.EndTime - Game.Time < 0.15;
         }
 
         private static void Farm()
@@ -588,11 +602,6 @@
                     return;
                 }
             }
-            if (E.CanCast(target) && IsEOne && HaveQ(target) && !R.IsReady()
-                && Variables.TickCount - R.LastCastAttemptT < 1500 && Player.Mana >= 80 && E.Cast())
-            {
-                return;
-            }
             if (!R.IsReady() || !Q.IsReady() || IsQOne || !HaveQ(target))
             {
                 return;
@@ -649,6 +658,8 @@
             private static Vector3 insecPos = Vector3.Zero;
 
             private static Obj_AI_Hero insecTarget;
+
+            private static Vector3 insecWardPos = Vector3.Zero;
 
             private static int lastFlash;
 
@@ -783,6 +794,7 @@
                         {
                             insecPos = Vector3.Zero;
                             insecFlashPos = Vector3.Zero;
+                            insecWardPos = Vector3.Zero;
                         }
                     };
                 Drawing.OnDraw += args =>
@@ -808,9 +820,15 @@
                         if (args.SData.Name == "summonerflash")
                         {
                             lastFlash = Variables.TickCount;
-                            if (MainMenu["Insec"]["Advanced"].GetValue<MenuKeyBind>().Active && insecFlashPos.IsValid())
+                            if ((MainMenu["Insec"]["Normal"].GetValue<MenuKeyBind>().Active
+                                 || MainMenu["Insec"]["Advanced"].GetValue<MenuKeyBind>().Active)
+                                && insecFlashPos.IsValid() && args.End.Distance(insecFlashPos) <= 150)
                             {
                                 insecFlashPos = Vector3.Zero;
+                                if (MainMenu["Insec"]["Normal"].GetValue<MenuKeyBind>().Active && R.IsReady())
+                                {
+                                    DelayAction.Add(30, () => R.CastOnUnit(insecTarget));
+                                }
                             }
                         }
                         if (MainMenu["Insec"]["Normal"].GetValue<MenuKeyBind>().Active
@@ -822,7 +840,7 @@
                         if (MainMenu["Insec"]["Advanced"].GetValue<MenuKeyBind>().Active
                             && args.SData.Name == "BlindMonkRKick" && Flash.IsReady() && insecFlashPos.IsValid())
                         {
-                            DelayAction.Add(50, () => Player.Spellbook.CastSpell(Flash, insecFlashPos));
+                            DelayAction.Add(R.Delay * 1000 / 4, () => Player.Spellbook.CastSpell(Flash, insecFlashPos));
                         }
                     };
                 GameObject.OnCreate += (sender, args) =>
@@ -836,11 +854,13 @@
                         if (ward == null || ward.IsEnemy
                             || (!ward.CharData.BaseSkinName.ToLower().Contains("ward")
                                 && !ward.CharData.BaseSkinName.ToLower().Contains("trinket")) || !W.IsInRange(ward)
-                            || Variables.TickCount - lastWard >= 1000)
+                            || Variables.TickCount - lastWard >= 1000 || !insecWardPos.IsValid()
+                            || ward.Distance(insecWardPos) > 150)
                         {
                             return;
                         }
                         W.CastOnUnit(ward);
+                        insecWardPos = Vector3.Zero;
                     };
             }
 
@@ -972,12 +992,14 @@
                         return;
                     }
                     SetInsecPos(posAfter);
+                    insecFlashPos = posBehind;
                     Player.Spellbook.CastSpell(Flash, posBehind);
                 }
                 else if (posBehind.Distance(posPred) < R.Range - 75 && Player.Distance(posBehind) < 600)
                 {
                     SetInsecPos(posAfter);
                     var posPlace = Player.ServerPosition.Extend(posBehind, Math.Min(590, Player.Distance(posBehind)));
+                    insecWardPos = posPlace;
                     Player.Spellbook.CastSpell(Items.GetWardSlot().SpellSlot, posPlace);
                 }
             }

@@ -73,6 +73,7 @@
             MainMenu = new Menu("ValvraveSharp", "Valvrave Sharp", true, Player.ChampionName).Attach();
             MainMenu.Separator("Author: Brian");
             MainMenu.Separator("Paypal: dcbrian01@gmail.com");
+            Orbwalker.Init(MainMenu);
             Plugins[Player.ChampionName].Invoke();
         }
 

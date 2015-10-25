@@ -22,6 +22,7 @@
 
     using Color = System.Drawing.Color;
     using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+    using Orbwalker = Valvrave_Sharp.Core.Orbwalker;
 
     internal class Yasuo : Program
     {
@@ -777,7 +778,10 @@
             {
                 AutoQ();
             }
-            StackQ();
+            if (!MainMenu["Flee"]["E"].GetValue<MenuKeyBind>().Active)
+            {
+                StackQ();
+            }
         }
 
         private static void Orbwalk()

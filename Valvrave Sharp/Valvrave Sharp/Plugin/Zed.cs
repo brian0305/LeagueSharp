@@ -21,6 +21,7 @@
 
     using Color = System.Drawing.Color;
     using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+    using Orbwalker = Valvrave_Sharp.Core.Orbwalker;
 
     internal class Zed : Program
     {

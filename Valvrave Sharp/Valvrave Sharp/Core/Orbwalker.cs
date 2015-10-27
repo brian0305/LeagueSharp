@@ -15,6 +15,7 @@
     using LeagueSharp.SDK.Core.UI.IMenu.Values;
     using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers;
+    using LeagueSharp.SDK.Core.Wrappers.Damages;
 
     using SharpDX;
 
@@ -26,6 +27,14 @@
         #region Static Fields
 
         private static readonly Random Random = new Random(DateTime.Now.Millisecond);
+
+        private static readonly string[] SpecialMinions =
+            {
+                "annietibbers", "zyrathornplant", "zyragraspingplant",
+                "heimertyellow", "heimertblue", "malzaharvoidling",
+                "yorickdecayedghoul", "yorickravenousghoul",
+                "yorickspectralghoul", "shacobox"
+            };
 
         private static bool enabled;
 
@@ -50,13 +59,9 @@
         public static bool Attack { get; set; }
 
         public static bool CanAttack
-        {
-            get
-            {
-                return Variables.TickCount + Game.Ping / 2 + 25
-                       >= LastAutoAttackTick + Program.Player.AttackDelay * 1000 && Attack;
-            }
-        }
+            =>
+                Variables.TickCount + Game.Ping / 2 + 25 >= LastAutoAttackTick + Program.Player.AttackDelay * 1000
+                && Attack;
 
         public static bool CanMove
         {
@@ -108,13 +113,7 @@
 
         #region Properties
 
-        private static int FarmDelay
-        {
-            get
-            {
-                return Program.MainMenu["Orbwalker"]["Advanced"]["FarmDelay"];
-            }
-        }
+        private static int FarmDelay => Program.MainMenu["Orbwalker"]["Advanced"]["FarmDelay"];
 
         private static bool MissileLaunched { get; set; }
 
@@ -137,8 +136,7 @@
             if (mode == OrbwalkerMode.LaneClear || mode == OrbwalkerMode.Hybrid || mode == OrbwalkerMode.LastHit)
             {
                 foreach (var minion in
-                    GameObjects.EnemyMinions.Where(
-                        m => m.InAutoAttackRange() && (m.IsMinion() || m.CharData.BaseSkinName != "jarvanivstandard"))
+                    GameObjects.EnemyMinions.Where(m => m.InAutoAttackRange() && Minion.IsMinion(m))
                         .OrderByDescending(m => m.GetMinionType() == MinionTypes.Siege)
                         .ThenBy(m => m.GetMinionType() == MinionTypes.Super)
                         .ThenBy(m => m.Health)
@@ -193,7 +191,7 @@
                 var shouldWait =
                     GameObjects.EnemyMinions.Any(
                         m =>
-                        m.InAutoAttackRange() && (m.IsMinion() || m.CharData.BaseSkinName != "jarvanivstandard")
+                        m.InAutoAttackRange() && Minion.IsMinion(m)
                         && Health.GetPrediction(
                             m,
                             (int)(Program.Player.AttackDelay * 1000 * 2f),
@@ -201,6 +199,15 @@
                             HealthPredictionType.Simulated) <= Program.Player.GetAutoAttackDamage(m, true));
                 if (!shouldWait)
                 {
+                    foreach (var specialMinion in
+                        GameObjects.EnemyMinions.Where(
+                            m =>
+                            m.InAutoAttackRange()
+                            && SpecialMinions.Any(
+                                i => i.Equals(m.CharData.BaseSkinName, StringComparison.InvariantCultureIgnoreCase))))
+                    {
+                        return specialMinion;
+                    }
                     var mob = GameObjects.JungleLegendary.FirstOrDefault(j => j.InAutoAttackRange())
                               ?? GameObjects.JungleSmall.FirstOrDefault(
                                   j =>
@@ -210,6 +217,12 @@
                     if (mob != null)
                     {
                         return mob;
+                    }
+                    foreach (var sentinel in
+                        GameObjects.EnemyMinions.Where(
+                            m => m.InAutoAttackRange() && m.CharData.BaseSkinName.ToLower() == "kalistaspawn"))
+                    {
+                        return sentinel;
                     }
                     if (LastMinion.InAutoAttackRange())
                     {
@@ -225,10 +238,7 @@
                         }
                     }
                     var minion = (from m in
-                                      GameObjects.EnemyMinions.Where(
-                                          m =>
-                                          m.InAutoAttackRange()
-                                          && (m.IsMinion() || m.CharData.BaseSkinName != "jarvanivstandard"))
+                                      GameObjects.EnemyMinions.Where(m => m.InAutoAttackRange() && Minion.IsMinion(m))
                                   let predictedHealth =
                                       Health.GetPrediction(
                                           m,
@@ -243,6 +253,9 @@
                     {
                         return LastMinion = minion;
                     }
+                    return
+                        GameObjects.EnemyMinions.FirstOrDefault(
+                            m => m.InAutoAttackRange() && m.CharData.BaseSkinName.ToLower() == "elisespiderling");
                 }
             }
             return null;
@@ -453,10 +466,7 @@
 
         private static void InvokeAction(OrbwalkerActionArgs e)
         {
-            if (OnAction != null)
-            {
-                OnAction(MethodBase.GetCurrentMethod().DeclaringType, e);
-            }
+            OnAction?.Invoke(MethodBase.GetCurrentMethod().DeclaringType, e);
         }
 
         private static void OnDoCastDelayed(GameObjectProcessSpellCastEventArgs args)
@@ -483,7 +493,7 @@
                     var minions =
                         GameObjects.EnemyMinions.Where(
                             m =>
-                            m.IsValidTarget(1200) && (m.IsMinion() || m.CharData.BaseSkinName != "jarvanivstandard")
+                            m.IsValidTarget(1200) && Minion.IsMinion(m)
                             && m.Health < Program.Player.GetAutoAttackDamage(m, true) * 2);
                     foreach (var minion in minions)
                     {
@@ -500,7 +510,7 @@
                     var minions =
                         GameObjects.EnemyMinions.Where(
                             m =>
-                            m.IsValidTarget(1200) && (m.IsMinion() || m.CharData.BaseSkinName != "jarvanivstandard")
+                            m.IsValidTarget(1200) && Minion.IsMinion(m)
                             && m.Health < Program.Player.GetAutoAttackDamage(m, true));
                     foreach (var minion in minions)
                     {
@@ -532,7 +542,7 @@
             }
             if (AutoAttack.IsAutoAttackReset(spellName))
             {
-                ResetAutoAttackTimer();
+                DelayAction.Add(250, ResetAutoAttackTimer);
             }
         }
 

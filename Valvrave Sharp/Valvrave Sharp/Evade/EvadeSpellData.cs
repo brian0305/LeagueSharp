@@ -87,31 +87,15 @@
             }
         }
 
-        public bool Enable
-        {
-            get
-            {
-                return Program.MainMenu["Evade"]["Spells"][this.Name]["Enabled"];
-            }
-        }
+        public bool Enable => Program.MainMenu["Evade"]["Spells"][this.Name]["Enabled"];
 
         public bool IsReady
-        {
-            get
-            {
-                return (this.CheckSpellName == ""
-                        || ObjectManager.Player.Spellbook.GetSpell(this.Slot).Name == this.CheckSpellName)
-                       && ObjectManager.Player.Spellbook.CanUseSpell(this.Slot) == SpellState.Ready;
-            }
-        }
+            =>
+                (this.CheckSpellName == ""
+                 || ObjectManager.Player.Spellbook.GetSpell(this.Slot).Name == this.CheckSpellName)
+                && ObjectManager.Player.Spellbook.CanUseSpell(this.Slot) == SpellState.Ready;
 
-        public bool IsTargetted
-        {
-            get
-            {
-                return this.ValidTargets != null;
-            }
-        }
+        public bool IsTargetted => this.ValidTargets != null;
 
         #endregion
     }

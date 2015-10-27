@@ -204,14 +204,9 @@
         }
 
         public int DangerLevel
-        {
-            get
-            {
-                return
-                    Program.MainMenu["Evade"][this.SpellData.ChampionName.ToLowerInvariant()][this.SpellData.SpellName][
-                        "DangerLevel"];
-            }
-        }
+            =>
+                Program.MainMenu["Evade"][this.SpellData.ChampionName.ToLowerInvariant()][this.SpellData.SpellName][
+                    "DangerLevel"];
 
         public bool Enable
         {
@@ -244,24 +239,14 @@
         public Geometry.Polygon EvadePolygon { get; set; }
 
         public bool IsActive
-        {
-            get
-            {
-                return this.SpellData.MissileAccel != 0
-                           ? Variables.TickCount <= this.StartTick + 5000
-                           : Variables.TickCount
-                             <= this.StartTick + this.SpellData.Delay + this.SpellData.ExtraDuration
-                             + 1000 * (this.Start.Distance(this.End) / this.SpellData.MissileSpeed);
-            }
-        }
+            =>
+                this.SpellData.MissileAccel != 0
+                    ? Variables.TickCount <= this.StartTick + 5000
+                    : Variables.TickCount
+                      <= this.StartTick + this.SpellData.Delay + this.SpellData.ExtraDuration
+                      + 1000 * (this.Start.Distance(this.End) / this.SpellData.MissileSpeed);
 
-        public bool IsGlobal
-        {
-            get
-            {
-                return this.SpellData.RawRange == 20000;
-            }
-        }
+        public bool IsGlobal => this.SpellData.RawRange == 20000;
 
         public Obj_AI_Base Unit { get; set; }
 

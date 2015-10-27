@@ -13,6 +13,7 @@
     using LeagueSharp.SDK.Core.UI.IMenu.Values;
     using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers;
+    using LeagueSharp.SDK.Core.Wrappers.Damages;
 
     using SharpDX;
 
@@ -251,22 +252,12 @@
         }
 
         private static int RState
-        {
-            get
-            {
-                return R.IsReady()
-                           ? (R.Instance.Name == "ZedR" ? 0 : 1)
-                           : (rShadow.IsValid() && R.Instance.Name != "ZedR" ? 2 : -1);
-            }
-        }
+            =>
+                R.IsReady()
+                    ? (R.Instance.Name == "ZedR" ? 0 : 1)
+                    : (rShadow.IsValid() && R.Instance.Name != "ZedR" ? 2 : -1);
 
-        private static int WState
-        {
-            get
-            {
-                return W.IsReady() ? (W.Instance.Name == "ZedW" ? 0 : 1) : -1;
-            }
-        }
+        private static int WState => W.IsReady() ? (W.Instance.Name == "ZedW" ? 0 : 1) : -1;
 
         #endregion
 

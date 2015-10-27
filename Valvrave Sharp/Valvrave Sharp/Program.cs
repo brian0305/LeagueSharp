@@ -21,7 +21,7 @@
     {
         #region Constants
 
-        internal const int FlashRange = 450, IgniteRange = 600, SmiteRange = 780;
+        internal const int FlashRange = 450, IgniteRange = 600, SmiteRange = 570;
 
         #endregion
 
@@ -46,13 +46,7 @@
 
         #region Properties
 
-        internal static Obj_AI_Hero Player
-        {
-            get
-            {
-                return ObjectManager.Player;
-            }
-        }
+        internal static Obj_AI_Hero Player => ObjectManager.Player;
 
         #endregion
 
@@ -134,12 +128,7 @@
                     }
                     var gitVersion =
                         new Version(
-                            string.Format(
-                                "{0}.{1}.{2}.{3}",
-                                checkFile.Groups[1],
-                                checkFile.Groups[2],
-                                checkFile.Groups[3],
-                                checkFile.Groups[4]));
+                            $"{checkFile.Groups[1]}.{checkFile.Groups[2]}.{checkFile.Groups[3]}.{checkFile.Groups[4]}");
                     if (gitVersion > Assembly.GetExecutingAssembly().GetName().Version)
                     {
                         PrintChat("Outdated! Newest Version: " + gitVersion);

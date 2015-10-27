@@ -14,6 +14,7 @@
     using LeagueSharp.SDK.Core.UI.IMenu.Values;
     using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers;
+    using LeagueSharp.SDK.Core.Wrappers.Damages;
 
     using SharpDX;
 
@@ -157,29 +158,11 @@
 
         #region Properties
 
-        private static float GetESpeed
-        {
-            get
-            {
-                return 700 + Player.MoveSpeed;
-            }
-        }
+        private static float GetESpeed => 700 + Player.MoveSpeed;
 
-        private static float GetQ12Delay
-        {
-            get
-            {
-                return 0.4f * GetQDelay;
-            }
-        }
+        private static float GetQ12Delay => 0.4f * GetQDelay;
 
-        private static float GetQ3Delay
-        {
-            get
-            {
-                return 0.5f * GetQDelay;
-            }
-        }
+        private static float GetQ3Delay => 0.5f * GetQDelay;
 
         private static List<Obj_AI_Base> GetQCirObj
         {
@@ -195,56 +178,18 @@
         }
 
         private static Obj_AI_Hero GetQCirTarget
-        {
-            get
-            {
-                return TargetSelector.GetTarget(
-                    QCirWidth,
-                    DamageType.Physical,
-                    null,
-                    Player.GetDashInfo().EndPos.ToVector3());
-            }
-        }
+            => TargetSelector.GetTarget(QCirWidth, DamageType.Physical, null, Player.GetDashInfo().EndPos.ToVector3());
 
-        private static float GetQDelay
-        {
-            get
-            {
-                return 1 - Math.Min((Player.AttackSpeedMod - 1) * 0.006f, 0.66f);
-            }
-        }
+        private static float GetQDelay => 1 - Math.Min((Player.AttackSpeedMod - 1) * 0.006f, 0.66f);
 
         private static List<Obj_AI_Hero> GetRTarget
-        {
-            get
-            {
-                return GameObjects.EnemyHeroes.Where(i => R.IsInRange(i) && CanCastR(i)).ToList();
-            }
-        }
+            => GameObjects.EnemyHeroes.Where(i => R.IsInRange(i) && CanCastR(i)).ToList();
 
-        private static bool HaveQ3
-        {
-            get
-            {
-                return Player.HasBuff("YasuoQ3W");
-            }
-        }
+        private static bool HaveQ3 => Player.HasBuff("YasuoQ3W");
 
-        private static bool HaveStatik
-        {
-            get
-            {
-                return Player.GetBuffCount("ItemStatikShankCharge") == 100;
-            }
-        }
+        private static bool HaveStatik => Player.GetBuffCount("ItemStatikShankCharge") == 100;
 
-        private static bool IsDashing
-        {
-            get
-            {
-                return isDashing || Player.IsDashing();
-            }
-        }
+        private static bool IsDashing => isDashing || Player.IsDashing();
 
         #endregion
 
@@ -407,7 +352,11 @@
                 + 0.6 * Player.TotalMagicalDamage);
         }
 
-        private static Obj_AI_Base GetNearObj(Obj_AI_Base target = null, bool inQCir = false, bool underTower = true)
+        private static Obj_AI_Base GetNearObj(
+            Obj_AI_Base target = null,
+            bool inQCir = false,
+            bool underTower = true,
+            bool checkFace = false)
         {
             var pos = target != null
                           ? Prediction.GetPrediction(target, E.Delay, 1, E.Speed).UnitPosition
@@ -419,7 +368,7 @@
             return
                 obj.Where(
                     i =>
-                    CanCastE(i) && Player.IsFacing(i) && (!UnderTower(PosAfterE(i)) || underTower)
+                    CanCastE(i) && (!checkFace || Player.IsFacing(i)) && (!UnderTower(PosAfterE(i)) || underTower)
                     && i.Distance(pos) < Player.Distance(target != null ? i.ServerPosition : pos)
                     && PosAfterE(i).Distance(pos) < (inQCir ? QCirWidth : Player.Distance(pos)))
                     .MinOrDefault(i => PosAfterE(i).Distance(pos));
@@ -717,11 +666,8 @@
             }
             if (MainMenu["Draw"]["StackQ"] && Q.Level > 0)
             {
-                var text = string.Format(
-                    "Auto Stack Q: {0}",
-                    MainMenu["StackQ"].GetValue<MenuKeyBind>().Active
-                        ? (HaveQ3 ? "Full" : (Q.IsReady() ? "Ready" : "Not Ready"))
-                        : "Off");
+                var text =
+                    $"Auto Stack Q: {(MainMenu["StackQ"].GetValue<MenuKeyBind>().Active ? (HaveQ3 ? "Full" : (Q.IsReady() ? "Ready" : "Not Ready")) : "Off")}";
                 var pos = Drawing.WorldToScreen(Player.Position);
                 Drawing.DrawText(
                     pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
@@ -816,7 +762,7 @@
                     var target = Q.GetTarget(QCirWidth);
                     if (target != null && HaveQ3 && Q.IsReady(20))
                     {
-                        var nearObj = GetNearObj(target, true, MainMenu["Orbwalk"]["ETower"]);
+                        var nearObj = GetNearObj(target, true, MainMenu["Orbwalk"]["ETower"], true);
                         if (nearObj != null
                             && (PosAfterE(nearObj).CountEnemy(QCirWidth) > 1 || Player.CountEnemy(Q2.Range) < 3)
                             && E.CastOnUnit(nearObj))
@@ -827,7 +773,7 @@
                     target = Q.GetTarget(Q.Width) ?? Q2.GetTarget();
                     if (target != null)
                     {
-                        var nearObj = GetNearObj(target, false, MainMenu["Orbwalk"]["ETower"]);
+                        var nearObj = GetNearObj(target, false, MainMenu["Orbwalk"]["ETower"], true);
                         if (nearObj != null
                             && (nearObj.NetworkId == target.NetworkId
                                     ? !target.InAutoAttackRange()
@@ -1307,13 +1253,7 @@
 
                 #region Public Properties
 
-                public string MissileName
-                {
-                    get
-                    {
-                        return this.SpellNames.First();
-                    }
-                }
+                public string MissileName => this.SpellNames.First();
 
                 #endregion
             }

@@ -212,10 +212,7 @@
             Vector2 end,
             Obj_AI_Base unit)
         {
-            if (OnDetectSkillshot != null)
-            {
-                OnDetectSkillshot(new Skillshot(detectionType, spellData, startT, start, end, unit));
-            }
+            OnDetectSkillshot?.Invoke(new Skillshot(detectionType, spellData, startT, start, end, unit));
         }
 
         #endregion

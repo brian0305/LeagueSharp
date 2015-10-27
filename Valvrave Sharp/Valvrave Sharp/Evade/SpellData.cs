@@ -12,9 +12,9 @@
 
         public bool Centered;
 
-        public CollisionObjectTypes[] CollisionObjects = { };
-
         public string ChampionName;
+
+        public CollisionObjectTypes[] CollisionObjects = { };
 
         public int DangerValue;
 
@@ -26,9 +26,9 @@
 
         public bool DontAddExtraDuration;
 
-        public bool DontCross = false;
-
         public bool DontCheckForDuplicates = false;
+
+        public bool DontCross = false;
 
         public bool DontRemove = false;
 

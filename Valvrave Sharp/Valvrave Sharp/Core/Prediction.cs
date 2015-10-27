@@ -995,7 +995,10 @@
                         }
                         var info = StoredList.First(i => i.NetworkId == sender.NetworkId);
                         info.NewPathTick = Variables.TickCount;
-                        info.Path.Add(new PathInfo { Position = args.Path.Last().ToVector2(), Time = Game.Time });
+                        if (args.Path.Last() != sender.ServerPosition)
+                        {
+                            info.Path.Add(new PathInfo { Position = args.Path.Last().ToVector2(), Time = Game.Time });
+                        }
                         if (info.Path.Count > 3)
                         {
                             info.Path.Remove(info.Path.First());
@@ -1021,8 +1024,9 @@
             internal static bool CanCalcWaypoints(Obj_AI_Base unit)
             {
                 var info = StoredList.First(i => i.NetworkId == unit.NetworkId);
-                return info.Path.Count >= 3 && info.Path[2].Time - info.Path[0].Time < 0.4
-                       && info.Path[2].Time + 0.1 < Game.Time;
+                return info.Path.Count >= 3 && info.Path[2].Time - info.Path[0].Time < 0.45
+                       && info.Path[2].Time + 0.1 < Game.Time && info.Path[2].Time + 0.2 > Game.Time
+                       && info.Path[1].Position.Distance(info.Path[2].Position) > unit.Distance(info.Path[2].Position);
             }
 
             internal static double GetLastAttackTime(Obj_AI_Base unit)
@@ -1113,19 +1117,7 @@
 
             private Vector3 @from;
 
-            private float radius = 1f;
-
-            private float range = float.MaxValue;
-
             private Vector3 rangeCheckFrom;
-
-            private float speed = float.MaxValue;
-
-            private SkillshotType type = SkillshotType.SkillshotLine;
-
-            private Obj_AI_Base unit = ObjectManager.Player;
-
-            private bool useBoundingRadius = true;
 
             #endregion
 
@@ -1149,29 +1141,9 @@
                 }
             }
 
-            public float Radius
-            {
-                get
-                {
-                    return this.radius;
-                }
-                set
-                {
-                    this.radius = value;
-                }
-            }
+            public float Radius { get; set; } = 1f;
 
-            public float Range
-            {
-                get
-                {
-                    return this.range;
-                }
-                set
-                {
-                    this.range = value;
-                }
-            }
+            public float Range { get; set; } = float.MaxValue;
 
             public Vector3 RangeCheckFrom
             {
@@ -1187,65 +1159,19 @@
                 }
             }
 
-            public float Speed
-            {
-                get
-                {
-                    return this.speed;
-                }
-                set
-                {
-                    this.speed = value;
-                }
-            }
+            public float Speed { get; set; } = float.MaxValue;
 
-            public SkillshotType Type
-            {
-                get
-                {
-                    return this.type;
-                }
-                set
-                {
-                    this.type = value;
-                }
-            }
+            public SkillshotType Type { get; set; } = SkillshotType.SkillshotLine;
 
-            public Obj_AI_Base Unit
-            {
-                get
-                {
-                    return this.unit;
-                }
-                set
-                {
-                    this.unit = value;
-                }
-            }
+            public Obj_AI_Base Unit { get; set; } = ObjectManager.Player;
 
-            public bool UseBoundingRadius
-            {
-                get
-                {
-                    return this.useBoundingRadius;
-                }
-                set
-                {
-                    this.useBoundingRadius = value;
-                }
-            }
+            public bool UseBoundingRadius { get; set; } = true;
 
             #endregion
 
             #region Properties
 
-            internal float RealRadius
-            {
-                get
-                {
-                    return this.Radius + (this.UseBoundingRadius ? this.Unit.BoundingRadius : 0);
-                }
-            }
+            internal float RealRadius => this.Radius + (this.UseBoundingRadius ? this.Unit.BoundingRadius : 0);
 
             #endregion
         }
@@ -1254,13 +1180,7 @@
         {
             #region Fields
 
-            private List<Obj_AI_Hero> aoeTargetsHit = new List<Obj_AI_Hero>();
-
             private Vector3 castPosition;
-
-            private List<Obj_AI_Base> collisionObjects = new List<Obj_AI_Base>();
-
-            private HitChance hitchance = HitChance.Impossible;
 
             private Vector3 unitPosition;
 
@@ -1270,25 +1190,9 @@
 
             public int AoeHitCount { get; set; }
 
-            public List<Obj_AI_Hero> AoeTargetsHit
-            {
-                get
-                {
-                    return this.aoeTargetsHit;
-                }
-                set
-                {
-                    this.aoeTargetsHit = value;
-                }
-            }
+            public List<Obj_AI_Hero> AoeTargetsHit { get; set; } = new List<Obj_AI_Hero>();
 
-            public int AoeTargetsHitCount
-            {
-                get
-                {
-                    return Math.Max(this.AoeHitCount, this.AoeTargetsHit.Count);
-                }
-            }
+            public int AoeTargetsHitCount => Math.Max(this.AoeHitCount, this.AoeTargetsHit.Count);
 
             public Vector3 CastPosition
             {
@@ -1302,29 +1206,9 @@
                 }
             }
 
-            public List<Obj_AI_Base> CollisionObjects
-            {
-                get
-                {
-                    return this.collisionObjects;
-                }
-                set
-                {
-                    this.collisionObjects = value;
-                }
-            }
+            public List<Obj_AI_Base> CollisionObjects { get; set; } = new List<Obj_AI_Base>();
 
-            public HitChance Hitchance
-            {
-                get
-                {
-                    return this.hitchance;
-                }
-                set
-                {
-                    this.hitchance = value;
-                }
-            }
+            public HitChance Hitchance { get; set; } = HitChance.Impossible;
 
             public Vector3 UnitPosition
             {

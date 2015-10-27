@@ -44,13 +44,7 @@
 
         #region Public Properties
 
-        public static Vector2 PlayerPosition
-        {
-            get
-            {
-                return ObjectManager.Player.ServerPosition.ToVector2();
-            }
-        }
+        public static Vector2 PlayerPosition => ObjectManager.Player.ServerPosition.ToVector2();
 
         #endregion
 
@@ -84,16 +78,13 @@
                     {
                         return;
                     }
-                    if (Evading != null)
-                    {
-                        Evading();
-                    }
+                    Evading?.Invoke();
                     var currentPath = ObjectManager.Player.GetWaypoints();
                     var safePoint = IsSafePoint(PlayerPosition);
                     var safePath = IsSafePath(currentPath, 100);
-                    if (!safePath.IsSafe && !safePoint.IsSafe && TryEvading != null)
+                    if (!safePath.IsSafe && !safePoint.IsSafe)
                     {
-                        TryEvading(safePoint.SkillshotList, Game.CursorPos.ToVector2());
+                        TryEvading?.Invoke(safePoint.SkillshotList, Game.CursorPos.ToVector2());
                     }
                 };
             SkillshotDetector.OnDetectSkillshot += OnDetectSkillshot;
@@ -124,13 +115,8 @@
                     if (Program.MainMenu["Evade"]["Draw"]["Status"])
                     {
                         var active = Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active;
-                        var text = string.Format(
-                            "Evade Skillshot: {0}",
-                            active
-                                ? (Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active
-                                       ? "Dangerous"
-                                       : "On")
-                                : "Off");
+                        var text =
+                            $"Evade Skillshot: {(active ? (Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active ? "Dangerous" : "On") : "Off")}";
                         var pos = Drawing.WorldToScreen(ObjectManager.Player.Position);
                         Drawing.DrawText(
                             pos.X - (float)Drawing.GetTextExtent(text).Width / 2,

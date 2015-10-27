@@ -83,7 +83,7 @@
                 {
                     var subMenu =
                         ((Menu)evadeMenu[spell.ChampionName.ToLowerInvariant()]).Add(
-                            new Menu(spell.SpellName, string.Format("{0} ({1})", spell.SpellName, spell.Slot)));
+                            new Menu(spell.SpellName, $"{spell.SpellName} ({spell.Slot})"));
                     {
                         subMenu.Slider("DangerLevel", "Danger Level", spell.DangerValue, 1, 5);
                         subMenu.Bool("IsDangerous", "Is Dangerous", spell.IsDangerous);

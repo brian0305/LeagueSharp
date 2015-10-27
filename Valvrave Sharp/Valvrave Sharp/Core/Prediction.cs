@@ -296,8 +296,8 @@
             }
             return
                 input.GetPositionOnPath(
-                    input.Unit is Obj_AI_Hero && UnitTracker.CalcPath(input.Unit)
-                        ? UnitTracker.CalcWay(input.Unit)
+                    input.Unit is Obj_AI_Hero && UnitTracker.CanCalcWaypoints(input.Unit)
+                        ? UnitTracker.CalcWaypoints(input.Unit)
                         : input.Unit.GetWaypoints(),
                     speed);
         }
@@ -336,11 +336,11 @@
                                     ? 0
                                     : distUnitToFrom / input.Speed);
             var moveArea = input.Unit.MoveSpeed * totalDelay;
-            var fixRange = moveArea * 0.6f;
+            var fixRange = moveArea * 0.7f;
             var moveAngle = 30 + input.Radius / 10 - input.Delay * 5;
             var backToFront = moveArea * 1.5f;
             var minPath = 700 + backToFront;
-            if (UnitTracker.CalcPath(input.Unit))
+            if (UnitTracker.CanCalcWaypoints(input.Unit))
             {
                 result.Hitchance = distUnitToFrom < input.Range - fixRange ? HitChance.VeryHigh : HitChance.High;
                 return result;
@@ -807,17 +807,19 @@
                                             result.Add(minion);
                                         }
                                     }
-                                    else if (minion.ServerPosition.ToVector2()
-                                                 .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
-                                             <= Math.Pow(
-                                                 (input.Radius
-                                                  + (minion.ServerPosition.ToVector2().Distance(input.From.ToVector2())
-                                                     < input.Radius / 2
-                                                         ? 40
-                                                         : 20) + minion.BoundingRadius),
-                                                 2))
+                                    else
                                     {
-                                        result.Add(minion);
+                                        if (minion.ServerPosition.ToVector2().Distance(input.From.ToVector2())
+                                            < input.Radius)
+                                        {
+                                            result.Add(minion);
+                                        }
+                                        else if (minion.ServerPosition.ToVector2()
+                                                     .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
+                                                 <= Math.Pow(input.Radius + 30 + minion.BoundingRadius, 2))
+                                        {
+                                            result.Add(minion);
+                                        }
                                     }
                                 }
                                 break;
@@ -1005,14 +1007,7 @@
 
             #region Methods
 
-            internal static bool CalcPath(Obj_AI_Base unit)
-            {
-                var info = StoredList.First(i => i.NetworkId == unit.NetworkId);
-                return info.Path.Count >= 3 && info.Path[2].Time - info.Path[0].Time < 0.5
-                       && info.Path[2].Time + 0.2 < Game.Time;
-            }
-
-            internal static List<Vector2> CalcWay(Obj_AI_Base unit)
+            internal static List<Vector2> CalcWaypoints(Obj_AI_Base unit)
             {
                 var info = StoredList.First(x => x.NetworkId == unit.NetworkId);
                 return new List<Vector2>
@@ -1021,6 +1016,13 @@
                                    (info.Path[0].Position.X + info.Path[1].Position.X + info.Path[2].Position.X) / 3,
                                    (info.Path[0].Position.Y + info.Path[1].Position.Y + info.Path[2].Position.Y) / 3)
                            };
+            }
+
+            internal static bool CanCalcWaypoints(Obj_AI_Base unit)
+            {
+                var info = StoredList.First(i => i.NetworkId == unit.NetworkId);
+                return info.Path.Count >= 3 && info.Path[2].Time - info.Path[0].Time < 0.4
+                       && info.Path[2].Time + 0.1 < Game.Time;
             }
 
             internal static double GetLastAttackTime(Obj_AI_Base unit)

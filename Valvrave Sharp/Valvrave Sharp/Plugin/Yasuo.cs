@@ -42,7 +42,7 @@
 
         public Yasuo()
         {
-            Q = new Spell(SpellSlot.Q, 505);
+            Q = new Spell(SpellSlot.Q, 500);
             Q2 = new Spell(SpellSlot.Q, 1150);
             W = new Spell(SpellSlot.W, 400);
             E = new Spell(SpellSlot.E, 475);
@@ -404,7 +404,7 @@
                 target,
                 DamageType.Magical,
                 (50 + 20 * E.Level) * (1 + Math.Max(0, Player.GetBuffCount("YasuoDashScalar") * 0.25))
-                + 0.6 * Player.FlatMagicDamageMod);
+                + 0.6 * Player.TotalMagicalDamage);
         }
 
         private static Obj_AI_Base GetNearObj(Obj_AI_Base target = null, bool inQCir = false, bool underTower = true)
@@ -419,7 +419,7 @@
             return
                 obj.Where(
                     i =>
-                    CanCastE(i) && (!UnderTower(PosAfterE(i)) || underTower)
+                    CanCastE(i) && Player.IsFacing(i) && (!UnderTower(PosAfterE(i)) || underTower)
                     && i.Distance(pos) < Player.Distance(target != null ? i.ServerPosition : pos)
                     && PosAfterE(i).Distance(pos) < (inQCir ? QCirWidth : Player.Distance(pos)))
                     .MinOrDefault(i => PosAfterE(i).Distance(pos));
@@ -480,7 +480,7 @@
             return Player.CalculateDamage(
                 target,
                 DamageType.Physical,
-                new[] { 200, 300, 400 }[R.Level - 1] + 1.5f * Player.FlatPhysicalDamageMod);
+                new[] { 200, 300, 400 }[R.Level - 1] + 1.5 * Player.FlatPhysicalDamageMod);
         }
 
         private static void Hybrid()
@@ -900,7 +900,10 @@
 
         private static Vector2 PosAfterE(Obj_AI_Base target)
         {
-            return Player.ServerPosition.Extend(target.ServerPosition, E.Range).ToVector2();
+            return
+                Player.ServerPosition.Extend(
+                    target.ServerPosition,
+                    Player.Distance(target) < 410 ? E.Range : Player.Distance(target) + 65).ToVector2();
         }
 
         private static void StackQ()

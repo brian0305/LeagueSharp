@@ -503,7 +503,10 @@
             dmgTotal += Player.GetAutoAttackDamage(target, true) * 2 + GetPDmg(target);
             if (useR || HaveRMark(target))
             {
-                dmgTotal += new[] { 0.2, 0.35, 0.5 }[R.Level - 1] * dmgTotal + Player.TotalAttackDamage;
+                dmgTotal += Player.CalculateDamage(
+                    target,
+                    DamageType.Physical,
+                    new[] { 0.2, 0.35, 0.5 }[R.Level - 1] * dmgTotal + Player.TotalAttackDamage);
             }
             return new List<double> { dmgTotal * OverkillValue, manaTotal };
         }
@@ -513,7 +516,7 @@
             return Player.CalculateDamage(
                 target,
                 DamageType.Physical,
-                new[] { 60, 90, 120, 150, 180 }[E.Level - 1] + 0.8f * Player.FlatPhysicalDamageMod);
+                new[] { 60, 90, 120, 150, 180 }[E.Level - 1] + 0.8 * Player.FlatPhysicalDamageMod);
         }
 
         private static double GetPDmg(Obj_AI_Base target)

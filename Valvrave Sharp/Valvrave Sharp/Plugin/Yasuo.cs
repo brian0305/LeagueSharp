@@ -264,12 +264,6 @@
             return false;
         }
 
-        private static bool CastQCir(Obj_AI_Base target)
-        {
-            return target.Distance(Player.GetDashInfo().EndPos) < QCirWidth - target.BoundingRadius / 2
-                   && Q.Cast(target.ServerPosition);
-        }
-
         private static void Evading()
         {
             var windWall = EvadeSpellDatabase.Spells.FirstOrDefault(i => i.Enable && i.IsReady && i.Slot == SpellSlot.W);
@@ -327,10 +321,10 @@
                 {
                     return;
                 }
-                var obj = GetQCirObj.Where(i => Q.GetHealthPrediction(i) > 0).MinOrDefault(i => i.Distance(Player));
+                var obj = GetQCirObj.FirstOrDefault(i => Q.GetHealthPrediction(i) > 0);
                 if (obj != null)
                 {
-                    CastQCir(obj);
+                    Q.Cast(Player.Position);
                 }
             }
             else if (E.IsReady())
@@ -368,8 +362,7 @@
             return
                 obj.Where(
                     i =>
-                    CanCastE(i) && (!checkFace || Player.IsFacing(i)) && (!UnderTower(PosAfterE(i)) || underTower)
-                    && i.Distance(pos) < Player.Distance(target != null ? i.ServerPosition : pos)
+                    CanCastE(i) && (!checkFace || Player.IsFacing(i)) && (underTower || !UnderTower(PosAfterE(i)))
                     && PosAfterE(i).Distance(pos) < (inQCir ? QCirWidth : Player.Distance(pos)))
                     .MinOrDefault(i => PosAfterE(i).Distance(pos));
         }
@@ -471,7 +464,8 @@
                 if (IsDashing)
                 {
                     var target = GetQCirTarget;
-                    if (target != null && target.Health + target.PhysicalShield <= GetQDmg(target) && CastQCir(target))
+                    if (target != null && target.Health + target.PhysicalShield <= GetQDmg(target)
+                        && Q.Cast(Player.Position))
                     {
                         return;
                     }
@@ -601,7 +595,7 @@
                             (Q.GetHealthPrediction(i) > 0 && Q.GetHealthPrediction(i) + i.PhysicalShield <= GetQDmg(i))
                             || i.Team == GameObjectTeam.Neutral) || minion.Count > 2)
                     {
-                        CastQCir(minion.MinOrDefault(i => i.Distance(Player)));
+                        Q.Cast(Player.Position);
                     }
                 }
                 else
@@ -797,17 +791,15 @@
             {
                 if (IsDashing)
                 {
-                    var target = GetQCirTarget;
-                    if (target != null && CastQCir(target))
+                    if (GetQCirTarget != null && Q.Cast(Player.Position))
                     {
                         return;
                     }
                     if (!HaveQ3 && MainMenu["Orbwalk"]["EGap"] && MainMenu["Orbwalk"]["EStackQ"]
                         && Q.GetTarget(50) == null)
                     {
-                        var obj =
-                            GetQCirObj.Where(i => Q.GetHealthPrediction(i) > 0).MinOrDefault(i => i.Distance(Player));
-                        if (obj != null && CastQCir(obj))
+                        var obj = GetQCirObj.FirstOrDefault(i => Q.GetHealthPrediction(i) > 0);
+                        if (obj != null && Q.Cast(Player.Position))
                         {
                             return;
                         }
@@ -961,7 +953,7 @@
 
         #endregion
 
-        internal class EvadeTarget
+        private static class EvadeTarget
         {
             #region Static Fields
 

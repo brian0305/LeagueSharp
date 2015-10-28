@@ -2,7 +2,6 @@
 {
     using System;
     using System.Linq;
-    using System.Reflection;
     using System.Windows.Forms;
 
     using LeagueSharp;
@@ -40,7 +39,7 @@
 
         #region Delegates
 
-        internal delegate void OnActionDelegate(object sender, OrbwalkerActionArgs e);
+        internal delegate void OnActionDelegate(OrbwalkerActionArgs e);
 
         #endregion
 
@@ -52,7 +51,17 @@
 
         #region Properties
 
-        internal static OrbwalkerMode ActiveMode { get; set; }
+        internal static OrbwalkerMode ActiveMode
+            =>
+                Program.MainMenu["Orbwalker"]["lasthitKey"].GetValue<MenuKeyBind>().Active
+                    ? OrbwalkerMode.LastHit
+                    : (Program.MainMenu["Orbwalker"]["laneclearKey"].GetValue<MenuKeyBind>().Active
+                           ? OrbwalkerMode.LaneClear
+                           : (Program.MainMenu["Orbwalker"]["hybridKey"].GetValue<MenuKeyBind>().Active
+                                  ? OrbwalkerMode.Hybrid
+                                  : (Program.MainMenu["Orbwalker"]["orbwalkKey"].GetValue<MenuKeyBind>().Active
+                                         ? OrbwalkerMode.Orbwalk
+                                         : OrbwalkerMode.None)));
 
         internal static bool Attack { get; set; }
 
@@ -263,35 +272,8 @@
                 orbwalkMenu.KeyBind("hybridKey", "Hybrid", Keys.C);
                 orbwalkMenu.KeyBind("orbwalkKey", "Orbwalk", Keys.Space);
             }
-            orbwalkMenu.MenuValueChanged += (sender, args) =>
-                {
-                    var keyBind = sender as MenuKeyBind;
-                    if (keyBind != null)
-                    {
-                        var modeName = keyBind.Name.Substring(0, keyBind.Name.IndexOf("Key", StringComparison.Ordinal));
-                        OrbwalkerMode mode;
-                        ActiveMode = Enum.TryParse(modeName, true, out mode)
-                                         ? keyBind.Active
-                                               ? mode
-                                               : mode == ActiveMode
-                                                     ? Program.MainMenu["Orbwalker"]["lasthitKey"].GetValue<MenuKeyBind>
-                                                           ().Active
-                                                           ? OrbwalkerMode.LastHit
-                                                           : Program.MainMenu["Orbwalker"]["laneclearKey"]
-                                                                 .GetValue<MenuKeyBind>().Active
-                                                                 ? OrbwalkerMode.LaneClear
-                                                                 : Program.MainMenu["Orbwalker"]["hybridKey"]
-                                                                       .GetValue<MenuKeyBind>().Active
-                                                                       ? OrbwalkerMode.Hybrid
-                                                                       : Program.MainMenu["Orbwalker"]["orbwalkKey"]
-                                                                             .GetValue<MenuKeyBind>().Active
-                                                                             ? OrbwalkerMode.Orbwalk
-                                                                             : OrbwalkerMode.None
-                                                     : ActiveMode
-                                         : ActiveMode;
-                    }
-                };
             Movement = Attack = true;
+
             Game.OnUpdate += args =>
                 {
                     if (InterruptableSpell.IsCastingInterruptableSpell(Program.Player, true) || !Enabled)
@@ -427,7 +409,7 @@
 
         private static void InvokeAction(OrbwalkerActionArgs e)
         {
-            OnAction?.Invoke(MethodBase.GetCurrentMethod().DeclaringType, e);
+            OnAction?.Invoke(e);
         }
 
         private static void OnDoCastDelayed(GameObjectProcessSpellCastEventArgs args)

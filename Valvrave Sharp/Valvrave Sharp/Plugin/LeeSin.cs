@@ -614,7 +614,7 @@
 
         #endregion
 
-        internal class Insec
+        private static class Insec
         {
             #region Static Fields
 

@@ -233,7 +233,7 @@
                 GameObjects.AllyMinions.Where(
                     i =>
                     i.IsMinion() || i.CharData.BaseSkinName == "jarvanivstandard"
-                    || i.CharData.BaseSkinName == "teemomushroom"));
+                    || i.CharData.BaseSkinName == "teemomushroom" || i.CharData.BaseSkinName == "kalistaspawn"));
             objNear.AddRange(GameObjects.AllyWards);
             var objJump =
                 objNear.Where(
@@ -320,7 +320,8 @@
                             i =>
                             i.IsValidTarget(Q.Range)
                             && (i.Health + i.PhysicalShield <= GetQDmg(i)
-                                || (i.Health + i.PhysicalShield <= GetQ2Dmg(i, GetQDmg(i))
+                                || (i.Health + i.PhysicalShield
+                                    <= GetQ2Dmg(i, GetQDmg(i)) + Player.GetAutoAttackDamage(i, true)
                                     && Player.Mana - Q.Instance.ManaCost >= 30))).ToList();
                     if (targets.Count > 0
                         && targets.Select(i => Q.VPrediction(i))
@@ -334,7 +335,9 @@
                 {
                     var target =
                         GameObjects.EnemyHeroes.FirstOrDefault(
-                            i => i.IsValidTarget(Q2.Range) && HaveQ(i) && i.Health + i.PhysicalShield <= GetQ2Dmg(i));
+                            i =>
+                            i.IsValidTarget(Q2.Range) && HaveQ(i)
+                            && i.Health + i.PhysicalShield <= GetQ2Dmg(i) + Player.GetAutoAttackDamage(i, true));
                     if (target != null && Q.Cast())
                     {
                         return;
@@ -355,7 +358,10 @@
                             GameObjects.EnemyHeroes.Where(
                                 i =>
                                 i.IsValidTarget(R.Range) && MainMenu["KillSteal"]["RCast" + i.ChampionName]
-                                && i.Health + i.PhysicalShield <= GetRDmg(i)),
+                                && (i.Health + i.PhysicalShield <= GetRDmg(i)
+                                    || (MainMenu["KillSteal"]["Q"] && Q.IsReady() && !IsQOne && HaveQ(i)
+                                        && i.Health + i.PhysicalShield
+                                        <= GetQ2Dmg(i, GetRDmg(i)) + Player.GetAutoAttackDamage(i, true)))),
                             R.DamageType);
                     if (target != null)
                     {
@@ -414,19 +420,6 @@
         {
             if (MainMenu["Orbwalk"]["R"] && R.IsReady())
             {
-                if (MainMenu["Orbwalk"]["Q"] && Q.IsReady() && !IsQOne)
-                {
-                    var target =
-                        GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(R.Range) && HaveQ(i))
-                            .FirstOrDefault(
-                                i =>
-                                i.Health + i.PhysicalShield
-                                <= GetQ2Dmg(i, GetRDmg(i)) + Player.GetAutoAttackDamage(i, true));
-                    if (target != null && R.CastOnUnit(target))
-                    {
-                        return;
-                    }
-                }
                 foreach (var hero in
                     GameObjects.EnemyHeroes.Where(
                         i => i.IsValidTarget(R.Range) && i.Health + i.PhysicalShield > GetRDmg(i))
@@ -506,7 +499,7 @@
                     {
                         var q2Target = Q2.GetTarget();
                         if (q2Target != null && GetQObj.Distance(q2Target) < Player.Distance(q2Target)
-                            && GetQObj.Distance(q2Target) < E.Range && Q.Cast())
+                            && !q2Target.InAutoAttackRange() && Q.Cast())
                         {
                             return;
                         }
@@ -829,10 +822,6 @@
                                 && args.End.Distance(insecFlashPos) <= 100)
                             {
                                 insecFlashPos = Vector3.Zero;
-                                /*if (MainMenu["Insec"]["Normal"].GetValue<MenuKeyBind>().Active && R.IsReady())
-                                {
-                                    DelayAction.Add(30, () => R.CastOnUnit(insecTarget));
-                                }*/
                             }
                         }
                         if (MainMenu["Insec"]["Normal"].GetValue<MenuKeyBind>().Active

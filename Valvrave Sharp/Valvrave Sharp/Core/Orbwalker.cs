@@ -36,34 +36,32 @@
                 "yorickspectralghoul", "shacobox"
             };
 
-        private static bool enabled;
-
         #endregion
 
         #region Delegates
 
-        public delegate void OnActionDelegate(object sender, OrbwalkerActionArgs e);
+        internal delegate void OnActionDelegate(object sender, OrbwalkerActionArgs e);
 
         #endregion
 
-        #region Public Events
+        #region Events
 
-        public static event OnActionDelegate OnAction;
+        internal static event OnActionDelegate OnAction;
 
         #endregion
 
-        #region Public Properties
+        #region Properties
 
-        public static OrbwalkerMode ActiveMode { get; set; }
+        internal static OrbwalkerMode ActiveMode { get; set; }
 
-        public static bool Attack { get; set; }
+        internal static bool Attack { get; set; }
 
-        public static bool CanAttack
+        internal static bool CanAttack
             =>
                 Variables.TickCount + Game.Ping / 2 + 25 >= LastAutoAttackTick + Program.Player.AttackDelay * 1000
                 && Attack;
 
-        public static bool CanMove
+        internal static bool CanMove
         {
             get
             {
@@ -82,46 +80,31 @@
             }
         }
 
-        public static bool Enabled
-        {
-            get
-            {
-                return enabled;
-            }
-            set
-            {
-                enabled = value;
-                Program.MainMenu["Orbwalker"]["Enable"].GetValue<MenuBool>().Value = value;
-            }
-        }
+        internal static bool Movement { get; set; }
 
-        public static int LastAutoAttackTick { get; private set; }
+        internal static Vector3 OrbwalkPosition { get; set; }
 
-        public static Obj_AI_Minion LastMinion { get; private set; }
+        internal static AttackableUnit OrbwalkTarget { get; set; }
 
-        public static int LastMovementOrderTick { get; internal set; }
-
-        public static AttackableUnit LastTarget { get; private set; }
-
-        public static bool Movement { get; set; }
-
-        public static Vector3 OrbwalkPosition { get; set; }
-
-        public static AttackableUnit OrbwalkTarget { get; set; }
-
-        #endregion
-
-        #region Properties
+        private static bool Enabled => Program.MainMenu["Orbwalker"]["Enable"];
 
         private static int FarmDelay => Program.MainMenu["Orbwalker"]["Advanced"]["FarmDelay"];
+
+        private static int LastAutoAttackTick { get; set; }
+
+        private static Obj_AI_Minion LastMinion { get; set; }
+
+        private static int LastMovementOrderTick { get; set; }
+
+        private static AttackableUnit LastTarget { get; set; }
 
         private static bool MissileLaunched { get; set; }
 
         #endregion
 
-        #region Public Methods and Operators
+        #region Methods
 
-        public static AttackableUnit GetTarget(OrbwalkerMode? modeArg)
+        internal static AttackableUnit GetTarget(OrbwalkerMode? modeArg)
         {
             var mode = modeArg ?? ActiveMode;
             if ((mode == OrbwalkerMode.LaneClear || mode == OrbwalkerMode.Hybrid)
@@ -192,19 +175,13 @@
                     GameObjects.EnemyMinions.Any(
                         m =>
                         m.InAutoAttackRange() && Minion.IsMinion(m)
-                        && Health.GetPrediction(
-                            m,
-                            (int)(Program.Player.AttackDelay * 1000 * 2f),
-                            FarmDelay,
-                            HealthPredictionType.Simulated) <= Program.Player.GetAutoAttackDamage(m, true));
+                        && Health.GetPrediction(m, (int)(Program.Player.AttackDelay * 1000 * 2f), FarmDelay)
+                        <= Program.Player.GetAutoAttackDamage(m, true));
                 if (!shouldWait)
                 {
                     foreach (var specialMinion in
                         GameObjects.EnemyMinions.Where(
-                            m =>
-                            m.InAutoAttackRange()
-                            && SpecialMinions.Any(
-                                i => i.Equals(m.CharData.BaseSkinName, StringComparison.InvariantCultureIgnoreCase))))
+                            m => m.InAutoAttackRange() && SpecialMinions.Any(i => i.Equals(m.CharData.BaseSkinName))))
                     {
                         return specialMinion;
                     }
@@ -220,7 +197,7 @@
                     }
                     foreach (var sentinel in
                         GameObjects.EnemyMinions.Where(
-                            m => m.InAutoAttackRange() && m.CharData.BaseSkinName.ToLower() == "kalistaspawn"))
+                            m => m.InAutoAttackRange() && m.CharData.BaseSkinName == "kalistaspawn"))
                     {
                         return sentinel;
                     }
@@ -229,8 +206,7 @@
                         var predHealth = Health.GetPrediction(
                             LastMinion,
                             (int)(Program.Player.AttackDelay * 1000 * 2f),
-                            FarmDelay,
-                            HealthPredictionType.Simulated);
+                            FarmDelay);
                         if (predHealth >= 2 * Program.Player.GetAutoAttackDamage(LastMinion, true)
                             || Math.Abs(predHealth - LastMinion.Health) < float.Epsilon)
                         {
@@ -240,11 +216,7 @@
                     var minion = (from m in
                                       GameObjects.EnemyMinions.Where(m => m.InAutoAttackRange() && Minion.IsMinion(m))
                                   let predictedHealth =
-                                      Health.GetPrediction(
-                                          m,
-                                          (int)(Program.Player.AttackDelay * 1000 * 2f),
-                                          FarmDelay,
-                                          HealthPredictionType.Simulated)
+                                      Health.GetPrediction(m, (int)(Program.Player.AttackDelay * 1000 * 2f), FarmDelay)
                                   where
                                       predictedHealth >= 2 * Program.Player.GetAutoAttackDamage(m, true)
                                       || Math.Abs(predictedHealth - m.Health) < float.Epsilon
@@ -255,109 +227,14 @@
                     }
                     return
                         GameObjects.EnemyMinions.FirstOrDefault(
-                            m => m.InAutoAttackRange() && m.CharData.BaseSkinName.ToLower() == "elisespiderling");
+                            m =>
+                            m.InAutoAttackRange()
+                            && (m.CharData.BaseSkinName == "elisespiderling"
+                                || m.CharData.BaseSkinName == "teemomushroom"));
                 }
             }
             return null;
         }
-
-        public static void MoveOrder(Vector3 position, bool overrideTimer = false)
-        {
-            var playerPosition = Program.Player.ServerPosition;
-            if (playerPosition.Distance(position)
-                > Program.Player.BoundingRadius + Program.MainMenu["Orbwalker"]["Advanced"]["ExtraHold"])
-            {
-                var point = position;
-                if (Program.Player.DistanceSquared(point) < 150 * 150)
-                {
-                    point = playerPosition.Extend(position, (Random.NextFloat(0.6f, 1) + 0.2f) * 400);
-                }
-                var angle = 0f;
-                var currentPath = Program.Player.GetWaypoints();
-                if (currentPath.Count > 1 && currentPath.PathLength() > 100)
-                {
-                    var movePath = Program.Player.GetPath(point);
-                    if (movePath.Length > 1)
-                    {
-                        angle = (currentPath[1] - currentPath[0]).AngleBetween((movePath[1] - movePath[0]).ToVector2());
-                        var distance = movePath.Last().ToVector2().DistanceSquared(currentPath.Last());
-                        if ((angle < 10 && distance < 500 * 500) || distance < 50 * 50)
-                        {
-                            return;
-                        }
-                    }
-                }
-                if (Variables.TickCount - LastMovementOrderTick < 70 + Math.Min(60, Game.Ping) && !overrideTimer
-                    && angle < 60)
-                {
-                    return;
-                }
-                if (angle >= 60 && Variables.TickCount - LastMovementOrderTick < 60)
-                {
-                    return;
-                }
-                var eventArgs = new OrbwalkerActionArgs
-                                    { Position = point, Process = true, Type = OrbwalkerType.Movement };
-                InvokeAction(eventArgs);
-                if (eventArgs.Process)
-                {
-                    Program.Player.IssueOrder(GameObjectOrder.MoveTo, eventArgs.Position);
-                    LastMovementOrderTick = Variables.TickCount;
-                }
-            }
-        }
-
-        public static void Orbwalk(AttackableUnit target = null, Vector3? position = null)
-        {
-            if (CanAttack)
-            {
-                var gTarget = target ?? GetTarget(ActiveMode);
-                if (gTarget.IsValidTarget())
-                {
-                    var eventArgs = new OrbwalkerActionArgs
-                                        {
-                                            Target = gTarget, Position = gTarget.Position, Process = true,
-                                            Type = OrbwalkerType.BeforeAttack
-                                        };
-                    InvokeAction(eventArgs);
-                    if (eventArgs.Process)
-                    {
-                        if (Program.Player.CanCancelAutoAttack())
-                        {
-                            LastAutoAttackTick = Variables.TickCount + Game.Ping + 100
-                                                 - (int)(Program.Player.AttackCastDelay * 1000);
-                            MissileLaunched = false;
-                            var d = gTarget.GetRealAutoAttackRange() - 65;
-                            if (Program.Player.DistanceSquared(gTarget) > d * d && !Program.Player.IsMelee)
-                            {
-                                LastAutoAttackTick = Variables.TickCount + Game.Ping + 400
-                                                     - (int)(Program.Player.AttackCastDelay * 1000);
-                            }
-                        }
-                        if (!Program.Player.IssueOrder(GameObjectOrder.AttackUnit, gTarget))
-                        {
-                            ResetAutoAttackTimer();
-                        }
-                        LastMovementOrderTick = 0;
-                        LastTarget = gTarget;
-                        return;
-                    }
-                }
-            }
-            if (CanMove)
-            {
-                MoveOrder(position.HasValue && position.Value.IsValid() ? position.Value : Game.CursorPos);
-            }
-        }
-
-        public static void ResetAutoAttackTimer()
-        {
-            LastAutoAttackTick = 0;
-        }
-
-        #endregion
-
-        #region Methods
 
         internal static void Init(Menu menu)
         {
@@ -413,18 +290,8 @@
                                                      : ActiveMode
                                          : ActiveMode;
                     }
-                    var boolean = sender as MenuBool;
-                    if (boolean != null)
-                    {
-                        if (boolean.Name.Equals("Enable"))
-                        {
-                            enabled = boolean.Value;
-                        }
-                    }
                 };
             Movement = Attack = true;
-            enabled = Program.MainMenu["Orbwalker"]["Enable"];
-
             Game.OnUpdate += args =>
                 {
                     if (InterruptableSpell.IsCastingInterruptableSpell(Program.Player, true) || !Enabled)
@@ -462,6 +329,100 @@
                 };
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
             Drawing.OnDraw += OnDraw;
+        }
+
+        internal static void MoveOrder(Vector3 position, bool overrideTimer = false)
+        {
+            var playerPosition = Program.Player.ServerPosition;
+            if (playerPosition.Distance(position)
+                > Program.Player.BoundingRadius + Program.MainMenu["Orbwalker"]["Advanced"]["ExtraHold"])
+            {
+                var point = position;
+                if (Program.Player.DistanceSquared(point) < 150 * 150)
+                {
+                    point = playerPosition.Extend(position, (Random.NextFloat(0.6f, 1) + 0.2f) * 400);
+                }
+                var angle = 0f;
+                var currentPath = Program.Player.GetWaypoints();
+                if (currentPath.Count > 1 && currentPath.PathLength() > 100)
+                {
+                    var movePath = Program.Player.GetPath(point);
+                    if (movePath.Length > 1)
+                    {
+                        angle = (currentPath[1] - currentPath[0]).AngleBetween((movePath[1] - movePath[0]).ToVector2());
+                        var distance = movePath.Last().ToVector2().DistanceSquared(currentPath.Last());
+                        if ((angle < 10 && distance < 500 * 500) || distance < 50 * 50)
+                        {
+                            return;
+                        }
+                    }
+                }
+                if (Variables.TickCount - LastMovementOrderTick < 70 + Math.Min(60, Game.Ping) && !overrideTimer
+                    && angle < 60)
+                {
+                    return;
+                }
+                if (angle >= 60 && Variables.TickCount - LastMovementOrderTick < 60)
+                {
+                    return;
+                }
+                var eventArgs = new OrbwalkerActionArgs
+                                    { Position = point, Process = true, Type = OrbwalkerType.Movement };
+                InvokeAction(eventArgs);
+                if (eventArgs.Process)
+                {
+                    Program.Player.IssueOrder(GameObjectOrder.MoveTo, eventArgs.Position);
+                    LastMovementOrderTick = Variables.TickCount;
+                }
+            }
+        }
+
+        internal static void Orbwalk(AttackableUnit target = null, Vector3? position = null)
+        {
+            if (CanAttack)
+            {
+                var gTarget = target ?? GetTarget(ActiveMode);
+                if (gTarget.IsValidTarget())
+                {
+                    var eventArgs = new OrbwalkerActionArgs
+                                        {
+                                            Target = gTarget, Position = gTarget.Position, Process = true,
+                                            Type = OrbwalkerType.BeforeAttack
+                                        };
+                    InvokeAction(eventArgs);
+                    if (eventArgs.Process)
+                    {
+                        if (Program.Player.CanCancelAutoAttack())
+                        {
+                            LastAutoAttackTick = Variables.TickCount + Game.Ping + 100
+                                                 - (int)(Program.Player.AttackCastDelay * 1000);
+                            MissileLaunched = false;
+                            var d = gTarget.GetRealAutoAttackRange() - 65;
+                            if (Program.Player.DistanceSquared(gTarget) > d * d && !Program.Player.IsMelee)
+                            {
+                                LastAutoAttackTick = Variables.TickCount + Game.Ping + 400
+                                                     - (int)(Program.Player.AttackCastDelay * 1000);
+                            }
+                        }
+                        if (!Program.Player.IssueOrder(GameObjectOrder.AttackUnit, gTarget))
+                        {
+                            ResetAutoAttackTimer();
+                        }
+                        LastMovementOrderTick = 0;
+                        LastTarget = gTarget;
+                        return;
+                    }
+                }
+            }
+            if (CanMove)
+            {
+                MoveOrder(position.HasValue && position.Value.IsValid() ? position.Value : Game.CursorPos);
+            }
+        }
+
+        internal static void ResetAutoAttackTimer()
+        {
+            LastAutoAttackTick = 0;
         }
 
         private static void InvokeAction(OrbwalkerActionArgs e)
@@ -550,17 +511,17 @@
 
         internal class OrbwalkerActionArgs : EventArgs
         {
-            #region Public Properties
+            #region Properties
 
-            public Vector3 Position { get; set; }
+            internal Vector3 Position { get; set; }
 
-            public bool Process { get; set; }
+            internal bool Process { get; set; }
 
-            public Obj_AI_Base Sender { get; set; }
+            internal Obj_AI_Base Sender { get; set; }
 
-            public AttackableUnit Target { get; set; }
+            internal AttackableUnit Target { get; set; }
 
-            public OrbwalkerType Type { get; internal set; }
+            internal OrbwalkerType Type { get; set; }
 
             #endregion
         }

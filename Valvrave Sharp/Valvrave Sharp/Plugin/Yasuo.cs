@@ -291,8 +291,7 @@
                         i =>
                         i.IsValidTarget((!HaveQ3 ? Q : Q2).Range - Q.Width) && i.IsMinion()
                         && (!HaveQ3 ? Q : Q2).GetHealthPrediction(i) > 0
-                        && (!HaveQ3 ? Q : Q2).GetHealthPrediction(i) + i.PhysicalShield <= GetQDmg(i))
-                        .MaxOrDefault(i => i.MaxHealth);
+                        && (!HaveQ3 ? Q : Q2).GetHealthPrediction(i) <= GetQDmg(i)).MaxOrDefault(i => i.MaxHealth);
                 if (minion != null && (!HaveQ3 ? Q : Q2).Casting(minion, true) == CastStates.SuccessfullyCasted)
                 {
                     return;
@@ -304,7 +303,7 @@
                     GameObjects.EnemyMinions.Where(
                         i =>
                         CanCastE(i) && i.IsMinion() && (!UnderTower(PosAfterE(i)) || MainMenu["Farm"]["ETower"])
-                        && E.GetHealthPrediction(i) > 0 && E.GetHealthPrediction(i) + i.MagicalShield <= GetEDmg(i))
+                        && E.GetHealthPrediction(i) > 0 && E.GetHealthPrediction(i) <= GetEDmg(i))
                         .MaxOrDefault(i => i.MaxHealth);
                 if (minion != null)
                 {
@@ -378,51 +377,42 @@
             {
                 dmgItem = Player.BaseAttackDamage * 2;
             }
-            var k = 1d;
+            var damageModifier = 1d;
             var reduction = 0d;
-            var dmgBonus = dmgItem
-                           + Player.TotalAttackDamage * (Player.Crit >= 0.85f ? (Items.HasItem(3031) ? 1.875 : 1.5) : 1);
+            var result = dmgItem
+                         + Player.TotalAttackDamage * (Player.Crit >= 0.85f ? (Items.HasItem(3031) ? 1.875 : 1.5) : 1);
             if (Items.HasItem(3153))
             {
                 var dmgBotrk = Math.Max(0.08 * target.Health, 10);
-                if (target is Obj_AI_Minion)
-                {
-                    dmgBotrk = Math.Min(dmgBotrk, 60);
-                }
-                dmgBonus += dmgBotrk;
+                result += target is Obj_AI_Minion ? Math.Min(dmgBotrk, 60) : dmgBotrk;
             }
-            var hero = target as Obj_AI_Hero;
-            if (hero != null)
+            var targetHero = target as Obj_AI_Hero;
+            if (targetHero != null)
             {
-                if (Items.HasItem(3047, hero))
+                if (Items.HasItem(3047, targetHero))
                 {
-                    k *= 0.9d;
+                    damageModifier *= 0.9d;
                 }
-                if (hero.ChampionName == "Fizz")
+                if (targetHero.ChampionName == "Fizz")
                 {
-                    reduction += 4 + (hero.Level - 1 / 3) * 2;
+                    reduction += 4 + (targetHero.Level - 1 / 3) * 2;
                 }
-                var mastery = hero.Masteries.FirstOrDefault(i => i.Page == MasteryPage.Defense && i.Id == 68);
-                if (mastery != null && mastery.Points > 0)
+                var mastery = targetHero.Masteries.FirstOrDefault(i => i.Page == MasteryPage.Defense && i.Id == 68);
+                if (mastery != null && mastery.Points >= 1)
                 {
                     reduction += 1 * mastery.Points;
                 }
             }
-            return Player.CalculateDamage(target, DamageType.Physical, 20 * Q.Level + (dmgBonus - reduction) * k)
+            return Player.CalculateDamage(
+                target,
+                DamageType.Physical,
+                20 * Q.Level + (result - reduction) * damageModifier)
                    + (HaveStatik
                           ? Player.CalculateDamage(
                               target,
                               DamageType.Magical,
                               100 * (Player.Crit >= 0.85f ? (Items.HasItem(3031) ? 2.25 : 1.8) : 1))
                           : 0);
-        }
-
-        private static double GetRDmg(Obj_AI_Hero target)
-        {
-            return Player.CalculateDamage(
-                target,
-                DamageType.Physical,
-                new[] { 200, 300, 400 }[R.Level - 1] + 1.5 * Player.FlatPhysicalDamageMod);
         }
 
         private static void Hybrid()
@@ -523,7 +513,8 @@
                     TargetSelector.GetTarget(
                         GetRTarget.Where(
                             i =>
-                            MainMenu["KillSteal"]["RCast" + i.ChampionName] && i.Health + i.PhysicalShield <= GetRDmg(i)),
+                            MainMenu["KillSteal"]["RCast" + i.ChampionName]
+                            && i.Health + i.PhysicalShield <= Player.GetSpellDamage(i, SpellSlot.R)),
                         R.DamageType);
                 if (target != null)
                 {
@@ -547,19 +538,21 @@
                 {
                     var obj =
                         minion.FirstOrDefault(
-                            i =>
-                            E.GetHealthPrediction(i) > 0 && E.GetHealthPrediction(i) + i.MagicalShield <= GetEDmg(i));
-                    if (!MainMenu["LaneClear"]["ELastHit"] && obj == null && Q.IsReady(20)
-                        && (!HaveQ3 || MainMenu["LaneClear"]["Q3"]))
+                            i => E.GetHealthPrediction(i) > 0 && E.GetHealthPrediction(i) <= GetEDmg(i));
+                    if (obj == null && Q.IsReady(20) && (!HaveQ3 || MainMenu["LaneClear"]["Q3"]))
                     {
                         var sub = new List<Obj_AI_Minion>();
                         foreach (var mob in minion)
                         {
                             if (((E.GetHealthPrediction(mob) > 0
-                                  && E.GetHealthPrediction(mob) - GetEDmg(mob) + mob.PhysicalShield <= GetQDmg(mob))
+                                  && E.GetHealthPrediction(mob) - GetEDmg(mob) <= GetQDmg(mob))
                                  || mob.Team == GameObjectTeam.Neutral) && mob.Distance(PosAfterE(mob)) < QCirWidth)
                             {
                                 sub.Add(mob);
+                            }
+                            if (MainMenu["LaneClear"]["ELastHit"])
+                            {
+                                continue;
                             }
                             var nearMinion = new List<Obj_AI_Minion>();
                             nearMinion.AddRange(GameObjects.EnemyMinions.Where(i => i.IsMinion()));
@@ -569,9 +562,8 @@
                                     .ToList();
                             if (nearMinion.Count > 2
                                 || nearMinion.Count(
-                                    i =>
-                                    E.GetHealthPrediction(mob) > 0
-                                    && E.GetHealthPrediction(mob) + i.PhysicalShield <= GetQDmg(mob)) > 1)
+                                    i => E.GetHealthPrediction(mob) > 0 && E.GetHealthPrediction(mob) <= GetQDmg(mob))
+                                > 1)
                             {
                                 sub.Add(mob);
                             }
@@ -592,7 +584,7 @@
                     if (
                         minion.Any(
                             i =>
-                            (Q.GetHealthPrediction(i) > 0 && Q.GetHealthPrediction(i) + i.PhysicalShield <= GetQDmg(i))
+                            (Q.GetHealthPrediction(i) > 0 && Q.GetHealthPrediction(i) <= GetQDmg(i))
                             || i.Team == GameObjectTeam.Neutral) || minion.Count > 2)
                     {
                         Q.Cast(Player.Position);
@@ -615,9 +607,7 @@
                     {
                         var obj =
                             minion.FirstOrDefault(
-                                i =>
-                                Q.GetHealthPrediction(i) > 0
-                                && Q.GetHealthPrediction(i) + i.PhysicalShield <= GetQDmg(i));
+                                i => Q.GetHealthPrediction(i) > 0 && Q.GetHealthPrediction(i) <= GetQDmg(i));
                         if (obj != null && Q.Casting(obj, true) == CastStates.SuccessfullyCasted)
                         {
                             return;
@@ -732,7 +722,8 @@
                             let nearEnemy =
                                 GameObjects.EnemyHeroes.Where(i => i.Distance(enemy) < RWidth && CanCastR(i)).ToList()
                             where
-                                (nearEnemy.Count > 1 && enemy.Health + enemy.PhysicalShield <= GetRDmg(enemy))
+                                (nearEnemy.Count > 1
+                                 && enemy.Health + enemy.PhysicalShield <= Player.GetSpellDamage(enemy, SpellSlot.R))
                                 || (nearEnemy.Count > 0
                                     && nearEnemy.Sum(i => i.HealthPercent) / nearEnemy.Count
                                     <= MainMenu["Orbwalk"]["RHpU"]) || nearEnemy.Count >= MainMenu["Orbwalk"]["RCountA"]

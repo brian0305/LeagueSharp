@@ -412,8 +412,7 @@
                         i.IsValidTarget(Q.Range) && i.IsMinion()
                         && (!i.InAutoAttackRange()
                                 ? Q.GetHealthPrediction(i) > 0
-                                : i.Health > Player.GetAutoAttackDamage(i, true) + GetPDmg(i)))
-                        .OrderByDescending(i => i.MaxHealth))
+                                : i.Health > Player.GetAutoAttackDamage(i, true))).OrderByDescending(i => i.MaxHealth))
                 {
                     var pred = Q.VPrediction(
                         minion,
@@ -427,8 +426,10 @@
                     {
                         continue;
                     }
-                    if (Q.GetHealthPrediction(minion) + minion.PhysicalShield
-                        <= GetQDmg(minion) * (pred.CollisionObjects.Count == 0 ? 1 : 0.6))
+                    if (Q.GetHealthPrediction(minion)
+                        <= (pred.CollisionObjects.Count == 0
+                                ? Player.GetSpellDamage(minion, SpellSlot.Q)
+                                : Player.GetSpellDamage(minion, SpellSlot.Q, Damage.DamageStage.SecondForm)))
                     {
                         Q.Cast(pred.CastPosition);
                     }
@@ -438,7 +439,7 @@
                 && GameObjects.EnemyMinions.Any(
                     i =>
                     i.IsValidTarget(E.Range) && i.IsMinion() && E.GetHealthPrediction(i) > 0
-                    && E.GetHealthPrediction(i) + i.PhysicalShield <= GetEDmg(i)))
+                    && E.GetHealthPrediction(i) <= Player.GetSpellDamage(i, SpellSlot.E)))
             {
                 E.Cast();
             }
@@ -472,14 +473,14 @@
             }
             if (useQ)
             {
-                dmgTotal += GetQDmg(target);
+                dmgTotal += Player.GetSpellDamage(target, SpellSlot.Q);
                 manaTotal += Q.Instance.ManaCost;
             }
             if (useW)
             {
                 if (useQ)
                 {
-                    dmgTotal += GetQDmg(target) / 2;
+                    dmgTotal += Player.GetSpellDamage(target, SpellSlot.Q) / 2;
                 }
                 if (WState == 0)
                 {
@@ -488,10 +489,10 @@
             }
             if (useE)
             {
-                dmgTotal += GetEDmg(target);
+                dmgTotal += Player.GetSpellDamage(target, SpellSlot.E);
                 manaTotal += E.Instance.ManaCost;
             }
-            dmgTotal += Player.GetAutoAttackDamage(target, true) * 2 + GetPDmg(target);
+            dmgTotal += Player.GetAutoAttackDamage(target, true) * 2;
             if (useR || HaveRMark(target))
             {
                 dmgTotal += Player.CalculateDamage(
@@ -500,32 +501,6 @@
                     new[] { 0.2, 0.35, 0.5 }[R.Level - 1] * dmgTotal + Player.TotalAttackDamage);
             }
             return new List<double> { dmgTotal * OverkillValue, manaTotal };
-        }
-
-        private static double GetEDmg(Obj_AI_Base target)
-        {
-            return Player.CalculateDamage(
-                target,
-                DamageType.Physical,
-                new[] { 60, 90, 120, 150, 180 }[E.Level - 1] + 0.8 * Player.FlatPhysicalDamageMod);
-        }
-
-        private static double GetPDmg(Obj_AI_Base target)
-        {
-            return target.HealthPercent <= 50 && !target.HasBuff("ZedPassiveCD")
-                       ? Player.CalculateDamage(
-                           target,
-                           DamageType.Magical,
-                           target.MaxHealth * (Player.Level > 16 ? 0.1 : (Player.Level > 6 ? 0.08 : 0.06)))
-                       : 0;
-        }
-
-        private static double GetQDmg(Obj_AI_Base target)
-        {
-            return Player.CalculateDamage(
-                target,
-                DamageType.Physical,
-                new[] { 75, 115, 155, 195, 235 }[Q.Level - 1] + Player.FlatPhysicalDamageMod);
         }
 
         private static bool HaveRMark(Obj_AI_Hero target)
@@ -564,7 +539,8 @@
             if (MainMenu["KillSteal"]["Q"] && Q.IsReady())
             {
                 foreach (var hero in
-                    GameObjects.EnemyHeroes.Where(i => i.IsValidTarget() && i.Health + i.PhysicalShield <= GetQDmg(i)))
+                    GameObjects.EnemyHeroes.Where(
+                        i => i.IsValidTarget() && i.Health + i.PhysicalShield <= Player.GetSpellDamage(i, SpellSlot.Q)))
                 {
                     var pred = Q.VPrediction(hero, true, new[] { CollisionableObjects.YasuoWall });
                     if (pred.Hitchance >= Q.MinHitChance)
@@ -605,7 +581,8 @@
                 }
             }
             if (MainMenu["KillSteal"]["E"] && E.IsReady()
-                && GameObjects.EnemyHeroes.Where(i => i.IsValidTarget() && i.Health + i.PhysicalShield <= GetEDmg(i))
+                && GameObjects.EnemyHeroes.Where(
+                    i => i.IsValidTarget() && i.Health + i.PhysicalShield <= Player.GetSpellDamage(i, SpellSlot.E))
                        .Any(
                            i =>
                            E.IsInRange(i) || (wShadow.IsValid() && wShadow.Distance(i) < E.Range)

@@ -72,15 +72,11 @@
             Orbwalker.Init(MainMenu);
             Plugins[Player.ChampionName].Invoke();
 <<<<<<< HEAD
-<<<<<<< HEAD
             ThemeManager.Current = new ColoredTheme();
             Variables.Orbwalker.Enable = false;
 =======
             //LeagueSharp.SDK.Core.Orbwalking.Enabled = false;
 >>>>>>> adc404e28daddc8ad6cfcc3b2f2dc7db70547f3c
-=======
-            LeagueSharp.SDK.Core.Orbwalker.Enabled = false;
->>>>>>> origin/master
         }
 
         private static void InitSummonerSpell()

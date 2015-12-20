@@ -653,11 +653,7 @@
             switch (Orbwalker.ActiveMode)
             {
                 case OrbwalkingMode.Combo:
-<<<<<<< HEAD
                     Orbwalk();
-=======
-                    Combo();
->>>>>>> adc404e28daddc8ad6cfcc3b2f2dc7db70547f3c
                     break;
                 case OrbwalkingMode.Hybrid:
                     Hybrid();
@@ -686,7 +682,7 @@
             }
         }
 
-        private static void Combo()
+        private static void Orbwalk()
         {
             if (MainMenu["Orbwalk"]["R"] && R.IsReady() && GetRTarget.Count > 0)
             {

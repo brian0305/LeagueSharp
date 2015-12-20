@@ -15,6 +15,7 @@
     using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers;
     using LeagueSharp.SDK.Core.Wrappers.Damages;
+
     using SharpDX;
 
     using Color = System.Drawing.Color;
@@ -536,7 +537,6 @@
                         return;
                     }
                 }
-<<<<<<< HEAD
             }
             if (Variables.TickCount - lastMovementOrderTick < 70 + Math.Min(60, Game.Ping) && angle < 60)
             {
@@ -553,25 +553,6 @@
             {
                 Program.Player.IssueOrder(GameObjectOrder.MoveTo, eventArgs.Position);
                 lastMovementOrderTick = Variables.TickCount;
-=======
-                if (Variables.TickCount - LastMovementOrderTick < 70 + Math.Min(60, Game.Ping) && !overrideTimer
-                    && angle < 60)
-                {
-                    return;
-                }
-                if (angle >= 60 && Variables.TickCount - LastMovementOrderTick < 60)
-                {
-                    return;
-                }
-                var eventArgs = new OrbwalkerActionArgs
-                                    { Position = point, Process = true, Type = OrbwalkingType.Movement };
-                InvokeAction(eventArgs);
-                if (eventArgs.Process)
-                {
-                    Program.Player.IssueOrder(GameObjectOrder.MoveTo, eventArgs.Position);
-                    LastMovementOrderTick = Variables.TickCount;
-                }
->>>>>>> adc404e28daddc8ad6cfcc3b2f2dc7db70547f3c
             }
         }
 
@@ -632,11 +613,7 @@
             }
             InvokeAction(
                 new OrbwalkerActionArgs { Target = args.Target as AttackableUnit, Type = OrbwalkingType.AfterAttack });
-<<<<<<< HEAD
             missileLaunched = true;
-=======
-            MissileLaunched = true;
->>>>>>> adc404e28daddc8ad6cfcc3b2f2dc7db70547f3c
         }
 
         private static void OnDraw(EventArgs args)
@@ -699,11 +676,7 @@
                 if (!target.Compare(lastTarget))
                 {
                     InvokeAction(new OrbwalkerActionArgs { Target = target, Type = OrbwalkingType.TargetSwitch });
-<<<<<<< HEAD
                     lastTarget = target;
-=======
-                    LastTarget = target;
->>>>>>> adc404e28daddc8ad6cfcc3b2f2dc7db70547f3c
                 }
                 InvokeAction(
                     new OrbwalkerActionArgs { Target = target, Sender = sender, Type = OrbwalkingType.OnAttack });

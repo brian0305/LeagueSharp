@@ -392,11 +392,7 @@
             switch (Orbwalker.ActiveMode)
             {
                 case OrbwalkingMode.Combo:
-<<<<<<< HEAD
                     Orbwalk();
-=======
-                    Combo();
->>>>>>> adc404e28daddc8ad6cfcc3b2f2dc7db70547f3c
                     break;
                 case OrbwalkingMode.LastHit:
                     Farm();
@@ -419,7 +415,7 @@
             }
         }
 
-        private static void Combo()
+        private static void Orbwalk()
         {
             if (Orbwalker.GetTarget(OrbwalkingMode.Combo) == null || (!Orbwalker.CanAttack && Orbwalker.CanMove))
             {
@@ -502,15 +498,12 @@
                     }
                 }
             }
-<<<<<<< HEAD
-=======
             if (MainMenu["Orbwalk"]["W"] && W.IsReady() && CanCastInOrbwalk
                 && Variables.TickCount - W.LastCastAttemptT >= 300 && !E.IsReady() && Passive == -1
                 && Orbwalker.GetTarget(OrbwalkingMode.Combo) != null && W.Cast())
             {
                 return;
             }
->>>>>>> adc404e28daddc8ad6cfcc3b2f2dc7db70547f3c
             var subTarget = W.GetTarget();
             if (MainMenu["Orbwalk"]["Item"])
             {

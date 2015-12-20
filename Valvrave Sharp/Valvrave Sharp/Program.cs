@@ -40,7 +40,7 @@
         private static readonly Dictionary<string, Func<object>> Plugins = new Dictionary<string, Func<object>>
                                                                                {
                                                                                    { "LeeSin", () => new LeeSin() },
-                                                                                   { "Yasuo", () => new Yasuo() },
+                                                                                   //{ "Yasuo", () => new Yasuo() },
                                                                                    { "Zed", () => new Zed() }
                                                                                };
 

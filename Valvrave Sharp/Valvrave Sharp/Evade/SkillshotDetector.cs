@@ -6,6 +6,7 @@
 
     using LeagueSharp;
     using LeagueSharp.SDK.Core;
+    using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.Extensions.SharpDX;
     using LeagueSharp.SDK.Core.Utils;
 
@@ -21,6 +22,23 @@
                 (sender, args) => { DelayAction.Add(0, () => OnProcessSpellCast(sender, args)); };
             GameObject.OnCreate += (sender, args) => { DelayAction.Add(0, () => MissionOnCreate(sender)); };
             GameObject.OnDelete += MissileOnDelete;
+            GameObject.OnCreate += (sender, args) =>
+                {
+                    var spellData = SpellDatabase.GetBySourceObjectName(sender.Name);
+                    if (spellData == null
+                        || Program.MainMenu["Evade"][spellData.ChampionName.ToLowerInvariant()][spellData.SpellName][
+                            "Enabled"] == null)
+                    {
+                        return;
+                    }
+                    TriggerOnDetectSkillshot(
+                        DetectionType.ProcessSpell,
+                        spellData,
+                        Variables.TickCount - Game.Ping / 2,
+                        sender.Position.ToVector2(),
+                        sender.Position.ToVector2(),
+                        GameObjects.Heroes.MinOrDefault(i => i.IsAlly ? 1 : 0));
+                };
             GameObject.OnDelete += (sender, args) =>
                 {
                     if (!sender.IsValid || sender.Team == ObjectManager.Player.Team)

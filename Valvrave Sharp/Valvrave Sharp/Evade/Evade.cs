@@ -6,6 +6,7 @@
 
     using LeagueSharp;
     using LeagueSharp.SDK.Core;
+    using LeagueSharp.SDK.Core.Enumerations;
     using LeagueSharp.SDK.Core.Events;
     using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.Extensions.SharpDX;
@@ -194,7 +195,7 @@
                 DetectedSkillshots.Where(
                     i =>
                     i.Enable && i.IsAboutToHit(time, unit)
-                    && (!onlyWindWall || i.SpellData.CollisionObjects.Contains(CollisionObjectTypes.YasuoWall)))
+                    && (!onlyWindWall || i.SpellData.CollisionObjects.Contains(CollisionableObjects.YasuoWall)))
                     .OrderBy(i => i.DangerLevel)
                     .ToList();
         }
@@ -295,27 +296,32 @@
                         (skillshot.End - skillshot.Unit.ServerPosition.ToVector2()).Rotated(
                             -Angle / 2f * (float)Math.PI / 180);
                     var edge2 = edge1.Rotated(Angle * (float)Math.PI / 180);
-                    foreach (var skillshotToAdd in
-                        from minion in
-                            GameObjects.EnemyMinions.Where(i => i.Name == "Seed" && i.Distance(skillshot.Unit) < 800)
-                        let v = minion.ServerPosition.ToVector2() - skillshot.Unit.ServerPosition.ToVector2()
-                        where edge1.CrossProduct(v) > 0 && v.CrossProduct(edge2) > 0
-                        let start = minion.ServerPosition.ToVector2()
-                        let end =
-                            skillshot.Unit.ServerPosition.ToVector2()
-                            .Extend(
-                                minion.ServerPosition.ToVector2(),
-                                skillshot.Unit.Distance(minion) > 200 ? 1300 : 1000)
-                        select
-                            new Skillshot(
-                            skillshot.DetectionType,
-                            skillshot.SpellData,
-                            skillshot.StartTick,
-                            start,
-                            end,
-                            skillshot.Unit))
+                    var positions = new List<Vector2>();
+                    var explodingQ = DetectedSkillshots.FirstOrDefault(s => s.SpellData.SpellName == "SyndraQ");
+                    if (explodingQ != null)
                     {
-                        DetectedSkillshots.Add(skillshotToAdd);
+                        positions.Add(explodingQ.End);
+                    }
+                    positions.AddRange(
+                        GameObjects.EnemyMinions.Where(i => !i.IsDead && i.Name == "Seed")
+                            .Select(minion => minion.ServerPosition.ToVector2()));
+                    foreach (var pos in positions.Where(i => skillshot.Unit.Distance(i) < 800))
+                    {
+                        var v = pos - skillshot.Unit.ServerPosition.ToVector2();
+                        if (edge1.CrossProduct(v) > 0 && v.CrossProduct(edge2) > 0)
+                        {
+                            var start = pos;
+                            var end = skillshot.Unit.ServerPosition.ToVector2()
+                                .Extend(pos, skillshot.Unit.Distance(pos) > 200 ? 1300 : 1000);
+                            DetectedSkillshots.Add(
+                                new Skillshot(
+                                    skillshot.DetectionType,
+                                    skillshot.SpellData,
+                                    skillshot.StartTick + (int)(150 + skillshot.Unit.Distance(pos) / 2.5),
+                                    start,
+                                    end,
+                                    skillshot.Unit));
+                        }
                     }
                     return;
                 }

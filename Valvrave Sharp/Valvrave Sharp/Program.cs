@@ -8,10 +8,12 @@
     using System.Text.RegularExpressions;
 
     using LeagueSharp;
+    using LeagueSharp.SDK.Core;
     using LeagueSharp.SDK.Core.Events;
     using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.UI.IMenu;
-    using LeagueSharp.SDK.Core.Utils;
+    using LeagueSharp.SDK.Core.UI.IMenu.Skins;
+    using LeagueSharp.SDK.Core.UI.IMenu.Skins.Colored;
     using LeagueSharp.SDK.Core.Wrappers;
 
     using Valvrave_Sharp.Core;
@@ -69,7 +71,8 @@
             MainMenu.Separator("Paypal: dcbrian01@gmail.com");
             Orbwalker.Init(MainMenu);
             Plugins[Player.ChampionName].Invoke();
-            LeagueSharp.SDK.Core.Orbwalker.Enabled = false;
+            ThemeManager.Current = new ColoredTheme();
+            Variables.Orbwalker.Enable = false;
         }
 
         private static void InitSummonerSpell()
@@ -102,7 +105,7 @@
                     }
                     InitItem();
                     InitSummonerSpell();
-                    DelayAction.Add(1000, InitMenu);
+                    InitMenu();
                 };
         }
 

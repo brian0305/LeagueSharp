@@ -5,6 +5,7 @@ namespace Valvrave_Sharp.Evade
     using System.Linq;
 
     using LeagueSharp;
+    using LeagueSharp.SDK.Core.Enumerations;
 
     public static class SpellDatabase
     {
@@ -35,7 +36,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1075, Radius = 35,
                         MissileSpeed = 1250, FixedRange = true, AddHitbox = true, DangerValue = 3,
                         MissileSpellName = "AatroxEConeMissile",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Aatrox
@@ -50,7 +51,7 @@ namespace Valvrave_Sharp.Evade
                         MissileSpeed = 2500, MissileAccel = -3200, MissileMaxSpeed = 2500, MissileMinSpeed = 400,
                         FixedRange = true, AddHitbox = true, DangerValue = 2, MissileSpellName = "AhriOrbMissile",
                         CanBeRemoved = true, ForceRemove = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -61,7 +62,7 @@ namespace Valvrave_Sharp.Evade
                         MissileSpeed = 60, MissileAccel = 1900, MissileMinSpeed = 60, MissileMaxSpeed = 2600,
                         FixedRange = true, AddHitbox = true, DangerValue = 2, MissileFollowsUnit = true,
                         CanBeRemoved = true, ForceRemove = true, MissileSpellName = "AhriOrbReturn",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -74,8 +75,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -105,8 +106,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -129,7 +130,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1100, Radius = 110,
                         MissileSpeed = 850, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "FlashFrostSpell", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Anivia
@@ -167,8 +168,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall,
-                                    CollisionObjectTypes.Minion
+                                    CollisionableObjects.Heroes, CollisionableObjects.YasuoWall,
+                                    CollisionableObjects.Minions
                                 }
                     });
 
@@ -179,7 +180,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 20000, Radius = 130,
                         MissileSpeed = 1600, FixedRange = true, AddHitbox = true, DangerValue = 5, IsDangerous = true,
                         MissileSpellName = "EnchantedCrystalArrow", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.Heroes, CollisionableObjects.YasuoWall }
                     });
 
             #endregion Ashe
@@ -193,7 +194,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 950, Radius = 60,
                         MissileSpeed = 1600, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "BardQMissile", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.Heroes, CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -218,8 +219,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -245,8 +246,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -272,8 +273,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -283,7 +284,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Braum", SpellName = "BraumRWrapper", Slot = SpellSlot.R,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 500, Range = 1200, Radius = 115,
                         MissileSpeed = 1400, FixedRange = true, AddHitbox = true, DangerValue = 4, IsDangerous = true,
-                        MissileSpellName = "braumrmissile", CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        MissileSpellName = "braumrmissile", CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Braum
@@ -297,21 +298,21 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 625, Range = 1300, Radius = 90,
                         MissileSpeed = 2200, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "CaitlynPiltoverPeacemaker",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
                 new SpellData
                     {
                         ChampionName = "Caitlyn", SpellName = "CaitlynEntrapment", Slot = SpellSlot.E,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 125, Range = 1000, Radius = 80,
-                        MissileSpeed = 2000, FixedRange = true, AddHitbox = true, DangerValue = 1,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 125, Range = 1000, Radius = 70,
+                        MissileSpeed = 1600, FixedRange = true, AddHitbox = true, DangerValue = 1,
                         MissileSpellName = "CaitlynEntrapmentMissile", CanBeRemoved = true,
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -333,7 +334,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Cassiopeia", SpellName = "CassiopeiaMiasma", Slot = SpellSlot.W,
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 850, Radius = 220, MissileSpeed = 2500,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "CassiopeiaMiasma",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
             Spells.Add(
                 new SpellData
@@ -374,7 +375,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Corki", SpellName = "PhosphorusBomb", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotCircle, Delay = 300, Range = 825, Radius = 250, MissileSpeed = 1000,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "PhosphorusBombMissile",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -387,8 +388,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -402,8 +403,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -439,7 +440,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Diana", SpellName = "DianaArc", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 895, Radius = 195, MissileSpeed = 1400,
                         AddHitbox = true, DangerValue = 3, IsDangerous = true, MissileSpellName = "DianaArcArc",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -449,7 +450,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotArc, Delay = 250, Range = 895, Radius = 195, DontCross = true,
                         MissileSpeed = 1400, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "DianaArcArc", TakeClosestPath = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Diana
@@ -466,8 +467,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -482,7 +483,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1100, Radius = 130,
                         MissileSpeed = 1400, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "DravenDoubleShotMissile", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -491,7 +492,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Draven", SpellName = "DravenRCast", Slot = SpellSlot.R,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 400, Range = 20000, Radius = 160,
                         MissileSpeed = 2000, FixedRange = true, AddHitbox = true, DangerValue = 5, IsDangerous = true,
-                        MissileSpellName = "DravenR", CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        MissileSpellName = "DravenR", CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Draven
@@ -505,7 +506,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 950, Radius = 60,
                         MissileSpeed = 1650, FixedRange = true, AddHitbox = true, DangerValue = 4, IsDangerous = true,
                         MissileSpellName = "ekkoqmis", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.Heroes, CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -540,8 +541,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -573,8 +574,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -585,7 +586,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1050, Radius = 80,
                         MissileSpeed = 1600, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "EzrealEssenceFluxMissile",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -595,7 +596,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 1000, Range = 20000, Radius = 160,
                         MissileSpeed = 2000, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "EzrealTrueshotBarrage",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Ezreal
@@ -622,7 +623,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1300, Radius = 120,
                         MissileSpeed = 1350, AddHitbox = true, DangerValue = 5, IsDangerous = true,
                         MissileSpellName = "FizzMarinerDoomMissile",
-                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall },
+                        CollisionObjects = new[] { CollisionableObjects.Heroes, CollisionableObjects.YasuoWall },
                         CanBeRemoved = true
                     });
 
@@ -636,7 +637,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Galio", SpellName = "GalioResoluteSmite", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 900, Radius = 200, MissileSpeed = 1300,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "GalioResoluteSmite",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -646,7 +647,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1200, Radius = 120,
                         MissileSpeed = 1200, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "GalioRighteousGust",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -668,7 +669,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1125, Radius = 60,
                         MissileSpeed = 2500, MissileAccel = -3000, MissileMaxSpeed = 2500, MissileMinSpeed = 1400,
                         FixedRange = true, AddHitbox = true, DangerValue = 2, CanBeRemoved = true, ForceRemove = true,
-                        MissileSpellName = "gnarqmissile", CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        MissileSpellName = "gnarqmissile", CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -679,7 +680,7 @@ namespace Valvrave_Sharp.Evade
                         MissileAccel = 800, MissileMaxSpeed = 2600, MissileMinSpeed = 60, FixedRange = true,
                         AddHitbox = true, DangerValue = 2, CanBeRemoved = true, ForceRemove = true,
                         MissileSpellName = "GnarQMissileReturn", DisabledByDefault = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -692,8 +693,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -741,7 +742,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 1100, Radius = 275, MissileSpeed = 1300,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "GragasQMissile", ExtraDuration = 4500,
                         ToggleParticleName = "Gragas_.+_Q_(Enemy|Ally)", DontCross = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -751,7 +752,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Range = 950, Radius = 200, MissileSpeed = 1200,
                         FixedRange = true, AddHitbox = true, DangerValue = 2, MissileSpellName = "GragasE",
                         CanBeRemoved = true, ExtraRange = 300,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.Minion }
+                        CollisionObjects = new[] { CollisionableObjects.Heroes, CollisionableObjects.Minions }
                     });
 
             Spells.Add(
@@ -760,7 +761,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Gragas", SpellName = "GragasR", Slot = SpellSlot.R,
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 1050, Radius = 375, MissileSpeed = 1800,
                         AddHitbox = true, DangerValue = 5, IsDangerous = true, MissileSpellName = "GragasRBoom",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Gragas
@@ -770,12 +771,10 @@ namespace Valvrave_Sharp.Evade
             Spells.Add(
                 new SpellData
                     {
-                        ChampionName = "Graves", SpellName = "GravesClusterShot", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1000, Radius = 50,
-                        MissileSpeed = 2000, FixedRange = true, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "GravesClusterShotAttack",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }, MultipleNumber = 3,
-                        MultipleAngle = 15 * (float)Math.PI / 180
+                        ChampionName = "Graves", SpellName = "GravesQLineSpell", Slot = SpellSlot.Q,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 808, Radius = 40,
+                        MissileSpeed = 3000, FixedRange = true, AddHitbox = true, DangerValue = 2,
+                        MissileSpellName = "GravesQLineMis", CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -785,7 +784,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1100, Radius = 100,
                         MissileSpeed = 2100, FixedRange = true, AddHitbox = true, DangerValue = 5, IsDangerous = true,
                         MissileSpellName = "GravesChargeShotShot",
-                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.Heroes, CollisionableObjects.YasuoWall }
                     });
 
             #endregion Graves
@@ -802,8 +801,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -813,10 +812,42 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Heimerdinger", SpellName = "HeimerdingerE", Slot = SpellSlot.E,
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 925, Radius = 100, MissileSpeed = 1200,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "heimerdingerespell",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Heimerdinger
+
+            #region Illaoi
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "Illaoi", SpellName = "IllaoiQ", Slot = SpellSlot.Q,
+                        Type = SkillShotType.SkillshotLine, Delay = 750, Range = 850, Radius = 100,
+                        MissileSpeed = int.MaxValue, FixedRange = true, AddHitbox = true, DangerValue = 3,
+                        IsDangerous = true, MissileSpellName = "illaoiemis",
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
+                    });
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "Illaoi", SpellName = "IllaoiE", Slot = SpellSlot.E,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 950, Radius = 50,
+                        MissileSpeed = 1900, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
+                        MissileSpellName = "illaoiemis",
+                        CollisionObjects = new[] { CollisionableObjects.Heroes, CollisionableObjects.YasuoWall }
+                    });
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "Illaoi", SpellName = "IllaoiR", Slot = SpellSlot.R,
+                        Type = SkillShotType.SkillshotCircle, Delay = 500, Range = 0, Radius = 450,
+                        MissileSpeed = int.MaxValue, FixedRange = true, DangerValue = 3, IsDangerous = true
+                    });
+
+            #endregion Illaoi
 
             #region Irelia
 
@@ -827,7 +858,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Range = 1200, Radius = 65, MissileSpeed = 1600,
                         FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "ireliatranscendentbladesspell",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Irelia
@@ -840,7 +871,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Janna", SpellName = "JannaQ", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1700, Radius = 120,
                         MissileSpeed = 900, AddHitbox = true, DangerValue = 2, MissileSpellName = "HowlingGaleSpell",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Janna
@@ -886,8 +917,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -901,8 +932,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -920,8 +951,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -932,7 +963,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 600, Range = 20000, Radius = 140,
                         MissileSpeed = 1700, FixedRange = true, AddHitbox = true, DangerValue = 5, IsDangerous = true,
                         MissileSpellName = "JinxR", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.Heroes, CollisionableObjects.YasuoWall }
                     });
 
             #endregion Jinx
@@ -950,8 +981,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -969,8 +1000,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
             Spells.Add(
@@ -983,8 +1014,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1040,8 +1071,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1060,8 +1091,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1075,43 +1106,43 @@ namespace Valvrave_Sharp.Evade
 
             #endregion Khazix
 
-            #region Kogmaw
+            #region KogMaw
 
             Spells.Add(
                 new SpellData
                     {
-                        ChampionName = "Kogmaw", SpellName = "KogMawQ", Slot = SpellSlot.Q,
+                        ChampionName = "KogMaw", SpellName = "KogMawQ", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1200, Radius = 70,
                         MissileSpeed = 1650, FixedRange = true, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "KogMawQMis", CanBeRemoved = true,
+                        MissileSpellName = "KogMawQ", CanBeRemoved = true,
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
             Spells.Add(
                 new SpellData
                     {
-                        ChampionName = "Kogmaw", SpellName = "KogMawVoidOoze", Slot = SpellSlot.E,
+                        ChampionName = "KogMaw", SpellName = "KogMawVoidOoze", Slot = SpellSlot.E,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1360, Radius = 120,
                         MissileSpeed = 1400, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "KogMawVoidOozeMissile",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
                 new SpellData
                     {
-                        ChampionName = "Kogmaw", SpellName = "KogMawLivingArtillery", Slot = SpellSlot.R,
-                        Type = SkillShotType.SkillshotCircle, Delay = 1200, Range = 1800, Radius = 150,
+                        ChampionName = "KogMaw", SpellName = "KogMawLivingArtillery", Slot = SpellSlot.R,
+                        Type = SkillShotType.SkillshotCircle, Delay = 1200, Range = 1800, Radius = 225,
                         MissileSpeed = int.MaxValue, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "KogMawLivingArtillery"
                     });
 
-            #endregion Kogmaw
+            #endregion KogMaw
 
             #region Leblanc
 
@@ -1141,8 +1172,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1156,8 +1187,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1175,8 +1206,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1191,7 +1222,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 905, Radius = 70,
                         MissileSpeed = 2000, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         TakeClosestPath = true, MissileSpellName = "LeonaZenithBladeMissile",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -1214,7 +1245,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 700, Radius = 75,
                         MissileSpeed = 2200, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "LissandraQMissile",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -1223,7 +1254,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Lissandra", SpellName = "LissandraQShards", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 700, Radius = 90,
                         MissileSpeed = 2200, FixedRange = true, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "lissandraqshards", CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        MissileSpellName = "lissandraqshards", CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
             Spells.Add(
                 new SpellData
@@ -1239,7 +1270,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1025, Radius = 125,
                         MissileSpeed = 850, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "LissandraEMissile",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Lulu
@@ -1265,8 +1296,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1278,7 +1309,7 @@ namespace Valvrave_Sharp.Evade
                         MissileSpeed = 2800, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "lucianrmissileoffhand", ExtraMissileNames = new[] { "lucianrmissile" },
                         DontCheckForDuplicates = true, DisabledByDefault = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Lucian
@@ -1291,7 +1322,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Lulu", SpellName = "LuluQ", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 950, Radius = 60,
                         MissileSpeed = 1450, FixedRange = true, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "LuluQMissile", CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        MissileSpellName = "LuluQMissile", CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -1300,7 +1331,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Lulu", SpellName = "LuluQPix", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 950, Radius = 60,
                         MissileSpeed = 1450, FixedRange = true, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "LuluQMissileTwo", CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        MissileSpellName = "LuluQMissileTwo", CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Lulu
@@ -1318,8 +1349,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1330,7 +1361,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 1100, Radius = 275, MissileSpeed = 1300,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "LuxLightStrikeKugel", ExtraDuration = 5500,
                         ToggleParticleName = "Lux_.+_E_tar_aoe_", DontCross = true, CanBeRemoved = true,
-                        DisabledByDefault = true, CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        DisabledByDefault = true, CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -1381,8 +1412,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1396,7 +1427,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Nami", SpellName = "NamiQ", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotCircle, Delay = 950, Range = 1625, Radius = 150,
                         MissileSpeed = int.MaxValue, AddHitbox = true, DangerValue = 3, IsDangerous = true,
-                        MissileSpellName = "namiqmissile", CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        MissileSpellName = "namiqmissile", CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -1405,7 +1436,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Nami", SpellName = "NamiR", Slot = SpellSlot.R,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 500, Range = 2750, Radius = 260,
                         MissileSpeed = 850, FixedRange = true, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "NamiRMissile", CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        MissileSpellName = "NamiRMissile", CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Nami
@@ -1422,8 +1453,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1437,7 +1468,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Nocturne", SpellName = "NocturneDuskbringer", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1125, Radius = 60,
                         MissileSpeed = 1400, DangerValue = 2, MissileSpellName = "NocturneDuskbringer",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Nocturne
@@ -1454,8 +1485,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1470,7 +1501,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1000, ExtraRange = 150,
                         Radius = 105, MissileSpeed = 1600, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "olafaxethrow", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Olaf
@@ -1483,7 +1514,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Orianna", SpellName = "OriannasQ", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Range = 1500, Radius = 80, MissileSpeed = 1200,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "orianaizuna",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -1491,16 +1522,17 @@ namespace Valvrave_Sharp.Evade
                     {
                         ChampionName = "Orianna", SpellName = "OriannaQend", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotCircle, Range = 1500, Radius = 90, MissileSpeed = 1200,
-                        AddHitbox = true, DangerValue = 2, CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        AddHitbox = true, DangerValue = 2, CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
                 new SpellData
                     {
-                        ChampionName = "Orianna", SpellName = "OrianaDissonanceCommand", Slot = SpellSlot.W,
+                        ChampionName = "Orianna", SpellName = "OriannaDissonance", Slot = SpellSlot.W,
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Radius = 255, MissileSpeed = int.MaxValue,
-                        FixedRange = true, AddHitbox = true, DangerValue = 2, MissileSpellName = "OrianaDissonanceCommand",
-                        FromObject = "yomu_ring_"
+                        FixedRange = true, AddHitbox = true, DangerValue = 2,
+                        MissileSpellName = "OrianaDissonanceCommand-", FromObject = "yomu_ring_",
+                        SourceObjectName = "w_dissonance_ball"
                     });
 
             Spells.Add(
@@ -1509,19 +1541,48 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Orianna", SpellName = "OriannasE", Slot = SpellSlot.E,
                         Type = SkillShotType.SkillshotMissileLine, Range = 1500, Radius = 85, MissileSpeed = 1850,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "orianaredact",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
                 new SpellData
                     {
-                        ChampionName = "Orianna", SpellName = "OrianaDetonateCommand", Slot = SpellSlot.R,
+                        ChampionName = "Orianna", SpellName = "OriannaDetonate", Slot = SpellSlot.R,
                         Type = SkillShotType.SkillshotCircle, Delay = 700, Radius = 410, MissileSpeed = int.MaxValue,
                         FixedRange = true, AddHitbox = true, DangerValue = 5, IsDangerous = true,
-                        MissileSpellName = "OrianaDetonateCommand", FromObject = "yomu_ring_"
+                        MissileSpellName = "OrianaDetonateCommand-", FromObject = "yomu_ring_",
+                        SourceObjectName = "r_vacuumindicator"
                     });
 
             #endregion Orianna
+
+            #region Poppy
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "Poppy", SpellName = "PoppyQ", Slot = SpellSlot.Q,
+                        Type = SkillShotType.SkillshotLine, Delay = 500, Range = 430, Radius = 100,
+                        MissileSpeed = int.MaxValue, FixedRange = true, AddHitbox = true, DangerValue = 2,
+                        MissileSpellName = "PoppyQ"
+                    });
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "Poppy", SpellName = "PoppyRSpell", Slot = SpellSlot.R,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 300, Range = 1200, Radius = 100,
+                        MissileSpeed = 1600, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
+                        MissileSpellName = "PoppyRMissile", CanBeRemoved = true,
+                        CollisionObjects =
+                            new[]
+                                {
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
+                                }
+                    });
+
+            #endregion Poppy
 
             #region Quinn
 
@@ -1529,14 +1590,14 @@ namespace Valvrave_Sharp.Evade
                 new SpellData
                     {
                         ChampionName = "Quinn", SpellName = "QuinnQ", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1050, Radius = 80,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 313, Range = 1050, Radius = 60,
                         MissileSpeed = 1550, FixedRange = true, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "QuinnQMissile", CanBeRemoved = true,
+                        MissileSpellName = "QuinnQ", CanBeRemoved = true,
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1554,8 +1615,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1573,8 +1634,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1597,7 +1658,7 @@ namespace Valvrave_Sharp.Evade
                         MissileSpeed = 1600, FixedRange = true, DangerValue = 5, IsDangerous = true, MultipleNumber = 3,
                         MultipleAngle = 15 * (float)Math.PI / 180, MissileSpellName = "RivenLightsaberMissile",
                         ExtraMissileNames = new[] { "RivenLightsaberMissileSide" },
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Riven
@@ -1614,8 +1675,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1642,8 +1703,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1657,7 +1718,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Sejuani", SpellName = "SejuaniArcticAssault", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Range = 900, Radius = 70, MissileSpeed = 1600,
                         AddHitbox = true, DangerValue = 3, IsDangerous = true, ExtraRange = 200,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.Minion }
+                        CollisionObjects = new[] { CollisionableObjects.Heroes, CollisionableObjects.Minions }
                     });
             Spells.Add(
                 new SpellData
@@ -1666,7 +1727,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1100, Radius = 110,
                         MissileSpeed = 1600, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "sejuaniglacialprison", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.Heroes, CollisionableObjects.YasuoWall }
                     });
 
             #endregion Sejuani
@@ -1680,7 +1741,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 800, Radius = 80,
                         MissileSpeed = 1800, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "SionEMissile",
-                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.Heroes, CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -1689,7 +1750,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Sion", SpellName = "SionR", Slot = SpellSlot.R,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 500, Range = 800, Radius = 120,
                         MissileSpeed = 1000, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champion }
+                        CollisionObjects = new[] { CollisionableObjects.Heroes }
                     });
 
             #endregion Sion
@@ -1700,8 +1761,8 @@ namespace Valvrave_Sharp.Evade
                 new SpellData
                     {
                         ChampionName = "Soraka", SpellName = "SorakaQ", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotCircle, Delay = 500, Range = 950, Radius = 300, MissileSpeed = 1750,
-                        AddHitbox = true, DangerValue = 2, CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        Type = SkillShotType.SkillshotCircle, Delay = 500, Range = 800, Radius = 300, MissileSpeed = 1750,
+                        AddHitbox = true, DangerValue = 2, CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Soraka
@@ -1728,7 +1789,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 950, Radius = 60,
                         MissileSpeed = 1700, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "ShyvanaFireballMissile",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -1738,6 +1799,16 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1000, Radius = 150,
                         MissileSpeed = 1500, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "ShyvanaTransformCast", ExtraRange = 200
+                    });
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "Shyvana", SpellName = "shyvanafireballdragon2", Slot = SpellSlot.E,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 850, Radius = 70,
+                        MissileSpeed = 2000, FixedRange = true, AddHitbox = true, DangerValue = 3,
+                        MissileSpellName = "ShyvanaFireballDragonFxMissile", ExtraRange = 200, MultipleNumber = 5,
+                        MultipleAngle = 10 * (float)Math.PI / 180
                     });
 
             #endregion Shyvana
@@ -1750,7 +1821,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Sivir", SpellName = "SivirQReturn", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Range = 1250, Radius = 100, MissileSpeed = 1350,
                         FixedRange = true, AddHitbox = true, DangerValue = 2, MissileSpellName = "SivirQMissileReturn",
-                        MissileFollowsUnit = true, CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        MissileFollowsUnit = true, CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -1759,7 +1830,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Sivir", SpellName = "SivirQ", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1250, Radius = 90,
                         MissileSpeed = 1350, FixedRange = true, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "SivirQMissile", CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        MissileSpellName = "SivirQMissile", CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Sivir
@@ -1773,7 +1844,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1000, Radius = 70,
                         MissileSpeed = 1500, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "SkarnerFractureMissile",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Skarner
@@ -1786,7 +1857,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Sona", SpellName = "SonaR", Slot = SpellSlot.R,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1000, Radius = 140,
                         MissileSpeed = 2400, FixedRange = true, AddHitbox = true, DangerValue = 5, IsDangerous = true,
-                        MissileSpellName = "SonaR", CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        MissileSpellName = "SonaR", CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Sona
@@ -1826,18 +1897,18 @@ namespace Valvrave_Sharp.Evade
                 new SpellData
                     {
                         ChampionName = "Syndra", SpellName = "syndrae5", Slot = SpellSlot.E,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 300, Range = 950, Radius = 90,
-                        MissileSpeed = 1601, AddHitbox = true, DangerValue = 2, MissileSpellName = "syndrae5",
-                        DisableFowDetection = true, CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 0, Range = 950, Radius = 100,
+                        MissileSpeed = 2000, AddHitbox = true, DangerValue = 2, MissileSpellName = "syndrae5",
+                        DisableFowDetection = true, CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
                 new SpellData
                     {
                         ChampionName = "Syndra", SpellName = "SyndraE", Slot = SpellSlot.E,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 300, Range = 950, Radius = 90,
-                        MissileSpeed = 1601, AddHitbox = true, DangerValue = 2, DisableFowDetection = true,
-                        MissileSpellName = "SyndraE", CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 0, Range = 950, Radius = 100,
+                        MissileSpeed = 2000, AddHitbox = true, DangerValue = 2, DisableFowDetection = true,
+                        MissileSpellName = "SyndraE", CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Syndra
@@ -1852,7 +1923,7 @@ namespace Valvrave_Sharp.Evade
                         MissileSpeed = 2300, FixedRange = true, AddHitbox = true, DangerValue = 2, IsDangerous = true,
                         MultipleNumber = 3, MultipleAngle = 20 * (float)Math.PI / 180,
                         MissileSpellName = "talonrakemissileone",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -1863,7 +1934,7 @@ namespace Valvrave_Sharp.Evade
                         MissileSpeed = 1850, FixedRange = true, AddHitbox = true, DangerValue = 2, IsDangerous = true,
                         MultipleNumber = 3, MultipleAngle = 20 * (float)Math.PI / 180,
                         MissileSpellName = "talonrakemissiletwo",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Riven
@@ -1880,8 +1951,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Minion, CollisionObjectTypes.Champion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Minions, CollisionableObjects.Heroes,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1899,8 +1970,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Minion, CollisionObjectTypes.Champion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Minions, CollisionableObjects.Heroes,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1911,7 +1982,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 125, Range = 1075, Radius = 110,
                         MissileSpeed = 2000, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         Centered = true, MissileSpellName = "ThreshEMissile1",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Thresh
@@ -1950,7 +2021,7 @@ namespace Valvrave_Sharp.Evade
                         MissileSpeed = 1000, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "SealFateMissile", MultipleNumber = 3,
                         MultipleAngle = 28 * (float)Math.PI / 180,
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion TwistedFate
@@ -1963,7 +2034,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Twitch", SpellName = "TwitchVenomCask", Slot = SpellSlot.W,
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 900, Radius = 275, MissileSpeed = 1400,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "TwitchVenomCaskMissile",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Twitch
@@ -1980,8 +2051,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Champion, CollisionObjectTypes.Minion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -1991,7 +2062,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Urgot", SpellName = "UrgotPlasmaGrenade", Slot = SpellSlot.E,
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 1100, Radius = 210, MissileSpeed = 1500,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "UrgotPlasmaGrenadeBoom",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Urgot
@@ -2004,7 +2075,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Varus", SpellName = "VarusQMissilee", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1800, Radius = 70,
                         MissileSpeed = 1900, FixedRange = true, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "VarusQMissile", CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        MissileSpellName = "VarusQMissile", CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -2013,7 +2084,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Varus", SpellName = "VarusE", Slot = SpellSlot.E,
                         Type = SkillShotType.SkillshotCircle, Delay = 1000, Range = 925, Radius = 235, MissileSpeed = 1500,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "VarusE",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -2023,7 +2094,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1200, Radius = 120,
                         MissileSpeed = 1950, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "VarusRMissile", CanBeRemoved = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.Champion, CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.Heroes, CollisionableObjects.YasuoWall }
                     });
 
             #endregion Varus
@@ -2037,7 +2108,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 950, Radius = 70,
                         MissileSpeed = 2000, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "VeigarBalefulStrikeMis",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -2071,8 +2142,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Minion, CollisionObjectTypes.Champion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Minions, CollisionableObjects.Heroes,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -2086,8 +2157,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Minion, CollisionObjectTypes.Champion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Minions, CollisionableObjects.Heroes,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -2097,7 +2168,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Velkoz", SpellName = "VelkozW", Slot = SpellSlot.W,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1200, Radius = 88,
                         MissileSpeed = 1700, FixedRange = true, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "VelkozWMissile", CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        MissileSpellName = "VelkozWMissile", CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -2132,7 +2203,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1500, Radius = 80,
                         MissileSpeed = 780, AddHitbox = true, DangerValue = 2, MissileSpellName = "ViktorDeathRayMissile",
                         ExtraMissileNames = new[] { "viktoreaugmissile" },
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Viktor
@@ -2179,8 +2250,8 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             new[]
                                 {
-                                    CollisionObjectTypes.Minion, CollisionObjectTypes.Champion,
-                                    CollisionObjectTypes.YasuoWall
+                                    CollisionableObjects.Minions, CollisionableObjects.Heroes,
+                                    CollisionableObjects.YasuoWall
                                 }
                     });
 
@@ -2212,7 +2283,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Yasuo", SpellName = "yasuoq3w", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 500, Range = 1150, Radius = 90,
                         MissileSpeed = 1500, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
-                        MissileSpellName = "yasuoq3w", CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        MissileSpellName = "yasuoq3w", CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -2248,7 +2319,7 @@ namespace Valvrave_Sharp.Evade
                         MissileSpeed = 1700, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "ZedQMissile",
                         FromObjects = new[] { "Zed_Base_W_tar.troy", "Zed_Base_W_cloneswap_buf.troy" },
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Zed
@@ -2261,7 +2332,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Ziggs", SpellName = "ZiggsQ", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 850, Radius = 140, MissileSpeed = 1700,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "ZiggsQSpell", DisableFowDetection = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -2271,7 +2342,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 850, Radius = 140, MissileSpeed = 1700,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "ZiggsQSpell2",
                         ExtraMissileNames = new[] { "ZiggsQSpell2" }, DisableFowDetection = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -2281,7 +2352,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 850, Radius = 160, MissileSpeed = 1700,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "ZiggsQSpell3",
                         ExtraMissileNames = new[] { "ZiggsQSpell3" }, DisableFowDetection = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -2290,7 +2361,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Ziggs", SpellName = "ZiggsW", Slot = SpellSlot.W,
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 1000, Radius = 275, MissileSpeed = 1750,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "ZiggsW", DisableFowDetection = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -2299,7 +2370,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Ziggs", SpellName = "ZiggsE", Slot = SpellSlot.E,
                         Type = SkillShotType.SkillshotCircle, Delay = 500, Range = 900, Radius = 235, MissileSpeed = 1750,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "ZiggsE", DisableFowDetection = true,
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -2341,7 +2412,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1150, Radius = 70,
                         MissileSpeed = 1150, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "ZyraGraspingRoots",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             Spells.Add(
@@ -2351,7 +2422,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotMissileLine, Delay = 500, Range = 1474, Radius = 70,
                         MissileSpeed = 2000, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "zyrapassivedeathmanager",
-                        CollisionObjects = new[] { CollisionObjectTypes.YasuoWall }
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }
                     });
 
             #endregion Zyra
@@ -2376,6 +2447,14 @@ namespace Valvrave_Sharp.Evade
             spellName = spellName.ToLower();
             return
                 Spells.FirstOrDefault(i => i.SpellName.ToLower() == spellName || i.ExtraSpellNames.Contains(spellName));
+        }
+
+        public static SpellData GetBySourceObjectName(string objectName)
+        {
+            objectName = objectName.ToLowerInvariant();
+            return
+                Spells.Where(i => i.SourceObjectName.Length != 0)
+                    .FirstOrDefault(i => objectName.Contains(i.SourceObjectName));
         }
 
         #endregion

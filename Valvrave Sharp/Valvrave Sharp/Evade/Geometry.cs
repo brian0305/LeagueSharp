@@ -95,6 +95,7 @@
                 this.End = end;
                 this.HitBox = hitbox;
                 this.Distance = this.Start.Distance(this.End);
+                this.ToPolygon();
             }
 
             #endregion
@@ -155,6 +156,7 @@
             {
                 this.Center = center;
                 this.Radius = radius;
+                this.ToPolygon();
             }
 
             #endregion
@@ -250,6 +252,7 @@
                 this.Width = width;
                 this.Direction = (end - start).Normalized();
                 this.Perpendicular = this.Direction.Perpendicular();
+                this.ToPolygon();
             }
 
             #endregion
@@ -296,6 +299,7 @@
                 this.Center = center;
                 this.Radius = radius;
                 this.RingRadius = ringRadius;
+                this.ToPolygon();
             }
 
             #endregion
@@ -352,6 +356,7 @@
                 this.Direction = direction;
                 this.Angle = angle;
                 this.Radius = radius;
+                this.ToPolygon();
             }
 
             #endregion

@@ -7,10 +7,9 @@ namespace Valvrave_Sharp.Evade
     using LeagueSharp.SDK.Core;
     using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.Extensions.SharpDX;
+    using LeagueSharp.SDK.Core.Utils;
 
     using SharpDX;
-
-    using Valvrave_Sharp.Core;
 
     public static class Evader
     {
@@ -127,8 +126,7 @@ namespace Valvrave_Sharp.Evade
                         break;
                     case SpellValidTargets.AllyMinions:
                         allTargets.AddRange(
-                            GameObjects.AllyMinions.Where(
-                                i => i.IsValidTarget(range, false, ObjectManager.Player.Position) && i.IsMinion()));
+                            GameObjects.AllyMinions.Where(i => i.IsValidTarget(range, false) && i.IsMinion()));
                         break;
                     case SpellValidTargets.AllyWards:
                         allTargets.AddRange(GameObjects.AllyWards.Where(i => i.IsValidTarget(range, false)));
@@ -137,11 +135,8 @@ namespace Valvrave_Sharp.Evade
                         allTargets.AddRange(GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(range)));
                         break;
                     case SpellValidTargets.EnemyMinions:
-                        allTargets.AddRange(
-                            GameObjects.EnemyMinions.Where(
-                                i => i.IsValidTarget(range, true, ObjectManager.Player.Position) && i.IsMinion()));
-                        allTargets.AddRange(
-                            GameObjects.Jungle.Where(i => i.IsValidTarget(range, true, ObjectManager.Player.Position)));
+                        allTargets.AddRange(GameObjects.EnemyMinions.Where(i => i.IsValidTarget(range) && i.IsMinion()));
+                        allTargets.AddRange(GameObjects.Jungle.Where(i => i.IsValidTarget(range)));
                         break;
                     case SpellValidTargets.EnemyWards:
                         allTargets.AddRange(GameObjects.EnemyWards.Where(i => i.IsValidTarget(range)));

@@ -7,22 +7,12 @@
 
     using LeagueSharp;
     using LeagueSharp.SDK.Core;
+    using LeagueSharp.SDK.Core.Enumerations;
     using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.Extensions.SharpDX;
     using LeagueSharp.SDK.Core.Utils;
 
     using SharpDX;
-
-    using Valvrave_Sharp.Core;
-
-    public enum CollisionObjectTypes
-    {
-        Minion,
-
-        Champion,
-
-        YasuoWall
-    }
 
     internal class FastPredResult
     {
@@ -47,7 +37,7 @@
 
         public Vector2 Position;
 
-        public CollisionObjectTypes Type;
+        public CollisionableObjects Type;
 
         public Obj_AI_Base Unit;
 
@@ -92,7 +82,7 @@
             {
                 switch (cObject)
                 {
-                    case CollisionObjectTypes.Minion:
+                    case CollisionableObjects.Minions:
                         var minions = new List<Obj_AI_Minion>();
                         minions.AddRange(GameObjects.Jungle.Where(i => i.IsValidTarget(1200, true, from.ToVector3())));
                         minions.AddRange(
@@ -122,10 +112,10 @@
                                             pos.ProjectOn(skillshot.End, skillshot.Start).LinePoint
                                             + skillshot.Direction * 30,
                                         Unit = minion,
-                                        Type = CollisionObjectTypes.Minion, Distance = pos.Distance(@from), Diff = w
+                                        Type = CollisionableObjects.Minions, Distance = pos.Distance(@from), Diff = w
                                     });
                         break;
-                    case CollisionObjectTypes.Champion:
+                    case CollisionableObjects.Heroes:
                         collisions.AddRange(
                             from hero in GameObjects.AllyHeroes.Where(i => i.IsValidTarget(1200, false) && !i.IsMe)
                             let pred =
@@ -143,11 +133,11 @@
                                         Position =
                                             pos.ProjectOn(skillshot.End, skillshot.Start).LinePoint
                                             + skillshot.Direction * 30,
-                                        Unit = hero, Type = CollisionObjectTypes.Minion,
+                                        Unit = hero, Type = CollisionableObjects.Heroes,
                                         Distance = pos.Distance(@from), Diff = w
                                     });
                         break;
-                    case CollisionObjectTypes.YasuoWall:
+                    case CollisionableObjects.YasuoWall:
                         if (
                             !GameObjects.AllyHeroes.Any(
                                 i => i.IsValidTarget(float.MaxValue, false) && i.ChampionName == "Yasuo"))
@@ -213,7 +203,7 @@
         {
             Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                 {
-                    if (!sender.IsValid || sender.Team != ObjectManager.Player.Team
+                    if (!sender.IsValid() || sender.Team != ObjectManager.Player.Team
                         || args.SData.Name != "YasuoWMovingWall")
                     {
                         return;

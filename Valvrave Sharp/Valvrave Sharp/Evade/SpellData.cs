@@ -1,6 +1,7 @@
 ﻿namespace Valvrave_Sharp.Evade
 {
     using LeagueSharp;
+    using LeagueSharp.SDK.Core.Enumerations;
 
     public class SpellData
     {
@@ -14,7 +15,7 @@
 
         public string ChampionName;
 
-        public CollisionObjectTypes[] CollisionObjects = { };
+        public CollisionableObjects[] CollisionObjects = { };
 
         public int DangerValue;
 
@@ -75,6 +76,8 @@
         public int RingRadius;
 
         public SpellSlot Slot;
+
+        public string SourceObjectName = "";
 
         public string SpellName;
 

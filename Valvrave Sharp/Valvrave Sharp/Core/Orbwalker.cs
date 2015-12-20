@@ -15,7 +15,6 @@
     using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers;
     using LeagueSharp.SDK.Core.Wrappers.Damages;
-
     using SharpDX;
 
     using Color = System.Drawing.Color;
@@ -51,17 +50,17 @@
 
         #region Properties
 
-        internal static OrbwalkerMode ActiveMode
+        internal static OrbwalkingMode ActiveMode
             =>
                 Program.MainMenu["Orbwalker"]["lasthitKey"].GetValue<MenuKeyBind>().Active
-                    ? OrbwalkerMode.LastHit
+                    ? OrbwalkingMode.LastHit
                     : (Program.MainMenu["Orbwalker"]["laneclearKey"].GetValue<MenuKeyBind>().Active
-                           ? OrbwalkerMode.LaneClear
+                           ? OrbwalkingMode.LaneClear
                            : (Program.MainMenu["Orbwalker"]["hybridKey"].GetValue<MenuKeyBind>().Active
-                                  ? OrbwalkerMode.Hybrid
+                                  ? OrbwalkingMode.Hybrid
                                   : (Program.MainMenu["Orbwalker"]["orbwalkKey"].GetValue<MenuKeyBind>().Active
-                                         ? OrbwalkerMode.Orbwalk
-                                         : OrbwalkerMode.None)));
+                                         ? OrbwalkingMode.Combo
+                                         : OrbwalkingMode.None)));
 
         internal static bool Attack { get; set; }
 
@@ -113,10 +112,10 @@
 
         #region Methods
 
-        internal static AttackableUnit GetTarget(OrbwalkerMode? modeArg)
+        internal static AttackableUnit GetTarget(OrbwalkingMode? modeArg)
         {
             var mode = modeArg ?? ActiveMode;
-            if ((mode == OrbwalkerMode.LaneClear || mode == OrbwalkerMode.Hybrid)
+            if ((mode == OrbwalkingMode.LaneClear || mode == OrbwalkingMode.Hybrid)
                 && !Program.MainMenu["Orbwalker"]["Advanced"]["PriorizeFarm"])
             {
                 var target = TargetSelector.GetTarget();
@@ -125,7 +124,7 @@
                     return target;
                 }
             }
-            if (mode == OrbwalkerMode.LaneClear || mode == OrbwalkerMode.Hybrid || mode == OrbwalkerMode.LastHit)
+            if (mode == OrbwalkingMode.LaneClear || mode == OrbwalkingMode.Hybrid || mode == OrbwalkingMode.LastHit)
             {
                 foreach (var minion in
                     GameObjects.EnemyMinions.Where(m => m.InAutoAttackRange() && Minion.IsMinion(m))
@@ -146,7 +145,7 @@
                             new OrbwalkerActionArgs
                                 {
                                     Position = minion.Position, Target = minion, Process = true,
-                                    Type = OrbwalkerType.NonKillableMinion
+                                    Type = OrbwalkingType.NonKillableMinion
                                 });
                     }
                     if (healthPrediction > 0 && healthPrediction <= Program.Player.GetAutoAttackDamage(minion, true))
@@ -155,7 +154,7 @@
                     }
                 }
             }
-            if (mode == OrbwalkerMode.LaneClear)
+            if (mode == OrbwalkingMode.LaneClear)
             {
                 foreach (var turret in GameObjects.EnemyTurrets.Where(t => t.InAutoAttackRange()))
                 {
@@ -170,7 +169,7 @@
                     return GameObjects.EnemyNexus;
                 }
             }
-            if (mode != OrbwalkerMode.LastHit)
+            if (mode != OrbwalkingMode.LastHit)
             {
                 var target = TargetSelector.GetTarget();
                 if (target != null)
@@ -178,7 +177,7 @@
                     return target;
                 }
             }
-            if (ActiveMode == OrbwalkerMode.LaneClear)
+            if (ActiveMode == OrbwalkingMode.LaneClear)
             {
                 var shouldWait =
                     GameObjects.EnemyMinions.Any(
@@ -280,7 +279,7 @@
                     {
                         return;
                     }
-                    if (ActiveMode != OrbwalkerMode.None)
+                    if (ActiveMode != OrbwalkingMode.None)
                     {
                         Orbwalk(OrbwalkTarget, OrbwalkPosition);
                     }
@@ -349,7 +348,7 @@
                     return;
                 }
                 var eventArgs = new OrbwalkerActionArgs
-                                    { Position = point, Process = true, Type = OrbwalkerType.Movement };
+                                    { Position = point, Process = true, Type = OrbwalkingType.Movement };
                 InvokeAction(eventArgs);
                 if (eventArgs.Process)
                 {
@@ -369,7 +368,7 @@
                     var eventArgs = new OrbwalkerActionArgs
                                         {
                                             Target = gTarget, Position = gTarget.Position, Process = true,
-                                            Type = OrbwalkerType.BeforeAttack
+                                            Type = OrbwalkingType.BeforeAttack
                                         };
                     InvokeAction(eventArgs);
                     if (eventArgs.Process)
@@ -415,7 +414,7 @@
         private static void OnDoCastDelayed(GameObjectProcessSpellCastEventArgs args)
         {
             InvokeAction(
-                new OrbwalkerActionArgs { Target = args.Target as AttackableUnit, Type = OrbwalkerType.AfterAttack });
+                new OrbwalkerActionArgs { Target = args.Target as AttackableUnit, Type = OrbwalkingType.AfterAttack });
             MissileLaunched = true;
         }
 
@@ -477,11 +476,11 @@
                 MissileLaunched = false;
                 if (!target.Compare(LastTarget))
                 {
-                    InvokeAction(new OrbwalkerActionArgs { Target = target, Type = OrbwalkerType.TargetSwitch });
+                    InvokeAction(new OrbwalkerActionArgs { Target = target, Type = OrbwalkingType.TargetSwitch });
                     LastTarget = target;
                 }
                 InvokeAction(
-                    new OrbwalkerActionArgs { Target = target, Sender = sender, Type = OrbwalkerType.OnAttack });
+                    new OrbwalkerActionArgs { Target = target, Sender = sender, Type = OrbwalkingType.OnAttack });
             }
             if (AutoAttack.IsAutoAttackReset(spellName))
             {
@@ -503,7 +502,7 @@
 
             internal AttackableUnit Target { get; set; }
 
-            internal OrbwalkerType Type { get; set; }
+            internal OrbwalkingType Type { get; set; }
 
             #endregion
         }

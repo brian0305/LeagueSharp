@@ -355,13 +355,13 @@
             KillSteal();
             switch (Orbwalker.ActiveMode)
             {
-                case OrbwalkerMode.Orbwalk:
-                    Orbwalk();
+                case OrbwalkingMode.Combo:
+                    Combo();
                     break;
-                case OrbwalkerMode.LastHit:
+                case OrbwalkingMode.LastHit:
                     Farm();
                     break;
-                case OrbwalkerMode.None:
+                case OrbwalkingMode.None:
                     if (MainMenu["FleeW"].GetValue<MenuKeyBind>().Active)
                     {
                         Orbwalker.MoveOrder(Game.CursorPos);
@@ -391,7 +391,7 @@
             }
         }
 
-        private static void Orbwalk()
+        private static void Combo()
         {
             if (MainMenu["Orbwalk"]["R"] && R.IsReady())
             {
@@ -505,7 +505,7 @@
             }
             if (MainMenu["Orbwalk"]["W"] && W.IsReady() && CanCastInOrbwalk
                 && Variables.TickCount - W.LastCastAttemptT >= 300 && !E.IsReady() && Passive == -1
-                && Orbwalker.GetTarget(OrbwalkerMode.Orbwalk) != null && W.Cast())
+                && Orbwalker.GetTarget(OrbwalkingMode.Combo) != null && W.Cast())
             {
                 return;
             }

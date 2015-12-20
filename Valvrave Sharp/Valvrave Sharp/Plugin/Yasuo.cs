@@ -684,19 +684,19 @@
             KillSteal();
             switch (Orbwalker.ActiveMode)
             {
-                case OrbwalkingMode.Combo:
-                    Combo();
+                case OrbwalkerMode.Orbwalk:
+                    Orbwalk();
                     break;
-                case OrbwalkingMode.Hybrid:
+                case OrbwalkerMode.Hybrid:
                     Hybrid();
                     break;
-                case OrbwalkingMode.LaneClear:
+                case OrbwalkerMode.LaneClear:
                     LaneClear();
                     break;
-                case OrbwalkingMode.LastHit:
+                case OrbwalkerMode.LastHit:
                     Farm();
                     break;
-                case OrbwalkingMode.None:
+                case OrbwalkerMode.None:
                     if (MainMenu["Flee"]["E"].GetValue<MenuKeyBind>().Active)
                     {
                         Orbwalker.MoveOrder(Game.CursorPos);
@@ -704,7 +704,7 @@
                     }
                     break;
             }
-            if (Orbwalker.ActiveMode != OrbwalkingMode.Combo && Orbwalker.ActiveMode != OrbwalkingMode.Hybrid)
+            if (Orbwalker.ActiveMode != OrbwalkerMode.Orbwalk && Orbwalker.ActiveMode != OrbwalkerMode.Hybrid)
             {
                 AutoQ();
             }
@@ -714,7 +714,7 @@
             }
         }
 
-        private static void Combo()
+        private static void Orbwalk()
         {
             if (MainMenu["Orbwalk"]["R"] && R.IsReady() && GetRTarget.Count > 0)
             {

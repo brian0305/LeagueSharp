@@ -38,7 +38,7 @@
             R2 = new Spell(SpellSlot.R, 825).SetSkillshot(0.25f, 65, 1200, false, SkillshotType.SkillshotLine);
             Q.DamageType = Q2.DamageType = W.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
-            Q.MinHitChance = HitChance.VeryHigh;
+            Q.MinHitChance = HitChance.High;
 
             WardManager.Init();
             Insec.Init();
@@ -257,7 +257,7 @@
 
         private static void Flee(Vector3 pos, bool isStar = false)
         {
-            if (!W.IsReady() || !IsWOne || Variables.TickCount - W.LastCastAttemptT <= 250)
+            if (!W.IsReady() || !IsWOne || Variables.TickCount - W.LastCastAttemptT <= 1000)
             {
                 return;
             }
@@ -278,10 +278,7 @@
                     .MinOrDefault(i => i.Distance(pos));
             if (objJump != null)
             {
-                if (W.CastOnUnit(objJump))
-                {
-                    W.LastCastAttemptT = Variables.TickCount;
-                }
+                W.CastOnUnit(objJump);
             }
             else
             {

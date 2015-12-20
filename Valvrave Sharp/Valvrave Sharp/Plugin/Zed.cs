@@ -47,13 +47,13 @@
 
         public Zed()
         {
-            Q = new Spell(SpellSlot.Q, 925).SetSkillshot(0.25f, 50, 1700, true, SkillshotType.SkillshotLine);
-            Q2 = new Spell(SpellSlot.Q, 925).SetSkillshot(0.25f, 50, 1700, true, SkillshotType.SkillshotLine);
-            W = new Spell(SpellSlot.W, 1700).SetSkillshot(0, 50, 1750, false, SkillshotType.SkillshotLine);
-            E = new Spell(SpellSlot.E, 280);
-            R = new Spell(SpellSlot.R, 700);
+            Q = new Spell(SpellSlot.Q, 950).SetSkillshot(0.25f, 50, 1700, true, SkillshotType.SkillshotLine);
+            Q2 = new Spell(SpellSlot.Q, 950).SetSkillshot(0.25f, 50, 1700, true, SkillshotType.SkillshotLine);
+            W = new Spell(SpellSlot.W, 1650).SetSkillshot(0, 50, 1750, false, SkillshotType.SkillshotLine);
+            E = new Spell(SpellSlot.E, 290);
+            R = new Spell(SpellSlot.R, 650);
             Q.DamageType = Q2.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
-            Q.MinHitChance = Q2.MinHitChance = HitChance.VeryHigh;
+            Q.MinHitChance = Q2.MinHitChance = HitChance.High;
 
             var orbwalkMenu = MainMenu.Add(new Menu("Orbwalk", "Orbwalk"));
             {
@@ -306,37 +306,45 @@
             {
                 return;
             }
-            var pred = Q.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall });
-            if (pred.Hitchance >= Q.MinHitChance)
+            var predPlayer = Q.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall });
+            Prediction.PredictionOutput predW = null;
+            if (wShadow.IsValid())
             {
-                Q.Cast(pred.CastPosition);
+                Q2.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
+                predW = Q2.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall });
+            }
+            Prediction.PredictionOutput predR = null;
+            if (rShadow.IsValid())
+            {
+                Q2.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
+                predR = Q2.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall });
+            }
+            var bestHit =
+                (HitChance)
+                Math.Max(
+                    Math.Max((int)(predW?.Hitchance ?? HitChance.None), (int)(predR?.Hitchance ?? HitChance.None)),
+                    (int)predPlayer.Hitchance);
+            if (bestHit < Q.MinHitChance)
+            {
+                return;
+            }
+            if (predW != null && bestHit == predW.Hitchance)
+            {
+                Q.Cast(predW.CastPosition);
+            }
+            else if (predR != null && bestHit == predR.Hitchance)
+            {
+                Q.Cast(predR.CastPosition);
             }
             else
             {
-                if (wShadow.IsValid())
-                {
-                    Q2.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
-                    var predQ = Q2.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall });
-                    if (predQ.Hitchance >= Q2.MinHitChance)
-                    {
-                        Q2.Cast(predQ.CastPosition);
-                    }
-                }
-                if (rShadow.IsValid())
-                {
-                    Q2.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
-                    var predQ = Q2.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall });
-                    if (predQ.Hitchance >= Q2.MinHitChance)
-                    {
-                        Q2.Cast(predQ.CastPosition);
-                    }
-                }
+                Q.Cast(predPlayer.CastPosition);
             }
         }
 
         private static void CastW(Obj_AI_Hero target, bool isCombo = false)
         {
-            if (WState != 0 || Variables.TickCount - W.LastCastAttemptT <= 250)
+            if (WState != 0 || Variables.TickCount - W.LastCastAttemptT <= 1000)
             {
                 return;
             }
@@ -376,10 +384,7 @@
             {
                 castPos = Player.ServerPosition.Extend(target.ServerPosition, RangeW);
             }
-            if (W.Cast(castPos))
-            {
-                W.LastCastAttemptT = Variables.TickCount;
-            }
+            W.Cast(castPos);
         }
 
         private static bool DeadByRMark(Obj_AI_Hero target)
@@ -504,11 +509,7 @@
             {
                 CastE();
             }
-            if (MainMenu["Hybrid"]["Mode"].GetValue<MenuList>().Index != 0 || wShadow.IsValid() || WState == -1
-                || Player.Mana < Q.Instance.ManaCost + W.Instance.ManaCost)
-            {
-                CastQ(target);
-            }
+            CastQ(target);
         }
 
         private static void KillSteal()

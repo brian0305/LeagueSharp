@@ -69,7 +69,7 @@
             MainMenu.Separator("Paypal: dcbrian01@gmail.com");
             Orbwalker.Init(MainMenu);
             Plugins[Player.ChampionName].Invoke();
-            LeagueSharp.SDK.Core.Orbwalker.Enabled = false;
+            //LeagueSharp.SDK.Core.Orbwalking.Enabled = false;
         }
 
         private static void InitSummonerSpell()

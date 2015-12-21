@@ -153,7 +153,7 @@
                     {
                         var posPred = R2.VPrediction(subTarget, true).CastPosition.ToVector2();
                         if (MainMenu["Orbwalk"]["RKill"]
-                            && subTarget.Health + subTarget.PhysicalShield <= GetRDmg(target, subTarget))
+                            && subTarget.Health + subTarget.PhysicalShield <= GetRColDmg(target, subTarget))
                         {
                             var project = posPred.ProjectOn(posStart, posEnd);
                             if (project.IsOnSegment
@@ -282,7 +282,7 @@
             }
             else
             {
-                WardManager.Place(pos);
+                WardManager.Place(pos, false, true);
             }
         }
 
@@ -296,13 +296,13 @@
                 target is Obj_AI_Minion ? Math.Min(dmg, 400) : dmg) + subHp;
         }
 
-        private static double GetRDmg(Obj_AI_Hero kickTarget, Obj_AI_Hero hitTarget)
+        private static double GetRColDmg(Obj_AI_Hero kickTarget, Obj_AI_Hero hitTarget)
         {
-            return Player.CalculateDamage(
-                hitTarget,
-                DamageType.Physical,
-                new[] { 200, 400, 600 }[R.Level - 1] + 2 * Player.FlatPhysicalDamageMod
-                + new[] { 0.12, 0.15, 0.18 }[R.Level - 1] * kickTarget.BonusHealth);
+            return Player.GetSpellDamage(hitTarget, SpellSlot.R)
+                   + Player.CalculateDamage(
+                       hitTarget,
+                       DamageType.Physical,
+                       new[] { 0.12, 0.15, 0.18 }[R.Level - 1] * kickTarget.BonusHealth);
         }
 
         private static bool HaveE(Obj_AI_Base target)
@@ -676,8 +676,8 @@
                         {
                             return;
                         }
-                        insecTarget = Q2.GetTarget();
-                        if (Variables.TickCount - lastSettingPos > 10000 && lastSettingPos > 0)
+                        insecTarget = Q2.GetTarget(WardManager.WardRange);
+                        if (!R.IsReady() || (lastSettingPos > 0 && Variables.TickCount - lastSettingPos > 10000))
                         {
                             posSetting = new Vector3();
                             lastSettingPos = 0;
@@ -756,7 +756,7 @@
                     return;
                 }
                 GapByQ(target);
-                if (!IsRecent && (!Player.HasBuff("blindmonkqtwodash") || R.IsInRange(target)))
+                if (!IsRecent)
                 {
                     if (Player.Distance(target) < WardManager.WardRange - DistBehind(target))
                     {
@@ -834,7 +834,7 @@
                             GameObjects.AllyTurrets.Where(
                                 i =>
                                 !i.IsDead && target.Distance(i) <= R2.Range + 500
-                                && i.Distance(target) - R2.Range <= 950 && i.Distance(target) > 400)
+                                && i.Distance(target) - R2.Range <= 950 && i.Distance(target) > 250)
                                 .MinOrDefault(i => i.Distance(Player));
                         if (turret != null)
                         {
@@ -844,7 +844,7 @@
                             GameObjects.AllyHeroes.Where(
                                 i =>
                                 !i.IsMe && target.Distance(i) <= R2.Range + 500 && i.HealthPercent > 10
-                                && i.Distance(target) > 400).MinOrDefault(TargetSelector.GetPriority);
+                                && i.Distance(target) > 250).MinOrDefault(TargetSelector.GetPriority);
                         if (hero != null)
                         {
                             return hero.ServerPosition;
@@ -903,11 +903,15 @@
 
             private static void GapByQ(Obj_AI_Hero target)
             {
-                if (!MainMenu["Orbwalk"]["Q"] || !Q.IsReady()
-                    || Player.Distance(target)
-                    < WardManager.WardRange
-                    + (MainMenu["Insec"]["Flash"] && Flash.IsReady() && MainMenu["Insec"]["FlashJump"] ? FlashRange : 0)
-                    - DistBehind(target))
+                if (!MainMenu["Orbwalk"]["Q"] || !Q.IsReady())
+                {
+                    return;
+                }
+                var minDist = WardManager.WardRange
+                              + (MainMenu["Insec"]["Flash"] && Flash.IsReady() && MainMenu["Insec"]["FlashJump"]
+                                     ? FlashRange
+                                     : 0) - DistBehind(target);
+                if (Player.Distance(target) < minDist / 2)
                 {
                     return;
                 }
@@ -938,7 +942,7 @@
                                         i =>
                                         i.IsValidTarget(Q.Range) && i.Health > Player.GetSpellDamage(i, SpellSlot.Q)
                                         && Player.Distance(target) > i.Distance(target)
-                                        && i.Distance(target) < WardManager.WardRange - DistBehind(target) - 80)
+                                        && i.Distance(target) < minDist - 80)
                                     .OrderBy(i => i.Distance(target))
                                     .Select(i => Q.VPrediction(i))
                                     .Where(i => i.Hitchance >= Q.MinHitChance)
@@ -961,8 +965,7 @@
                         TargetSelector.SelectedTarget = target;
                         Q.Cast();
                     }
-                    else if (GetQObj != null
-                             && GetQObj.Distance(target) < WardManager.WardRange - DistBehind(target) - 80)
+                    else if (GetQObj != null && GetQObj.Distance(target) < minDist - 80)
                     {
                         TargetSelector.SelectedTarget = target;
                         Q.Cast();
@@ -1097,7 +1100,7 @@
                     };
             }
 
-            internal static void Place(Vector3 pos, bool isInsecByWard = false)
+            internal static void Place(Vector3 pos, bool isInsecByWard = false, bool isFlee = false)
             {
                 if (!CanWardJump)
                 {
@@ -1116,7 +1119,7 @@
                 }
                 lastJumpPos = posEnd;
                 lastJumpTime = Variables.TickCount;
-                if (MainMenu["FleeW"].GetValue<MenuKeyBind>().Active)
+                if (isFlee)
                 {
                     lastJumpTime += 1100;
                 }

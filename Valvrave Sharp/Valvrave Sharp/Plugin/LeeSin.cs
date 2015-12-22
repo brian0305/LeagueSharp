@@ -28,14 +28,14 @@
 
         public LeeSin()
         {
-            Q = new Spell(SpellSlot.Q, 1100).SetSkillshot(0.25f, 65, 1800, true, SkillshotType.SkillshotLine);
+            Q = new Spell(SpellSlot.Q, 1100).SetSkillshot(0.25f, 60, 1800, true, SkillshotType.SkillshotLine);
             Q2 = new Spell(SpellSlot.Q, 1300);
-            W = new Spell(SpellSlot.W, 700);
-            W2 = new Spell(SpellSlot.W, 1200).SetSkillshot(0.05f, 100, 1500, false, SkillshotType.SkillshotLine);
-            E = new Spell(SpellSlot.E, 400);
-            E2 = new Spell(SpellSlot.E, 550);
-            R = new Spell(SpellSlot.R, 375);
-            R2 = new Spell(SpellSlot.R, 825).SetSkillshot(0.25f, 65, 1200, false, SkillshotType.SkillshotLine);
+            W = new Spell(SpellSlot.W, 750);
+            W2 = new Spell(SpellSlot.W, 1200).SetSkillshot(0, 100, 1500, false, SkillshotType.SkillshotLine);
+            E = new Spell(SpellSlot.E, 450).SetTargetted(0.25f, float.MaxValue);
+            E2 = new Spell(SpellSlot.E, 600);
+            R = new Spell(SpellSlot.R, 400);
+            R2 = new Spell(SpellSlot.R, 800).SetSkillshot(0.25f, 65, 1500, false, SkillshotType.SkillshotLine);
             Q.DamageType = Q2.DamageType = W.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
             Q.MinHitChance = HitChance.High;
@@ -219,7 +219,7 @@
         private static bool CanE2(Obj_AI_Base target)
         {
             var buff = target.GetBuff("BlindMonkTempest");
-            return buff != null && buff.EndTime - Game.Time < 0.3 * (buff.EndTime - buff.StartTime);
+            return buff != null && buff.EndTime - Game.Time < 0.2 * (buff.EndTime - buff.StartTime);
         }
 
         private static bool CanQ2(Obj_AI_Base target)
@@ -231,7 +231,7 @@
         private static bool CanR(Obj_AI_Hero target)
         {
             var buff = target.GetBuff("blindmonkrkick");
-            return buff != null && buff.EndTime - Game.Time < 0.4 * (buff.EndTime - buff.StartTime);
+            return buff != null && buff.EndTime - Game.Time < 0.3 * (buff.EndTime - buff.StartTime);
         }
 
         private static void Farm()
@@ -349,9 +349,11 @@
                     Q.Cast();
                 }
                 if (MainMenu["KillSteal"]["E"] && E.IsReady() && IsEOne
-                    && GameObjects.EnemyHeroes.Any(
+                    && GameObjects.EnemyHeroes.Where(
                         i =>
-                        i.IsValidTarget(E.Range) && i.Health + i.MagicalShield <= Player.GetSpellDamage(i, SpellSlot.E)))
+                        i.IsValidTarget(E2.Range) && i.Health + i.MagicalShield <= Player.GetSpellDamage(i, SpellSlot.E))
+                           .Select(i => Prediction.GetPrediction(i, E.Delay).UnitPosition)
+                           .Any(i => E.IsInRange(i)))
                 {
                     E.Cast();
                 }
@@ -381,7 +383,7 @@
                 return;
             }
             KillSteal();
-            if (MainMenu["Orbwalk"]["R"] && R.IsReady())
+            if (!MainMenu["Insec"]["Insec"].GetValue<MenuKeyBind>().Active && MainMenu["Orbwalk"]["R"] && R.IsReady())
             {
                 var multiR = GetMultiR;
                 if ((multiR.Item1 == -1 || multiR.Item1 >= MainMenu["Orbwalk"]["RCountA"] + 1) && multiR.Item2 != null)
@@ -469,7 +471,7 @@
                         else if (GetQObj != null)
                         {
                             var targetQ2 = Q2.GetTarget(200);
-                            if (targetQ2 != null && GetQObj.Distance(targetQ2) < Player.Distance(GetQObj)
+                            if (targetQ2 != null && GetQObj.Distance(targetQ2) < Player.Distance(targetQ2)
                                 && !targetQ2.InAutoAttackRange())
                             {
                                 Q.Cast();
@@ -481,9 +483,15 @@
                 {
                     if (IsEOne)
                     {
-                        if (E.GetTarget() != null && Player.Mana >= 70)
+                        if (Player.Mana >= 70)
                         {
-                            E.Cast();
+                            if (
+                                GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(E2.Range))
+                                    .Select(i => Prediction.GetPrediction(i, E.Delay).UnitPosition)
+                                    .Any(i => E.IsInRange(i)))
+                            {
+                                E.Cast();
+                            }
                         }
                     }
                     else
@@ -567,7 +575,8 @@
                     Q.Cast();
                 }
             }
-            if (E.CanCast(target) && IsEOne && (!HaveQ(target) || Player.Mana >= 70))
+            if (E2.CanCast(target) && IsEOne && (!HaveQ(target) || Player.Mana >= 70)
+                && E.IsInRange(Prediction.GetPrediction(target, E.Delay).UnitPosition))
             {
                 E.Cast();
             }
@@ -579,9 +588,9 @@
             {
                 R.CastOnUnit(target);
             }
-            else if (Player.Distance(target) <= W.Range + R.Range - 150 && Player.Mana >= 70)
+            else if (Player.Distance(target) <= W.Range + R.Range - 200 && Player.Mana >= 70)
             {
-                Flee(W2.VPrediction(target).CastPosition.Extend(Player.ServerPosition, R.Range / 2), true);
+                Flee(target.ServerPosition.Extend(Player.ServerPosition, R.Range / 2), true);
             }
         }
 
@@ -676,8 +685,12 @@
                         {
                             return;
                         }
-                        insecTarget = Q2.GetTarget(WardManager.WardRange);
-                        if (!R.IsReady() || (lastSettingPos > 0 && Variables.TickCount - lastSettingPos > 10000))
+                        insecTarget = Q.GetTarget(-100);
+                        if (MainMenu["Orbwalk"]["Q"] && Q.IsReady())
+                        {
+                            insecTarget = Q2.GetTarget(IsQOne ? 0 : 200);
+                        }
+                        if (lastSettingPos > 0 && Variables.TickCount - lastSettingPos > 10000)
                         {
                             posSetting = new Vector3();
                             lastSettingPos = 0;
@@ -784,7 +797,8 @@
                         }
                     }
                     else if (Player.Distance(target) < WardManager.WardRange + FlashRange - DistBehind(target)
-                             && MainMenu["Insec"]["Flash"] && Flash.IsReady() && MainMenu["Insec"]["FlashJump"])
+                             && WardManager.CanWardJump && MainMenu["Insec"]["Flash"] && Flash.IsReady()
+                             && MainMenu["Insec"]["FlashJump"])
                     {
                         Flee(target.ServerPosition);
                     }
@@ -812,7 +826,7 @@
             {
                 return
                     Math.Min(
-                        (Player.BoundingRadius + target.BoundingRadius + 50) * (100 + MainMenu["Insec"]["Dist"]) / 100,
+                        (Player.BoundingRadius + target.BoundingRadius + 70) * (100 + MainMenu["Insec"]["Dist"]) / 100,
                         R.Range);
             }
 
@@ -869,7 +883,7 @@
                         GapByFlashR(target);
                         break;
                     case 2:
-                        if (target.Distance(Player) <= R.Range * 1.25)
+                        if (target.Distance(Player) <= R.Range * 1.05)
                         {
                             GapByRFlash(target);
                         }
@@ -908,7 +922,8 @@
                     return;
                 }
                 var minDist = WardManager.WardRange
-                              + (MainMenu["Insec"]["Flash"] && Flash.IsReady() && MainMenu["Insec"]["FlashJump"]
+                              + (WardManager.CanWardJump && MainMenu["Insec"]["Flash"] && Flash.IsReady()
+                                 && MainMenu["Insec"]["FlashJump"]
                                      ? FlashRange
                                      : 0) - DistBehind(target);
                 if (Player.Distance(target) < minDist / 2)
@@ -1088,8 +1103,7 @@
                         {
                             return;
                         }
-                        if (MainMenu["Insec"]["Insec"].GetValue<MenuKeyBind>().Active
-                            && Variables.TickCount - LastCreateTime < 1000)
+                        if (Variables.TickCount - LastCreateTime < 1000)
                         {
                             LastCreateTime = Variables.TickCount;
                         }
@@ -1113,7 +1127,7 @@
                     return;
                 }
                 Player.Spellbook.CastSpell(ward.SpellSlot, posEnd);
-                if (MainMenu["Insec"]["Insec"].GetValue<MenuKeyBind>().Active && isInsecByWard)
+                if (isInsecByWard)
                 {
                     LastCreateTime = Variables.TickCount;
                 }

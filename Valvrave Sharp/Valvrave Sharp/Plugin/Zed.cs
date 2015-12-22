@@ -54,6 +54,12 @@
             R = new Spell(SpellSlot.R, 650);
             Q.DamageType = Q2.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
             Q.MinHitChance = Q2.MinHitChance = HitChance.High;
+            /*Game.PrintChat(
+                "Range: {0}, Delay: {1}, Radius: {2}, Speed: {3}",
+                Q.Instance.SData.CastRange,
+                Q.Instance.SData.DelayCastOffsetPercent,
+                Q.Instance.SData.LineWidth,
+                Q.Instance.SData.MissileSpeed);*/
 
             var orbwalkMenu = MainMenu.Add(new Menu("Orbwalk", "Orbwalk"));
             {

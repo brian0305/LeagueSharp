@@ -796,7 +796,7 @@
                                     else
                                     {
                                         var minionPos = minion.ServerPosition;
-                                        var bonusRadius = 20;
+                                        var bonusRadius = 15;
                                         if (minion.IsMoving)
                                         {
                                             minionPos = input.GetPrediction(false, false).UnitPosition;

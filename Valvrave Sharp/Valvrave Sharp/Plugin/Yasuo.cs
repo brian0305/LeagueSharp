@@ -44,7 +44,7 @@
         {
             Q = new Spell(SpellSlot.Q, 500).SetSkillshot(
                 GetQ1Delay,
-                30,
+                20,
                 float.MaxValue,
                 false,
                 SkillshotType.SkillshotLine);

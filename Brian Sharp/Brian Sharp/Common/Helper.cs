@@ -54,11 +54,7 @@
         {
             get
             {
-                return 600
-                       * (Player.HasMastery(MasteryData.Scout) && GetWardSlot != null
-                          && new[] { 3340, 3361, 3362 }.Contains((int)GetWardSlot.Id)
-                              ? 1.15f
-                              : 1);
+                return 600;
             }
         }
 

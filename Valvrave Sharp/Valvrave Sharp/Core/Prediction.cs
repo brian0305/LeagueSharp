@@ -115,7 +115,7 @@
             List<Vector2> path,
             float speed = -1)
         {
-            speed = Math.Abs(speed - (-1)) < float.Epsilon ? input.Unit.MoveSpeed : speed;
+            speed = Math.Abs(speed - -1) < float.Epsilon ? input.Unit.MoveSpeed : speed;
             if (path.Count <= 1)
             {
                 return new PredictionOutput
@@ -335,7 +335,7 @@
             var totalDelay = speedDelay + input.Delay;
             var moveArea = heroUnit.MoveSpeed * totalDelay;
             var fixRange = moveArea * 0.5f;
-            var moveAngle = 30 + (input.Radius / 17) - (totalDelay * 2);
+            var moveAngle = 30 + input.Radius / 17 - totalDelay * 2;
             var backToFront = moveArea * 1.5f;
             var minPath = 900f;
             if (moveAngle < 31)
@@ -371,7 +371,7 @@
                 result.Hitchance = HitChance.VeryHigh;
                 return result;
             }
-            if (distFromToWaypoint > distUnitToFrom + fixRange && input.From.GetAngle(heroUnit) < moveAngle)
+            if (distFromToWaypoint > fixRange && input.From.GetAngle(heroUnit) < moveAngle)
             {
                 result.Hitchance = HitChance.VeryHigh;
                 return result;
@@ -383,11 +383,11 @@
             }
             if (UnitTracker.GetLastAttackTime(heroUnit) < 0.1)
             {
-                if (input.Type == SkillshotType.SkillshotLine && totalDelay < 0.6 + (input.Radius * 0.001))
+                if (input.Type == SkillshotType.SkillshotLine && totalDelay < 0.6 + input.Radius * 0.001)
                 {
                     result.Hitchance = HitChance.VeryHigh;
                 }
-                else if (input.Type == SkillshotType.SkillshotCircle && totalDelay < 0.7 + (input.Radius * 0.001))
+                else if (input.Type == SkillshotType.SkillshotCircle && totalDelay < 0.7 + input.Radius * 0.001)
                 {
                     result.Hitchance = HitChance.VeryHigh;
                 }
@@ -789,7 +789,7 @@
                                     minions)
                                 {
                                     input.Unit = minion;
-                                    if (minion.Distance(input.From) < input.RealRadius)
+                                    if (minion.Distance(input.From) < input.Radius)
                                     {
                                         result.Add(minion);
                                     }

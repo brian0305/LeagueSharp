@@ -13,7 +13,6 @@
     using LeagueSharp.SDK.Core.Math.Prediction;
     using LeagueSharp.SDK.Core.UI.IMenu.Values;
     using LeagueSharp.SDK.Core.Utils;
-    using LeagueSharp.SDK.Core.Wrappers;
     using LeagueSharp.SDK.Core.Wrappers.Damages;
 
     using SharpDX;
@@ -82,7 +81,7 @@
                 {
                     atkDelay = 1.0740296828 * 1000 * Program.Player.AttackDelay - 716.2381256175;
                 }
-                return Variables.TickCount + (Game.Ping / 2) + 25 >= lastAutoAttackTick + atkDelay
+                return Variables.TickCount + Game.Ping / 2 + 25 >= lastAutoAttackTick + atkDelay
                        && (Program.Player.ChampionName != "Graves" || Program.Player.HasBuff("GravesBasicAttackAmmo1"));
             }
         }
@@ -104,8 +103,8 @@
                                            ? 200
                                            : 0;
                 return !Program.Player.CanCancelAutoAttack()
-                       || Variables.TickCount + (Game.Ping / 2)
-                       >= lastAutoAttackTick + (Program.Player.AttackCastDelay * 1000)
+                       || Variables.TickCount + Game.Ping / 2
+                       >= lastAutoAttackTick + Program.Player.AttackCastDelay * 1000
                        + Program.MainMenu["Orbwalker"]["Advanced"]["ExtraWindup"] + localExtraWindup;
             }
         }
@@ -130,7 +129,7 @@
             if ((mode == OrbwalkingMode.LaneClear || mode == OrbwalkingMode.Hybrid)
                 && !Program.MainMenu["Orbwalker"]["Advanced"]["PriorizeFarm"])
             {
-                var target = TargetSelector.GetTarget();
+                var target = Variables.TargetSelector.GetTarget(-1f, DamageType.Physical);
                 if (target != null)
                 {
                     return target;
@@ -139,7 +138,7 @@
             if (mode == OrbwalkingMode.LaneClear || mode == OrbwalkingMode.Hybrid || mode == OrbwalkingMode.LastHit)
             {
                 foreach (var minion in
-                    GameObjects.EnemyMinions.Where(m => m.InAutoAttackRange() && m.IsMinion(false))
+                    GameObjects.EnemyMinions.Where(m => m.InAutoAttackRange() && (m.IsMinion() || m.IsPet(false)))
                         .OrderByDescending(m => m.GetMinionType().HasFlag(MinionTypes.Siege))
                         .ThenBy(m => m.GetMinionType().HasFlag(MinionTypes.Super))
                         .ThenBy(m => m.Health)
@@ -152,9 +151,9 @@
                     }
                     var time =
                         (int)
-                        ((Program.Player.AttackCastDelay * 1000)
-                         + (Math.Max(0, Program.Player.Distance(minion) - Program.Player.BoundingRadius)
-                            / Program.Player.GetProjectileSpeed() * 1000) - 100 + (Game.Ping / 2f));
+                        (Program.Player.AttackCastDelay * 1000
+                         + Math.Max(0, Program.Player.Distance(minion) - Program.Player.BoundingRadius)
+                         / Program.Player.GetProjectileSpeed() * 1000 - 100 + Game.Ping / 2f);
                     var healthPrediction = Health.GetPrediction(minion, time, FarmDelay);
                     if (healthPrediction <= 0)
                     {
@@ -196,7 +195,7 @@
             }
             if (mode != OrbwalkingMode.LastHit)
             {
-                var target = TargetSelector.GetTarget();
+                var target = Variables.TargetSelector.GetTarget(-1f, DamageType.Physical);
                 if (target != null)
                 {
                     return target;
@@ -221,7 +220,7 @@
                 Obj_AI_Minion noneKillableMinion = null;
                 var turretMinions =
                     GameObjects.EnemyMinions.Where(
-                        i => i.InAutoAttackRange() && i.IsMinion(false) && i.IsUnderAllyTurret())
+                        i => i.InAutoAttackRange() && (i.IsMinion() || i.IsPet(false)) && i.IsUnderAllyTurret())
                         .OrderByDescending(m => m.GetMinionType().HasFlag(MinionTypes.Siege))
                         .ThenBy(m => m.GetMinionType().HasFlag(MinionTypes.Super))
                         .ThenBy(m => m.Health)
@@ -240,16 +239,14 @@
                         {
                             var turretStarTick = Health.TurretAggroStartTick(minion);
                             var turretLandTick = turretStarTick + (int)(turret.AttackCastDelay * 1000)
-                                                 + (1000
-                                                    * Math.Max(
-                                                        0,
-                                                        (int)(minion.Distance(turret) - turret.BoundingRadius))
-                                                    / (int)(turret.BasicAttack.MissileSpeed + 70));
+                                                 + 1000
+                                                 * Math.Max(0, (int)(minion.Distance(turret) - turret.BoundingRadius))
+                                                 / (int)(turret.BasicAttack.MissileSpeed + 70);
                             for (float i = turretLandTick + 50;
-                                 i < turretLandTick + (3 * turret.AttackDelay * 1000) + 50;
-                                 i = i + (turret.AttackDelay * 1000))
+                                 i < turretLandTick + 3 * turret.AttackDelay * 1000 + 50;
+                                 i = i + turret.AttackDelay * 1000)
                             {
-                                var time = (int)i - Variables.TickCount + (Game.Ping / 2);
+                                var time = (int)i - Variables.TickCount + Game.Ping / 2;
                                 var predHp =
                                     (int)
                                     Health.GetPrediction(
@@ -272,31 +269,31 @@
                                 var damage = (int)Program.Player.GetAutoAttackDamage(minion);
                                 var hits = hpLeftBeforeDie / damage;
                                 var timeBeforeDie = turretLandTick
-                                                    + ((turretAttackCount + 1) * (int)(turret.AttackDelay * 1000))
+                                                    + (turretAttackCount + 1) * (int)(turret.AttackDelay * 1000)
                                                     - Variables.TickCount;
                                 var timeUntilAttackReady = lastAutoAttackTick + (int)(Program.Player.AttackDelay * 1000)
-                                                           > Variables.TickCount + (Game.Ping / 2) + 25
+                                                           > Variables.TickCount + Game.Ping / 2 + 25
                                                                ? lastAutoAttackTick
                                                                  + (int)(Program.Player.AttackDelay * 1000)
-                                                                 - (Variables.TickCount + (Game.Ping / 2) + 25)
+                                                                 - (Variables.TickCount + Game.Ping / 2 + 25)
                                                                : 0;
                                 var timeToLandAttack = Program.Player.IsMelee
                                                            ? Program.Player.AttackCastDelay * 1000
                                                            : Program.Player.AttackCastDelay * 1000
-                                                             + (1000
-                                                                * Math.Max(
-                                                                    0,
-                                                                    (minion.Distance(Program.Player)
-                                                                     - Program.Player.BoundingRadius))
-                                                                / Program.Player.BasicAttack.MissileSpeed);
+                                                             + 1000
+                                                             * Math.Max(
+                                                                 0,
+                                                                 minion.Distance(Program.Player)
+                                                                 - Program.Player.BoundingRadius)
+                                                             / Program.Player.BasicAttack.MissileSpeed;
                                 if (hits >= 1
-                                    && (hits * Program.Player.AttackDelay * 1000) + timeUntilAttackReady
+                                    && hits * Program.Player.AttackDelay * 1000 + timeUntilAttackReady
                                     + timeToLandAttack < timeBeforeDie)
                                 {
                                     farmUnderTurretMinion = minion;
                                 }
                                 else if (hits >= 1
-                                         && (hits * Program.Player.AttackDelay * 1000) + timeUntilAttackReady
+                                         && hits * Program.Player.AttackDelay * 1000 + timeUntilAttackReady
                                          + timeToLandAttack > timeBeforeDie)
                                 {
                                     noneKillableMinion = minion;
@@ -348,10 +345,10 @@
                 var shouldWait =
                     GameObjects.EnemyMinions.Any(
                         m =>
-                        m.InAutoAttackRange() && m.IsMinion(false)
+                        m.InAutoAttackRange() && (m.IsMinion() || m.IsPet(false))
                         && Health.GetPrediction(
                             m,
-                            (int)((Program.Player.AttackDelay * 1000) * 2f),
+                            (int)(Program.Player.AttackDelay * 1000 * 2f),
                             FarmDelay,
                             HealthPredictionType.Simulated) <= Program.Player.GetAutoAttackDamage(m));
                 if (!shouldWait)
@@ -360,7 +357,7 @@
                     {
                         var predHealth = Health.GetPrediction(
                             lastMinion,
-                            (int)((Program.Player.AttackDelay * 1000) * 2f),
+                            (int)(Program.Player.AttackDelay * 1000 * 2f),
                             FarmDelay,
                             HealthPredictionType.Simulated);
                         if (predHealth >= 2 * Program.Player.GetAutoAttackDamage(lastMinion)
@@ -370,11 +367,12 @@
                         }
                     }
                     var minion = (from m in
-                                      GameObjects.EnemyMinions.Where(m => m.InAutoAttackRange() && m.IsMinion(false))
+                                      GameObjects.EnemyMinions.Where(
+                                          m => m.InAutoAttackRange() && (m.IsMinion() || m.IsPet(false)))
                                   let predictedHealth =
                                       Health.GetPrediction(
                                           m,
-                                          (int)((Program.Player.AttackDelay * 1000) * 2f),
+                                          (int)(Program.Player.AttackDelay * 1000 * 2f),
                                           FarmDelay,
                                           HealthPredictionType.Simulated)
                                   where
@@ -519,8 +517,8 @@
             {
                 var randomAngle = 2 * Math.PI * Random.NextDouble();
                 var radius = Program.Player.BoundingRadius / 2;
-                var x = (float)(position.X + (radius * Math.Cos(randomAngle)));
-                var y = (float)(position.Y + (radius * Math.Sin(randomAngle)));
+                var x = (float)(position.X + radius * Math.Cos(randomAngle));
+                var y = (float)(position.Y + radius * Math.Sin(randomAngle));
                 position = new Vector3(x, y, NavMesh.GetHeightForPosition(x, y));
             }
             var angle = 0f;
@@ -633,11 +631,11 @@
                     var minions =
                         GameObjects.EnemyMinions.Where(
                             m =>
-                            m.IsValidTarget(1200) && m.IsMinion(false)
+                            m.IsValidTarget(1200) && (m.IsMinion() || m.IsPet(false))
                             && m.Health < Program.Player.GetAutoAttackDamage(m) * 2);
                     foreach (var minion in minions)
                     {
-                        var value = 255 - (minion.Health * 2);
+                        var value = 255 - minion.Health * 2;
                         value = value > 255 ? 255 : value < 0 ? 0 : value;
                         Drawing.DrawCircle(
                             minion.Position,
@@ -650,7 +648,7 @@
                     var minions =
                         GameObjects.EnemyMinions.Where(
                             m =>
-                            m.IsValidTarget(1200) && m.IsMinion(false)
+                            m.IsValidTarget(1200) && (m.IsMinion() || m.IsPet(false))
                             && m.Health < Program.Player.GetAutoAttackDamage(m));
                     foreach (var minion in minions)
                     {
@@ -692,11 +690,11 @@
             return
                 GameObjects.EnemyMinions.Any(
                     m =>
-                    m.InAutoAttackRange() && m.IsMinion(false)
+                    m.InAutoAttackRange() && (m.IsMinion() || m.IsPet(false))
                     && (noneKillableMinion == null || noneKillableMinion.NetworkId != m.NetworkId)
                     && Health.GetPrediction(
                         m,
-                        (int)((Program.Player.AttackDelay * 1000) * m.GetTimeToHit()),
+                        (int)(Program.Player.AttackDelay * 1000 * m.GetTimeToHit()),
                         FarmDelay,
                         HealthPredictionType.Simulated) <= Program.Player.GetAutoAttackDamage(m));
         }

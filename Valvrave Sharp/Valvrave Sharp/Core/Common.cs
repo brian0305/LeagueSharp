@@ -6,10 +6,8 @@ namespace Valvrave_Sharp.Core
     using LeagueSharp.SDK.Core;
     using LeagueSharp.SDK.Core.Enumerations;
     using LeagueSharp.SDK.Core.Extensions;
-    using LeagueSharp.SDK.Core.Extensions.SharpDX;
+    using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers;
-
-    using SharpDX;
 
     internal static class Common
     {
@@ -45,19 +43,18 @@ namespace Valvrave_Sharp.Core
             return spell.Casting(spell.GetTarget(extraRange), aoe);
         }
 
-        public static int CountEnemy(this Vector2 pos, float range)
+        public static InventorySlot GetWardSlot()
         {
-            return CountEnemy(pos.ToVector3(), range);
+            var wardIds = new[] { 2049, 2045, 2301, 2302, 2303, 3711, 1408, 1409, 1410, 1411, 3932, 3340, 2043 };
+            return (from wardId in wardIds
+                    where Items.CanUseItem(wardId)
+                    select GameObjects.Player.InventoryItems.FirstOrDefault(slot => slot.Id == (ItemId)wardId))
+                .FirstOrDefault();
         }
 
-        public static int CountEnemy(this Vector3 pos, float range)
+        public static bool IsWard(this Obj_AI_Minion minion)
         {
-            return GameObjects.EnemyHeroes.Count(i => i.IsValidTarget(range, true, pos));
-        }
-
-        public static int CountEnemy(this Obj_AI_Base unit, float range)
-        {
-            return CountEnemy(unit.ServerPosition, range);
+            return minion.GetMinionType().HasFlag(MinionTypes.Ward) && minion.CharData.BaseSkinName != "BlueTrinket";
         }
 
         public static Prediction.PredictionOutput VPrediction(

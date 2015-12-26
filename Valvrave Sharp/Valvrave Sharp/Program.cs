@@ -23,7 +23,7 @@
     {
         #region Constants
 
-        internal const int FlashRange = 450, IgniteRange = 600, SmiteRange = 570;
+        internal const int FlashRange = 425, IgniteRange = 600, SmiteRange = 570;
 
         #endregion
 
@@ -72,7 +72,7 @@
             Orbwalker.Init(MainMenu);
             Plugins[Player.ChampionName].Invoke();
             ThemeManager.Current = new ColoredTheme();
-            Variables.Orbwalker.Enable = false;
+            Variables.Orbwalker.Enabled = false;
         }
 
         private static void InitSummonerSpell()

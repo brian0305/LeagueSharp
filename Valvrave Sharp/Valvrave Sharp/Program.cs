@@ -1,5 +1,7 @@
 ﻿namespace Valvrave_Sharp
 {
+    #region
+
     using System;
     using System.Collections.Generic;
     using System.Linq;
@@ -18,6 +20,8 @@
 
     using Valvrave_Sharp.Core;
     using Valvrave_Sharp.Plugin;
+
+    #endregion
 
     internal class Program
     {
@@ -40,7 +44,7 @@
         private static readonly Dictionary<string, Func<object>> Plugins = new Dictionary<string, Func<object>>
                                                                                {
                                                                                    { "LeeSin", () => new LeeSin() },
-                                                                                   //{ "Yasuo", () => new Yasuo() },
+                                                                                   { "Yasuo", () => new Yasuo() },
                                                                                    { "Zed", () => new Zed() }
                                                                                };
 

@@ -1,5 +1,7 @@
 namespace Valvrave_Sharp.Evade
 {
+    #region
+
     using System.Collections.Generic;
     using System.Linq;
 
@@ -10,6 +12,10 @@ namespace Valvrave_Sharp.Evade
     using LeagueSharp.SDK.Core.Utils;
 
     using SharpDX;
+
+    using Valvrave_Sharp.Core;
+
+    #endregion
 
     public static class Evader
     {
@@ -41,7 +47,7 @@ namespace Valvrave_Sharp.Evade
                 for (var i = 0; i <= poly.Points.Count - 1; i++)
                 {
                     var sideStart = poly.Points[i];
-                    var sideEnd = poly.Points[(i == poly.Points.Count - 1) ? 0 : i + 1];
+                    var sideEnd = poly.Points[i == poly.Points.Count - 1 ? 0 : i + 1];
                     var originalCandidate = myPosition.ProjectOn(sideStart, sideEnd).SegmentPoint;
                     var distanceToEvadePoint = Vector2.DistanceSquared(originalCandidate, myPosition);
                     if (!(distanceToEvadePoint < 600 * 600))
@@ -50,7 +56,7 @@ namespace Valvrave_Sharp.Evade
                     }
                     var sideDistance = Vector2.DistanceSquared(sideEnd, sideStart);
                     var direction = (sideEnd - sideStart).Normalized();
-                    var s = (distanceToEvadePoint < 200 * 200 && sideDistance > 90 * 90)
+                    var s = distanceToEvadePoint < 200 * 200 && sideDistance > 90 * 90
                                 ? Config.DiagonalEvadePointsCount
                                 : 0;
                     for (var j = -s; j <= s; j++)
@@ -126,16 +132,20 @@ namespace Valvrave_Sharp.Evade
                         break;
                     case SpellValidTargets.AllyMinions:
                         allTargets.AddRange(
-                            GameObjects.AllyMinions.Where(i => i.IsValidTarget(range, false) && i.IsMinion()));
+                            GameObjects.AllyMinions.Where(
+                                i => i.IsValidTarget(range, false) && (i.IsMinion() || i.IsPet())));
                         break;
                     case SpellValidTargets.AllyWards:
-                        allTargets.AddRange(GameObjects.AllyWards.Where(i => i.IsValidTarget(range, false)));
+                        allTargets.AddRange(
+                            GameObjects.AllyWards.Where(i => i.IsValidTarget(range, false) && i.IsWard()));
                         break;
                     case SpellValidTargets.EnemyChampions:
                         allTargets.AddRange(GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(range)));
                         break;
                     case SpellValidTargets.EnemyMinions:
-                        allTargets.AddRange(GameObjects.EnemyMinions.Where(i => i.IsValidTarget(range) && i.IsMinion()));
+                        allTargets.AddRange(
+                            GameObjects.EnemyMinions.Where(
+                                i => i.IsValidTarget(range) && (i.IsMinion() || i.IsPet(false))));
                         allTargets.AddRange(GameObjects.Jungle.Where(i => i.IsValidTarget(range)));
                         break;
                     case SpellValidTargets.EnemyWards:

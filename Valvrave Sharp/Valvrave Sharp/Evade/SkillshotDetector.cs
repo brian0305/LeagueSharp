@@ -1,5 +1,7 @@
 ﻿namespace Valvrave_Sharp.Evade
 {
+    #region
+
     using System;
     using System.Linq;
     using System.Text.RegularExpressions;
@@ -11,6 +13,8 @@
     using LeagueSharp.SDK.Core.Utils;
 
     using SharpDX;
+
+    #endregion
 
     internal static class SkillshotDetector
     {

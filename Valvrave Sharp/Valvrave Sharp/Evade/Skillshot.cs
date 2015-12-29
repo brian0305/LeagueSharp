@@ -1,5 +1,7 @@
 ﻿namespace Valvrave_Sharp.Evade
 {
+    #region
+
     using System;
     using System.Collections.Generic;
     using System.Linq;
@@ -13,6 +15,8 @@
     using SharpDX;
 
     using Color = System.Drawing.Color;
+
+    #endregion
 
     public enum SkillShotType
     {
@@ -326,7 +330,7 @@
             if (!this.IsSafe(unit.ServerPosition.ToVector2()))
             {
                 var timeToExplode = this.SpellData.ExtraDuration + this.SpellData.Delay
-                                    + (int)((1000 * this.Start.Distance(this.End)) / this.SpellData.MissileSpeed)
+                                    + (int)(1000 * this.Start.Distance(this.End) / this.SpellData.MissileSpeed)
                                     - (Variables.TickCount - this.StartTick);
                 if (timeToExplode <= time)
                 {
@@ -554,7 +558,7 @@
                         0,
                         !this.SpellData.AddHitbox
                             ? this.SpellData.Radius
-                            : (this.SpellData.Radius - ObjectManager.Player.BoundingRadius));
+                            : this.SpellData.Radius - ObjectManager.Player.BoundingRadius);
                     this.EvadePolygon = this.Circle.ToPolygon(Config.ExtraEvadeDistance);
                     break;
                 case SkillShotType.SkillshotLine:
@@ -563,7 +567,7 @@
                         0,
                         !this.SpellData.AddHitbox
                             ? this.SpellData.Radius
-                            : (this.SpellData.Radius - ObjectManager.Player.BoundingRadius));
+                            : this.SpellData.Radius - ObjectManager.Player.BoundingRadius);
                     this.EvadePolygon = this.Rectangle.ToPolygon(Config.ExtraEvadeDistance);
                     break;
                 case SkillShotType.SkillshotMissileLine:
@@ -572,7 +576,7 @@
                         0,
                         !this.SpellData.AddHitbox
                             ? this.SpellData.Radius
-                            : (this.SpellData.Radius - ObjectManager.Player.BoundingRadius));
+                            : this.SpellData.Radius - ObjectManager.Player.BoundingRadius);
                     this.EvadePolygon = this.Rectangle.ToPolygon(Config.ExtraEvadeDistance);
                     break;
                 case SkillShotType.SkillshotCone:

@@ -1,5 +1,7 @@
 ﻿namespace Valvrave_Sharp.Core
 {
+    #region
+
     using System;
     using System.Linq;
     using System.Windows.Forms;
@@ -19,6 +21,8 @@
 
     using Color = System.Drawing.Color;
     using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+
+    #endregion
 
     internal static class Orbwalker
     {
@@ -76,13 +80,20 @@
                 {
                     return false;
                 }
+                if (Program.Player.IsDashing() || Program.Player.Spellbook.IsCastingSpell)
+                {
+                    return false;
+                }
                 var atkDelay = Program.Player.AttackDelay * 1000d;
                 if (Program.Player.ChampionName == "Graves")
                 {
-                    atkDelay = 1.0740296828 * 1000 * Program.Player.AttackDelay - 716.2381256175;
+                    if (!Program.Player.HasBuff("GravesBasicAttackAmmo1"))
+                    {
+                        return false;
+                    }
+                    atkDelay = 1.0740296828 * Program.Player.AttackDelay * 1000d - 716.2381256175;
                 }
-                return Variables.TickCount + Game.Ping / 2 + 25 >= lastAutoAttackTick + atkDelay
-                       && (Program.Player.ChampionName != "Graves" || Program.Player.HasBuff("GravesBasicAttackAmmo1"));
+                return Variables.TickCount + Game.Ping / 2 + 25 >= lastAutoAttackTick + atkDelay;
             }
         }
 
@@ -488,17 +499,22 @@
             {
                 return;
             }
-            if (!CanMove)
-            {
-                return;
-            }
             if (position.Distance(Program.Player.Position)
                 < Program.Player.BoundingRadius + Program.MainMenu["Orbwalker"]["Advanced"]["ExtraHold"])
             {
                 if (Program.Player.Path.Length > 0)
                 {
-                    Program.Player.IssueOrder(GameObjectOrder.Stop, Program.Player.ServerPosition);
-                    lastMovementOrderTick = Variables.TickCount - 70;
+                    var eventStopArgs = new OrbwalkerActionArgs
+                                            {
+                                                Position = Program.Player.ServerPosition, Process = true,
+                                                Type = OrbwalkingType.StopMovement
+                                            };
+                    InvokeAction(eventStopArgs);
+                    if (eventStopArgs.Process)
+                    {
+                        Program.Player.IssueOrder(GameObjectOrder.Stop, eventStopArgs.Position);
+                        lastMovementOrderTick = Variables.TickCount - 70;
+                    }
                 }
                 return;
             }
@@ -528,8 +544,8 @@
                 var movePath = Program.Player.GetPath(position);
                 if (movePath.Length > 1)
                 {
-                    angle = (currentPath[1] - currentPath[0]).AngleBetween((movePath[1] - movePath[0]).ToVector2());
-                    var distance = movePath.Last().ToVector2().DistanceSquared(currentPath.Last());
+                    angle = (currentPath[1] - currentPath[0]).AngleBetween(movePath[1] - movePath[0]);
+                    var distance = movePath.Last().DistanceSquared(currentPath.Last());
                     if ((angle < 10 && distance < 500 * 500) || distance < 50 * 50)
                     {
                         return;
@@ -544,12 +560,12 @@
             {
                 return;
             }
-            var eventArgs = new OrbwalkerActionArgs
-                                { Position = position, Process = true, Type = OrbwalkingType.Movement };
-            InvokeAction(eventArgs);
-            if (eventArgs.Process)
+            var eventMoveArgs = new OrbwalkerActionArgs
+                                    { Position = position, Process = true, Type = OrbwalkingType.Movement };
+            InvokeAction(eventMoveArgs);
+            if (eventMoveArgs.Process)
             {
-                Program.Player.IssueOrder(GameObjectOrder.MoveTo, eventArgs.Position);
+                Program.Player.IssueOrder(GameObjectOrder.MoveTo, eventMoveArgs.Position);
                 lastMovementOrderTick = Variables.TickCount;
             }
         }
@@ -586,7 +602,10 @@
                     }
                 }
             }
-            MoveOrder(position.HasValue && position.Value.IsValid() ? position.Value : Game.CursorPos);
+            if (CanMove)
+            {
+                MoveOrder(position.HasValue && position.Value.IsValid() ? position.Value : Game.CursorPos);
+            }
         }
 
         internal static void ResetAutoAttackTimer()

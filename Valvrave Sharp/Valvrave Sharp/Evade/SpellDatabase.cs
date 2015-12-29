@@ -1,11 +1,15 @@
 namespace Valvrave_Sharp.Evade
 {
+    #region
+
     using System;
     using System.Collections.Generic;
     using System.Linq;
 
     using LeagueSharp;
     using LeagueSharp.SDK.Core.Enumerations;
+
+    #endregion
 
     public static class SpellDatabase
     {

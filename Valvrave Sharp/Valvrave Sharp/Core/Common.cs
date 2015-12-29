@@ -1,5 +1,7 @@
 namespace Valvrave_Sharp.Core
 {
+    #region
+
     using System.Linq;
 
     using LeagueSharp;
@@ -8,6 +10,8 @@ namespace Valvrave_Sharp.Core
     using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers;
+
+    #endregion
 
     internal static class Common
     {

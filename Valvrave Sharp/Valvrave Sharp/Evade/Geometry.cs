@@ -1,5 +1,7 @@
 ﻿namespace Valvrave_Sharp.Evade
 {
+    #region
+
     using System;
     using System.Collections.Generic;
     using System.Linq;
@@ -11,6 +13,8 @@
     using SharpDX;
 
     using Color = System.Drawing.Color;
+
+    #endregion
 
     public static class Geometry
     {
@@ -204,7 +208,7 @@
             {
                 for (var i = 0; i <= this.Points.Count - 1; i++)
                 {
-                    var nextIndex = (this.Points.Count - 1 == i) ? 0 : (i + 1);
+                    var nextIndex = this.Points.Count - 1 == i ? 0 : i + 1;
                     var from = Drawing.WorldToScreen(this.Points[i].ToVector3());
                     var to = Drawing.WorldToScreen(this.Points[nextIndex].ToVector3());
                     Drawing.DrawLine(from[0], from[1], to[0], to[1], width, color);

@@ -1,5 +1,7 @@
 ﻿namespace Valvrave_Sharp.Core
 {
+    #region
+
     using System;
     using System.Collections.Generic;
     using System.Linq;
@@ -15,6 +17,8 @@
     using LeagueSharp.SDK.Core.Utils;
 
     using SharpDX;
+
+    #endregion
 
     internal static class Prediction
     {
@@ -338,6 +342,11 @@
             var moveAngle = 30 + input.Radius / 17 - totalDelay * 2;
             var backToFront = moveArea * 1.5f;
             var minPath = 900f;
+            var spellRange = input.Range;
+            if (input.Type == SkillshotType.SkillshotLine)
+            {
+                spellRange += input.Radius;
+            }
             if (moveAngle < 31)
             {
                 moveAngle = 31;
@@ -353,7 +362,7 @@
             }
             if (UnitTracker.CanCalcWaypoints(heroUnit))
             {
-                result.Hitchance = distUnitToFrom < input.Range - fixRange ? HitChance.VeryHigh : HitChance.High;
+                result.Hitchance = distUnitToFrom < spellRange - fixRange ? HitChance.VeryHigh : HitChance.High;
                 return result;
             }
             if (UnitTracker.GetLastVisableTime(heroUnit) < 0.08)
@@ -376,7 +385,7 @@
                 result.Hitchance = HitChance.VeryHigh;
                 return result;
             }
-            if (distFromToWaypoint <= heroUnit.Distance(input.From) && distUnitToFrom > input.Range - fixRange)
+            if (distFromToWaypoint <= distUnitToFrom && distUnitToFrom > spellRange - fixRange)
             {
                 result.Hitchance = HitChance.Medium;
                 return result;
@@ -404,7 +413,7 @@
             }
             if (heroUnit.Path.Length == 0 && !heroUnit.IsMoving)
             {
-                if (distUnitToFrom > input.Range - fixRange)
+                if (distUnitToFrom > spellRange - fixRange)
                 {
                     result.Hitchance = HitChance.Medium;
                 }
@@ -426,7 +435,7 @@
                 return result;
             }
             if (input.Type == SkillshotType.SkillshotCircle && UnitTracker.GetLastNewPathTime(heroUnit) < 0.1
-                && distUnitToWaypoint > fixRange && distUnitToFrom < input.Range - fixRange)
+                && distUnitToWaypoint > fixRange && distUnitToFrom < spellRange - fixRange)
             {
                 result.Hitchance = HitChance.VeryHigh;
                 return result;
@@ -856,9 +865,9 @@
                                 {
                                     break;
                                 }
-                                var wallWidth = 300 + 50 * Convert.ToInt32(wall.Name.Substring(wall.Name.Length - 6, 1));
+                                var wallWidth = 350 + 50 * Convert.ToInt32(wall.Name.Substring(wall.Name.Length - 6, 1));
                                 var wallDirection =
-                                    (wall.Position.ToVector2() - yasuoWallCastedPos).Normalized().Perpendicular();
+                                    (yasuoWallCastedPos - wall.Position.ToVector2()).Normalized().Perpendicular();
                                 var wallStart = wall.Position.ToVector2() + wallWidth / 2f * wallDirection;
                                 var wallEnd = wallStart - wallWidth * wallDirection;
                                 var wallIntersect = wallStart.Intersection(

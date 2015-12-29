@@ -1,5 +1,7 @@
 ﻿namespace Valvrave_Sharp.Plugin
 {
+    #region
+
     using System;
     using System.Collections.Generic;
     using System.Linq;
@@ -22,6 +24,8 @@
 
     using Color = System.Drawing.Color;
     using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+
+    #endregion
 
     internal class Zed : Program
     {
@@ -657,7 +661,7 @@
                         CastW(target, true);
                     }
                 }
-                if (Orbwalker.GetTarget(OrbwalkingMode.Combo) == null || (!Orbwalker.CanAttack && Orbwalker.CanMove))
+                if (Orbwalker.GetTarget(OrbwalkingMode.Combo) == null || Orbwalker.CanMove)
                 {
                     CastQ(target, true);
                 }
@@ -778,7 +782,8 @@
             var zedW =
                 EvadeSpellDatabase.Spells.FirstOrDefault(
                     i => i.Enable && i.DangerLevel <= dangerLevel && i.IsReady && i.Slot == SpellSlot.W);
-            if (zedW != null && Evade.IsAboutToHit(Player, zedW.Delay))
+            if (zedW != null && Evade.IsAboutToHit(Player, zedW.Delay)
+                && Evade.IsSafePoint(wShadow.ServerPosition.ToVector2()).IsSafe)
             {
                 Player.Spellbook.CastSpell(zedW.Slot);
                 return;
@@ -786,7 +791,8 @@
             var zedR =
                 EvadeSpellDatabase.Spells.FirstOrDefault(
                     i => i.Enable && i.DangerLevel <= dangerLevel && i.IsReady && i.Slot == SpellSlot.R);
-            if (zedR != null && Evade.IsAboutToHit(Player, zedR.Delay))
+            if (zedR != null && Evade.IsAboutToHit(Player, zedR.Delay)
+                && Evade.IsSafePoint(rShadow.ServerPosition.ToVector2()).IsSafe)
             {
                 Player.Spellbook.CastSpell(zedR.Slot);
             }

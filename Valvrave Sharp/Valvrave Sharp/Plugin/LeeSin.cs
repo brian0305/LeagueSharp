@@ -1,5 +1,7 @@
 ﻿namespace Valvrave_Sharp.Plugin
 {
+    #region
+
     using System;
     using System.Collections.Generic;
     using System.Linq;
@@ -22,6 +24,8 @@
 
     using Color = System.Drawing.Color;
     using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+
+    #endregion
 
     internal class LeeSin : Program
     {
@@ -447,7 +451,7 @@
             {
                 W.Cast();
             }
-            if (Orbwalker.GetTarget(OrbwalkingMode.Combo) == null || (!Orbwalker.CanAttack && Orbwalker.CanMove))
+            if (Orbwalker.GetTarget(OrbwalkingMode.Combo) == null || Orbwalker.CanMove)
             {
                 if (MainMenu["Orbwalk"]["Q"] && Q.IsReady() && CanCastInOrbwalk)
                 {

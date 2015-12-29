@@ -1,8 +1,12 @@
 ﻿namespace Valvrave_Sharp.Evade
 {
+    #region
+
     using System.Collections.Generic;
 
     using LeagueSharp;
+
+    #endregion
 
     internal class EvadeSpellDatabase
     {
@@ -24,7 +28,7 @@
 
             if (ObjectManager.Player.ChampionName == "Yasuo")
             {
-                spell = new DashData("Yasuo E", SpellSlot.E, 475, true, 100, 1400, 2)
+                spell = new DashData("Yasuo E", SpellSlot.E, 475, true, 100, 1000, 2)
                             {
                                 ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions },
                                 UnderTower = true

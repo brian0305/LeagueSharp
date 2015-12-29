@@ -1,7 +1,11 @@
 ﻿namespace Valvrave_Sharp.Evade
 {
+    #region
+
     using LeagueSharp;
     using LeagueSharp.SDK.Core.Enumerations;
+
+    #endregion
 
     public class SpellData
     {
@@ -95,9 +99,8 @@
         {
             get
             {
-                return (!this.AddHitbox)
-                           ? this.RawRadius + Config.SkillShotsExtraRadius
-                           : Config.SkillShotsExtraRadius + this.RawRadius + (int)ObjectManager.Player.BoundingRadius;
+                return this.RawRadius + Config.SkillShotsExtraRadius
+                       + (!this.AddHitbox ? 0 : (int)ObjectManager.Player.BoundingRadius);
             }
             set
             {

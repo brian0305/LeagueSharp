@@ -1,6 +1,10 @@
 ﻿namespace Valvrave_Sharp.Evade
 {
+    #region
+
     using LeagueSharp;
+
+    #endregion
 
     public enum SpellValidTargets
     {

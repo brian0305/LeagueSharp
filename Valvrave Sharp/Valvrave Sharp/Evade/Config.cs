@@ -1,5 +1,7 @@
 ﻿namespace Valvrave_Sharp.Evade
 {
+    #region
+
     using System;
     using System.Linq;
     using System.Windows.Forms;
@@ -10,6 +12,8 @@
     using Valvrave_Sharp.Core;
 
     using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+
+    #endregion
 
     internal static class Config
     {

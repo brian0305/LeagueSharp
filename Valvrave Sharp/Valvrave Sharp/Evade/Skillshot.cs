@@ -492,13 +492,11 @@
 
         public void OnUpdate()
         {
-            if (this.SpellData.CollisionObjects.Length > 0 && this.SpellData.CollisionObjects != null
-                && Variables.TickCount - this.lastCollisionCalc > 50)
+            if (this.SpellData.CollisionObjects.GetFlags().Any() && Variables.TickCount - this.lastCollisionCalc > 50)
             {
                 this.lastCollisionCalc = Variables.TickCount;
                 this.collisionEnd = Collision.GetCollisionPoint(this);
             }
-
             if (this.SpellData.Type == SkillShotType.SkillshotMissileLine)
             {
                 this.Rectangle = new Geometry.Rectangle(

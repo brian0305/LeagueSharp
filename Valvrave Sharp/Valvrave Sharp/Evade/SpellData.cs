@@ -19,7 +19,7 @@
 
         public string ChampionName;
 
-        public CollisionableObjects[] CollisionObjects = { };
+        public CollisionableObjects CollisionObjects;
 
         public int DangerValue;
 

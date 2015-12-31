@@ -49,12 +49,12 @@ namespace Valvrave_Sharp.Evade
                     var sideStart = poly.Points[i];
                     var sideEnd = poly.Points[i == poly.Points.Count - 1 ? 0 : i + 1];
                     var originalCandidate = myPosition.ProjectOn(sideStart, sideEnd).SegmentPoint;
-                    var distanceToEvadePoint = Vector2.DistanceSquared(originalCandidate, myPosition);
+                    var distanceToEvadePoint = originalCandidate.DistanceSquared(myPosition);
                     if (!(distanceToEvadePoint < 600 * 600))
                     {
                         continue;
                     }
-                    var sideDistance = Vector2.DistanceSquared(sideEnd, sideStart);
+                    var sideDistance = sideEnd.DistanceSquared(sideStart);
                     var direction = (sideEnd - sideStart).Normalized();
                     var s = distanceToEvadePoint < 200 * 200 && sideDistance > 90 * 90
                                 ? Config.DiagonalEvadePointsCount

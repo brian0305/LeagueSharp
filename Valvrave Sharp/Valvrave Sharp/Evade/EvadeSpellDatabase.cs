@@ -46,11 +46,9 @@
 
             if (ObjectManager.Player.ChampionName == "Zed")
             {
-                spell = new BlinkData("Zed W2", SpellSlot.W, 20000, 100, 3)
-                            { CheckSpellName = "zedw2", SelfCast = true };
+                spell = new BlinkData("Zed W2", SpellSlot.W, 20000, 50, 3) { CheckSpellName = "zedw2", SelfCast = true };
                 Spells.Add(spell);
-                spell = new BlinkData("Zed R2", SpellSlot.R, 20000, 100, 4)
-                            { CheckSpellName = "zedr2", SelfCast = true };
+                spell = new BlinkData("Zed R2", SpellSlot.R, 20000, 50, 4) { CheckSpellName = "zedr2", SelfCast = true };
                 Spells.Add(spell);
             }
 

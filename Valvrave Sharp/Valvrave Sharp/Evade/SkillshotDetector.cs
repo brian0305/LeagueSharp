@@ -22,9 +22,8 @@
 
         static SkillshotDetector()
         {
-            Obj_AI_Base.OnProcessSpellCast +=
-                (sender, args) => { DelayAction.Add(0, () => OnProcessSpellCast(sender, args)); };
-            GameObject.OnCreate += (sender, args) => { DelayAction.Add(0, () => MissionOnCreate(sender)); };
+            Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
+            GameObject.OnCreate += (sender, args) => { DelayAction.Add(0, () => MissileOnCreate(sender)); };
             GameObject.OnDelete += MissileOnDelete;
             GameObject.OnCreate += (sender, args) =>
                 {
@@ -81,41 +80,7 @@
 
         #region Methods
 
-        private static void MissileOnDelete(GameObject sender, EventArgs args)
-        {
-            var missile = sender as MissileClient;
-            if (missile == null || !missile.IsValid)
-            {
-                return;
-            }
-            var unit = missile.SpellCaster as Obj_AI_Hero;
-            if (unit == null || !unit.IsValid || unit.Team == ObjectManager.Player.Team)
-            {
-                return;
-            }
-            var spellName = missile.SData.Name;
-            if (OnDeleteSkillshot != null)
-            {
-                foreach (var skillshot in
-                    Evade.DetectedSkillshots.Where(
-                        i =>
-                        i.SpellData.MissileSpellName == spellName && i.Unit.NetworkId == unit.NetworkId
-                        && (missile.EndPosition.ToVector2() - missile.StartPosition.ToVector2()).AngleBetween(
-                            i.Direction) < 10 && i.SpellData.CanBeRemoved))
-                {
-                    OnDeleteSkillshot(skillshot, missile);
-                    break;
-                }
-            }
-            Evade.DetectedSkillshots.RemoveAll(
-                i =>
-                (i.SpellData.MissileSpellName == spellName || i.SpellData.ExtraMissileNames.Contains(spellName))
-                && (i.Unit.NetworkId == unit.NetworkId
-                    && (missile.EndPosition.ToVector2() - missile.StartPosition.ToVector2()).AngleBetween(i.Direction)
-                    < 10 && i.SpellData.CanBeRemoved || i.SpellData.ForceRemove));
-        }
-
-        private static void MissionOnCreate(GameObject sender)
+        private static void MissileOnCreate(GameObject sender)
         {
             var missile = sender as MissileClient;
             if (missile == null || !missile.IsValid)
@@ -151,6 +116,40 @@
             TriggerOnDetectSkillshot(DetectionType.RecvPacket, spellData, castTime, unitPosition, endPos, unit);
         }
 
+        private static void MissileOnDelete(GameObject sender, EventArgs args)
+        {
+            var missile = sender as MissileClient;
+            if (missile == null || !missile.IsValid)
+            {
+                return;
+            }
+            var unit = missile.SpellCaster as Obj_AI_Hero;
+            if (unit == null || !unit.IsValid || unit.Team == ObjectManager.Player.Team)
+            {
+                return;
+            }
+            var spellName = missile.SData.Name;
+            if (OnDeleteSkillshot != null)
+            {
+                foreach (var skillshot in
+                    Evade.DetectedSkillshots.Where(
+                        i =>
+                        i.SpellData.MissileSpellName == spellName && i.Unit.NetworkId == unit.NetworkId
+                        && (missile.EndPosition.ToVector2() - missile.StartPosition.ToVector2()).AngleBetween(
+                            i.Direction) < 10 && i.SpellData.CanBeRemoved))
+                {
+                    OnDeleteSkillshot(skillshot, missile);
+                    break;
+                }
+            }
+            Evade.DetectedSkillshots.RemoveAll(
+                i =>
+                (i.SpellData.MissileSpellName == spellName || i.SpellData.ExtraMissileNames.Contains(spellName))
+                && (i.Unit.NetworkId == unit.NetworkId
+                    && (missile.EndPosition.ToVector2() - missile.StartPosition.ToVector2()).AngleBetween(i.Direction)
+                    < 10 && i.SpellData.CanBeRemoved || i.SpellData.ForceRemove));
+        }
+
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
             var unit = sender as Obj_AI_Hero;
@@ -169,7 +168,7 @@
             {
                 return;
             }
-            var startPos = Vector2.Zero;
+            var startPos = new Vector2();
             if (spellData.FromObject != "")
             {
                 foreach (var obj in GameObjects.AllGameObjects.Where(i => i.Name.Contains(spellData.FromObject)))

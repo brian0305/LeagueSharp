@@ -47,9 +47,9 @@
 
         #endregion
 
-        #region Public Properties
+        #region Properties
 
-        public static Vector2 PlayerPosition => ObjectManager.Player.ServerPosition.ToVector2();
+        internal static Vector2 PlayerPosition => ObjectManager.Player.ServerPosition.ToVector2();
 
         #endregion
 
@@ -199,7 +199,7 @@
                 DetectedSkillshots.Where(
                     i =>
                     i.Enable && i.IsAboutToHit(time, unit)
-                    && (!onlyWindWall || i.SpellData.CollisionObjects.Contains(CollisionableObjects.YasuoWall)))
+                    && (!onlyWindWall || i.SpellData.CollisionObjects.HasFlag(CollisionableObjects.YasuoWall)))
                     .OrderBy(i => i.DangerLevel)
                     .ToList();
         }
@@ -392,7 +392,7 @@
                 }
                 if (skillshot.SpellData.SpellName == "JarvanIVDragonStrike")
                 {
-                    var endPos = Vector2.Zero;
+                    var endPos = new Vector2();
                     foreach (var s in DetectedSkillshots)
                     {
                         if (s.Unit.NetworkId == skillshot.Unit.NetworkId && s.SpellData.Slot == SpellSlot.E)

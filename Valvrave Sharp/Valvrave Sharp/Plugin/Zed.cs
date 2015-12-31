@@ -14,8 +14,8 @@
     using LeagueSharp.SDK.Core.Extensions.SharpDX;
     using LeagueSharp.SDK.Core.UI.IMenu.Values;
     using LeagueSharp.SDK.Core.Utils;
-    using LeagueSharp.SDK.Core.Wrappers;
     using LeagueSharp.SDK.Core.Wrappers.Damages;
+    using LeagueSharp.SDK.Core.Wrappers.Spells;
 
     using SharpDX;
 
@@ -57,7 +57,7 @@
             E = new Spell(SpellSlot.E, 290);
             R = new Spell(SpellSlot.R, 625);
             Q.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
-            Q.MinHitChance = HitChance.VeryHigh;
+            Q.MinHitChance = HitChance.High;
 
             var orbwalkMenu = MainMenu.Add(new Menu("Orbwalk", "Orbwalk"));
             {
@@ -238,7 +238,7 @@
             {
                 return;
             }
-            var pred = Q.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall });
+            var pred = Q.VPrediction(target, true, CollisionableObjects.YasuoWall);
             if (pred.Hitchance >= Q.MinHitChance)
             {
                 Q.Cast(pred.CastPosition);
@@ -273,18 +273,18 @@
             {
                 return;
             }
-            var predPlayer = Q.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall });
+            var predPlayer = Q.VPrediction(target, true, CollisionableObjects.YasuoWall);
             Prediction.PredictionOutput predW = null;
             if (wShadow.IsValid())
             {
                 Q2.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
-                predW = Q2.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall });
+                predW = Q2.VPrediction(target, true, CollisionableObjects.YasuoWall);
             }
             Prediction.PredictionOutput predR = null;
             if (rShadow.IsValid())
             {
                 Q2.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
-                predR = Q2.VPrediction(target, true, new[] { CollisionableObjects.YasuoWall });
+                predR = Q2.VPrediction(target, true, CollisionableObjects.YasuoWall);
             }
             var bestHit =
                 (HitChance)
@@ -365,14 +365,14 @@
             foreach (var minion in
                 GameObjects.EnemyMinions.Where(
                     i =>
-                    i.IsValidTarget(Q.Range) && i.IsMinion()
+                    i.IsValidTarget(Q.Range) && (i.IsMinion() || i.IsPet(false))
                     && (!i.InAutoAttackRange() ? Q.GetHealthPrediction(i) > 0 : i.Health > Player.GetAutoAttackDamage(i)))
                     .OrderByDescending(i => i.MaxHealth))
             {
                 var pred = Q.VPrediction(
                     minion,
                     true,
-                    new[] { CollisionableObjects.Heroes, CollisionableObjects.Minions, CollisionableObjects.YasuoWall });
+                    CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall);
                 if (pred.Hitchance >= Q.MinHitChance
                     && Q.GetHealthPrediction(minion) <= Player.GetSpellDamage(minion, SpellSlot.Q))
                 {
@@ -469,15 +469,18 @@
             {
                 CastE();
             }
-            CastQ(target);
+            if (MainMenu["Hybrid"]["Mode"].GetValue<MenuList>().Index != 0 || wShadow.IsValid() || WState == -1
+                || Player.Mana < Q.Instance.ManaCost + W.Instance.ManaCost)
+            {
+                CastQ(target);
+            }
         }
 
         private static bool IsInRangeE(Obj_AI_Hero target)
         {
-            var posPred = Prediction.GetPrediction(target, 0).UnitPosition;
-            var distPlayer = Player.Distance(posPred);
-            var distW = wShadow.IsValid() ? wShadow.Distance(posPred) : 999999;
-            var distR = rShadow.IsValid() ? rShadow.Distance(posPred) : 999999;
+            var distPlayer = Player.Distance(target);
+            var distW = wShadow.IsValid() ? wShadow.Distance(target) : 999999;
+            var distR = rShadow.IsValid() ? rShadow.Distance(target) : 999999;
             return Math.Min(Math.Min(distR, distW), distPlayer) < E.Range;
         }
 
@@ -661,10 +664,7 @@
                         CastW(target, true);
                     }
                 }
-                if (Orbwalker.GetTarget(OrbwalkingMode.Combo) == null || Orbwalker.CanMove)
-                {
-                    CastQ(target, true);
-                }
+                CastQ(target, true);
                 CastE();
             }
             if (MainMenu["Orbwalk"]["Item"])
@@ -782,8 +782,7 @@
             var zedW =
                 EvadeSpellDatabase.Spells.FirstOrDefault(
                     i => i.Enable && i.DangerLevel <= dangerLevel && i.IsReady && i.Slot == SpellSlot.W);
-            if (zedW != null && Evade.IsAboutToHit(Player, zedW.Delay)
-                && Evade.IsSafePoint(wShadow.ServerPosition.ToVector2()).IsSafe)
+            if (zedW != null && Evade.IsAboutToHit(Player, zedW.Delay))
             {
                 Player.Spellbook.CastSpell(zedW.Slot);
                 return;
@@ -791,8 +790,7 @@
             var zedR =
                 EvadeSpellDatabase.Spells.FirstOrDefault(
                     i => i.Enable && i.DangerLevel <= dangerLevel && i.IsReady && i.Slot == SpellSlot.R);
-            if (zedR != null && Evade.IsAboutToHit(Player, zedR.Delay)
-                && Evade.IsSafePoint(rShadow.ServerPosition.ToVector2()).IsSafe)
+            if (zedR != null && Evade.IsAboutToHit(Player, zedR.Delay))
             {
                 Player.Spellbook.CastSpell(zedR.Slot);
             }

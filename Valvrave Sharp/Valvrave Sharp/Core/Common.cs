@@ -2,14 +2,19 @@ namespace Valvrave_Sharp.Core
 {
     #region
 
+    using System.Collections.Generic;
     using System.Linq;
 
     using LeagueSharp;
     using LeagueSharp.SDK.Core;
     using LeagueSharp.SDK.Core.Enumerations;
     using LeagueSharp.SDK.Core.Extensions;
+    using LeagueSharp.SDK.Core.Extensions.SharpDX;
     using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers;
+    using LeagueSharp.SDK.Core.Wrappers.Spells;
+
+    using SharpDX;
 
     #endregion
 
@@ -27,17 +32,17 @@ namespace Valvrave_Sharp.Core
             {
                 return CastStates.NotReady;
             }
-            var pred = spell.VPrediction(unit, areaOfEffect);
-            if (pred.CollisionObjects.Count > 0)
+            var prediction = spell.VPrediction(unit, areaOfEffect);
+            if (prediction.CollisionObjects.Count > 0)
             {
                 return CastStates.Collision;
             }
-            if (pred.Hitchance < spell.MinHitChance)
+            if (prediction.Hitchance < spell.MinHitChance)
             {
                 return CastStates.LowHitChance;
             }
             spell.LastCastAttemptT = Variables.TickCount;
-            return !Program.Player.Spellbook.CastSpell(spell.Slot, pred.CastPosition)
+            return !ObjectManager.Player.Spellbook.CastSpell(spell.Slot, prediction.CastPosition)
                        ? CastStates.NotCasted
                        : CastStates.SuccessfullyCasted;
         }
@@ -52,7 +57,7 @@ namespace Valvrave_Sharp.Core
             var wardIds = new[] { 2049, 2045, 2301, 2302, 2303, 3711, 1408, 1409, 1410, 1411, 3932, 3340, 2043 };
             return (from wardId in wardIds
                     where Items.CanUseItem(wardId)
-                    select GameObjects.Player.InventoryItems.FirstOrDefault(slot => slot.Id == (ItemId)wardId))
+                    select ObjectManager.Player.InventoryItems.FirstOrDefault(slot => slot.Id == (ItemId)wardId))
                 .FirstOrDefault();
         }
 
@@ -61,11 +66,27 @@ namespace Valvrave_Sharp.Core
             return minion.GetMinionType().HasFlag(MinionTypes.Ward) && minion.CharData.BaseSkinName != "BlueTrinket";
         }
 
+        public static List<Obj_AI_Base> VCollision(this Spell spell, Vector2 fromVector2, List<Vector2> to)
+        {
+            return spell.VCollision(fromVector2.ToVector3(), to.ToVector3());
+        }
+
+        public static List<Obj_AI_Base> VCollision(this Spell spell, Vector3 fromVector3, List<Vector3> to)
+        {
+            return Prediction.Collisions.GetCollision(
+                to,
+                new Prediction.PredictionInput
+                    {
+                        From = fromVector3, Type = spell.Type, Radius = spell.Width, Delay = spell.Delay,
+                        Speed = spell.Speed
+                    });
+        }
+
         public static Prediction.PredictionOutput VPrediction(
             this Spell spell,
             Obj_AI_Base unit,
             bool aoe = false,
-            CollisionableObjects[] collisionable = null)
+            CollisionableObjects collisionable = CollisionableObjects.Minions | CollisionableObjects.YasuoWall)
         {
             return
                 Prediction.GetPrediction(
@@ -73,9 +94,7 @@ namespace Valvrave_Sharp.Core
                         {
                             Unit = unit, Delay = spell.Delay, Radius = spell.Width, Speed = spell.Speed, From = spell.From,
                             Range = spell.Range, Collision = spell.Collision, Type = spell.Type,
-                            RangeCheckFrom = spell.RangeCheckFrom, AoE = aoe,
-                            CollisionObjects =
-                                collisionable ?? new[] { CollisionableObjects.Minions, CollisionableObjects.YasuoWall }
+                            RangeCheckFrom = spell.RangeCheckFrom, AoE = aoe, CollisionObjects = collisionable
                         });
         }
 

@@ -14,9 +14,8 @@
     using LeagueSharp.SDK.Core.Events;
     using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.UI.IMenu;
-    using LeagueSharp.SDK.Core.UI.IMenu.Skins;
-    using LeagueSharp.SDK.Core.UI.IMenu.Skins.Colored;
     using LeagueSharp.SDK.Core.Wrappers;
+    using LeagueSharp.SDK.Core.Wrappers.Spells;
 
     using Valvrave_Sharp.Core;
     using Valvrave_Sharp.Plugin;
@@ -75,7 +74,6 @@
             MainMenu.Separator("Paypal: dcbrian01@gmail.com");
             Orbwalker.Init(MainMenu);
             Plugins[Player.ChampionName].Invoke();
-            ThemeManager.Current = new ColoredTheme();
             Variables.Orbwalker.Enabled = false;
         }
 

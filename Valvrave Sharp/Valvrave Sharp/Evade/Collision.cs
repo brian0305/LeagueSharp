@@ -82,125 +82,108 @@
             var collisions = new List<DetectedCollision>();
             var from = skillshot.GetMissilePosition(0);
             skillshot.ForceDisabled = false;
-            foreach (var cObject in skillshot.SpellData.CollisionObjects)
+            if (skillshot.SpellData.CollisionObjects.HasFlag(CollisionableObjects.Minions))
             {
-                switch (cObject)
+                var minions = new List<Obj_AI_Minion>();
+                minions.AddRange(GameObjects.Jungle.Where(i => i.IsValidTarget(1200, true, from.ToVector3())));
+                minions.AddRange(
+                    GameObjects.Minions.Where(
+                        i =>
+                        i.IsValidTarget(1200, false, @from.ToVector3())
+                        && (skillshot.Unit.Team == ObjectManager.Player.Team
+                                ? i.Team != ObjectManager.Player.Team
+                                : i.Team == ObjectManager.Player.Team) && (i.IsMinion() || i.IsPet())));
+                collisions.AddRange(
+                    from minion in minions
+                    let pred =
+                        FastPrediction(
+                            @from,
+                            minion,
+                            Math.Max(0, skillshot.SpellData.Delay - (Variables.TickCount - skillshot.StartTick)),
+                            skillshot.SpellData.MissileSpeed)
+                    let pos = pred.PredictedPos
+                    let w =
+                        skillshot.SpellData.RawRadius + (!pred.IsMoving ? minion.BoundingRadius - 15 : 0)
+                        - pos.Distance(@from, skillshot.End, true)
+                    where w > 0
+                    select
+                        new DetectedCollision
+                            {
+                                Position =
+                                    pos.ProjectOn(skillshot.End, skillshot.Start).LinePoint + skillshot.Direction * 30,
+                                Unit = minion, Type = CollisionableObjects.Minions, Distance = pos.Distance(@from),
+                                Diff = w
+                            });
+            }
+            if (skillshot.SpellData.CollisionObjects.HasFlag(CollisionableObjects.Heroes))
+            {
+                collisions.AddRange(
+                    from hero in GameObjects.AllyHeroes.Where(i => i.IsValidTarget(1200, false) && !i.IsMe)
+                    let pred =
+                        FastPrediction(
+                            @from,
+                            hero,
+                            Math.Max(0, skillshot.SpellData.Delay - (Variables.TickCount - skillshot.StartTick)),
+                            skillshot.SpellData.MissileSpeed)
+                    let pos = pred.PredictedPos
+                    let w = skillshot.SpellData.RawRadius + 30 - pos.Distance(@from, skillshot.End, true)
+                    where w > 0
+                    select
+                        new DetectedCollision
+                            {
+                                Position =
+                                    pos.ProjectOn(skillshot.End, skillshot.Start).LinePoint + skillshot.Direction * 30,
+                                Unit = hero, Type = CollisionableObjects.Heroes, Distance = pos.Distance(@from),
+                                Diff = w
+                            });
+            }
+            if (skillshot.SpellData.CollisionObjects.HasFlag(CollisionableObjects.YasuoWall)
+                && GameObjects.AllyHeroes.Any(i => i.ChampionName == "Yasuo"))
+            {
+                var wall =
+                    GameObjects.AllGameObjects.FirstOrDefault(
+                        i => i.IsValid && Regex.IsMatch(i.Name, "_w_windwall.\\.troy", RegexOptions.IgnoreCase));
+                if (wall != null)
                 {
-                    case CollisionableObjects.Minions:
-                        var minions = new List<Obj_AI_Minion>();
-                        minions.AddRange(GameObjects.Jungle.Where(i => i.IsValidTarget(1200, true, from.ToVector3())));
-                        minions.AddRange(
-                            GameObjects.Minions.Where(
-                                i =>
-                                i.IsValidTarget(1200, false, @from.ToVector3())
-                                && (skillshot.Unit.Team == ObjectManager.Player.Team
-                                        ? i.Team != ObjectManager.Player.Team
-                                        : i.Team == ObjectManager.Player.Team) && (i.IsMinion() || i.IsPet())));
-                        collisions.AddRange(
-                            from minion in minions
-                            let pred =
-                                FastPrediction(
-                                    @from,
-                                    minion,
-                                    Math.Max(0, skillshot.SpellData.Delay - (Variables.TickCount - skillshot.StartTick)),
-                                    skillshot.SpellData.MissileSpeed)
-                            let pos = pred.PredictedPos
-                            let w =
-                                skillshot.SpellData.RawRadius + (!pred.IsMoving ? minion.BoundingRadius - 15 : 0)
-                                - pos.Distance(@from, skillshot.End, true)
-                            where w > 0
-                            select
-                                new DetectedCollision
-                                    {
-                                        Position =
-                                            pos.ProjectOn(skillshot.End, skillshot.Start).LinePoint
-                                            + skillshot.Direction * 30,
-                                        Unit = minion,
-                                        Type = CollisionableObjects.Minions, Distance = pos.Distance(@from), Diff = w
-                                    });
-                        break;
-                    case CollisionableObjects.Heroes:
-                        collisions.AddRange(
-                            from hero in GameObjects.AllyHeroes.Where(i => i.IsValidTarget(1200, false) && !i.IsMe)
-                            let pred =
-                                FastPrediction(
-                                    @from,
-                                    hero,
-                                    Math.Max(0, skillshot.SpellData.Delay - (Variables.TickCount - skillshot.StartTick)),
-                                    skillshot.SpellData.MissileSpeed)
-                            let pos = pred.PredictedPos
-                            let w = skillshot.SpellData.RawRadius + 30 - pos.Distance(@from, skillshot.End, true)
-                            where w > 0
-                            select
-                                new DetectedCollision
-                                    {
-                                        Position =
-                                            pos.ProjectOn(skillshot.End, skillshot.Start).LinePoint
-                                            + skillshot.Direction * 30,
-                                        Unit = hero, Type = CollisionableObjects.Heroes,
-                                        Distance = pos.Distance(@from), Diff = w
-                                    });
-                        break;
-                    case CollisionableObjects.YasuoWall:
-                        if (
-                            !GameObjects.AllyHeroes.Any(
-                                i => i.IsValidTarget(float.MaxValue, false) && i.ChampionName == "Yasuo"))
+                    var level = wall.Name.Substring(wall.Name.Length - 6, 1);
+                    var wallWidth = 300 + 50 * Convert.ToInt32(level);
+                    var wallDirection = (wall.Position.ToVector2() - wallCastedPos).Normalized().Perpendicular();
+                    var wallStart = wall.Position.ToVector2() + wallWidth / 2f * wallDirection;
+                    var wallEnd = wallStart - wallWidth * wallDirection;
+                    var wallPolygon = new Geometry.Rectangle(wallStart, wallEnd, 75).ToPolygon();
+                    var intersections = new List<Vector2>();
+                    for (var i = 0; i < wallPolygon.Points.Count; i++)
+                    {
+                        var inter =
+                            wallPolygon.Points[i].Intersection(
+                                wallPolygon.Points[i != wallPolygon.Points.Count - 1 ? i + 1 : 0],
+                                @from,
+                                skillshot.End);
+                        if (inter.Intersects)
                         {
-                            break;
+                            intersections.Add(inter.Point);
                         }
-                        GameObject wall = null;
-                        foreach (var gameObject in
-                            GameObjects.AllGameObjects.Where(
-                                i => i.IsValid && Regex.IsMatch(i.Name, "_w_windwall.\\.troy", RegexOptions.IgnoreCase))
-                            )
+                    }
+                    if (intersections.Count > 0)
+                    {
+                        var intersection = intersections.OrderBy(item => item.Distance(@from)).ToList()[0];
+                        var collisionT = Variables.TickCount
+                                         + Math.Max(
+                                             0,
+                                             skillshot.SpellData.Delay - (Variables.TickCount - skillshot.StartTick))
+                                         + 100 + 1000 * intersection.Distance(@from) / skillshot.SpellData.MissileSpeed;
+                        if (collisionT - wallCastT < 4000)
                         {
-                            wall = gameObject;
-                        }
-                        if (wall == null)
-                        {
-                            break;
-                        }
-                        var level = wall.Name.Substring(wall.Name.Length - 6, 1);
-                        var wallWidth = 300 + 50 * Convert.ToInt32(level);
-                        var wallDirection = (wall.Position.ToVector2() - wallCastedPos).Normalized().Perpendicular();
-                        var wallStart = wall.Position.ToVector2() + wallWidth / 2f * wallDirection;
-                        var wallEnd = wallStart - wallWidth * wallDirection;
-                        var wallPolygon = new Geometry.Rectangle(wallStart, wallEnd, 75).ToPolygon();
-                        var intersections = new List<Vector2>();
-                        for (var i = 0; i < wallPolygon.Points.Count; i++)
-                        {
-                            var inter =
-                                wallPolygon.Points[i].Intersection(
-                                    wallPolygon.Points[i != wallPolygon.Points.Count - 1 ? i + 1 : 0],
-                                    from,
-                                    skillshot.End);
-                            if (inter.Intersects)
+                            if (skillshot.SpellData.Type != SkillShotType.SkillshotMissileLine)
                             {
-                                intersections.Add(inter.Point);
+                                skillshot.ForceDisabled = true;
                             }
+                            return intersection;
                         }
-                        if (intersections.Count > 0)
-                        {
-                            var intersection = intersections.OrderBy(item => item.Distance(@from)).ToList()[0];
-                            var collisionT = Variables.TickCount
-                                             + Math.Max(
-                                                 0,
-                                                 skillshot.SpellData.Delay - (Variables.TickCount - skillshot.StartTick))
-                                             + 100
-                                             + 1000 * intersection.Distance(@from) / skillshot.SpellData.MissileSpeed;
-                            if (collisionT - wallCastT < 4000)
-                            {
-                                if (skillshot.SpellData.Type != SkillShotType.SkillshotMissileLine)
-                                {
-                                    skillshot.ForceDisabled = true;
-                                }
-                                return intersection;
-                            }
-                        }
-                        break;
+                    }
                 }
             }
-            return collisions.Count > 0 ? collisions.OrderBy(i => i.Distance).ToList()[0].Position : Vector2.Zero;
+            return collisions.Count > 0 ? collisions.OrderBy(i => i.Distance).First().Position : new Vector2();
         }
 
         public static void Init()

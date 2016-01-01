@@ -271,8 +271,8 @@
             }
             if (result == null)
             {
-                //result = input.GetStandardPrediction();
-                result = input.GetAdvancedPrediction(); //This
+                result = input.GetStandardPrediction();
+                //result = input.GetAdvancedPrediction(); //This
             }
             if (Math.Abs(input.Range - float.MaxValue) > float.Epsilon)
             {
@@ -302,7 +302,7 @@
             }
             if (result.Hitchance == HitChance.High || result.Hitchance == HitChance.VeryHigh) //This
             {
-                //result = input.WayPointAnalysis(result);
+                result = input.WayPointAnalysis(result);
             }
             result.UnitPosition.SetZ(input.Unit.ServerPosition.Z);
             result.CastPosition.SetZ(input.Unit.ServerPosition.Z);
@@ -543,11 +543,7 @@
                                     input.RangeCheckFrom)))
                         {
                             input.Unit = minion;
-                            if (minion.Distance(input.From) < input.Radius)
-                            {
-                                result.Add(minion);
-                            }
-                            else if (
+                            if (
                                 input.GetPrediction(false, false)
                                     .UnitPosition.ToVector2()
                                     .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)

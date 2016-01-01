@@ -10,7 +10,6 @@
     using System.Text.RegularExpressions;
 
     using LeagueSharp;
-    using LeagueSharp.SDK.Core;
     using LeagueSharp.SDK.Core.Events;
     using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.UI.IMenu;
@@ -72,9 +71,7 @@
             MainMenu = new Menu("ValvraveSharp", "Valvrave Sharp", true, Player.ChampionName).Attach();
             MainMenu.Separator("Author: Brian");
             MainMenu.Separator("Paypal: dcbrian01@gmail.com");
-            Orbwalker.Init(MainMenu);
             Plugins[Player.ChampionName].Invoke();
-            Variables.Orbwalker.Enabled = false;
         }
 
         private static void InitSummonerSpell()

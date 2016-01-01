@@ -16,6 +16,7 @@
     using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers.Damages;
     using LeagueSharp.SDK.Core.Wrappers.Spells;
+    using LeagueSharp.SDK.Core.Wrappers.TargetSelector.Modes;
 
     using SharpDX;
 
@@ -59,31 +60,31 @@
             Q.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
             Q.MinHitChance = HitChance.High;
 
-            var orbwalkMenu = MainMenu.Add(new Menu("Orbwalk", "Orbwalk"));
+            var comboMenu = MainMenu.Add(new Menu("Combo", "Combo"));
             {
-                orbwalkMenu.Separator("Q/E: Always On");
-                orbwalkMenu.Separator("Sub Settings");
-                orbwalkMenu.Bool("Ignite", "Use Ignite");
-                orbwalkMenu.Bool("Item", "Use Item");
-                orbwalkMenu.Separator("Swap Settings");
-                orbwalkMenu.Bool("SwapIfKill", "Swap W/R If Mark Can Kill Target");
-                orbwalkMenu.Slider("SwapIfHpU", "Swap W/R If Hp < (%)", 10);
-                orbwalkMenu.List("SwapGap", "Swap W/R To Gap Close", new[] { "OFF", "Smart", "Always" }, 1);
-                orbwalkMenu.Separator("W Settings");
-                orbwalkMenu.Bool("WNormal", "Use For Non-R Combo");
-                orbwalkMenu.List("WAdv", "Use For R Combo", new[] { "OFF", "Line", "Triangle", "Mouse" }, 1);
-                orbwalkMenu.Separator("R Settings");
-                orbwalkMenu.Bool("R", "Use R");
-                orbwalkMenu.Slider(
+                comboMenu.Separator("Q/E: Always On");
+                comboMenu.Separator("Sub Settings");
+                comboMenu.Bool("Ignite", "Use Ignite");
+                comboMenu.Bool("Item", "Use Item");
+                comboMenu.Separator("Swap Settings");
+                comboMenu.Bool("SwapIfKill", "Swap W/R If Mark Can Kill Target");
+                comboMenu.Slider("SwapIfHpU", "Swap W/R If Hp < (%)", 10);
+                comboMenu.List("SwapGap", "Swap W/R To Gap Close", new[] { "OFF", "Smart", "Always" }, 1);
+                comboMenu.Separator("W Settings");
+                comboMenu.Bool("WNormal", "Use For Non-R Combo");
+                comboMenu.List("WAdv", "Use For R Combo", new[] { "OFF", "Line", "Triangle", "Mouse" }, 1);
+                comboMenu.Separator("R Settings");
+                comboMenu.Bool("R", "Use R");
+                comboMenu.Slider(
                     "RStopRange",
                     "Priorize If Ready And Distance <=",
                     (int)(R.Range + 200),
                     (int)R.Range,
                     (int)(R.Range + RangeW));
-                orbwalkMenu.Separator("Extra R Settings");
+                comboMenu.Separator("Extra R Settings");
                 foreach (var enemy in GameObjects.EnemyHeroes)
                 {
-                    orbwalkMenu.Bool("RCast" + enemy.ChampionName, "Cast On " + enemy.ChampionName, false);
+                    comboMenu.Bool("RCast" + enemy.ChampionName, "Cast On " + enemy.ChampionName, false);
                 }
             }
             var hybridMenu = MainMenu.Add(new Menu("Hybrid", "Hybrid"));
@@ -93,9 +94,9 @@
                 hybridMenu.KeyBind("AutoQ", "KeyBind", Keys.T, KeyBindType.Toggle);
                 hybridMenu.Slider("AutoQMpA", "If Mp >=", 100, 0, 200);
             }
-            var farmMenu = MainMenu.Add(new Menu("Farm", "Farm"));
+            var lhMenu = MainMenu.Add(new Menu("LastHit", "Last Hit"));
             {
-                farmMenu.Bool("Q", "Use Q");
+                lhMenu.Bool("Q", "Use Q");
             }
             var ksMenu = MainMenu.Add(new Menu("KillSteal", "Kill Steal"));
             {
@@ -118,6 +119,7 @@
             }
             MainMenu.KeyBind("FleeW", "Use W To Flee", Keys.C);
 
+            Evade.Evading += Evading;
             Evade.TryEvading += TryEvading;
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
@@ -157,11 +159,11 @@
         {
             get
             {
-                if (RState == 0 && MainMenu["Orbwalk"]["R"] && Orbwalker.ActiveMode == OrbwalkingMode.Combo)
+                if (RState == 0 && MainMenu["Combo"]["R"] && Variables.Orbwalker.GetActiveMode() == OrbwalkingMode.Combo)
                 {
                     var target =
                         Variables.TargetSelector.GetTargets(Q.Range + RangeTarget, Q.DamageType)
-                            .FirstOrDefault(i => MainMenu["Orbwalk"]["RCast" + i.ChampionName]);
+                            .FirstOrDefault(i => MainMenu["Combo"]["RCast" + i.ChampionName]);
                     if (target != null)
                     {
                         return target;
@@ -266,46 +268,34 @@
 
         private static void CastQ(Obj_AI_Hero target, bool isCombo = false)
         {
-            var canCombo = !MainMenu["Orbwalk"]["R"] || !MainMenu["Orbwalk"]["RCast" + target.ChampionName]
-                           || (RState == 0 && Player.Distance(target) > MainMenu["Orbwalk"]["RStopRange"])
+            var canCombo = !MainMenu["Combo"]["R"] || !MainMenu["Combo"]["RCast" + target.ChampionName]
+                           || (RState == 0 && Player.Distance(target) > MainMenu["Combo"]["RStopRange"])
                            || HaveRMark(target) || rShadow.IsValid() || RState == -1;
             if (!Q.IsReady() || (isCombo && !canCombo))
             {
                 return;
             }
-            var predPlayer = Q.VPrediction(target, true, CollisionableObjects.YasuoWall);
-            Prediction.PredictionOutput predW = null;
-            if (wShadow.IsValid())
+            var distPlayer = Player.Distance(target);
+            var distW = wShadow.IsValid() ? Player.Distance(wShadow) : 999999;
+            var distR = rShadow.IsValid() ? Player.Distance(rShadow) : 999999;
+            var minDist = Math.Min(Math.Min(distR, distW), distPlayer);
+            if (Math.Abs(minDist - distW) < float.Epsilon)
             {
-                Q2.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
-                predW = Q2.VPrediction(target, true, CollisionableObjects.YasuoWall);
+                Q2.From = wShadow.ServerPosition;
             }
-            Prediction.PredictionOutput predR = null;
-            if (rShadow.IsValid())
+            else if (Math.Abs(minDist - distR) < float.Epsilon)
             {
-                Q2.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
-                predR = Q2.VPrediction(target, true, CollisionableObjects.YasuoWall);
-            }
-            var bestHit =
-                (HitChance)
-                Math.Max(
-                    Math.Max((int)(predW?.Hitchance ?? HitChance.None), (int)(predR?.Hitchance ?? HitChance.None)),
-                    (int)predPlayer.Hitchance);
-            if (bestHit < Q.MinHitChance)
-            {
-                return;
-            }
-            if (predW != null && bestHit == predW.Hitchance)
-            {
-                Q.Cast(predW.CastPosition);
-            }
-            else if (predR != null && bestHit == predR.Hitchance)
-            {
-                Q.Cast(predR.CastPosition);
+                Q2.From = rShadow.ServerPosition;
             }
             else
             {
-                Q.Cast(predPlayer.CastPosition);
+                Q2.From = Player.ServerPosition;
+            }
+            Q2.RangeCheckFrom = Q2.From;
+            var pred = Q2.VPrediction(target, true, CollisionableObjects.YasuoWall);
+            if (pred.Hitchance >= Q.MinHitChance)
+            {
+                Q.Cast(pred.CastPosition);
             }
         }
 
@@ -319,7 +309,7 @@
             var posCast = Player.ServerPosition.Extend(posPred, RangeW);
             if (isCombo)
             {
-                switch (MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index)
+                switch (MainMenu["Combo"]["WAdv"].GetValue<MenuList>().Index)
                 {
                     case 1:
                         posCast = Player.ServerPosition + (posPred - rShadow.ServerPosition).Normalized() * RangeW;
@@ -350,40 +340,81 @@
             W.Cast(posCast);
         }
 
+        private static void Combo()
+        {
+            var target = GetTarget;
+            if (target != null)
+            {
+                Swap(target);
+                if (RState == 0 && MainMenu["Combo"]["R"] && MainMenu["Combo"]["RCast" + target.ChampionName])
+                {
+                    R.CastOnUnit(target);
+                }
+                if (MainMenu["Combo"]["Ignite"] && Ignite.IsReady() && (HaveRMark(target) || target.HealthPercent < 30)
+                    && Player.Distance(target) < IgniteRange)
+                {
+                    Player.Spellbook.CastSpell(Ignite, target);
+                }
+                if (WState == 0
+                    && ((Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost
+                         && Player.Distance(target) < RangeW + Q.Range)
+                        || (E.IsReady() && Player.Mana >= E.Instance.ManaCost + W.Instance.ManaCost
+                            && Player.Distance(target) < RangeW + E.Range)))
+                {
+                    if (MainMenu["Combo"]["WNormal"])
+                    {
+                        if (RState < 1
+                            && (!MainMenu["Combo"]["R"] || !MainMenu["Combo"]["RCast" + target.ChampionName]
+                                || (RState == 0 && Player.Distance(target) > MainMenu["Combo"]["RStopRange"])
+                                || RState == -1))
+                        {
+                            CastW(target);
+                        }
+                        if (rShadow.IsValid() && MainMenu["Combo"]["R"]
+                            && MainMenu["Combo"]["RCast" + target.ChampionName] && !HaveRMark(target))
+                        {
+                            CastW(target);
+                        }
+                    }
+                    if (MainMenu["Combo"]["WAdv"].GetValue<MenuList>().Index > 0 && rShadow.IsValid()
+                        && MainMenu["Combo"]["R"] && MainMenu["Combo"]["RCast" + target.ChampionName]
+                        && HaveRMark(target))
+                    {
+                        CastW(target, true);
+                    }
+                }
+                CastQ(target, true);
+                CastE();
+            }
+            if (MainMenu["Combo"]["Item"])
+            {
+                UseItem(target);
+            }
+        }
+
         private static bool DeadByRMark(Obj_AI_Hero target)
         {
             return rShadow.IsValid() && target != null && HaveRMark(target) && deathMark != null
                    && target.Distance(deathMark) < 50 + target.BoundingRadius;
         }
 
-        private static void Farm()
+        private static void Evading()
         {
-            if (!MainMenu["Farm"]["Q"] || !Q.IsReady())
+            var skillshot = Evade.SkillshotAboutToHit(Player, 50).OrderByDescending(i => i.DangerLevel);
+            var zedW2 = EvadeSpellDatabase.Spells.FirstOrDefault(i => i.Enable && i.IsReady && i.Slot == SpellSlot.W);
+            if (zedW2 != null && (!wShadow.IsUnderEnemyTurret() || MainMenu["Evade"]["Spells"][zedW2.Name]["WTower"])
+                && skillshot.Any(i => i.DangerLevel >= zedW2.DangerLevel))
             {
+                Player.Spellbook.CastSpell(zedW2.Slot);
                 return;
             }
-            foreach (var minion in
-                GameObjects.EnemyMinions.Where(
-                    i =>
-                    i.IsValidTarget(Q.Range) && (i.IsMinion() || i.IsPet(false))
-                    && (!i.InAutoAttackRange() ? Q.GetHealthPrediction(i) > 0 : i.Health > Player.GetAutoAttackDamage(i)))
-                    .OrderByDescending(i => i.MaxHealth))
+            var zedR2 =
+                EvadeSpellDatabase.Spells.FirstOrDefault(
+                    i => i.Enable && i.IsReady && i.Slot == SpellSlot.R && i.CheckSpellName == "zedr2");
+            if (zedR2 != null && (!rShadow.IsUnderEnemyTurret() || MainMenu["Evade"]["Spells"][zedR2.Name]["RTower"])
+                && skillshot.Any(i => i.DangerLevel >= zedR2.DangerLevel))
             {
-                var pred = Q.VPrediction(
-                    minion,
-                    true,
-                    CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall);
-                if (pred.Hitchance >= Q.MinHitChance
-                    && Q.GetHealthPrediction(minion) <= Player.GetSpellDamage(minion, SpellSlot.Q))
-                {
-                    Q.Cast(pred.CastPosition);
-                }
-                if (pred.Hitchance == HitChance.Collision && !pred.CollisionObjects.All(i => i.IsMe)
-                    && Q.GetHealthPrediction(minion)
-                    <= Player.GetSpellDamage(minion, SpellSlot.Q, Damage.DamageStage.SecondForm))
-                {
-                    Q.Cast(pred.CastPosition);
-                }
+                Player.Spellbook.CastSpell(zedR2.Slot);
             }
         }
 
@@ -391,7 +422,7 @@
         {
             var dmgTotal = 0d;
             var manaTotal = 0f;
-            if (MainMenu["Orbwalk"]["Item"])
+            if (MainMenu["Combo"]["Item"])
             {
                 if (Bilgewater.IsReady)
                 {
@@ -506,6 +537,37 @@
             }
         }
 
+        private static void LastHit()
+        {
+            if (!MainMenu["LastHit"]["Q"] || !Q.IsReady())
+            {
+                return;
+            }
+            foreach (var minion in
+                GameObjects.EnemyMinions.Where(
+                    i =>
+                    i.IsValidTarget(Q.Range) && (i.IsMinion() || i.IsPet(false))
+                    && (!i.InAutoAttackRange() ? Q.GetHealthPrediction(i) > 0 : i.Health > Player.GetAutoAttackDamage(i)))
+                    .OrderByDescending(i => i.MaxHealth))
+            {
+                var pred = Q.VPrediction(
+                    minion,
+                    true,
+                    CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall);
+                if (pred.Hitchance >= Q.MinHitChance
+                    && Q.GetHealthPrediction(minion) <= Player.GetSpellDamage(minion, SpellSlot.Q))
+                {
+                    Q.Cast(pred.CastPosition);
+                }
+                if (pred.Hitchance == HitChance.Collision && !pred.CollisionObjects.All(i => i.IsMe)
+                    && Q.GetHealthPrediction(minion)
+                    <= Player.GetSpellDamage(minion, SpellSlot.Q, Damage.DamageStage.SecondForm))
+                {
+                    Q.Cast(pred.CastPosition);
+                }
+            }
+        }
+
         private static void OnCreate(GameObject sender, EventArgs args)
         {
             var shadow = sender as Obj_AI_Minion;
@@ -589,21 +651,21 @@
                 return;
             }
             KillSteal();
-            switch (Orbwalker.ActiveMode)
+            switch (Variables.Orbwalker.GetActiveMode())
             {
                 case OrbwalkingMode.Combo:
-                    Orbwalk();
+                    Combo();
                     break;
                 case OrbwalkingMode.Hybrid:
                     Hybrid();
                     break;
                 case OrbwalkingMode.LastHit:
-                    Farm();
+                    LastHit();
                     break;
                 case OrbwalkingMode.None:
                     if (MainMenu["FleeW"].GetValue<MenuKeyBind>().Active)
                     {
-                        Orbwalker.MoveOrder(Game.CursorPos);
+                        Variables.Orbwalker.Move(Game.CursorPos);
                         if (WState == 0)
                         {
                             W.Cast(Game.CursorPos);
@@ -615,61 +677,10 @@
                     }
                     break;
             }
-            if (Orbwalker.ActiveMode != OrbwalkingMode.Combo && Orbwalker.ActiveMode != OrbwalkingMode.Hybrid)
+            if (Variables.Orbwalker.GetActiveMode() < OrbwalkingMode.Combo
+                && Variables.Orbwalker.GetActiveMode() > OrbwalkingMode.Hybrid)
             {
                 AutoQ();
-            }
-        }
-
-        private static void Orbwalk()
-        {
-            var target = GetTarget;
-            if (target != null)
-            {
-                Swap(target);
-                if (RState == 0 && MainMenu["Orbwalk"]["R"] && MainMenu["Orbwalk"]["RCast" + target.ChampionName])
-                {
-                    R.CastOnUnit(target);
-                }
-                if (MainMenu["Orbwalk"]["Ignite"] && Ignite.IsReady()
-                    && (HaveRMark(target) || target.HealthPercent < 30) && Player.Distance(target) < IgniteRange)
-                {
-                    Player.Spellbook.CastSpell(Ignite, target);
-                }
-                if (WState == 0
-                    && ((Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost
-                         && Player.Distance(target) < RangeW + Q.Range)
-                        || (E.IsReady() && Player.Mana >= E.Instance.ManaCost + W.Instance.ManaCost
-                            && Player.Distance(target) < RangeW + E.Range)))
-                {
-                    if (MainMenu["Orbwalk"]["WNormal"])
-                    {
-                        if (RState < 1
-                            && (!MainMenu["Orbwalk"]["R"] || !MainMenu["Orbwalk"]["RCast" + target.ChampionName]
-                                || (RState == 0 && Player.Distance(target) > MainMenu["Orbwalk"]["RStopRange"])
-                                || RState == -1))
-                        {
-                            CastW(target);
-                        }
-                        if (rShadow.IsValid() && MainMenu["Orbwalk"]["R"]
-                            && MainMenu["Orbwalk"]["RCast" + target.ChampionName] && !HaveRMark(target))
-                        {
-                            CastW(target);
-                        }
-                    }
-                    if (MainMenu["Orbwalk"]["WAdv"].GetValue<MenuList>().Index > 0 && rShadow.IsValid()
-                        && MainMenu["Orbwalk"]["R"] && MainMenu["Orbwalk"]["RCast" + target.ChampionName]
-                        && HaveRMark(target))
-                    {
-                        CastW(target, true);
-                    }
-                }
-                CastQ(target, true);
-                CastE();
-            }
-            if (MainMenu["Orbwalk"]["Item"])
-            {
-                UseItem(target);
             }
         }
 
@@ -679,7 +690,7 @@
             {
                 return;
             }
-            if (MainMenu["Orbwalk"]["SwapGap"].GetValue<MenuList>().Index > 0 && !target.InAutoAttackRange())
+            if (MainMenu["Combo"]["SwapGap"].GetValue<MenuList>().Index > 0 && !target.InAutoAttackRange())
             {
                 var distPlayer = Player.Distance(target);
                 var distW = WState == 1 && wShadow.IsValid() ? wShadow.Distance(target) : 999999;
@@ -687,7 +698,7 @@
                 var minDist = Math.Min(Math.Min(distW, distR), distPlayer);
                 if (minDist < distPlayer)
                 {
-                    switch (MainMenu["Orbwalk"]["SwapGap"].GetValue<MenuList>().Index)
+                    switch (MainMenu["Combo"]["SwapGap"].GetValue<MenuList>().Index)
                     {
                         case 1:
                             if (Math.Abs(minDist - distW) < float.Epsilon)
@@ -697,14 +708,14 @@
                                     Q.IsReady(),
                                     minDist < Q.Range || (rShadow.IsValid() && rShadow.Distance(target) < Q.Range),
                                     E.IsReady(),
-                                    MainMenu["Orbwalk"]["R"] && MainMenu["Orbwalk"]["RCast" + target.ChampionName]
+                                    MainMenu["Combo"]["R"] && MainMenu["Combo"]["RCast" + target.ChampionName]
                                     && RState == 0);
                                 if (target.Health + target.PhysicalShield < calcCombo[0]
                                     && (Player.Mana >= calcCombo[1] || Player.Mana * OverkillValue >= calcCombo[1]))
                                 {
                                     W.Cast();
                                 }
-                                if (MainMenu["Orbwalk"]["R"] && MainMenu["Orbwalk"]["RCast" + target.ChampionName]
+                                if (MainMenu["Combo"]["R"] && MainMenu["Combo"]["RCast" + target.ChampionName]
                                     && RState == 0 && !R.IsInRange(target) && minDist < R.Range)
                                 {
                                     W.Cast();
@@ -723,7 +734,7 @@
                                 {
                                     R.Cast();
                                 }
-                                if (MainMenu["Orbwalk"]["WNormal"] && WState == 0 && distPlayer > RangeW - 100
+                                if (MainMenu["Combo"]["WNormal"] && WState == 0 && distPlayer > RangeW - 100
                                     && !HaveRMark(target))
                                 {
                                     if (Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost
@@ -755,8 +766,8 @@
                     }
                 }
             }
-            if ((MainMenu["Orbwalk"]["SwapIfHpU"] > Player.HealthPercent && Player.HealthPercent < target.HealthPercent)
-                || (MainMenu["Orbwalk"]["SwapIfKill"] && deathMark != null))
+            if ((MainMenu["Combo"]["SwapIfHpU"] > Player.HealthPercent && Player.HealthPercent < target.HealthPercent)
+                || (MainMenu["Combo"]["SwapIfKill"] && deathMark != null))
             {
                 var countPlayer = Player.CountEnemyHeroesInRange(400);
                 var countW = WState == 1 && wShadow.IsValid() ? wShadow.CountEnemyHeroesInRange(400) : 10;
@@ -779,20 +790,23 @@
         private static void TryEvading(List<Skillshot> hitBy, Vector2 to)
         {
             var dangerLevel = hitBy.Select(i => i.DangerLevel).Concat(new[] { 0 }).Max();
-            var zedW =
+            var zedR1 =
                 EvadeSpellDatabase.Spells.FirstOrDefault(
-                    i => i.Enable && i.DangerLevel <= dangerLevel && i.IsReady && i.Slot == SpellSlot.W);
-            if (zedW != null && Evade.IsAboutToHit(Player, zedW.Delay))
+                    i =>
+                    i.Enable && dangerLevel >= i.DangerLevel && i.IsReady && i.Slot == SpellSlot.R
+                    && i.CheckSpellName == "zedr");
+            if (zedR1 == null)
             {
-                Player.Spellbook.CastSpell(zedW.Slot);
                 return;
             }
-            var zedR =
-                EvadeSpellDatabase.Spells.FirstOrDefault(
-                    i => i.Enable && i.DangerLevel <= dangerLevel && i.IsReady && i.Slot == SpellSlot.R);
-            if (zedR != null && Evade.IsAboutToHit(Player, zedR.Delay))
+            var target =
+                Evader.GetEvadeTargets(zedR1.ValidTargets, int.MaxValue, zedR1.Delay, zedR1.MaxRange, true, false, true)
+                    .OrderBy(i => i.CountEnemyHeroesInRange(RangeW))
+                    .ThenByDescending(i => new Priority().GetDefaultPriority((Obj_AI_Hero)i))
+                    .FirstOrDefault();
+            if (target != null)
             {
-                Player.Spellbook.CastSpell(zedR.Slot);
+                Player.Spellbook.CastSpell(zedR1.Slot, target);
             }
         }
 

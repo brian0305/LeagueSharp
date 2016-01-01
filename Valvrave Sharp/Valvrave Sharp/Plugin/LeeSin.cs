@@ -54,26 +54,26 @@
 
             WardManager.Init();
             Insec.Init();
-            var orbwalkMenu = MainMenu.Add(new Menu("Orbwalk", "Orbwalk"));
+            var comboMenu = MainMenu.Add(new Menu("Combo", "Combo"));
             {
-                orbwalkMenu.KeyBind("Star", "Star Combo", Keys.X);
-                orbwalkMenu.Bool("W", "Use W", false);
-                orbwalkMenu.Bool("E", "Use E");
-                orbwalkMenu.Separator("Q Settings");
-                orbwalkMenu.Bool("Q", "Use Q");
-                orbwalkMenu.Bool("Q2", "-> Also Q2");
-                orbwalkMenu.Bool("QCol", "Smite Collision");
-                orbwalkMenu.Separator("R Settings");
-                orbwalkMenu.Bool("R", "Use R");
-                orbwalkMenu.Bool("RKill", "If Kill Enemy Behind");
-                orbwalkMenu.Slider("RCountA", "Or Hit Enemy Behind >=", 1, 1, 4);
-                orbwalkMenu.Separator("Sub Settings");
-                orbwalkMenu.Bool("Ignite", "Use Ignite");
-                orbwalkMenu.Bool("Item", "Use Item");
+                comboMenu.KeyBind("Star", "Star Combo", Keys.X);
+                comboMenu.Bool("W", "Use W", false);
+                comboMenu.Bool("E", "Use E");
+                comboMenu.Separator("Q Settings");
+                comboMenu.Bool("Q", "Use Q");
+                comboMenu.Bool("Q2", "-> Also Q2");
+                comboMenu.Bool("QCol", "Smite Collision");
+                comboMenu.Separator("R Settings");
+                comboMenu.Bool("R", "Use R");
+                comboMenu.Bool("RKill", "If Kill Enemy Behind");
+                comboMenu.Slider("RCountA", "Or Hit Enemy Behind >=", 1, 1, 4);
+                comboMenu.Separator("Sub Settings");
+                comboMenu.Bool("Ignite", "Use Ignite");
+                comboMenu.Bool("Item", "Use Item");
             }
-            var farmMenu = MainMenu.Add(new Menu("Farm", "Farm"));
+            var lhMenu = MainMenu.Add(new Menu("LastHit", "Last Hit"));
             {
-                farmMenu.Bool("Q", "Use Q1");
+                lhMenu.Bool("Q", "Use Q1");
             }
             var ksMenu = MainMenu.Add(new Menu("KillSteal", "Kill Steal"));
             {
@@ -105,9 +105,9 @@
 
         private static bool CanCastInOrbwalk
             =>
-                (!MainMenu["Orbwalk"]["Q"] || Variables.TickCount - Q.LastCastAttemptT > 200)
-                && (!MainMenu["Orbwalk"]["W"] || Variables.TickCount - W.LastCastAttemptT > 150)
-                && (!MainMenu["Orbwalk"]["E"] || Variables.TickCount - E.LastCastAttemptT > 200);
+                (!MainMenu["Combo"]["Q"] || Variables.TickCount - Q.LastCastAttemptT > 200)
+                && (!MainMenu["Combo"]["W"] || Variables.TickCount - W.LastCastAttemptT > 150)
+                && (!MainMenu["Combo"]["E"] || Variables.TickCount - E.LastCastAttemptT > 200);
 
         private static Tuple<int, Obj_AI_Hero> GetMultiR
         {
@@ -144,7 +144,7 @@
                             continue;
                         }
                         var posPred = pred.CastPosition.ToVector2();
-                        if (MainMenu["Orbwalk"]["RKill"]
+                        if (MainMenu["Combo"]["RKill"]
                             && hitTarget.Health + hitTarget.PhysicalShield <= GetRColDmg(kickTarget, hitTarget))
                         {
                             var project = posPred.ProjectOn(posStart, posEnd);
@@ -223,7 +223,7 @@
             var pred = Q.VPrediction(target);
             if (pred.Hitchance == HitChance.Collision)
             {
-                if (MainMenu["Orbwalk"]["QCol"] && Smite.IsReady() && !pred.CollisionObjects.All(i => i.IsMe))
+                if (MainMenu["Combo"]["QCol"] && Smite.IsReady() && !pred.CollisionObjects.All(i => i.IsMe))
                 {
                     var col = pred.CollisionObjects.Select(i => i as Obj_AI_Minion).Where(i => i.IsValid()).ToList();
                     if (col.Count == 1 && col.Any(i => i.Health <= GetSmiteDmg && Player.Distance(i) < SmiteRange)
@@ -239,28 +239,83 @@
             }
         }
 
-        private static void Farm()
+        private static void Combo()
         {
-            if (!MainMenu["Farm"]["Q"] || !Q.IsReady() || !IsQOne)
+            if (MainMenu["Combo"]["Q"] && Q.IsReady() && CanCastInOrbwalk)
+            {
+                if (IsQOne)
+                {
+                    var target = Q.GetTarget(Q.Width);
+                    if (target != null)
+                    {
+                        CastQSmite(target);
+                    }
+                }
+                else if (MainMenu["Combo"]["Q2"])
+                {
+                    var target = GameObjects.EnemyHeroes.FirstOrDefault(i => i.IsValidTarget(Q2.Range) && HaveQ(i));
+                    if (target != null)
+                    {
+                        if (CanQ2(target) || (!R.IsReady() && IsRecentR && CanR(target))
+                            || target.Health + target.PhysicalShield
+                            <= Player.GetSpellDamage(target, SpellSlot.Q, Damage.DamageStage.SecondCast)
+                            + Player.GetAutoAttackDamage(target)
+                            || Player.Distance(target) > target.GetRealAutoAttackRange() + 100 || Passive == -1)
+                        {
+                            Q.Cast();
+                        }
+                    }
+                    else if (GetQObj != null)
+                    {
+                        var targetQ2 = Q2.GetTarget(200);
+                        if (targetQ2 != null && GetQObj.Distance(targetQ2) < Player.Distance(targetQ2)
+                            && !targetQ2.InAutoAttackRange())
+                        {
+                            Q.Cast();
+                        }
+                    }
+                }
+            }
+            if (MainMenu["Combo"]["E"] && E.IsReady() && CanCastInOrbwalk)
+            {
+                if (IsEOne)
+                {
+                    if (Player.Mana >= 70)
+                    {
+                        if (E.GetTarget() != null)
+                        {
+                            E.Cast();
+                        }
+                    }
+                }
+                else
+                {
+                    var e2Target = GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(E2.Range) && HaveE(i)).ToList();
+                    if (e2Target.Any(i => CanE2(i) || Player.Distance(i) > i.GetRealAutoAttackRange() + 50)
+                        || e2Target.Count > 2 || Passive == -1)
+                    {
+                        E.Cast();
+                    }
+                }
+            }
+            if (MainMenu["Combo"]["W"] && W.IsReady() && CanCastInOrbwalk && Passive == -1
+                && Variables.Orbwalker.GetTarget() != null)
+            {
+                W.Cast();
+            }
+            var subTarget = W.GetTarget();
+            if (MainMenu["Combo"]["Item"])
+            {
+                UseItem(subTarget);
+            }
+            if (subTarget == null)
             {
                 return;
             }
-            foreach (var pred in
-                GameObjects.EnemyMinions.Where(
-                    i =>
-                    i.IsValidTarget(Q.Range) && (i.IsMinion() || i.IsPet(false))
-                    && Q.GetHealthPrediction(i) <= Player.GetSpellDamage(i, SpellSlot.Q)
-                    && (!i.InAutoAttackRange() ? Q.GetHealthPrediction(i) > 0 : i.Health > Player.GetAutoAttackDamage(i)))
-                    .OrderByDescending(i => i.MaxHealth)
-                    .Select(
-                        i =>
-                        Q.VPrediction(
-                            i,
-                            false,
-                            CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall))
-                    .Where(i => i.Hitchance >= Q.MinHitChance))
+            if (MainMenu["Combo"]["Ignite"] && Ignite.IsReady() && subTarget.HealthPercent < 30
+                && Player.Distance(subTarget) <= IgniteRange)
             {
-                Q.Cast(pred.CastPosition);
+                Player.Spellbook.CastSpell(Ignite, subTarget);
             }
         }
 
@@ -394,6 +449,31 @@
             }
         }
 
+        private static void LastHit()
+        {
+            if (!MainMenu["LastHit"]["Q"] || !Q.IsReady() || !IsQOne)
+            {
+                return;
+            }
+            foreach (var pred in
+                GameObjects.EnemyMinions.Where(
+                    i =>
+                    i.IsValidTarget(Q.Range) && (i.IsMinion() || i.IsPet(false))
+                    && Q.GetHealthPrediction(i) <= Player.GetSpellDamage(i, SpellSlot.Q)
+                    && (!i.InAutoAttackRange() ? Q.GetHealthPrediction(i) > 0 : i.Health > Player.GetAutoAttackDamage(i)))
+                    .OrderByDescending(i => i.MaxHealth)
+                    .Select(
+                        i =>
+                        Q.VPrediction(
+                            i,
+                            false,
+                            CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall))
+                    .Where(i => i.Hitchance >= Q.MinHitChance))
+            {
+                Q.Cast(pred.CastPosition);
+            }
+        }
+
         private static void OnDraw(EventArgs args)
         {
             if (Player.IsDead)
@@ -431,29 +511,29 @@
                 return;
             }
             KillSteal();
-            if (!MainMenu["Insec"]["Insec"].GetValue<MenuKeyBind>().Active && MainMenu["Orbwalk"]["R"] && R.IsReady())
+            if (!MainMenu["Insec"]["Insec"].GetValue<MenuKeyBind>().Active && MainMenu["Combo"]["R"] && R.IsReady())
             {
                 var multiR = GetMultiR;
-                if ((multiR.Item1 == -1 || multiR.Item1 >= MainMenu["Orbwalk"]["RCountA"] + 1) && multiR.Item2 != null)
+                if ((multiR.Item1 == -1 || multiR.Item1 >= MainMenu["Combo"]["RCountA"] + 1) && multiR.Item2 != null)
                 {
                     R.CastOnUnit(multiR.Item2);
                 }
             }
-            switch (Orbwalker.ActiveMode)
+            switch (Variables.Orbwalker.GetActiveMode())
             {
                 case OrbwalkingMode.Combo:
-                    Orbwalk();
+                    Combo();
                     break;
                 case OrbwalkingMode.LastHit:
-                    Farm();
+                    LastHit();
                     break;
                 case OrbwalkingMode.None:
                     if (MainMenu["FleeW"].GetValue<MenuKeyBind>().Active)
                     {
-                        Orbwalker.MoveOrder(Game.CursorPos);
+                        Variables.Orbwalker.Move(Game.CursorPos);
                         Flee(Game.CursorPos);
                     }
-                    else if (MainMenu["Orbwalk"]["Star"].GetValue<MenuKeyBind>().Active)
+                    else if (MainMenu["Combo"]["Star"].GetValue<MenuKeyBind>().Active)
                     {
                         Star();
                     }
@@ -462,86 +542,6 @@
                         Insec.Start();
                     }
                     break;
-            }
-        }
-
-        private static void Orbwalk()
-        {
-            if (MainMenu["Orbwalk"]["Q"] && Q.IsReady() && CanCastInOrbwalk)
-            {
-                if (IsQOne)
-                {
-                    var target = Q.GetTarget(Q.Width);
-                    if (target != null)
-                    {
-                        CastQSmite(target);
-                    }
-                }
-                else if (MainMenu["Orbwalk"]["Q2"])
-                {
-                    var target = GameObjects.EnemyHeroes.FirstOrDefault(i => i.IsValidTarget(Q2.Range) && HaveQ(i));
-                    if (target != null)
-                    {
-                        if (CanQ2(target) || (!R.IsReady() && IsRecentR && CanR(target))
-                            || target.Health + target.PhysicalShield
-                            <= Player.GetSpellDamage(target, SpellSlot.Q, Damage.DamageStage.SecondCast)
-                            + Player.GetAutoAttackDamage(target)
-                            || Player.Distance(target) > target.GetRealAutoAttackRange() + 100 || Passive == -1)
-                        {
-                            Q.Cast();
-                        }
-                    }
-                    else if (GetQObj != null)
-                    {
-                        var targetQ2 = Q2.GetTarget(200);
-                        if (targetQ2 != null && GetQObj.Distance(targetQ2) < Player.Distance(targetQ2)
-                            && !targetQ2.InAutoAttackRange())
-                        {
-                            Q.Cast();
-                        }
-                    }
-                }
-            }
-            if (MainMenu["Orbwalk"]["E"] && E.IsReady() && CanCastInOrbwalk)
-            {
-                if (IsEOne)
-                {
-                    if (Player.Mana >= 70)
-                    {
-                        if (E.GetTarget() != null)
-                        {
-                            E.Cast();
-                        }
-                    }
-                }
-                else
-                {
-                    var e2Target = GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(E2.Range) && HaveE(i)).ToList();
-                    if (e2Target.Any(i => CanE2(i) || Player.Distance(i) > i.GetRealAutoAttackRange() + 50)
-                        || e2Target.Count > 2 || Passive == -1)
-                    {
-                        E.Cast();
-                    }
-                }
-            }
-            if (MainMenu["Orbwalk"]["W"] && W.IsReady() && CanCastInOrbwalk && Passive == -1
-                && Orbwalker.GetTarget(OrbwalkingMode.Combo) != null)
-            {
-                W.Cast();
-            }
-            var subTarget = W.GetTarget();
-            if (MainMenu["Orbwalk"]["Item"])
-            {
-                UseItem(subTarget);
-            }
-            if (subTarget == null)
-            {
-                return;
-            }
-            if (MainMenu["Orbwalk"]["Ignite"] && Ignite.IsReady() && subTarget.HealthPercent < 30
-                && Player.Distance(subTarget) <= IgniteRange)
-            {
-                Player.Spellbook.CastSpell(Ignite, subTarget);
             }
         }
 
@@ -556,7 +556,7 @@
             {
                 target = W.GetTarget();
             }
-            Orbwalker.Orbwalk(target);
+            Variables.Orbwalker.Orbwalk(target);
             if (target == null)
             {
                 return;
@@ -689,7 +689,7 @@
                             return;
                         }
                         insecTarget = Q.GetTarget(-100);
-                        if ((MainMenu["Orbwalk"]["Q"] && Q.IsReady()) || GetQObj != null)
+                        if ((MainMenu["Insec"]["Q"] && Q.IsReady()) || GetQObj != null)
                         {
                             insecTarget = Q2.GetTarget(FlashRange);
                         }
@@ -763,17 +763,17 @@
             internal static void Start()
             {
                 var target = insecTarget;
-                if (Orbwalker.CanMove && Variables.TickCount - lastGapClose > 250)
+                if (Variables.Orbwalker.CanMove() && Variables.TickCount - lastGapClose > 250)
                 {
                     if (target != null && lastGapClose > 0 && IsReady
                         && Player.Distance(ExpectedEndPosition(target)) > target.Distance(ExpectedEndPosition(target)))
                     {
-                        Orbwalker.MoveOrder(
+                        Variables.Orbwalker.Move(
                             target.ServerPosition.Extend(ExpectedEndPosition(target), -DistBehind(target)));
                     }
                     else
                     {
-                        Orbwalker.MoveOrder(Game.CursorPos);
+                        Variables.Orbwalker.Move(Game.CursorPos);
                     }
                 }
                 if (target == null || !IsReady)
@@ -908,7 +908,7 @@
 
             private static void GapByFlashR(Obj_AI_Hero target, Vector3 posGap)
             {
-                if (Orbwalker.CanMove)
+                if (Variables.Orbwalker.CanMove())
                 {
                     lastGapClose = Variables.TickCount;
                 }
@@ -920,7 +920,7 @@
 
             private static void GapByQ(Obj_AI_Hero target)
             {
-                if (!MainMenu["Orbwalk"]["Q"] || !Q.IsReady())
+                if (!MainMenu["Insec"]["Q"] || !Q.IsReady())
                 {
                     return;
                 }
@@ -993,10 +993,10 @@
 
             private static void GapByWardJump(Obj_AI_Hero target, Vector3 posGap)
             {
-                if (Orbwalker.CanMove)
+                if (Variables.Orbwalker.CanMove())
                 {
                     lastGapClose = Variables.TickCount;
-                    Orbwalker.MoveOrder(
+                    Variables.Orbwalker.Move(
                         posGap.Extend(ExpectedEndPosition(target), -(DistBehind(target) + Player.BoundingRadius / 2)));
                 }
                 posSetting = EndPosition(target);

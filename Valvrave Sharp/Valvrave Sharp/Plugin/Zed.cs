@@ -679,7 +679,7 @@
                     break;
             }
             if (Variables.Orbwalker.GetActiveMode() < OrbwalkingMode.Combo
-                && Variables.Orbwalker.GetActiveMode() > OrbwalkingMode.Hybrid)
+                || Variables.Orbwalker.GetActiveMode() > OrbwalkingMode.Hybrid)
             {
                 AutoQ();
             }

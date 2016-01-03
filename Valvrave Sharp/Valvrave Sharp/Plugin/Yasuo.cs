@@ -85,8 +85,9 @@
             }
             var lcMenu = MainMenu.Add(new Menu("LaneClear", "Lane Clear"));
             {
-                lcMenu.Separator("Q: Always On");
-                lcMenu.Bool("Q3", "Also Q3");
+                lcMenu.Separator("Q Settings");
+                lcMenu.Bool("Q", "Use Q");
+                lcMenu.Bool("Q3", "Also Q3", false);
                 lcMenu.Separator("E Settings");
                 lcMenu.Bool("E", "Use E");
                 lcMenu.Bool("ELastHit", "Last Hit Only", false);
@@ -124,9 +125,9 @@
             }
             var drawMenu = MainMenu.Add(new Menu("Draw", "Draw"));
             {
-                drawMenu.Bool("Q", "Q Range");
+                drawMenu.Bool("Q", "Q Range", false);
                 drawMenu.Bool("E", "E Range", false);
-                drawMenu.Bool("R", "R Range");
+                drawMenu.Bool("R", "R Range", false);
                 drawMenu.Bool("StackQ", "Auto Stack Q Status");
             }
             MainMenu.KeyBind("StackQ", "Auto Stack Q", Keys.Z, KeyBindType.Toggle);
@@ -173,6 +174,8 @@
             => GameObjects.EnemyHeroes.Where(i => R.IsInRange(i) && CanCastR(i)).ToList();
 
         private static bool HaveQ3 => Player.HasBuff("YasuoQ3W");
+
+        private static bool IsTryingToQ => Variables.TickCount - Q.LastCastAttemptT <= SpellQ.Delay * 1000 - 50;
 
         private static Spell SpellQ => !HaveQ3 ? Q : Q2;
 
@@ -266,14 +269,14 @@
                     }
                 }
             }
-            if (MainMenu["Combo"]["EGap"] && E.IsReady())
+            if (MainMenu["Combo"]["EGap"] && E.IsReady() && !IsTryingToQ)
             {
                 if (MainMenu["Combo"]["EMode"].GetValue<MenuList>().Index == 0)
                 {
                     var target = Q.GetTarget(QCirWidth);
                     if (target != null && HaveQ3 && Q.IsReady(20))
                     {
-                        var nearObj = GetNearObj(target, true);
+                        var nearObj = GetNearObj(target, true, MainMenu["Combo"]["ETower"]);
                         if (nearObj != null
                             && (PosAfterE(nearObj).CountEnemyHeroesInRange(QCirWidth) > 1
                                 || Player.CountEnemyHeroesInRange(Q.Range + 150) < 3))
@@ -529,7 +532,7 @@
 
         private static void LaneClear()
         {
-            if (MainMenu["LaneClear"]["E"] && E.IsReady())
+            if (MainMenu["LaneClear"]["E"] && E.IsReady() && !IsTryingToQ)
             {
                 var minion =
                     GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet(false))
@@ -545,7 +548,8 @@
                     var obj =
                         minion.FirstOrDefault(
                             i => E.GetHealthPrediction(i) > 0 && E.GetHealthPrediction(i) <= GetEDmg(i));
-                    if (obj == null && Q.IsReady(20) && (!HaveQ3 || MainMenu["LaneClear"]["Q3"]))
+                    if (MainMenu["LaneClear"]["Q"] && obj == null && Q.IsReady(20)
+                        && (!HaveQ3 || MainMenu["LaneClear"]["Q3"]))
                     {
                         var sub = new List<Obj_AI_Minion>();
                         foreach (var mob in minion)
@@ -577,7 +581,7 @@
                     }
                 }
             }
-            if (Q.IsReady() && (!HaveQ3 || MainMenu["LaneClear"]["Q3"]))
+            if (MainMenu["LaneClear"]["Q"] && Q.IsReady() && (!HaveQ3 || MainMenu["LaneClear"]["Q3"]))
             {
                 if (Player.IsDashing())
                 {

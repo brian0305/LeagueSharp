@@ -89,7 +89,7 @@
             var drawMenu = MainMenu.Add(new Menu("Draw", "Draw"));
             {
                 drawMenu.Bool("Q", "Q Range", false);
-                drawMenu.Bool("W", "W Range");
+                drawMenu.Bool("W", "W Range", false);
                 drawMenu.Bool("E", "E Range", false);
                 drawMenu.Bool("R", "R Range", false);
             }
@@ -143,7 +143,7 @@
                         {
                             continue;
                         }
-                        var posPred = pred.CastPosition.ToVector2();
+                        var posPred = pred.UnitPosition.ToVector2();
                         if (MainMenu["Combo"]["RKill"]
                             && hitTarget.Health + hitTarget.PhysicalShield <= GetRColDmg(kickTarget, hitTarget))
                         {
@@ -400,13 +400,13 @@
                         }
                     }
                 }
-                else if (
-                    GameObjects.EnemyHeroes.Any(
-                        i =>
-                        i.IsValidTarget(Q2.Range) && HaveQ(i)
-                        && i.Health + i.PhysicalShield
-                        <= Player.GetSpellDamage(i, SpellSlot.Q, Damage.DamageStage.SecondCast)
-                        + Player.GetAutoAttackDamage(i)))
+                else if (GetQObj != null
+                         && GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(Q2.Range) && HaveQ(i))
+                                .Any(
+                                    i =>
+                                    i.Health + i.PhysicalShield
+                                    <= Player.GetSpellDamage(i, SpellSlot.Q, Damage.DamageStage.SecondCast)
+                                    + Player.GetAutoAttackDamage(i)))
                 {
                     Q.Cast();
                 }
@@ -703,14 +703,6 @@
                         {
                             lastGapClose = 0;
                         }
-                        if (IsDoingRFlash && Flash.IsReady() && insecTarget != null)
-                        {
-                            Player.Spellbook.CastSpell(
-                                Flash,
-                                insecTarget.ServerPosition.ToVector2()
-                                    .Extend(ExpectedEndPosition(insecTarget), -DistBehind(insecTarget))
-                                    .ToVector3(insecTarget.ServerPosition.Z));
-                        }
                     };
                 Drawing.OnDraw += args =>
                     {
@@ -745,16 +737,14 @@
                                 lastJump = Variables.TickCount;
                             }
                         }
-                        if (args.Slot == SpellSlot.R && IsDoingRFlash && Flash.IsReady() && insecTarget != null)
+                        if (args.Slot == SpellSlot.R && IsDoingRFlash && Flash.IsReady())
                         {
                             var target = args.Target as Obj_AI_Hero;
-                            if (target != null && target.Compare(insecTarget))
+                            if (target != null)
                             {
                                 Player.Spellbook.CastSpell(
                                     Flash,
-                                    target.ServerPosition.ToVector2()
-                                        .Extend(ExpectedEndPosition(target), -DistBehind(target))
-                                        .ToVector3(target.ServerPosition.Z));
+                                    target.Position.Extend(ExpectedEndPosition(target), -DistBehind(target)));
                             }
                         }
                     };
@@ -1106,8 +1096,7 @@
                 GameObject.OnCreate += (sender, args) =>
                     {
                         var ward = sender as Obj_AI_Minion;
-                        if (ward == null || ward.IsEnemy || !ward.GetMinionType().HasFlag(MinionTypes.Ward)
-                            || ward.MaxHealth.Equals(1))
+                        if (ward == null || ward.IsEnemy || !ward.IsWard())
                         {
                             return;
                         }

@@ -308,7 +308,7 @@
             result.CastPosition.SetZ(input.Unit.ServerPosition.Z);
             if (checkCollision && input.Collision && result.Hitchance > HitChance.Impossible)
             {
-                var positions = new List<Vector3> { result.CastPosition };
+                var positions = new List<Vector3> { result.UnitPosition };
                 var originalUnit = input.Unit;
                 result.CollisionObjects = Collisions.GetCollision(positions, input);
                 result.CollisionObjects.RemoveAll(i => i.NetworkId == originalUnit.NetworkId);
@@ -547,7 +547,7 @@
                                 input.GetPrediction(false, false)
                                     .UnitPosition.ToVector2()
                                     .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
-                                <= Math.Pow(input.Radius + 15 + minion.BoundingRadius, 2))
+                                <= Math.Pow(input.Radius + 20 + minion.BoundingRadius, 2))
                             {
                                 result.Add(minion);
                             }

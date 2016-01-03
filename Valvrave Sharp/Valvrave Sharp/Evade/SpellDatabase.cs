@@ -485,7 +485,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Ekko", SpellName = "EkkoR", Slot = SpellSlot.R,
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 1600, Radius = 375, MissileSpeed = 1650,
                         FixedRange = true, AddHitbox = true, DangerValue = 3, MissileSpellName = "EkkoR",
-                        CanBeRemoved = true, FromObjects = new[] { "Ekko_Base_R_TrailEnd.troy" }
+                        CanBeRemoved = true, FromObjects = new[] { "Ekko" }
                     });
 
             #endregion Ekko
@@ -1402,7 +1402,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Orianna", SpellName = "OriannaDissonance", Slot = SpellSlot.W,
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Radius = 255, MissileSpeed = int.MaxValue,
                         FixedRange = true, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "OrianaDissonanceCommand-", FromObject = "yomu_ring_",
+                        MissileSpellName = "OrianaDissonanceCommand-", FromObject = "TheDoomBall",
                         SourceObjectName = "w_dissonance_ball"
                     });
 
@@ -1421,7 +1421,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Orianna", SpellName = "OriannaDetonate", Slot = SpellSlot.R,
                         Type = SkillShotType.SkillshotCircle, Delay = 700, Radius = 410, MissileSpeed = int.MaxValue,
                         FixedRange = true, AddHitbox = true, DangerValue = 5, IsDangerous = true,
-                        MissileSpellName = "OrianaDetonateCommand-", FromObject = "yomu_ring_",
+                        MissileSpellName = "OrianaDetonateCommand-", FromObject = "TheDoomBall",
                         SourceObjectName = "r_vacuumindicator"
                     });
 
@@ -2134,8 +2134,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Zed", SpellName = "ZedQ", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 925, Radius = 50,
                         MissileSpeed = 1700, FixedRange = true, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "ZedQMissile",
-                        FromObjects = new[] { "Zed_Base_W_tar.troy", "Zed_Base_W_cloneswap_buf.troy" },
+                        MissileSpellName = "ZedQMissile", FromObjects = new[] { "Shadow" },
                         CollisionObjects = CollisionableObjects.YasuoWall
                     });
 

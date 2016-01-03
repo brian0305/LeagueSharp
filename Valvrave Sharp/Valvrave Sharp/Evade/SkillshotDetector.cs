@@ -171,7 +171,8 @@
             var startPos = new Vector2();
             if (spellData.FromObject != "")
             {
-                foreach (var obj in GameObjects.AllGameObjects.Where(i => i.Name.Contains(spellData.FromObject)))
+                foreach (var obj in
+                    GameObjects.EnemyMinions.Where(i => i.Name == spellData.FromObject && !i.IsHPBarRendered))
                 {
                     startPos = obj.Position.ToVector2();
                 }
@@ -183,7 +184,7 @@
             if (spellData.FromObjects != null && spellData.FromObjects.Length > 0)
             {
                 foreach (var obj in
-                    GameObjects.AllGameObjects.Where(i => i.IsEnemy && spellData.FromObjects.Contains(i.Name)))
+                    GameObjects.EnemyMinions.Where(i => spellData.FromObjects.Contains(i.Name) && !i.IsHPBarRendered))
                 {
                     var start = obj.Position.ToVector2();
                     var end = start + spellData.Range * (args.End.ToVector2() - obj.Position.ToVector2()).Normalized();

@@ -106,16 +106,17 @@
             if (GameObjects.EnemyHeroes.Any())
             {
                 Evade.Init();
+                EvadeTarget.Init();
             }
             var drawMenu = MainMenu.Add(new Menu("Draw", "Draw"));
             {
-                drawMenu.Bool("Q", "Q Range");
-                drawMenu.Bool("W", "W Range");
+                drawMenu.Bool("Q", "Q Range", false);
+                drawMenu.Bool("W", "W Range", false);
                 drawMenu.Bool("E", "E Range", false);
-                drawMenu.Bool("R", "R Range");
-                drawMenu.Bool("Target", "Target");
-                drawMenu.Bool("WPos", "W Shadow");
-                drawMenu.Bool("RPos", "R Shadow");
+                drawMenu.Bool("R", "R Range", false);
+                drawMenu.Bool("Target", "Target", false);
+                drawMenu.Bool("WPos", "W Shadow", false);
+                drawMenu.Bool("RPos", "R Shadow", false);
             }
             MainMenu.KeyBind("FleeW", "Use W To Flee", Keys.C);
 
@@ -842,5 +843,192 @@
         }
 
         #endregion
+
+        private static class EvadeTarget
+        {
+            #region Static Fields
+
+            private static readonly List<Targets> DetectedTargets = new List<Targets>();
+
+            private static readonly List<SpellData> Spells = new List<SpellData>();
+
+            #endregion
+
+            #region Methods
+
+            internal static void Init()
+            {
+                LoadSpellData();
+                var evadeMenu = MainMenu.Add(new Menu("EvadeTarget", "Evade Target"));
+                {
+                    evadeMenu.Bool("R", "Use R1");
+                    foreach (var hero in
+                        GameObjects.EnemyHeroes.Where(
+                            i =>
+                            Spells.Any(
+                                a =>
+                                string.Equals(
+                                    a.ChampionName,
+                                    i.ChampionName,
+                                    StringComparison.InvariantCultureIgnoreCase))))
+                    {
+                        evadeMenu.Add(new Menu(hero.ChampionName.ToLowerInvariant(), "-> " + hero.ChampionName));
+                    }
+                    foreach (var spell in
+                        Spells.Where(
+                            i =>
+                            GameObjects.EnemyHeroes.Any(
+                                a =>
+                                string.Equals(
+                                    a.ChampionName,
+                                    i.ChampionName,
+                                    StringComparison.InvariantCultureIgnoreCase))))
+                    {
+                        ((Menu)evadeMenu[spell.ChampionName.ToLowerInvariant()]).Bool(
+                            spell.MissileName,
+                            spell.MissileName + " (" + spell.Slot + ")",
+                            false);
+                    }
+                }
+                Game.OnUpdate += OnUpdateTarget;
+                GameObject.OnCreate += ObjSpellMissileOnCreate;
+                GameObject.OnDelete += ObjSpellMissileOnDelete;
+            }
+
+            private static void LoadSpellData()
+            {
+                Spells.Add(
+                    new SpellData { ChampionName = "Anivia", SpellNames = new[] { "frostbite" }, Slot = SpellSlot.E });
+                Spells.Add(
+                    new SpellData
+                        {
+                            ChampionName = "Brand", SpellNames = new[] { "brandwildfire", "brandwildfiremissile" },
+                            Slot = SpellSlot.R
+                        });
+                Spells.Add(
+                    new SpellData
+                        {
+                            ChampionName = "Caitlyn", SpellNames = new[] { "caitlynaceintheholemissile" },
+                            Slot = SpellSlot.R
+                        });
+                Spells.Add(
+                    new SpellData
+                        {
+                            ChampionName = "Leblanc", SpellNames = new[] { "leblancchaosorb", "leblancchaosorbm" },
+                            Slot = SpellSlot.Q
+                        });
+                Spells.Add(new SpellData { ChampionName = "Lulu", SpellNames = new[] { "luluw" }, Slot = SpellSlot.W });
+                Spells.Add(
+                    new SpellData { ChampionName = "Syndra", SpellNames = new[] { "syndrar" }, Slot = SpellSlot.R });
+                Spells.Add(
+                    new SpellData
+                        { ChampionName = "TwistedFate", SpellNames = new[] { "bluecardattack" }, Slot = SpellSlot.W });
+                Spells.Add(
+                    new SpellData
+                        { ChampionName = "TwistedFate", SpellNames = new[] { "goldcardattack" }, Slot = SpellSlot.W });
+                Spells.Add(
+                    new SpellData
+                        { ChampionName = "TwistedFate", SpellNames = new[] { "redcardattack" }, Slot = SpellSlot.W });
+                Spells.Add(
+                    new SpellData
+                        { ChampionName = "Vayne", SpellNames = new[] { "vaynecondemnmissile" }, Slot = SpellSlot.E });
+                Spells.Add(
+                    new SpellData
+                        { ChampionName = "Veigar", SpellNames = new[] { "veigarprimordialburst" }, Slot = SpellSlot.R });
+            }
+
+            private static void ObjSpellMissileOnCreate(GameObject sender, EventArgs args)
+            {
+                var missile = sender as MissileClient;
+                if (missile == null || !missile.IsValid)
+                {
+                    return;
+                }
+                var caster = missile.SpellCaster as Obj_AI_Hero;
+                if (caster == null || !caster.IsValid || caster.Team == Player.Team || !missile.Target.IsMe)
+                {
+                    return;
+                }
+                var spellData =
+                    Spells.FirstOrDefault(
+                        i =>
+                        i.SpellNames.Contains(missile.SData.Name.ToLower())
+                        && MainMenu["EvadeTarget"][i.ChampionName.ToLowerInvariant()][i.MissileName]);
+                if (spellData == null)
+                {
+                    return;
+                }
+                DetectedTargets.Add(new Targets { Obj = missile });
+            }
+
+            private static void ObjSpellMissileOnDelete(GameObject sender, EventArgs args)
+            {
+                var missile = sender as MissileClient;
+                if (missile == null || !missile.IsValid)
+                {
+                    return;
+                }
+                var caster = missile.SpellCaster as Obj_AI_Hero;
+                if (caster == null || !caster.IsValid || caster.Team == Player.Team)
+                {
+                    return;
+                }
+                DetectedTargets.RemoveAll(i => i.Obj.NetworkId == missile.NetworkId);
+            }
+
+            private static void OnUpdateTarget(EventArgs args)
+            {
+                if (Player.IsDead)
+                {
+                    return;
+                }
+                if (Player.HasBuffOfType(BuffType.SpellShield) || Player.HasBuffOfType(BuffType.SpellImmunity))
+                {
+                    return;
+                }
+                if (!MainMenu["EvadeTarget"]["R"] || RState != 0)
+                {
+                    return;
+                }
+                if (DetectedTargets.Any(i => Player.Distance(i.Obj) < 500))
+                {
+                    var target = R.GetTarget();
+                    if (target != null)
+                    {
+                        R.CastOnUnit(target);
+                    }
+                }
+            }
+
+            #endregion
+
+            private class SpellData
+            {
+                #region Fields
+
+                public string ChampionName;
+
+                public SpellSlot Slot;
+
+                public string[] SpellNames = { };
+
+                #endregion
+
+                #region Public Properties
+
+                public string MissileName => this.SpellNames.First();
+
+                #endregion
+            }
+
+            private class Targets
+            {
+                #region Fields
+
+                public MissileClient Obj;
+
+                #endregion
+            }
+        }
     }
 }

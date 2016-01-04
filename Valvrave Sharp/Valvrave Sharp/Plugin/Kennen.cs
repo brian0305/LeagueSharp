@@ -175,6 +175,16 @@
                     W.Cast();
                 }
             }
+            var subTarget = W.GetTarget();
+            if (subTarget == null)
+            {
+                return;
+            }
+            if (MainMenu["Combo"]["Ignite"] && Ignite.IsReady() && subTarget.HealthPercent < 30
+                && Player.Distance(subTarget) <= IgniteRange)
+            {
+                Player.Spellbook.CastSpell(Ignite, subTarget);
+            }
         }
 
         private static bool HaveW(Obj_AI_Base target, bool checkCanStun = false)

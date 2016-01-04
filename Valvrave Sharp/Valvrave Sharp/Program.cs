@@ -41,6 +41,7 @@
 
         private static readonly Dictionary<string, Func<object>> Plugins = new Dictionary<string, Func<object>>
                                                                                {
+                                                                                   { "Kennen", () => new Kennen() },
                                                                                    { "LeeSin", () => new LeeSin() },
                                                                                    { "Yasuo", () => new Yasuo() },
                                                                                    { "Zed", () => new Zed() }
@@ -66,12 +67,19 @@
             Titanic = new Items.Item(3748, 0);
         }
 
-        private static void InitMenu()
+        private static void InitMenu(bool isSupport)
         {
             MainMenu = new Menu("ValvraveSharp", "Valvrave Sharp", true, Player.ChampionName).Attach();
             MainMenu.Separator("Author: Brian");
             MainMenu.Separator("Paypal: dcbrian01@gmail.com");
-            Plugins[Player.ChampionName].Invoke();
+            if (isSupport)
+            {
+                Plugins[Player.ChampionName].Invoke();
+            }
+            else
+            {
+                MainMenu.Separator(Player.ChampionName + " Not Support");
+            }
         }
 
         private static void InitSummonerSpell()
@@ -97,14 +105,14 @@
             Load.OnLoad += (sender, eventArgs) =>
                 {
                     UpdateCheck();
-                    if (!Plugins.ContainsKey(Player.ChampionName))
+                    var checkSupport = Plugins.ContainsKey(Player.ChampionName);
+                    InitMenu(checkSupport);
+                    if (!checkSupport)
                     {
-                        PrintChat(Player.ChampionName + " Not Support!");
                         return;
                     }
                     InitItem();
                     InitSummonerSpell();
-                    InitMenu();
                 };
         }
 

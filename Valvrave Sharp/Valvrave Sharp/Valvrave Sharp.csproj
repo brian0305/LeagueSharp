@@ -85,6 +85,7 @@
     <Compile Include="Evade\SkillshotDetector.cs" />
     <Compile Include="Evade\SpellData.cs" />
     <Compile Include="Evade\SpellDatabase.cs" />
+    <Compile Include="Plugin\Kennen.cs" />
     <Compile Include="Plugin\LeeSin.cs" />
     <Compile Include="Plugin\Yasuo.cs" />
     <Compile Include="Plugin\Zed.cs" />

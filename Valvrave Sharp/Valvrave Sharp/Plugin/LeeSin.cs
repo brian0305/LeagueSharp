@@ -10,7 +10,6 @@
     using LeagueSharp;
     using LeagueSharp.SDK.Core;
     using LeagueSharp.SDK.Core.Enumerations;
-    using LeagueSharp.SDK.Core.Events;
     using LeagueSharp.SDK.Core.Extensions;
     using LeagueSharp.SDK.Core.Extensions.SharpDX;
     using LeagueSharp.SDK.Core.UI.IMenu.Values;
@@ -410,40 +409,38 @@
                 {
                     Q.Cast();
                 }
-                if (MainMenu["KillSteal"]["E"] && E.IsReady() && IsEOne)
+            }
+            if (MainMenu["KillSteal"]["E"] && E.IsReady() && IsEOne)
+            {
+                var target = E.GetTarget();
+                if (target != null && target.Health + target.MagicalShield <= Player.GetSpellDamage(target, SpellSlot.E))
                 {
-                    var target = E.GetTarget();
-                    if (target != null
-                        && target.Health + target.MagicalShield <= Player.GetSpellDamage(target, SpellSlot.E))
-                    {
-                        E.Cast();
-                    }
+                    E.Cast();
                 }
-                if (MainMenu["KillSteal"]["R"] && R.IsReady())
+            }
+            if (MainMenu["KillSteal"]["R"] && R.IsReady())
+            {
+                var targetList =
+                    Variables.TargetSelector.GetTargets(R.Range, R.DamageType)
+                        .Where(i => MainMenu["KillSteal"]["RCast" + i.ChampionName])
+                        .ToList();
+                var targetR =
+                    targetList.FirstOrDefault(i => i.Health + i.PhysicalShield <= Player.GetSpellDamage(i, SpellSlot.R));
+                if (targetR != null)
                 {
-                    var targetList =
-                        Variables.TargetSelector.GetTargets(R.Range, R.DamageType)
-                            .Where(i => MainMenu["KillSteal"]["RCast" + i.ChampionName])
-                            .ToList();
-                    var targetR =
+                    R.CastOnUnit(targetR);
+                }
+                else if (MainMenu["KillSteal"]["Q"] && Q.IsReady() && !IsQOne)
+                {
+                    var targetQ2R =
                         targetList.FirstOrDefault(
-                            i => i.Health + i.PhysicalShield <= Player.GetSpellDamage(i, SpellSlot.R));
-                    if (targetR != null)
+                            i =>
+                            HaveQ(i)
+                            && i.Health + i.PhysicalShield
+                            <= GetQ2Dmg(i, Player.GetSpellDamage(i, SpellSlot.R)) + Player.GetAutoAttackDamage(i));
+                    if (targetQ2R != null)
                     {
-                        R.CastOnUnit(targetR);
-                    }
-                    else if (MainMenu["KillSteal"]["Q"] && Q.IsReady() && !IsQOne)
-                    {
-                        var targetQ2R =
-                            targetList.FirstOrDefault(
-                                i =>
-                                HaveQ(i)
-                                && i.Health + i.PhysicalShield
-                                <= GetQ2Dmg(i, Player.GetSpellDamage(i, SpellSlot.R)) + Player.GetAutoAttackDamage(i));
-                        if (targetQ2R != null)
-                        {
-                            R.CastOnUnit(targetQ2R);
-                        }
+                        R.CastOnUnit(targetQ2R);
                     }
                 }
             }
@@ -797,7 +794,6 @@
                         }
                     }
                     if (!checkFlash.Item2 && !checkJump.Item2 && !Player.HasBuff("blindmonkqtwodash")
-                        && !Player.IsDashing()
                         && Player.Distance(target) < WardManager.WardRange + FlashRange - DistBehind(target)
                         && WardManager.CanWardJump && MainMenu["Insec"]["Flash"] && Flash.IsReady()
                         && MainMenu["Insec"]["FlashJump"])

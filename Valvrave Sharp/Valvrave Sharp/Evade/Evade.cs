@@ -454,7 +454,10 @@
                     skillshot.Unit);
                 DetectedSkillshots.Add(skillshotToAdd);
             }
-            if (skillshot.SpellData.DisableFowDetection && skillshot.DetectionType == DetectionType.RecvPacket)
+            if ((skillshot.SpellData.DisableFowDetection
+                 || Program.MainMenu["Evade"][skillshot.SpellData.ChampionName.ToLowerInvariant()][
+                     skillshot.SpellData.SpellName]["DisableFoW"])
+                && skillshot.DetectionType == DetectionType.RecvPacket)
             {
                 return;
             }

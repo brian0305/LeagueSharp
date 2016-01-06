@@ -49,23 +49,6 @@
 
         #region Methods
 
-        private static PredictionOutput GetAdvancedPrediction(this PredictionInput input, float additionalSpeed = 0)
-        {
-            var speed = input.Speed * (Math.Abs(additionalSpeed) < float.Epsilon ? 1 : additionalSpeed);
-            if (Math.Abs(speed - int.MaxValue) < float.Epsilon)
-            {
-                speed = 90000;
-            }
-            var unit = input.Unit;
-            var position = unit.PositionAfter(1, unit.MoveSpeed - 100);
-            var prediction = position + speed * (input.Delay / 1000);
-            return new PredictionOutput
-                       {
-                           UnitPosition = position.ToVector3(), CastPosition = prediction.ToVector3(),
-                           Hitchance = HitChance.High
-                       };
-        }
-
         private static double GetAngle(this Vector3 from, Obj_AI_Hero target)
         {
             var c = target.ServerPosition.ToVector2();
@@ -272,7 +255,6 @@
             if (result == null)
             {
                 result = input.GetStandardPrediction();
-                //result = input.GetAdvancedPrediction(); //This
             }
             if (Math.Abs(input.Range - float.MaxValue) > float.Epsilon)
             {
@@ -300,7 +282,7 @@
                     }
                 }
             }
-            if (result.Hitchance == HitChance.High || result.Hitchance == HitChance.VeryHigh) //This
+            if (result.Hitchance == HitChance.High || result.Hitchance == HitChance.VeryHigh)
             {
                 result = input.WayPointAnalysis(result);
             }
@@ -324,11 +306,6 @@
             {
                 speed /= 1.5f;
             }
-            /*var heroUnit = input.Unit as Obj_AI_Hero;
-            if (heroUnit != null && UnitTracker.CanCalcWaypoints(heroUnit)) //This
-            {
-                return input.GetPositionOnPath(UnitTracker.CalcWaypoints(heroUnit), speed);
-            }*/
             return input.GetPositionOnPath(input.Unit.GetWaypoints(), speed);
         }
 
@@ -343,29 +320,6 @@
                         || i.Type == BuffType.Taunt || i.Type == BuffType.Knockback))
                     .Aggregate(0d, (current, buff) => Math.Max(current, buff.EndTime));
             return result - Game.Time;
-        }
-
-        private static Vector2 PositionAfter(this Obj_AI_Base unit, float t, float speed = float.MaxValue)
-        {
-            var distance = t * speed;
-            var path = unit.GetWaypoints();
-
-            for (var i = 0; i < path.Count - 1; i++)
-            {
-                var a = path[i];
-                var b = path[i + 1];
-                var d = a.Distance(b);
-
-                if (d < distance)
-                {
-                    distance -= d;
-                }
-                else
-                {
-                    return a + distance * (b - a).Normalized();
-                }
-            }
-            return path[path.Count - 1];
         }
 
         private static PredictionOutput WayPointAnalysis(this PredictionInput input, PredictionOutput result)
@@ -547,7 +501,7 @@
                                 input.GetPrediction(false, false)
                                     .UnitPosition.ToVector2()
                                     .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
-                                <= Math.Pow(input.Radius + 20 + minion.BoundingRadius, 2))
+                                <= Math.Pow(input.Radius + 25 + minion.BoundingRadius, 2))
                             {
                                 result.Add(minion);
                             }
@@ -1031,17 +985,6 @@
             #endregion
 
             #region Methods
-
-            internal static List<Vector2> CalcWaypoints(Obj_AI_Hero unit)
-            {
-                var info = StoredList.First(x => x.NetworkId == unit.NetworkId);
-                return new List<Vector2>
-                           {
-                               new Vector2(
-                                   (info.Path[0].Position.X + info.Path[1].Position.X + info.Path[2].Position.X) / 3,
-                                   (info.Path[0].Position.Y + info.Path[1].Position.Y + info.Path[2].Position.Y) / 3)
-                           };
-            }
 
             internal static bool CanCalcWaypoints(Obj_AI_Hero unit)
             {

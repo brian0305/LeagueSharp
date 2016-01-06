@@ -330,7 +330,9 @@
                         }
                         else
                         {
-                            posCast = subPos1;
+                            posCast = subPos1.CountEnemyHeroesInRange(500) > subPos2.CountEnemyHeroesInRange(500)
+                                          ? subPos1
+                                          : subPos2;
                         }
                         break;
                     case 3:

@@ -91,7 +91,10 @@
                     {
                         subMenu.Slider("DangerLevel", "Danger Level", spell.DangerValue, 1, 5);
                         subMenu.Bool("IsDangerous", "Is Dangerous", spell.IsDangerous);
-                        subMenu.Bool("DisableFoW", "Disable FoW Dodging", false);
+                        if (!spell.DisableFowDetection)
+                        {
+                            subMenu.Bool("DisableFoW", "Disable FoW Dodging", false);
+                        }
                         subMenu.Bool("Draw", "Draw");
                         subMenu.Bool("Enabled", "Enabled", !spell.DisabledByDefault);
                     }

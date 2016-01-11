@@ -7,11 +7,7 @@
     using System.Linq;
 
     using LeagueSharp;
-    using LeagueSharp.SDK.Core;
-    using LeagueSharp.SDK.Core.Enumerations;
-    using LeagueSharp.SDK.Core.Events;
-    using LeagueSharp.SDK.Core.Extensions;
-    using LeagueSharp.SDK.Core.Extensions.SharpDX;
+    using LeagueSharp.SDK;
     using LeagueSharp.SDK.Core.UI.IMenu.Values;
     using LeagueSharp.SDK.Core.Utils;
 
@@ -74,7 +70,7 @@
                     {
                         return;
                     }
-                    if (InterruptableSpell.IsCastingInterruptableSpell(ObjectManager.Player, true))
+                    if (Events.IsCastingInterruptableSpell(ObjectManager.Player, true))
                     {
                         return;
                     }

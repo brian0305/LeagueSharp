@@ -4,7 +4,7 @@
 
     using System.Windows.Forms;
 
-    using LeagueSharp.SDK.Core.Enumerations;
+    using LeagueSharp.SDK;
     using LeagueSharp.SDK.Core.UI.IMenu.Values;
 
     using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;

@@ -8,17 +8,11 @@
     using System.Windows.Forms;
 
     using LeagueSharp;
-    using LeagueSharp.SDK.Core;
-    using LeagueSharp.SDK.Core.Enumerations;
-    using LeagueSharp.SDK.Core.Events;
-    using LeagueSharp.SDK.Core.Extensions;
-    using LeagueSharp.SDK.Core.Extensions.SharpDX;
+    using LeagueSharp.SDK;
     using LeagueSharp.SDK.Core.UI.IMenu.Values;
     using LeagueSharp.SDK.Core.Utils;
-    using LeagueSharp.SDK.Core.Wrappers;
     using LeagueSharp.SDK.Core.Wrappers.Damages;
-    using LeagueSharp.SDK.Core.Wrappers.Spells;
-    using LeagueSharp.SDK.Core.Wrappers.TargetSelector.Modes;
+    using LeagueSharp.SDK.Modes;
 
     using SharpDX;
 

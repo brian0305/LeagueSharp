@@ -7,9 +7,7 @@
     using System.Linq;
 
     using LeagueSharp;
-    using LeagueSharp.SDK.Core;
-    using LeagueSharp.SDK.Core.Extensions;
-    using LeagueSharp.SDK.Core.Extensions.SharpDX;
+    using LeagueSharp.SDK;
     using LeagueSharp.SDK.Core.UI.IMenu.Values;
 
     using SharpDX;

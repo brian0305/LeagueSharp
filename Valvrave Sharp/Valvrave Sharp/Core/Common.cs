@@ -6,13 +6,8 @@ namespace Valvrave_Sharp.Core
     using System.Linq;
 
     using LeagueSharp;
-    using LeagueSharp.SDK.Core;
-    using LeagueSharp.SDK.Core.Enumerations;
-    using LeagueSharp.SDK.Core.Extensions;
-    using LeagueSharp.SDK.Core.Extensions.SharpDX;
+    using LeagueSharp.SDK;
     using LeagueSharp.SDK.Core.Utils;
-    using LeagueSharp.SDK.Core.Wrappers;
-    using LeagueSharp.SDK.Core.Wrappers.Spells;
 
     using SharpDX;
 

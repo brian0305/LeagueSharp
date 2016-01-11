@@ -10,11 +10,8 @@
     using System.Text.RegularExpressions;
 
     using LeagueSharp;
-    using LeagueSharp.SDK.Core.Events;
-    using LeagueSharp.SDK.Core.Extensions;
+    using LeagueSharp.SDK;
     using LeagueSharp.SDK.Core.UI.IMenu;
-    using LeagueSharp.SDK.Core.Wrappers;
-    using LeagueSharp.SDK.Core.Wrappers.Spells;
 
     using Valvrave_Sharp.Core;
     using Valvrave_Sharp.Plugin;
@@ -102,7 +99,7 @@
             {
                 return;
             }
-            Load.OnLoad += (sender, eventArgs) =>
+            Events.OnLoad += (sender, eventArgs) =>
                 {
                     UpdateCheck();
                     var checkSupport = Plugins.ContainsKey(Player.ChampionName);

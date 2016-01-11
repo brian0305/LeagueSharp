@@ -8,13 +8,7 @@
     using System.Text.RegularExpressions;
 
     using LeagueSharp;
-    using LeagueSharp.SDK.Core;
-    using LeagueSharp.SDK.Core.Enumerations;
-    using LeagueSharp.SDK.Core.Events;
-    using LeagueSharp.SDK.Core.Extensions;
-    using LeagueSharp.SDK.Core.Extensions.SharpDX;
-    using LeagueSharp.SDK.Core.Math;
-    using LeagueSharp.SDK.Core.Math.Prediction;
+    using LeagueSharp.SDK;
     using LeagueSharp.SDK.Core.Utils;
 
     using SharpDX;
@@ -153,7 +147,7 @@
                                    {
                                        Input = input, CastPosition = cp.ToVector3(), UnitPosition = p.ToVector3(),
                                        Hitchance =
-                                           Path.PathTracker.GetCurrentPath(input.Unit).Time < 0.1
+                                           GamePath.PathTracker.GetCurrentPath(input.Unit).Time < 0.1
                                                ? HitChance.VeryHigh
                                                : HitChance.High
                                    };
@@ -204,7 +198,7 @@
                                    {
                                        Input = input, CastPosition = pos.ToVector3(), UnitPosition = p.ToVector3(),
                                        Hitchance =
-                                           Path.PathTracker.GetCurrentPath(input.Unit).Time < 0.1
+                                           GamePath.PathTracker.GetCurrentPath(input.Unit).Time < 0.1
                                                ? HitChance.VeryHigh
                                                : HitChance.High
                                    };
@@ -286,11 +280,9 @@
             {
                 result = input.WayPointAnalysis(result);
             }
-            result.UnitPosition.SetZ(input.Unit.ServerPosition.Z);
-            result.CastPosition.SetZ(input.Unit.ServerPosition.Z);
             if (checkCollision && input.Collision && result.Hitchance > HitChance.Impossible)
             {
-                var positions = new List<Vector3> { result.UnitPosition };
+                var positions = new List<Vector3> { result.CastPosition };
                 var originalUnit = input.Unit;
                 result.CollisionObjects = Collisions.GetCollision(positions, input);
                 result.CollisionObjects.RemoveAll(i => i.NetworkId == originalUnit.NetworkId);
@@ -305,6 +297,11 @@
             if (input.Unit.DistanceSquared(input.From) < 200 * 200)
             {
                 speed /= 1.5f;
+            }
+            var heroUnit = input.Unit as Obj_AI_Hero;
+            if (heroUnit != null && UnitTracker.CanCalcWaypoints(heroUnit))
+            {
+                return input.GetPositionOnPath(UnitTracker.GetWaypoints(heroUnit), speed);
             }
             return input.GetPositionOnPath(input.Unit.GetWaypoints(), speed);
         }
@@ -335,7 +332,7 @@
                 result.Hitchance = HitChance.VeryHigh;
                 return result;
             }
-            result.Hitchance = HitChance.Medium;
+            result.Hitchance = HitChance.High;
             var lastWaypoint = heroUnit.GetWaypoints().Last();
             var distUnitToWaypoint = heroUnit.Distance(lastWaypoint);
             var distFromToWaypoint = input.From.Distance(lastWaypoint);
@@ -369,7 +366,7 @@
                 result.Hitchance = distUnitToFrom < input.Range - fixRange ? HitChance.VeryHigh : HitChance.High;
                 return result;
             }
-            if (UnitTracker.GetLastVisableTime(heroUnit) < 0.08)
+            if (UnitTracker.GetLastVisableTime(heroUnit) < 0.1)
             {
                 result.Hitchance = HitChance.Medium;
                 return result;
@@ -497,13 +494,25 @@
                                     input.RangeCheckFrom)))
                         {
                             input.Unit = minion;
-                            if (
-                                input.GetPrediction(false, false)
-                                    .UnitPosition.ToVector2()
-                                    .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
-                                <= Math.Pow(input.Radius + 25 + minion.BoundingRadius, 2))
+                            if (minion.Distance(input.From) < input.Radius)
                             {
                                 result.Add(minion);
+                            }
+                            else
+                            {
+                                var minionPos = minion.ServerPosition;
+                                var minionRadius = 20;
+                                if (minion.IsMoving)
+                                {
+                                    minionPos = input.GetPrediction(false, false).UnitPosition;
+                                    minionRadius = 100;
+                                }
+                                if (minionPos.ToVector2()
+                                        .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
+                                    <= Math.Pow(input.Radius + minionRadius + minion.BoundingRadius, 2))
+                                {
+                                    result.Add(minion);
+                                }
                             }
                         }
                     }
@@ -1018,6 +1027,17 @@
             internal static double GetLastVisableTime(Obj_AI_Hero unit)
             {
                 return (Variables.TickCount - StoredList.First(i => i.NetworkId == unit.NetworkId).LastInviTick) / 1000d;
+            }
+
+            internal static List<Vector2> GetWaypoints(Obj_AI_Hero unit)
+            {
+                var info = StoredList.First(i => i.NetworkId == unit.NetworkId);
+                return new List<Vector2>
+                           {
+                               new Vector2(
+                                   (info.Path[0].Position.X + info.Path[1].Position.X + info.Path[2].Position.X) / 3,
+                                   (info.Path[0].Position.Y + info.Path[1].Position.Y + info.Path[2].Position.Y) / 3)
+                           };
             }
 
             #endregion

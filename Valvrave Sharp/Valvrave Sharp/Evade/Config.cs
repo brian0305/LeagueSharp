@@ -6,8 +6,7 @@
     using System.Linq;
     using System.Windows.Forms;
 
-    using LeagueSharp.SDK.Core;
-    using LeagueSharp.SDK.Core.Enumerations;
+    using LeagueSharp.SDK;
 
     using Valvrave_Sharp.Core;
 

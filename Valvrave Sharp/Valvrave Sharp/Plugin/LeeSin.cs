@@ -8,15 +8,11 @@
     using System.Windows.Forms;
 
     using LeagueSharp;
-    using LeagueSharp.SDK.Core;
-    using LeagueSharp.SDK.Core.Enumerations;
-    using LeagueSharp.SDK.Core.Extensions;
-    using LeagueSharp.SDK.Core.Extensions.SharpDX;
+    using LeagueSharp.SDK;
     using LeagueSharp.SDK.Core.UI.IMenu.Values;
     using LeagueSharp.SDK.Core.Utils;
     using LeagueSharp.SDK.Core.Wrappers.Damages;
-    using LeagueSharp.SDK.Core.Wrappers.Spells;
-    using LeagueSharp.SDK.Core.Wrappers.TargetSelector.Modes;
+    using LeagueSharp.SDK.Modes;
 
     using SharpDX;
 
@@ -46,10 +42,10 @@
             E = new Spell(SpellSlot.E, 425);
             E2 = new Spell(SpellSlot.E, 570);
             R = new Spell(SpellSlot.R, 375);
-            R2 = new Spell(SpellSlot.R, 825).SetSkillshot(0.4f, 75, 600, false, SkillshotType.SkillshotLine);
+            R2 = new Spell(SpellSlot.R, 825).SetSkillshot(0.25f, 65, 1500, false, SkillshotType.SkillshotLine);
             Q.DamageType = Q2.DamageType = W.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
-            Q.MinHitChance = HitChance.High;
+            Q.MinHitChance = HitChance.VeryHigh;
 
             WardManager.Init();
             Insec.Init();
@@ -61,6 +57,7 @@
                 comboMenu.Separator("Q Settings");
                 comboMenu.Bool("Q", "Use Q");
                 comboMenu.Bool("Q2", "-> Also Q2");
+                comboMenu.Bool("Q2Obj", "-> Q2 Even Miss");
                 comboMenu.Bool("QCol", "Smite Collision");
                 comboMenu.Separator("R Settings");
                 comboMenu.Bool("R", "Use R");
@@ -278,7 +275,7 @@
                                 Q.Cast();
                             }
                         }
-                        else if (GetQObj != null)
+                        else if (GetQObj != null && MainMenu["Combo"]["Q2Obj"])
                         {
                             var targetQ2 = Q2.GetTarget(200);
                             if (targetQ2 != null && GetQObj.Distance(targetQ2) < Player.Distance(targetQ2)
@@ -682,11 +679,7 @@
             }
             else if (Player.Distance(target) <= W.Range + R.Range - 100 && Player.Mana >= 70)
             {
-                Flee(
-                    target.ServerPosition.ToVector2()
-                        .Extend(Player.ServerPosition, R.Range / 2)
-                        .ToVector3(target.ServerPosition.Z),
-                    true);
+                Flee(target.ServerPosition.Extend(Player.ServerPosition, R.Range / 2), true);
             }
         }
 
@@ -769,7 +762,7 @@
                     insecMenu.Bool("Line", "Draw Line");
                     insecMenu.List("Mode", "Mode", new[] { "Tower/Hero/Current", "Mouse Position", "Current Position" });
                     insecMenu.Separator("Flash Settings");
-                    insecMenu.Bool("Flash", "Use Flash If Can't WardJump");
+                    insecMenu.Bool("Flash", "Use Flash");
                     insecMenu.Bool("PriorFlash", "Priorize Flash Over WardJump", false);
                     insecMenu.List("FlashMode", "Flash Mode", new[] { "R-Flash", "Flash-R", "Both" });
                     insecMenu.Bool("FlashJump", "Use WardJump To Gap For Flash");
@@ -813,8 +806,7 @@
                         Drawing.DrawCircle(insecTarget.Position, insecTarget.BoundingRadius * 1.5f, Color.BlueViolet);
                         Drawing.DrawLine(
                             Drawing.WorldToScreen(insecTarget.Position),
-                            Drawing.WorldToScreen(
-                                ExpectedEndPosition(insecTarget).ToVector3(insecTarget.ServerPosition.Z)),
+                            Drawing.WorldToScreen(ExpectedEndPosition(insecTarget).ToVector3()),
                             2,
                             Color.BlueViolet);
                     };
@@ -880,8 +872,11 @@
                     var checkFlash = GapCheck(target, true);
                     var checkJump = GapCheck(target);
                     if (!Player.HasBuff("blindmonkqtwodash") && !canJumpFlash && !checkFlash.Item2 && !checkJump.Item2
-                        && Player.Distance(target) < WardManager.WardRange + FlashRange - DistBehind(target)
-                        && IsJumpFlash)
+                        && IsJumpFlash
+                        && Player.Distance(target)
+                        < WardManager.WardRange
+                        + (MainMenu["Insec"]["FlashMode"].GetValue<MenuList>().Index == 0 ? R.Range : FlashRange)
+                        - DistBehind(target))
                     {
                         canJumpFlash = true;
                     }
@@ -889,22 +884,22 @@
                     {
                         if (MainMenu["Insec"]["PriorFlash"])
                         {
-                            if (MainMenu["Insec"]["Flash"] && Flash.IsReady() && checkFlash.Item2)
+                            if (MainMenu["Insec"]["Flash"] && checkFlash.Item2)
                             {
                                 GapByFlash(target, checkFlash.Item1);
                             }
-                            else if (WardManager.CanWardJump && checkJump.Item2)
+                            else if (checkJump.Item2)
                             {
                                 GapByWardJump(target, checkJump.Item1);
                             }
                         }
                         else
                         {
-                            if (WardManager.CanWardJump && checkJump.Item2)
+                            if (checkJump.Item2)
                             {
                                 GapByWardJump(target, checkJump.Item1);
                             }
-                            else if (MainMenu["Insec"]["Flash"] && Flash.IsReady() && checkFlash.Item2)
+                            else if (MainMenu["Insec"]["Flash"] && checkFlash.Item2)
                             {
                                 GapByFlash(target, checkFlash.Item1);
                             }
@@ -915,7 +910,7 @@
                         Flee(target.ServerPosition);
                     }
                 }
-                if (!IsJumpFlash && !canJumpFlash)
+                if (!IsJumpFlash || !canJumpFlash)
                 {
                     GapByQ(target);
                 }
@@ -1123,7 +1118,8 @@
 
             private static Tuple<Vector3, bool> GapCheck(Obj_AI_Hero target, bool useFlash = false)
             {
-                if (useFlash && R.IsInRange(target) && MainMenu["Insec"]["FlashMode"].GetValue<MenuList>().Index != 1)
+                if (useFlash && Flash.IsReady() && R.IsInRange(target)
+                    && MainMenu["Insec"]["FlashMode"].GetValue<MenuList>().Index != 1)
                 {
                     return new Tuple<Vector3, bool>(new Vector3(), true);
                 }
@@ -1133,14 +1129,15 @@
                         .ToVector3(target.ServerPosition.Z);
                 if (!useFlash)
                 {
-                    return Player.Distance(posBehind) > WardManager.WardRange || target.Distance(posBehind) > R.Range
+                    return !WardManager.CanWardJump || Player.Distance(posBehind) > WardManager.WardRange
+                           || target.Distance(posBehind) > R.Range
                            || target.Distance(posBehind) >= ExpectedEndPosition(target).Distance(posBehind)
                                ? new Tuple<Vector3, bool>(new Vector3(), false)
                                : new Tuple<Vector3, bool>(posBehind, true);
                 }
                 var posFlash = Player.ServerPosition.ToVector2().Extend(posBehind, FlashRange);
-                return Player.Distance(posBehind) > FlashRange || target.Distance(posBehind) > R.Range
-                       || target.Distance(posFlash) <= 50
+                return !Flash.IsReady() || Player.Distance(posBehind) > FlashRange
+                       || target.Distance(posBehind) > R.Range || target.Distance(posFlash) <= 50
                        || target.Distance(posFlash) >= ExpectedEndPosition(target).Distance(posFlash)
                        || target.Distance(posBehind) >= ExpectedEndPosition(target).Distance(posBehind)
                            ? new Tuple<Vector3, bool>(new Vector3(), false)

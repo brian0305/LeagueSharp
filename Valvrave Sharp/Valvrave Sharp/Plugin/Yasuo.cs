@@ -21,6 +21,7 @@
 
     using Color = System.Drawing.Color;
     using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+    using Skillshot = Valvrave_Sharp.Evade.Skillshot;
 
     #endregion
 
@@ -36,9 +37,9 @@
 
         public Yasuo()
         {
-            Q = new Spell(SpellSlot.Q, 510).SetSkillshot(
+            Q = new Spell(SpellSlot.Q, 515).SetSkillshot(
                 GetQ1Delay,
-                20,
+                50,
                 float.MaxValue,
                 false,
                 SkillshotType.SkillshotLine);
@@ -48,7 +49,7 @@
             R = new Spell(SpellSlot.R, 1200);
             Q.DamageType = Q2.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
-            Q.MinHitChance = Q2.MinHitChance = HitChance.High;
+            Q.MinHitChance = Q2.MinHitChance = HitChance.VeryHigh;
 
             var comboMenu = MainMenu.Add(new Menu("Combo", "Combo"));
             {
@@ -60,7 +61,7 @@
                 comboMenu.Bool("EGap", "Use E");
                 comboMenu.List("EMode", "Follow Mode", new[] { "Enemy", "Mouse" });
                 comboMenu.Slider("ERange", "If Distance >", 300, 0, (int)E.Range);
-                comboMenu.Bool("ETower", "Under Tower");
+                comboMenu.Bool("ETower", "Under Tower", false);
                 comboMenu.Bool("EStackQ", "Stack Q While Gap", false);
                 comboMenu.Separator("R Settings");
                 comboMenu.Bool("R", "Use R");
@@ -102,10 +103,8 @@
                 ksMenu.Bool("E", "Use E");
                 ksMenu.Bool("R", "Use R");
                 ksMenu.Separator("Extra R Settings");
-                foreach (var enemy in GameObjects.EnemyHeroes)
-                {
-                    ksMenu.Bool("RCast" + enemy.ChampionName, "Cast On " + enemy.ChampionName, false);
-                }
+                GameObjects.EnemyHeroes.ForEach(
+                    i => ksMenu.Bool("RCast" + i.ChampionName, "Cast On " + i.ChampionName, false));
             }
             var fleeMenu = MainMenu.Add(new Menu("Flee", "Flee"));
             {
@@ -136,7 +135,7 @@
 
         #region Properties
 
-        private static float GetESpeed => 700 + Player.MoveSpeed;
+        private static float GetESpeed => 650 + Player.MoveSpeed;
 
         private static float GetQ1Delay => 0.4f * GetQDelay;
 
@@ -152,24 +151,23 @@
                           .ToList()
                     : new List<Obj_AI_Base>();
 
-        private static Obj_AI_Hero GetQCirTarget
+        private static List<Obj_AI_Hero> GetQCirTarget
             =>
                 Player.Distance(Player.GetDashInfo().EndPos) < 200
-                    ? Variables.TargetSelector.GetTarget(
-                        QCirWidth,
-                        DamageType.Physical,
-                        true,
-                        Player.GetDashInfo().EndPos.ToVector3())
-                    : null;
+                    ? GameObjects.EnemyHeroes.Where(
+                        i => i.IsValidTarget(QCirWidth, true, Player.GetDashInfo().EndPos.ToVector3()))
+                          .OrderByDescending(i => new Priority().GetDefaultPriority(i))
+                          .ToList()
+                    : new List<Obj_AI_Hero>();
 
-        private static float GetQDelay => 1 - Math.Min((Player.AttackSpeedMod - 1) * 0.0058552631578947f, 0.6675f);
+        private static float GetQDelay => 1 - Math.Min((Player.AttackSpeedMod - 1) * 0.58552631578947f, 0.6675f);
 
         private static List<Obj_AI_Hero> GetRTarget
             => GameObjects.EnemyHeroes.Where(i => R.IsInRange(i) && CanCastR(i)).ToList();
 
         private static bool HaveQ3 => Player.HasBuff("YasuoQ3W");
 
-        private static bool IsTryingToQ => Variables.TickCount - Q.LastCastAttemptT <= SpellQ.Delay * 1000 - 50;
+        private static bool IsTryingToQ => Variables.TickCount - Q.LastCastAttemptT <= SpellQ.Delay * 1000;
 
         private static Spell SpellQ => !HaveQ3 ? Q : Q2;
 
@@ -186,7 +184,7 @@
             }
             if (!HaveQ3)
             {
-                Q.CastingBestTarget(Q.Width, true);
+                Q.CastingBestTarget(Q.Width / 2, true);
             }
             else
             {
@@ -196,7 +194,7 @@
 
         private static bool CanCastDelayR(Obj_AI_Hero target)
         {
-            if (target.Buffs.Any(i => i.IsValid && i.Type == BuffType.Knockback))
+            if (target.HasBuffOfType(BuffType.Knockback))
             {
                 return true;
             }
@@ -218,18 +216,21 @@
 
         private static void CastQ3()
         {
+            var targets = Variables.TargetSelector.GetTargets(Q2.Range + Q2.Width / 2, Q2.DamageType);
+            if (targets.Count == 0)
+            {
+                return;
+            }
             var hit = -1;
             var predPos = new Vector3();
-            foreach (var pred in
-                Variables.TargetSelector.GetTargets(Q2.Range + Q2.Width, Q2.DamageType)
-                    .Select(i => Q2.VPrediction(i, true, CollisionableObjects.YasuoWall)))
-            {
-                if (pred.Hitchance >= Q2.MinHitChance && pred.AoeTargetsHitCount > hit)
-                {
-                    hit = pred.AoeTargetsHitCount;
-                    predPos = pred.CastPosition;
-                }
-            }
+            targets.Select(i => Q2.VPrediction(i, true, CollisionableObjects.YasuoWall))
+                .Where(i => i.Hitchance >= Q2.MinHitChance && i.AoeTargetsHitCount > hit)
+                .ForEach(
+                    i =>
+                        {
+                            hit = i.AoeTargetsHitCount;
+                            predPos = i.CastPosition;
+                        });
             if (predPos.IsValid())
             {
                 Q.Cast(predPos);
@@ -268,7 +269,7 @@
                 if (MainMenu["Combo"]["EMode"].GetValue<MenuList>().Index == 0)
                 {
                     var target = Q.GetTarget(QCirWidth);
-                    if (target != null && HaveQ3 && Q.IsReady(20))
+                    if (target != null && HaveQ3 && Q.IsReady(100))
                     {
                         var nearObj = GetNearObj(target, true, MainMenu["Combo"]["ETower"]);
                         if (nearObj != null
@@ -304,7 +305,7 @@
             {
                 if (Player.IsDashing())
                 {
-                    if (GetQCirTarget != null)
+                    if (GetQCirTarget.Count > 0)
                     {
                         Q.Cast(Player.ServerPosition);
                     }
@@ -318,7 +319,7 @@
                 {
                     if (!HaveQ3)
                     {
-                        Q.CastingBestTarget(Q.Width, true);
+                        Q.CastingBestTarget(Q.Width / 2, true);
                     }
                     else
                     {
@@ -331,18 +332,14 @@
             {
                 UseItem(subTarget);
             }
-            if (subTarget == null)
-            {
-                return;
-            }
-            if (MainMenu["Combo"]["Ignite"] && Ignite.IsReady() && subTarget.HealthPercent < 30
+            if (subTarget != null && MainMenu["Combo"]["Ignite"] && Ignite.IsReady() && subTarget.HealthPercent < 30
                 && Player.Distance(subTarget) <= IgniteRange)
             {
                 Player.Spellbook.CastSpell(Ignite, subTarget);
             }
         }
 
-        private static void Evading()
+        private static void Evading(Obj_AI_Base sender)
         {
             var yasuoW = EvadeSpellDatabase.Spells.FirstOrDefault(i => i.Enable && i.IsReady && i.Slot == SpellSlot.W);
             if (yasuoW == null)
@@ -351,12 +348,12 @@
             }
             var skillshot =
                 Evade.SkillshotAboutToHit(
-                    Player,
+                    sender,
                     yasuoW.Delay - MainMenu["Evade"]["Spells"][yasuoW.Name]["WDelay"],
                     true).OrderByDescending(i => i.DangerLevel).FirstOrDefault(i => i.DangerLevel >= yasuoW.DangerLevel);
             if (skillshot != null)
             {
-                Player.Spellbook.CastSpell(yasuoW.Slot, Player.ServerPosition.Extend(skillshot.Start, 100));
+                sender.Spellbook.CastSpell(yasuoW.Slot, sender.ServerPosition.Extend(skillshot.Start, 100));
             }
         }
 
@@ -389,7 +386,9 @@
             bool checkFace = false)
         {
             var pos = target != null
-                          ? Prediction.GetPrediction(target, E.Delay, 1, E.Speed).UnitPosition
+                          ? Player.ServerPosition.Extend(
+                              Prediction.GetPrediction(target, E.Delay, 1, E.Speed).CastPosition,
+                              E.Range)
                           : Game.CursorPos;
             var obj = new List<Obj_AI_Base>();
             obj.AddRange(GameObjects.EnemyHeroes.Where(i => !i.InFountain()));
@@ -433,7 +432,7 @@
             }
             if (!HaveQ3)
             {
-                var state = Q.CastingBestTarget(Q.Width, true);
+                var state = Q.CastingBestTarget(Q.Width / 2, true);
                 if (state == CastStates.SuccessfullyCasted)
                 {
                     return;
@@ -443,7 +442,7 @@
                     foreach (var minion in
                         GameObjects.EnemyMinions.Where(
                             i =>
-                            i.IsValidTarget(Q.Range - Q.Width) && (i.IsMinion() || i.IsPet(false))
+                            i.IsValidTarget(Q.Range - Q.Width / 2) && (i.IsMinion() || i.IsPet(false))
                             && Q.GetHealthPrediction(i) > 0 && Q.GetHealthPrediction(i) <= GetQDmg(i))
                             .OrderByDescending(i => i.MaxHealth))
                     {
@@ -463,15 +462,14 @@
             {
                 if (Player.IsDashing())
                 {
-                    var target = GetQCirTarget;
-                    if (target != null && target.Health + target.PhysicalShield <= GetQDmg(target))
+                    if (GetQCirTarget.Any(i => i.Health + i.PhysicalShield <= GetQDmg(i)))
                     {
                         Q.Cast(Player.ServerPosition);
                     }
                 }
                 else
                 {
-                    var target = SpellQ.GetTarget(SpellQ.Width);
+                    var target = SpellQ.GetTarget(SpellQ.Width / 2);
                     if (target != null && target.Health + target.PhysicalShield <= GetQDmg(target))
                     {
                         if (!HaveQ3)
@@ -492,19 +490,22 @@
             if (MainMenu["KillSteal"]["E"] && E.IsReady())
             {
                 var targetList = Variables.TargetSelector.GetTargets(E.Range, E.DamageType).Where(CanCastE).ToList();
-                var targetE = targetList.FirstOrDefault(i => i.Health + i.MagicalShield <= GetEDmg(i));
-                if (targetE != null)
+                if (targetList.Count > 0)
                 {
-                    E.CastOnUnit(targetE);
-                }
-                else if (MainMenu["KillSteal"]["Q"] && Q.IsReady(20))
-                {
-                    var targetQCirE =
-                        targetList.Where(i => i.Distance(PosAfterE(i)) < QCirWidth)
-                            .FirstOrDefault(i => i.Health - GetEDmg(i) + i.PhysicalShield <= GetQDmg(i));
-                    if (targetQCirE != null)
+                    var targetE = targetList.FirstOrDefault(i => i.Health + i.MagicalShield <= GetEDmg(i));
+                    if (targetE != null)
                     {
-                        E.CastOnUnit(targetQCirE);
+                        E.CastOnUnit(targetE);
+                    }
+                    else if (MainMenu["KillSteal"]["Q"] && Q.IsReady(100))
+                    {
+                        var targetQCirE =
+                            targetList.Where(i => i.Distance(PosAfterE(i)) < QCirWidth)
+                                .FirstOrDefault(i => i.Health - GetEDmg(i) + i.PhysicalShield <= GetQDmg(i));
+                        if (targetQCirE != null)
+                        {
+                            E.CastOnUnit(targetQCirE);
+                        }
                     }
                 }
             }
@@ -515,8 +516,8 @@
                         i =>
                         MainMenu["KillSteal"]["RCast" + i.ChampionName]
                         && (i.Health + i.PhysicalShield <= Player.GetSpellDamage(i, SpellSlot.R)
-                            || i.Health + i.PhysicalShield <= Player.GetSpellDamage(i, SpellSlot.R) + GetQDmg(i)))
-                        .MaxOrDefault(i => new Priority().GetDefaultPriority(i));
+                            || i.Health + i.PhysicalShield <= Player.GetSpellDamage(i, SpellSlot.R) + GetQDmg(i))
+                        && !Invulnerable.Check(i, R.DamageType)).MaxOrDefault(i => new Priority().GetDefaultPriority(i));
                 if (target != null)
                 {
                     R.CastOnUnit(target);
@@ -542,7 +543,7 @@
                     var obj =
                         minion.FirstOrDefault(
                             i => E.GetHealthPrediction(i) > 0 && E.GetHealthPrediction(i) <= GetEDmg(i));
-                    if (MainMenu["LaneClear"]["Q"] && obj == null && Q.IsReady(20)
+                    if (MainMenu["LaneClear"]["Q"] && obj == null && Q.IsReady(100)
                         && (!HaveQ3 || MainMenu["LaneClear"]["Q3"]))
                     {
                         var sub = new List<Obj_AI_Minion>();
@@ -590,7 +591,7 @@
                     var minion =
                         GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet(false))
                             .Concat(GameObjects.Jungle)
-                            .Where(i => i.IsValidTarget(SpellQ.Range - SpellQ.Width))
+                            .Where(i => i.IsValidTarget(SpellQ.Range - SpellQ.Width / 2))
                             .OrderByDescending(i => i.MaxHealth)
                             .ToList();
                     if (minion.Count == 0)
@@ -607,31 +608,7 @@
                             Q.Casting(obj, true);
                         }
                     }
-                    var posPred = new List<Vector3>();
-                    foreach (var obj in minion)
-                    {
-                        if (!HaveQ3)
-                        {
-                            var pred = Q.VPrediction(obj, true);
-                            if (pred.Hitchance >= HitChance.High)
-                            {
-                                posPred.Add(pred.UnitPosition);
-                            }
-                        }
-                        else
-                        {
-                            var pred = Q2.VPrediction(obj, true, CollisionableObjects.YasuoWall);
-                            if (pred.Hitchance >= HitChance.High)
-                            {
-                                posPred.Add(pred.UnitPosition);
-                            }
-                        }
-                    }
-                    if (posPred.Count == 0)
-                    {
-                        return;
-                    }
-                    var pos = SpellQ.GetLineFarmLocation(posPred.ToVector2());
+                    var pos = SpellQ.VLineFarmLocation(minion);
                     if (pos.MinionsHit > 0)
                     {
                         Q.Cast(pos.Position);
@@ -647,7 +624,7 @@
                 foreach (var minion in
                     GameObjects.EnemyMinions.Where(
                         i =>
-                        i.IsValidTarget(SpellQ.Range - SpellQ.Width) && (i.IsMinion() || i.IsPet(false))
+                        i.IsValidTarget(SpellQ.Range - SpellQ.Width / 2) && (i.IsMinion() || i.IsPet(false))
                         && SpellQ.GetHealthPrediction(i) > 0 && SpellQ.GetHealthPrediction(i) <= GetQDmg(i))
                         .OrderByDescending(i => i.MaxHealth))
                 {
@@ -784,7 +761,7 @@
             {
                 return;
             }
-            var state = Q.CastingBestTarget(Q.Width, true);
+            var state = Q.CastingBestTarget(Q.Width / 2, true);
             switch (state)
             {
                 case CastStates.SuccessfullyCasted:
@@ -793,7 +770,7 @@
                     var minions =
                         GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet(false))
                             .Concat(GameObjects.Jungle)
-                            .Where(i => i.IsValidTarget(Q.Range - Q.Width))
+                            .Where(i => i.IsValidTarget(Q.Range - Q.Width / 2))
                             .OrderByDescending(i => i.MaxHealth)
                             .ToList();
                     if (minions.Count == 0)
@@ -807,16 +784,7 @@
                     {
                         Q.Casting(minion, true);
                     }
-                    var posPred =
-                        minions.Select(i => Q.VPrediction(i, true))
-                            .Where(i => i.Hitchance >= HitChance.High)
-                            .Select(i => i.UnitPosition)
-                            .ToList();
-                    if (posPred.Count == 0)
-                    {
-                        return;
-                    }
-                    var pos = Q.GetLineFarmLocation(posPred.ToVector2());
+                    var pos = Q.VLineFarmLocation(minions);
                     if (pos.MinionsHit > 0)
                     {
                         Q.Cast(pos.Position);
@@ -1154,11 +1122,9 @@
                 {
                     return;
                 }
-                foreach (var target in
-                    DetectedTargets.Where(i => W.IsInRange(i.Obj)).OrderBy(i => i.Obj.Distance(Player)))
-                {
-                    W.Cast(Player.ServerPosition.Extend(target.Start, 100));
-                }
+                DetectedTargets.Where(i => W.IsInRange(i.Obj))
+                    .OrderBy(i => i.Obj.Distance(Player))
+                    .ForEach(i => W.Cast(Player.ServerPosition.Extend(i.Start, 100)));
             }
 
             #endregion

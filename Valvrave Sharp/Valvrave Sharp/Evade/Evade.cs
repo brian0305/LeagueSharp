@@ -29,7 +29,7 @@
 
         #region Delegates
 
-        public delegate void EvadingH();
+        public delegate void EvadingH(Obj_AI_Base sender);
 
         public delegate void TryEvadingH(List<Skillshot> skillshot, Vector2 to);
 
@@ -58,10 +58,7 @@
             Game.OnUpdate += args =>
                 {
                     DetectedSkillshots.RemoveAll(i => !i.IsActive);
-                    foreach (var skillshot in DetectedSkillshots)
-                    {
-                        skillshot.OnUpdate();
-                    }
+                    DetectedSkillshots.ForEach(i => i.OnUpdate());
                     if (!Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active)
                     {
                         return;
@@ -70,7 +67,7 @@
                     {
                         return;
                     }
-                    if (Events.IsCastingInterruptableSpell(ObjectManager.Player, true))
+                    if (ObjectManager.Player.IsCastingInterruptableSpell(true))
                     {
                         return;
                     }
@@ -79,7 +76,7 @@
                     {
                         return;
                     }
-                    Evading?.Invoke();
+                    Evading?.Invoke(ObjectManager.Player);
                     var currentPath = ObjectManager.Player.GetWaypoints();
                     var safePoint = IsSafePoint(PlayerPosition);
                     var safePath = IsSafePath(currentPath, 100);
@@ -131,14 +128,13 @@
                     }
                     if (Program.MainMenu["Evade"]["Draw"]["Skillshot"])
                     {
-                        foreach (var skillshot in DetectedSkillshots)
-                        {
-                            skillshot.Draw(
-                                skillshot.Enable && Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active
+                        DetectedSkillshots.ForEach(
+                            i =>
+                            i.Draw(
+                                i.Enable && Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active
                                     ? Color.White
                                     : Color.Red,
-                                Color.LimeGreen);
-                        }
+                                Color.LimeGreen));
                     }
                 };
         }
@@ -175,10 +171,7 @@
         public static IsSafeResult IsSafePoint(Vector2 point)
         {
             var result = new IsSafeResult { SkillshotList = new List<Skillshot>() };
-            foreach (var skillshot in DetectedSkillshots.Where(i => i.Enable && i.IsDanger(point)))
-            {
-                result.SkillshotList.Add(skillshot);
-            }
+            DetectedSkillshots.Where(i => i.Enable && i.IsDanger(point)).ForEach(i => result.SkillshotList.Add(i));
             result.IsSafe = result.SkillshotList.Count == 0;
             return result;
         }

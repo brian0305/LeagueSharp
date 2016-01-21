@@ -34,12 +34,12 @@
 
         public Kennen()
         {
-            Q = new Spell(SpellSlot.Q, 1050).SetSkillshot(0.125f, 50, 1700, true, SkillshotType.SkillshotLine);
+            Q = new Spell(SpellSlot.Q, 1050).SetSkillshot(0.2f, 50, 1700, true, SkillshotType.SkillshotLine);
             W = new Spell(SpellSlot.W, 950);
             E = new Spell(SpellSlot.E);
             R = new Spell(SpellSlot.R, 550);
             Q.DamageType = W.DamageType = R.DamageType = DamageType.Magical;
-            Q.MinHitChance = HitChance.High;
+            Q.MinHitChance = HitChance.VeryHigh;
 
             var comboMenu = MainMenu.Add(new Menu("Combo", "Combo"));
             {
@@ -125,7 +125,7 @@
             {
                 if (R.IsReady())
                 {
-                    var target = Variables.TargetSelector.GetTargets(R.Range, R.DamageType);
+                    var target = Variables.TargetSelector.GetTargets(R.Range, R.DamageType, false);
                     if ((target.Count > 1
                          && target.Any(i => i.Health + i.MagicalShield <= Player.GetSpellDamage(i, SpellSlot.R)))
                         || target.Sum(i => i.HealthPercent) / target.Count <= MainMenu["Combo"]["RHpU"]
@@ -135,7 +135,7 @@
                     }
                 }
                 else if (HaveR && MainMenu["Combo"]["Zhonya"] && Player.HealthPercent < MainMenu["Combo"]["ZhonyaHpU"]
-                         && W.GetTarget() != null)
+                         && Player.CountEnemyHeroesInRange(W.Range) > 0)
                 {
                     if (Zhonya.IsReady)
                     {
@@ -172,11 +172,7 @@
                 }
             }
             var subTarget = W.GetTarget();
-            if (subTarget == null)
-            {
-                return;
-            }
-            if (MainMenu["Combo"]["Ignite"] && Ignite.IsReady() && subTarget.HealthPercent < 30
+            if (subTarget != null && MainMenu["Combo"]["Ignite"] && Ignite.IsReady() && subTarget.HealthPercent < 30
                 && Player.Distance(subTarget) <= IgniteRange)
             {
                 Player.Spellbook.CastSpell(Ignite, subTarget);
@@ -287,14 +283,7 @@
                 return;
             }
             KillSteal();
-            if (Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.None && HaveE)
-            {
-                Variables.Orbwalker.SetAttackState(false);
-            }
-            else
-            {
-                Variables.Orbwalker.SetAttackState(true);
-            }
+            Variables.Orbwalker.SetAttackState(!HaveE);
             switch (Variables.Orbwalker.GetActiveMode())
             {
                 case OrbwalkingMode.Combo:

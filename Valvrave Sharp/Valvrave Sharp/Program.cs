@@ -12,6 +12,7 @@
     using LeagueSharp;
     using LeagueSharp.SDK;
     using LeagueSharp.SDK.Core.UI.IMenu;
+    using LeagueSharp.SDK.Core.Utils;
 
     using Valvrave_Sharp.Core;
     using Valvrave_Sharp.Plugin;
@@ -72,6 +73,8 @@
             if (isSupport)
             {
                 Plugins[Player.ChampionName].Invoke();
+                Invulnerable.Deregister(new InvulnerableEntry("FerociousHowl"));
+                Invulnerable.Deregister(new InvulnerableEntry("Meditate"));
             }
             else
             {
@@ -81,13 +84,14 @@
 
         private static void InitSummonerSpell()
         {
-            foreach (var spell in
+            var smiteName =
                 Player.Spellbook.Spells.Where(
                     i =>
-                    i.Name.ToLower().Contains("smite")
-                    && (i.Slot == SpellSlot.Summoner1 || i.Slot == SpellSlot.Summoner2)))
+                    (i.Slot == SpellSlot.Summoner1 || i.Slot == SpellSlot.Summoner2)
+                    && i.Name.ToLower().Contains("smite")).Select(i => i.Name).FirstOrDefault();
+            if (!string.IsNullOrEmpty(smiteName))
             {
-                Smite = spell.Slot;
+                Smite = Player.GetSpellSlot(smiteName);
             }
             Ignite = Player.GetSpellSlot("summonerdot");
             Flash = Player.GetSpellSlot("summonerflash");

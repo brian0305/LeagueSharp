@@ -485,7 +485,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Ekko", SpellName = "EkkoR", Slot = SpellSlot.R,
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 1600, Radius = 375, MissileSpeed = 1650,
                         FixedRange = true, AddHitbox = true, DangerValue = 3, MissileSpellName = "EkkoR",
-                        CanBeRemoved = true, FromObjects = new[] { "Ekko" }
+                        CanBeRemoved = true, FromObject = "TestCubeRender"
                     });
 
             #endregion Ekko
@@ -1072,7 +1072,7 @@ namespace Valvrave_Sharp.Evade
                     {
                         ChampionName = "Leblanc", SpellName = "LeblancSoulShackle", Slot = SpellSlot.E,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 950, Radius = 70,
-                        MissileSpeed = 1600, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
+                        MissileSpeed = 1750, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "LeblancSoulShackle", CanBeRemoved = true,
                         CollisionObjects =
                             CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall
@@ -1083,7 +1083,7 @@ namespace Valvrave_Sharp.Evade
                     {
                         ChampionName = "Leblanc", SpellName = "LeblancSoulShackleM", Slot = SpellSlot.R,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 950, Radius = 70,
-                        MissileSpeed = 1600, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
+                        MissileSpeed = 1750, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "LeblancSoulShackleM", CanBeRemoved = true,
                         CollisionObjects =
                             CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall
@@ -1399,10 +1399,10 @@ namespace Valvrave_Sharp.Evade
             Spells.Add(
                 new SpellData
                     {
-                        ChampionName = "Orianna", SpellName = "OriannaDissonance", Slot = SpellSlot.W,
+                        ChampionName = "Orianna", SpellName = "OriannaDissonanceW", Slot = SpellSlot.W,
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Radius = 255, MissileSpeed = int.MaxValue,
                         FixedRange = true, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "OrianaDissonanceCommand-", FromObject = "TheDoomBall",
+                        MissileSpellName = "OrianaDissonanceCommand-" /*, FromObject = "TheDoomBall"*/,
                         SourceObjectName = "w_dissonance_ball"
                     });
 
@@ -1418,10 +1418,10 @@ namespace Valvrave_Sharp.Evade
             Spells.Add(
                 new SpellData
                     {
-                        ChampionName = "Orianna", SpellName = "OriannaDetonate", Slot = SpellSlot.R,
+                        ChampionName = "Orianna", SpellName = "OriannaDetonateR", Slot = SpellSlot.R,
                         Type = SkillShotType.SkillshotCircle, Delay = 700, Radius = 410, MissileSpeed = int.MaxValue,
                         FixedRange = true, AddHitbox = true, DangerValue = 5, IsDangerous = true,
-                        MissileSpellName = "OrianaDetonateCommand-", FromObject = "TheDoomBall",
+                        MissileSpellName = "OrianaDetonateCommand-" /*, FromObject = "TheDoomBall"*/,
                         SourceObjectName = "r_vacuumindicator"
                     });
 
@@ -2134,7 +2134,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Zed", SpellName = "ZedQ", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 925, Radius = 50,
                         MissileSpeed = 1700, FixedRange = true, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "ZedQMissile", FromObjects = new[] { "Shadow" },
+                        MissileSpellName = "ZedQMissile", FromObjects = new[] { "zedshadow" },
                         CollisionObjects = CollisionableObjects.YasuoWall
                     });
 

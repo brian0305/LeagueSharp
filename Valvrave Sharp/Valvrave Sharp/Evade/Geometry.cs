@@ -63,10 +63,7 @@
         public static Polygon ToPolygon(this List<IntPoint> v)
         {
             var polygon = new Polygon();
-            foreach (var point in v)
-            {
-                polygon.Add(new Vector2(point.X, point.Y));
-            }
+            v.ForEach(i => polygon.Add(new Vector2(i.X, i.Y)));
             return polygon;
         }
 

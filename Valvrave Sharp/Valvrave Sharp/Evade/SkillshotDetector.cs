@@ -3,6 +3,7 @@
     #region
 
     using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Text.RegularExpressions;
 
@@ -16,6 +17,12 @@
 
     internal static class SkillshotDetector
     {
+        #region Static Fields
+
+        private static readonly List<Obj_AI_Base> TrackObjects = new List<Obj_AI_Base>();
+
+        #endregion
+
         #region Constructors and Destructors
 
         static SkillshotDetector()
@@ -54,6 +61,52 @@
                         {
                             Evade.DetectedSkillshots.RemoveAt(i);
                         }
+                    }
+                };
+            Obj_AI_Base.OnBuffAdd += (sender, args) =>
+                {
+                    if (args.Buff.Caster.IsAlly || sender.CharData.BaseSkinName != "zedshadow" || sender.IsAlly)
+                    {
+                        return;
+                    }
+                    var shadow = sender as Obj_AI_Minion;
+                    if (shadow.IsValid() && (args.Buff.Name == "zedwshadowbuff" || args.Buff.Name == "zedrshadowbuff"))
+                    {
+                        TrackObjects.Add(shadow);
+                    }
+                };
+            Obj_AI_Base.OnPlayAnimation += (sender, args) =>
+                {
+                    if (args.Animation != "Death")
+                    {
+                        return;
+                    }
+                    var shadow = sender as Obj_AI_Minion;
+                    if (shadow.IsValid())
+                    {
+                        TrackObjects.ForEach(
+                            i =>
+                                {
+                                    if (i.Compare(sender))
+                                    {
+                                        TrackObjects.Remove(i);
+                                    }
+                                });
+                    }
+                };
+            GameObject.OnDelete += (sender, args) =>
+                {
+                    var shadow = sender as Obj_AI_Minion;
+                    if (shadow.IsValid())
+                    {
+                        TrackObjects.ForEach(
+                            i =>
+                                {
+                                    if (i.Compare(sender))
+                                    {
+                                        TrackObjects.Remove(i);
+                                    }
+                                });
                     }
                 };
         }
@@ -169,11 +222,8 @@
             var startPos = new Vector2();
             if (spellData.FromObject != "")
             {
-                foreach (var obj in
-                    GameObjects.EnemyMinions.Where(i => i.Name == spellData.FromObject && !i.IsHPBarRendered))
-                {
-                    startPos = obj.Position.ToVector2();
-                }
+                GameObjects.EnemyMinions.Where(i => i.CharData.BaseSkinName == spellData.FromObject)
+                    .ForEach(i => startPos = i.Position.ToVector2());
             }
             else
             {
@@ -182,7 +232,7 @@
             if (spellData.FromObjects != null && spellData.FromObjects.Length > 0)
             {
                 foreach (var obj in
-                    GameObjects.EnemyMinions.Where(i => spellData.FromObjects.Contains(i.Name) && !i.IsHPBarRendered))
+                    TrackObjects.Where(i => spellData.FromObjects.Contains(i.CharData.BaseSkinName)))
                 {
                     var start = obj.Position.ToVector2();
                     var end = start + spellData.Range * (args.End.ToVector2() - obj.Position.ToVector2()).Normalized();

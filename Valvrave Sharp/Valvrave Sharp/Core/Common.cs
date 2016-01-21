@@ -50,10 +50,10 @@ namespace Valvrave_Sharp.Core
         public static InventorySlot GetWardSlot()
         {
             var wardIds = new[] { 2049, 2045, 2301, 2302, 2303, 3711, 1408, 1409, 1410, 1411, 3932, 3340, 2043 };
-            return (from wardId in wardIds
-                    where Items.CanUseItem(wardId)
-                    select ObjectManager.Player.InventoryItems.FirstOrDefault(slot => slot.Id == (ItemId)wardId))
-                .FirstOrDefault();
+            return
+                wardIds.Where(Items.CanUseItem)
+                    .Select(i => ObjectManager.Player.InventoryItems.First(slot => slot.Id == (ItemId)i))
+                    .FirstOrDefault();
         }
 
         public static bool IsWard(this Obj_AI_Minion minion)
@@ -75,6 +75,17 @@ namespace Valvrave_Sharp.Core
                         From = fromVector3, Type = spell.Type, Radius = spell.Width, Delay = spell.Delay,
                         Speed = spell.Speed
                     });
+        }
+
+        public static FarmLocation VLineFarmLocation(this Spell spell, List<Obj_AI_Minion> minion)
+        {
+            return
+                spell.GetLineFarmLocation(
+                    minion.Select(i => spell.VPrediction(i, false, CollisionableObjects.YasuoWall))
+                        .Where(i => i.Hitchance >= HitChance.High)
+                        .Select(i => i.UnitPosition)
+                        .ToList()
+                        .ToVector2());
         }
 
         public static Prediction.PredictionOutput VPrediction(

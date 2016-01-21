@@ -167,7 +167,7 @@
 
         private static bool HaveQ3 => Player.HasBuff("YasuoQ3W");
 
-        private static bool IsTryingToQ => Variables.TickCount - Q.LastCastAttemptT <= SpellQ.Delay * 1000;
+        private static bool IsTryingToQ => Variables.TickCount - Q.LastCastAttemptT <= SpellQ.Delay * 1000 - 50;
 
         private static Spell SpellQ => !HaveQ3 ? Q : Q2;
 
@@ -509,7 +509,7 @@
                     }
                 }
             }
-            if (MainMenu["KillSteal"]["R"] && R.IsReady())
+            if (MainMenu["KillSteal"]["R"] && R.IsReady() && GetRTarget.Count > 0)
             {
                 var target =
                     GetRTarget.Where(

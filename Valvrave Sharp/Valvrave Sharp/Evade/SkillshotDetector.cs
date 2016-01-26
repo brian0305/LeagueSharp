@@ -63,51 +63,43 @@
                         }
                     }
                 };
-            Obj_AI_Base.OnBuffAdd += (sender, args) =>
+            GameObject.OnCreate += (sender, args) =>
                 {
-                    if (args.Buff.Caster.IsAlly || sender.CharData.BaseSkinName != "zedshadow" || sender.IsAlly)
-                    {
-                        return;
-                    }
                     var shadow = sender as Obj_AI_Minion;
-                    if (shadow.IsValid() && (args.Buff.Name == "zedwshadowbuff" || args.Buff.Name == "zedrshadowbuff"))
+                    if (shadow != null && shadow.CharData.BaseSkinName == "zedshadow" && shadow.IsEnemy)
                     {
                         TrackObjects.Add(shadow);
                     }
                 };
             Obj_AI_Base.OnPlayAnimation += (sender, args) =>
                 {
-                    if (args.Animation != "Death")
+                    if (sender.IsAlly || args.Animation != "Death" || TrackObjects.Count == 0)
                     {
                         return;
                     }
-                    var shadow = sender as Obj_AI_Minion;
-                    if (shadow.IsValid())
-                    {
-                        TrackObjects.ForEach(
-                            i =>
+                    TrackObjects.ForEach(
+                        i =>
+                            {
+                                if (i.Compare(sender))
                                 {
-                                    if (i.Compare(sender))
-                                    {
-                                        TrackObjects.Remove(i);
-                                    }
-                                });
-                    }
+                                    TrackObjects.Remove(i);
+                                }
+                            });
                 };
             GameObject.OnDelete += (sender, args) =>
                 {
-                    var shadow = sender as Obj_AI_Minion;
-                    if (shadow.IsValid())
+                    if (sender.IsAlly || TrackObjects.Count == 0)
                     {
-                        TrackObjects.ForEach(
-                            i =>
-                                {
-                                    if (i.Compare(sender))
-                                    {
-                                        TrackObjects.Remove(i);
-                                    }
-                                });
+                        return;
                     }
+                    TrackObjects.ForEach(
+                        i =>
+                            {
+                                if (i.Compare(sender))
+                                {
+                                    TrackObjects.Remove(i);
+                                }
+                            });
                 };
         }
 

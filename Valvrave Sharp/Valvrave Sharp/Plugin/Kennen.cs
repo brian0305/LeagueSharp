@@ -107,7 +107,7 @@
             {
                 return;
             }
-            var target = Q.GetTarget(Q.Width);
+            var target = Q.GetTarget(Q.Width / 2);
             if (target == null)
             {
                 return;
@@ -126,12 +126,11 @@
                 if (R.IsReady())
                 {
                     var target = Variables.TargetSelector.GetTargets(R.Range, R.DamageType, false);
-                    if ((target.Count > 1
-                         && target.Any(i => i.Health + i.MagicalShield <= Player.GetSpellDamage(i, SpellSlot.R)))
-                        || target.Sum(i => i.HealthPercent) / target.Count <= MainMenu["Combo"]["RHpU"]
-                        || target.Count >= MainMenu["Combo"]["RCountA"])
+                    if (((target.Count > 1 && target.Any(i => i.Health + i.MagicalShield <= R.GetDamage(i)))
+                         || target.Sum(i => i.HealthPercent) / target.Count <= MainMenu["Combo"]["RHpU"]
+                         || target.Count >= MainMenu["Combo"]["RCountA"]) && R.Cast())
                     {
-                        R.Cast();
+                        return;
                     }
                 }
                 else if (HaveR && MainMenu["Combo"]["Zhonya"] && Player.HealthPercent < MainMenu["Combo"]["ZhonyaHpU"]
@@ -147,33 +146,30 @@
                     }
                 }
             }
-            if (MainMenu["Combo"]["Q"] && Q.IsReady())
+            if (MainMenu["Combo"]["Q"] && Q.CastingBestTarget(Q.Width / 2) == CastStates.SuccessfullyCasted)
             {
-                Q.CastingBestTarget(Q.Width);
+                return;
             }
             if (MainMenu["Combo"]["W"] && W.IsReady() && GetWTarget.Count > 0)
             {
                 if (HaveR)
                 {
                     var target = GetWTarget;
-                    if (target.Count(i => HaveW(i, true)) > 1
-                        || target.Any(
-                            i =>
-                            i.Health + i.MagicalShield
-                            <= Player.GetSpellDamage(i, SpellSlot.W, Damage.DamageStage.Empowered)) || target.Count > 2
-                        || target.Count(i => HaveW(i, true)) > 0 && target.Count > 1)
+                    if ((target.Count(i => HaveW(i, true)) > 1
+                         || target.Any(i => i.Health + i.MagicalShield <= W.GetDamage(i, Damage.DamageStage.Empowered))
+                         || target.Count > 2 || (target.Count(i => HaveW(i, true)) > 0 && target.Count > 1)) && W.Cast())
                     {
-                        W.Cast();
+                        return;
                     }
                 }
-                else
+                else if (W.Cast())
                 {
-                    W.Cast();
+                    return;
                 }
             }
             var subTarget = W.GetTarget();
             if (subTarget != null && MainMenu["Combo"]["Ignite"] && Ignite.IsReady() && subTarget.HealthPercent < 30
-                && Player.Distance(subTarget) <= IgniteRange)
+                && subTarget.DistanceToPlayer() <= IgniteRange)
             {
                 Player.Spellbook.CastSpell(Ignite, subTarget);
             }
@@ -187,9 +183,9 @@
 
         private static void Hybrid()
         {
-            if (MainMenu["Hybrid"]["Q"] && Q.IsReady())
+            if (MainMenu["Hybrid"]["Q"] && Q.CastingBestTarget(Q.Width / 2) == CastStates.SuccessfullyCasted)
             {
-                Q.CastingBestTarget(Q.Width);
+                return;
             }
             if (MainMenu["Hybrid"]["W"] && W.IsReady() && Player.Mana >= MainMenu["Hybrid"]["WMpA"]
                 && GetWTarget.Count > 0)
@@ -202,30 +198,28 @@
         {
             if (MainMenu["KillSteal"]["Q"] && Q.IsReady())
             {
-                var target = Q.GetTarget(Q.Width);
+                var target = Q.GetTarget(Q.Width / 2);
                 if (target != null)
                 {
-                    if ((target.Health + target.MagicalShield <= Player.GetSpellDamage(target, SpellSlot.Q))
-                        || (MainMenu["KillSteal"]["W"] && W.CanCast(target)
+                    if ((target.Health + target.MagicalShield <= Q.GetDamage(target))
+                        || (MainMenu["KillSteal"]["W"] && W.IsInRange(target)
+                            && W.Instance.State == SpellState.Surpressed
                             && target.Health + target.MagicalShield
-                            <= Player.GetSpellDamage(target, SpellSlot.Q)
-                            + Player.GetSpellDamage(target, SpellSlot.W, Damage.DamageStage.Empowered)))
+                            <= Q.GetDamage(target) + W.GetDamage(target, Damage.DamageStage.Empowered)))
                     {
                         var pred = Q.VPrediction(
                             target,
                             false,
                             CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall);
-                        if (pred.Hitchance >= Q.MinHitChance)
+                        if (pred.Hitchance >= Q.MinHitChance && Q.Cast(pred.CastPosition))
                         {
-                            Q.Cast(pred.CastPosition);
+                            return;
                         }
                     }
                 }
             }
             if (MainMenu["KillSteal"]["W"] && W.IsReady()
-                && GetWTarget.Any(
-                    i =>
-                    i.Health + i.MagicalShield <= Player.GetSpellDamage(i, SpellSlot.W, Damage.DamageStage.Empowered)))
+                && GetWTarget.Any(i => i.Health + i.MagicalShield <= W.GetDamage(i, Damage.DamageStage.Empowered)))
             {
                 W.Cast();
             }
@@ -241,7 +235,7 @@
                 GameObjects.EnemyMinions.Where(
                     i =>
                     i.IsValidTarget(Q.Range) && (i.IsMinion() || i.IsPet(false))
-                    && Q.GetHealthPrediction(i) <= Player.GetSpellDamage(i, SpellSlot.Q)
+                    && Q.GetHealthPrediction(i) <= Q.GetDamage(i)
                     && (!i.InAutoAttackRange() ? Q.GetHealthPrediction(i) > 0 : i.Health > Player.GetAutoAttackDamage(i)))
                     .OrderByDescending(i => i.MaxHealth)
                     .Select(

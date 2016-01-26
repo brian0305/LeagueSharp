@@ -983,7 +983,7 @@ namespace Valvrave_Sharp.Evade
                 new SpellData
                     {
                         ChampionName = "Kennen", SpellName = "KennenShurikenHurlMissile1", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 125, Range = 1050, Radius = 50,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 200, Range = 1050, Radius = 50,
                         MissileSpeed = 1700, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "KennenShurikenHurlMissile1", CanBeRemoved = true,
                         CollisionObjects =
@@ -2098,8 +2098,8 @@ namespace Valvrave_Sharp.Evade
                 new SpellData
                     {
                         ChampionName = "Yasuo", SpellName = "yasuoq3w", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 500, Range = 1150, Radius = 90,
-                        MissileSpeed = 1500, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 400, Range = 1150, Radius = 90,
+                        MissileSpeed = 1400, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "yasuoq3w", CollisionObjects = CollisionableObjects.YasuoWall
                     });
 
@@ -2132,7 +2132,7 @@ namespace Valvrave_Sharp.Evade
                 new SpellData
                     {
                         ChampionName = "Zed", SpellName = "ZedQ", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 925, Radius = 50,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 300, Range = 925, Radius = 50,
                         MissileSpeed = 1700, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "ZedQMissile", FromObjects = new[] { "zedshadow" },
                         CollisionObjects = CollisionableObjects.YasuoWall

@@ -282,10 +282,10 @@
             }
             if (checkCollision && input.Collision && result.Hitchance > HitChance.Impossible)
             {
-                var positions = new List<Vector3> { result.UnitPosition, result.CastPosition };
+                var positions = new List<Vector3> { result.UnitPosition, result.CastPosition, input.Unit.Position };
                 var originalUnit = input.Unit;
                 result.CollisionObjects = Collisions.GetCollision(positions, input);
-                result.CollisionObjects.RemoveAll(i => i.NetworkId == originalUnit.NetworkId);
+                result.CollisionObjects.RemoveAll(i => i.Compare(originalUnit));
                 if (result.CollisionObjects.Count > 0)
                 {
                     result.Hitchance = HitChance.Collision;
@@ -485,7 +485,7 @@
                                 i.IsValidTarget(
                                     Math.Min(input.Range + input.Radius + 100, 2000),
                                     true,
-                                    input.RangeCheckFrom) && !result.All(a => a.Compare(i)))
+                                    input.RangeCheckFrom) && !result.Any(a => a.Compare(i)))
                             .ForEach(
                                 i =>
                                     {
@@ -507,7 +507,7 @@
                             i.IsValidTarget(
                                 Math.Min(input.Range + input.Radius + 100, 2000),
                                 true,
-                                input.RangeCheckFrom) && !result.All(a => a.Compare(i))).ForEach(
+                                input.RangeCheckFrom) && !result.Any(a => a.Compare(i))).ForEach(
                                     i =>
                                         {
                                             input.Unit = i;
@@ -521,8 +521,7 @@
                                             }
                                         });
                     }
-                    if (input.CollisionObjects.HasFlag(CollisionableObjects.Walls)
-                        && !result.All(i => i.Compare(ObjectManager.Player)))
+                    if (input.CollisionObjects.HasFlag(CollisionableObjects.Walls) && !result.Any(i => i.IsMe))
                     {
                         var step = position.Distance(input.From) / 20;
                         for (var i = 0; i < 20; i++)
@@ -534,8 +533,7 @@
                             }
                         }
                     }
-                    if (input.CollisionObjects.HasFlag(CollisionableObjects.YasuoWall)
-                        && !result.All(i => i.Compare(ObjectManager.Player))
+                    if (input.CollisionObjects.HasFlag(CollisionableObjects.YasuoWall) && !result.Any(i => i.IsMe)
                         && Variables.TickCount - yasuoWallCastT <= 4000)
                     {
                         var wall =

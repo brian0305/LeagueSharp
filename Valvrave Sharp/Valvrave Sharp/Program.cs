@@ -4,6 +4,7 @@
 
     using System;
     using System.Collections.Generic;
+    using System.Drawing;
     using System.Linq;
     using System.Net;
     using System.Reflection;
@@ -75,6 +76,8 @@
                 Plugins[Player.ChampionName].Invoke();
                 Invulnerable.Deregister(new InvulnerableEntry("FerociousHowl"));
                 Invulnerable.Deregister(new InvulnerableEntry("Meditate"));
+                /*Drawing.OnDraw +=
+                    args => { Tracker.DetectedSkillshots.ForEach(i => i.Draw(Color.AliceBlue, Color.Red)); };*/
             }
             else
             {

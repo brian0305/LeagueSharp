@@ -282,7 +282,7 @@
             }
             if (checkCollision && input.Collision && result.Hitchance > HitChance.Impossible)
             {
-                var positions = new List<Vector3> { result.UnitPosition, result.CastPosition, input.Unit.Position };
+                var positions = new List<Vector3> { result.UnitPosition /*, result.CastPosition, input.Unit.Position*/ };
                 var originalUnit = input.Unit;
                 result.CollisionObjects = Collisions.GetCollision(positions, input);
                 result.CollisionObjects.RemoveAll(i => i.Compare(originalUnit));
@@ -490,13 +490,30 @@
                                 i =>
                                     {
                                         input.Unit = i;
-                                        if (
-                                            input.GetPrediction(false, false)
-                                                .UnitPosition.ToVector2()
-                                                .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
-                                            <= Math.Pow(input.Radius + 20 + i.BoundingRadius, 2))
+                                        var distUnitToFrom = i.Distance(input.From);
+                                        if (IsDead(input, i, distUnitToFrom))
+                                        {
+                                            return;
+                                        }
+                                        if (distUnitToFrom < input.Radius || i.Distance(position) < input.Radius)
                                         {
                                             result.Add(i);
+                                        }
+                                        else
+                                        {
+                                            var pos = i.ServerPosition;
+                                            var bonusRadius = 20f;
+                                            if (i.IsMoving)
+                                            {
+                                                pos = input.GetPrediction(false, false).UnitPosition;
+                                                bonusRadius = 60 + input.Radius;
+                                            }
+                                            if (pos.ToVector2()
+                                                    .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
+                                                <= Math.Pow(input.Radius + bonusRadius + i.BoundingRadius, 2))
+                                            {
+                                                result.Add(i);
+                                            }
                                         }
                                     });
                     }
@@ -567,6 +584,17 @@
                 return result.Distinct().ToList();
             }
 
+            private static bool IsDead(PredictionInput input, Obj_AI_Base minion, float distance)
+            {
+                var delay = (distance / input.Speed) + input.Delay;
+                if (Math.Abs(input.Speed - float.MaxValue) < float.Epsilon)
+                {
+                    delay = input.Delay;
+                }
+                var convert = (int)(delay * 1000);
+                return Health.GetPrediction(minion, convert, 0, HealthPredictionType.Simulated) <= 0;
+            }
+
             #endregion
         }
 
@@ -594,7 +622,7 @@
                 var originalUnit = input.Unit;
                 GameObjects.EnemyHeroes.Where(
                     i =>
-                    i.NetworkId != originalUnit.NetworkId
+                    !i.Compare(originalUnit)
                     && i.IsValidTarget(input.Range + 200 + input.RealRadius, true, input.RangeCheckFrom)).ForEach(
                         i =>
                             {

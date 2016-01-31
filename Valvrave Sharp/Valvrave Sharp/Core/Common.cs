@@ -61,20 +61,16 @@ namespace Valvrave_Sharp.Core
             return minion.GetMinionType().HasFlag(MinionTypes.Ward) && minion.CharData.BaseSkinName != "BlueTrinket";
         }
 
-        public static List<Obj_AI_Base> VCollision(this Spell spell, Vector2 fromVector2, List<Vector2> to)
+        public static List<Obj_AI_Base> VCollision(
+            this Prediction.PredictionOutput pred,
+            CollisionableObjects collisionable = CollisionableObjects.Minions | CollisionableObjects.YasuoWall)
         {
-            return spell.VCollision(fromVector2.ToVector3(), to.ToVector3());
-        }
-
-        public static List<Obj_AI_Base> VCollision(this Spell spell, Vector3 fromVector3, List<Vector3> to)
-        {
-            return Prediction.Collisions.GetCollision(
-                to,
-                new Prediction.PredictionInput
-                    {
-                        From = fromVector3, Type = spell.Type, Radius = spell.Width, Delay = spell.Delay,
-                        Speed = spell.Speed
-                    });
+            var input = pred.Input;
+            input.CollisionObjects = collisionable;
+            var originalUnit = input.Unit;
+            var col = Prediction.Collisions.GetCollision(new List<Vector3> { pred.UnitPosition }, input);
+            col.RemoveAll(i => i.Compare(originalUnit));
+            return col;
         }
 
         public static FarmLocation VLineFarmLocation(this Spell spell, List<Obj_AI_Minion> minion)
@@ -82,7 +78,7 @@ namespace Valvrave_Sharp.Core
             return
                 spell.GetLineFarmLocation(
                     minion.Select(i => spell.VPrediction(i, false, CollisionableObjects.YasuoWall))
-                        .Where(i => i.Hitchance >= HitChance.High)
+                        .Where(i => i.Hitchance >= HitChance.VeryHigh)
                         .Select(i => i.UnitPosition)
                         .ToList()
                         .ToVector2());

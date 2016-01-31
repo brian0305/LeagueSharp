@@ -28,6 +28,8 @@
 
         private static readonly Items.Item Zhonya = new Items.Item(3157, 0);
 
+        private static bool haveE, haveR;
+
         #endregion
 
         #region Constructors and Destructors
@@ -48,8 +50,8 @@
                 comboMenu.Bool("W", "Use W");
                 comboMenu.Separator("R Settings");
                 comboMenu.Bool("R", "Use R");
-                comboMenu.Slider("RHpU", "If Enemy Hp < (%)", 60);
-                comboMenu.Slider("RCountA", "Or Enemy >=", 2, 1, 5);
+                comboMenu.Slider("RHpU", "If Enemies Hp < (%) And Hit >= 2", 60);
+                comboMenu.Slider("RCountA", "Or Count >=", 2, 1, 5);
                 comboMenu.Separator("Zhonya Settings For R Combo");
                 comboMenu.Bool("Zhonya", "Use Zhonya");
                 comboMenu.Slider("ZhonyaHpU", "If Hp < (%)", 20);
@@ -83,6 +85,36 @@
 
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
+            Obj_AI_Base.OnBuffAdd += (sender, args) =>
+                {
+                    if (!sender.IsMe || !args.Buff.Caster.IsMe)
+                    {
+                        return;
+                    }
+                    if (args.Buff.DisplayName == "KennenLightningRush")
+                    {
+                        haveE = true;
+                    }
+                    else if (args.Buff.DisplayName == "KennenShurikenStorm")
+                    {
+                        haveR = true;
+                    }
+                };
+            Obj_AI_Base.OnBuffRemove += (sender, args) =>
+                {
+                    if (!sender.IsMe || !args.Buff.Caster.IsMe)
+                    {
+                        return;
+                    }
+                    if (args.Buff.DisplayName == "KennenLightningRush")
+                    {
+                        haveE = false;
+                    }
+                    else if (args.Buff.DisplayName == "KennenShurikenStorm")
+                    {
+                        haveR = false;
+                    }
+                };
         }
 
         #endregion
@@ -91,10 +123,6 @@
 
         private static List<Obj_AI_Hero> GetWTarget
             => Variables.TargetSelector.GetTargets(W.Range, W.DamageType).Where(i => HaveW(i)).ToList();
-
-        private static bool HaveE => Player.HasBuff("KennenLightningRush");
-
-        private static bool HaveR => Player.HasBuff("KennenShurikenStorm");
 
         #endregion
 
@@ -107,16 +135,7 @@
             {
                 return;
             }
-            var target = Q.GetTarget(Q.Width / 2);
-            if (target == null)
-            {
-                return;
-            }
-            var pred = Q.VPrediction(target);
-            if (pred.Hitchance >= Q.MinHitChance)
-            {
-                Q.Cast(pred.CastPosition);
-            }
+            Q.CastingBestTarget(Q.Width / 2);
         }
 
         private static void Combo()
@@ -127,13 +146,14 @@
                 {
                     var target = Variables.TargetSelector.GetTargets(R.Range, R.DamageType, false);
                     if (((target.Count > 1 && target.Any(i => i.Health + i.MagicalShield <= R.GetDamage(i)))
-                         || target.Sum(i => i.HealthPercent) / target.Count <= MainMenu["Combo"]["RHpU"]
+                         || (target.Count > 1
+                             && target.Sum(i => i.HealthPercent) / target.Count <= MainMenu["Combo"]["RHpU"])
                          || target.Count >= MainMenu["Combo"]["RCountA"]) && R.Cast())
                     {
                         return;
                     }
                 }
-                else if (HaveR && MainMenu["Combo"]["Zhonya"] && Player.HealthPercent < MainMenu["Combo"]["ZhonyaHpU"]
+                else if (haveR && MainMenu["Combo"]["Zhonya"] && Player.HealthPercent < MainMenu["Combo"]["ZhonyaHpU"]
                          && Player.CountEnemyHeroesInRange(W.Range) > 0)
                 {
                     if (Zhonya.IsReady)
@@ -152,7 +172,7 @@
             }
             if (MainMenu["Combo"]["W"] && W.IsReady() && GetWTarget.Count > 0)
             {
-                if (HaveR)
+                if (haveR)
                 {
                     var target = GetWTarget;
                     if ((target.Count(i => HaveW(i, true)) > 1
@@ -277,7 +297,7 @@
                 return;
             }
             KillSteal();
-            Variables.Orbwalker.SetAttackState(!HaveE);
+            Variables.Orbwalker.SetAttackState(!haveE);
             switch (Variables.Orbwalker.GetActiveMode())
             {
                 case OrbwalkingMode.Combo:
@@ -293,7 +313,7 @@
                     if (MainMenu["FleeE"].GetValue<MenuKeyBind>().Active)
                     {
                         Variables.Orbwalker.Move(Game.CursorPos);
-                        if (E.IsReady() && !HaveE)
+                        if (E.IsReady() && !haveE)
                         {
                             E.Cast();
                         }

@@ -33,6 +33,8 @@
 
         private static int lastW;
 
+        private static Spell spellQ, spellW;
+
         private static bool wCasted, rCasted;
 
         private static Obj_AI_Base wShadow, rShadow;
@@ -47,7 +49,9 @@
         {
             Q = new Spell(SpellSlot.Q, 925).SetSkillshot(0.3f, 50, 1700, true, SkillshotType.SkillshotLine);
             Q2 = new Spell(SpellSlot.Q, 925).SetSkillshot(0.3f, 50, 1700, true, SkillshotType.SkillshotLine);
+            spellQ = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
             W = new Spell(SpellSlot.W, 700).SetSkillshot(0, 40, 1750, false, SkillshotType.SkillshotLine);
+            spellW = new Spell(W.Slot).SetSkillshot(W.Delay, W.Width, W.Speed, false, W.Type);
             E = new Spell(SpellSlot.E, 290);
             R = new Spell(SpellSlot.R, 625);
             Q.DamageType = W.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
@@ -209,6 +213,7 @@
                 {
                     var targetR =
                         Variables.TargetSelector.GetTargets(Q.Range + RangeTarget, Q.DamageType)
+                            .OrderBy(i => i.DistanceToPlayer())
                             .FirstOrDefault(i => MainMenu["Combo"]["RCast" + i.ChampionName]);
                     if (targetR != null)
                     {
@@ -374,7 +379,7 @@
             return col.Count > 0
                    && (target.Type == GameObjectType.obj_AI_Hero
                            ? target.Health + target.PhysicalShield
-                           : Q.GetHealthPrediction(target)) <= Q.GetDamage(target, Damage.DamageStage.SecondForm)
+                           : spell.GetHealthPrediction(target)) <= Q.GetDamage(target, Damage.DamageStage.SecondForm)
                    && Q.Cast(pred.CastPosition);
         }
 
@@ -384,22 +389,21 @@
             {
                 return;
             }
-            Prediction.PredictionOutput pred;
             if (slot == SpellSlot.Q)
             {
-                var spell = new Spell(slot, Q.Range + (Q.IsInRange(target) ? 0 : W.Range)).SetSkillshot(
-                    Q.Delay,
-                    Q.Width,
-                    Q.Speed,
-                    false,
-                    Q.Type);
-                pred = spell.VPrediction(target, true);
+                spellW.Range = Q.Range + (Q.IsInRange(target) ? 0 : W.Range);
+                spellW.Delay = Q.Delay;
+                spellW.Width = Q.Width;
+                spellW.Speed = Q.Speed;
             }
             else
             {
-                var spell = new Spell(slot, E.Range + W.Range).SetSkillshot(W.Delay, W.Width, W.Speed, false, W.Type);
-                pred = spell.VPrediction(target, true);
+                spellW.Range = E.Range + W.Range;
+                spellW.Delay = W.Delay;
+                spellW.Width = W.Width;
+                spellW.Speed = W.Speed;
             }
+            var pred = spellW.VPrediction(target, true);
             if (pred.Hitchance < HitChance.High)
             {
                 return;
@@ -409,7 +413,7 @@
             var posCast = posPred;
             if (posPlayer.Distance(posPred) < W.Range - 100)
             {
-                posCast = posPlayer.Extend(posPred, 500);
+                posCast = posPlayer.Extend(posPred, 550);
             }
             if (isRCombo)
             {
@@ -417,11 +421,11 @@
                 switch (MainMenu["Combo"]["WAdv"].GetValue<MenuList>().Index)
                 {
                     case 1:
-                        posCast = posPlayer + (posPred - posShadowR).Normalized() * 500;
+                        posCast = posPlayer + (posPred - posShadowR).Normalized() * 550;
                         break;
                     case 2:
-                        var subPos1 = posPlayer + (posPred - posShadowR).Normalized().Perpendicular() * 500;
-                        var subPos2 = posPlayer + (posShadowR - posPred).Normalized().Perpendicular() * 500;
+                        var subPos1 = posPlayer + (posPred - posShadowR).Normalized().Perpendicular() * 550;
+                        var subPos2 = posPlayer + (posShadowR - posPred).Normalized().Perpendicular() * 550;
                         if (!subPos1.IsWall() && subPos2.IsWall())
                         {
                             posCast = subPos1;
@@ -455,7 +459,8 @@
                               || RState == -1;
                 Swap(target);
                 if (RState == 0 && MainMenu["Combo"]["R"] && MainMenu["Combo"]["RCast" + target.ChampionName]
-                    && (MainMenu["Combo"]["RMode"].GetValue<MenuList>().Index == 0 || CanR) && R.CastOnUnit(target))
+                    && R.IsInRange(target) && (MainMenu["Combo"]["RMode"].GetValue<MenuList>().Index == 0 || CanR)
+                    && R.CastOnUnit(target))
                 {
                     return;
                 }
@@ -585,7 +590,7 @@
                 dmgTotal += Player.CalculateDamage(
                     target,
                     DamageType.Physical,
-                    new[] { 0.3, 0.4, 0.5 }[R.Level - 1] * dmgTotal + Player.TotalAttackDamage);
+                    new[] { 0.25, 0.35, 0.45 }[R.Level - 1] * dmgTotal + Player.TotalAttackDamage);
             }
             return new List<double> { dmgTotal, manaTotal };
         }
@@ -644,7 +649,6 @@
                         .ToList();
                 if (targets.Count > 0)
                 {
-                    var spellQ = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
                     foreach (var target in targets)
                     {
                         spellQ.UpdateSourcePosition();
@@ -683,16 +687,19 @@
             {
                 return;
             }
-            foreach (var minion in
+            var minions =
                 GameObjects.EnemyMinions.Where(
                     i =>
-                    i.IsValidTarget(Q.Range) && (i.IsMinion() || i.IsPet(false))
+                    (i.IsMinion() || i.IsPet(false)) && i.IsValidTarget(Q.Range) && Q.GetHealthPrediction(i) > 0
                     && Q.GetHealthPrediction(i) <= Q.GetDamage(i)
-                    && (!i.InAutoAttackRange() ? Q.GetHealthPrediction(i) > 0 : i.Health > Player.GetAutoAttackDamage(i)))
-                    .OrderByDescending(i => i.MaxHealth))
+                    && (i.IsUnderAllyTurret() || (i.IsUnderEnemyTurret() && !Player.IsUnderEnemyTurret())
+                        || i.DistanceToPlayer() > i.GetRealAutoAttackRange() + 50
+                        || i.Health > Player.GetAutoAttackDamage(i))).OrderByDescending(i => i.MaxHealth).ToList();
+            if (minions.Count == 0)
             {
-                CastQKill(Q, minion);
+                return;
             }
+            minions.ForEach(i => CastQKill(Q, i));
         }
 
         private static void OnDraw(EventArgs args)

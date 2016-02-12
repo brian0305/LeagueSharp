@@ -49,7 +49,7 @@
                 };
             GameObject.OnDelete += (sender, args) =>
                 {
-                    if (!sender.IsValid || sender.Team == ObjectManager.Player.Team)
+                    if (!sender.IsValid || sender.Team == Program.Player.Team)
                     {
                         return;
                     }
@@ -131,7 +131,7 @@
                 return;
             }
             var unit = missile.SpellCaster as Obj_AI_Hero;
-            if (unit == null || !unit.IsValid || unit.Team == ObjectManager.Player.Team)
+            if (unit == null || !unit.IsValid || unit.Team == Program.Player.Team)
             {
                 return;
             }
@@ -167,7 +167,7 @@
                 return;
             }
             var unit = missile.SpellCaster as Obj_AI_Hero;
-            if (unit == null || !unit.IsValid || unit.Team == ObjectManager.Player.Team)
+            if (unit == null || !unit.IsValid || unit.Team == Program.Player.Team)
             {
                 return;
             }
@@ -196,7 +196,7 @@
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
             var unit = sender as Obj_AI_Hero;
-            if (unit == null || !unit.IsValid || unit.Team == ObjectManager.Player.Team)
+            if (unit == null || !unit.IsValid || unit.Team == Program.Player.Team)
             {
                 return;
             }
@@ -243,7 +243,7 @@
             }
             var endPos = args.End.ToVector2();
             if (spellData.SpellName == "LucianQ" && args.Target != null
-                && args.Target.NetworkId == ObjectManager.Player.NetworkId)
+                && args.Target.NetworkId == Program.Player.NetworkId)
             {
                 return;
             }

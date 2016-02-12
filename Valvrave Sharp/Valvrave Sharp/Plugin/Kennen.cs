@@ -166,25 +166,30 @@
                     }
                 }
             }
-            if (MainMenu["Combo"]["Q"] && Q.CastingBestTarget(Q.Width / 2) == CastStates.SuccessfullyCasted)
+            if (MainMenu["Combo"]["Q"] && Q.CastingBestTarget(Q.Width / 2).IsCasted())
             {
                 return;
             }
-            if (MainMenu["Combo"]["W"] && W.IsReady() && GetWTarget.Count > 0)
+            if (MainMenu["Combo"]["W"] && W.IsReady())
             {
-                if (haveR)
+                var target = GetWTarget;
+                if (target.Count > 0)
                 {
-                    var target = GetWTarget;
-                    if ((target.Count(i => HaveW(i, true)) > 1
-                         || target.Any(i => i.Health + i.MagicalShield <= W.GetDamage(i, Damage.DamageStage.Empowered))
-                         || target.Count > 2 || (target.Count(i => HaveW(i, true)) > 0 && target.Count > 1)) && W.Cast())
+                    if (haveR)
+                    {
+                        if ((target.Count(i => HaveW(i, true)) > 1
+                             || target.Any(
+                                 i => i.Health + i.MagicalShield <= W.GetDamage(i, Damage.DamageStage.Empowered))
+                             || target.Count > 2 || (target.Count(i => HaveW(i, true)) > 0 && target.Count > 1))
+                            && W.Cast())
+                        {
+                            return;
+                        }
+                    }
+                    else if (W.Cast())
                     {
                         return;
                     }
-                }
-                else if (W.Cast())
-                {
-                    return;
                 }
             }
             var subTarget = W.GetTarget();
@@ -203,7 +208,7 @@
 
         private static void Hybrid()
         {
-            if (MainMenu["Hybrid"]["Q"] && Q.CastingBestTarget(Q.Width / 2) == CastStates.SuccessfullyCasted)
+            if (MainMenu["Hybrid"]["Q"] && Q.CastingBestTarget(Q.Width / 2).IsCasted())
             {
                 return;
             }
@@ -251,19 +256,25 @@
             {
                 return;
             }
-            foreach (var pred in
+            var minions =
                 GameObjects.EnemyMinions.Where(
                     i =>
-                    i.IsValidTarget(Q.Range) && (i.IsMinion() || i.IsPet(false))
+                    (i.IsMinion() || i.IsPet(false)) && i.IsValidTarget(Q.Range) && Q.GetHealthPrediction(i) > 0
                     && Q.GetHealthPrediction(i) <= Q.GetDamage(i)
-                    && (!i.InAutoAttackRange() ? Q.GetHealthPrediction(i) > 0 : i.Health > Player.GetAutoAttackDamage(i)))
-                    .OrderByDescending(i => i.MaxHealth)
-                    .Select(
-                        i =>
-                        Q.VPrediction(
-                            i,
-                            false,
-                            CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall))
+                    && (i.IsUnderAllyTurret() || (i.IsUnderEnemyTurret() && !Player.IsUnderEnemyTurret())
+                        || i.DistanceToPlayer() > i.GetRealAutoAttackRange() + 50
+                        || i.Health > Player.GetAutoAttackDamage(i))).OrderByDescending(i => i.MaxHealth).ToList();
+            if (minions.Count == 0)
+            {
+                return;
+            }
+            foreach (var pred in
+                minions.Select(
+                    i =>
+                    Q.VPrediction(
+                        i,
+                        false,
+                        CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall))
                     .Where(i => i.Hitchance >= Q.MinHitChance))
             {
                 Q.Cast(pred.CastPosition);

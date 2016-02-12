@@ -25,7 +25,7 @@ namespace Valvrave_Sharp.Evade
             bool isBlink = false,
             bool onlyGood = false)
         {
-            speed = speed == -1 ? (int)ObjectManager.Player.MoveSpeed : speed;
+            speed = speed == -1 ? (int)Program.Player.MoveSpeed : speed;
             var goodCandidates = new List<Vector2>();
             var badCandidates = new List<Vector2>();
             var polygonList = new List<Geometry.Polygon>();
@@ -60,7 +60,7 @@ namespace Valvrave_Sharp.Evade
                     for (var j = -s; j <= s; j++)
                     {
                         var candidate = originalCandidate + j * Config.DiagonalEvadePointsStep * direction;
-                        var pathToPoint = ObjectManager.Player.GetPath(candidate.ToVector3()).ToList().ToVector2();
+                        var pathToPoint = Program.Player.GetPath(candidate.ToVector3()).ToList().ToVector2();
                         if (!isBlink)
                         {
                             if (Evade.IsSafePath(pathToPoint, Config.EvadingFirstTimeOffset, speed, delay).IsSafe)
@@ -98,12 +98,12 @@ namespace Valvrave_Sharp.Evade
                 if (goodCandidates.Count > 0)
                 {
                     goodCandidates = new List<Vector2>
-                                         { goodCandidates.MinOrDefault(i => ObjectManager.Player.DistanceSquared(i)) };
+                                         { goodCandidates.MinOrDefault(i => Program.Player.DistanceSquared(i)) };
                 }
                 if (badCandidates.Count > 0)
                 {
                     badCandidates = new List<Vector2>
-                                        { badCandidates.MinOrDefault(i => ObjectManager.Player.DistanceSquared(i)) };
+                                        { badCandidates.MinOrDefault(i => Program.Player.DistanceSquared(i)) };
                 }
             }
             return goodCandidates.Count > 0 ? goodCandidates : (onlyGood ? new List<Vector2>() : badCandidates);
@@ -155,7 +155,7 @@ namespace Valvrave_Sharp.Evade
                 allTargets.Where(
                     i =>
                     (dontCheckForSafety || Evade.IsSafePoint(i.ServerPosition.ToVector2()).IsSafe)
-                    && (ObjectManager.Player.ChampionName != "Yasuo" || !i.HasBuff("YasuoDashWrapper"))))
+                    && (Program.Player.ChampionName != "Yasuo" || !i.HasBuff("YasuoDashWrapper"))))
             {
                 if (isBlink)
                 {

@@ -26,7 +26,7 @@
 
             #region Yasuo
 
-            if (ObjectManager.Player.ChampionName == "Yasuo")
+            if (Program.Player.ChampionName == "Yasuo")
             {
                 spell = new DashData("Yasuo E", SpellSlot.E, 475, true, 100, 1000, 2)
                             {
@@ -44,7 +44,7 @@
 
             #region Zed
 
-            if (ObjectManager.Player.ChampionName == "Zed")
+            if (Program.Player.ChampionName == "Zed")
             {
                 spell = new BlinkData("Zed W2", SpellSlot.W, 20000, 50, 3)
                             { CheckSpellName = "zedw2", SelfCast = true, UnderTower = true };
@@ -65,7 +65,7 @@
 
             #region Yasuo
 
-            if (ObjectManager.Player.ChampionName == "Yasuo")
+            if (Program.Player.ChampionName == "Yasuo")
             {
                 spell = new InvulnerabilityData("Yasuo W", SpellSlot.W, 250, 3) { ExtraDelay = true };
                 Spells.Add(spell);

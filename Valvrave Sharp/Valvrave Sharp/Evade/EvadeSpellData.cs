@@ -96,8 +96,8 @@
         public bool IsReady
             =>
                 (this.CheckSpellName == ""
-                 || ObjectManager.Player.Spellbook.GetSpell(this.Slot).SData.Name.ToLower() == this.CheckSpellName)
-                && ObjectManager.Player.Spellbook.CanUseSpell(this.Slot) == SpellState.Ready;
+                 || Program.Player.Spellbook.GetSpell(this.Slot).SData.Name.ToLower() == this.CheckSpellName)
+                && Program.Player.Spellbook.CanUseSpell(this.Slot) == SpellState.Ready;
 
         public bool IsTargetted => this.ValidTargets != null;
 

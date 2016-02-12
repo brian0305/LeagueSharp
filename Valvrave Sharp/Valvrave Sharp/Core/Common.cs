@@ -37,7 +37,7 @@ namespace Valvrave_Sharp.Core
                 return CastStates.LowHitChance;
             }
             spell.LastCastAttemptT = Variables.TickCount;
-            return !ObjectManager.Player.Spellbook.CastSpell(spell.Slot, prediction.CastPosition)
+            return !Program.Player.Spellbook.CastSpell(spell.Slot, prediction.CastPosition)
                        ? CastStates.NotCasted
                        : CastStates.SuccessfullyCasted;
         }
@@ -52,8 +52,13 @@ namespace Valvrave_Sharp.Core
             var wardIds = new[] { 2049, 2045, 2301, 2302, 2303, 3711, 1408, 1409, 1410, 1411, 3932, 3340, 2043 };
             return
                 wardIds.Where(Items.CanUseItem)
-                    .Select(i => ObjectManager.Player.InventoryItems.First(slot => slot.Id == (ItemId)i))
+                    .Select(i => Program.Player.InventoryItems.First(slot => slot.Id == (ItemId)i))
                     .FirstOrDefault();
+        }
+
+        public static bool IsCasted(this CastStates state)
+        {
+            return state == CastStates.SuccessfullyCasted;
         }
 
         public static bool IsWard(this Obj_AI_Minion minion)
@@ -63,12 +68,17 @@ namespace Valvrave_Sharp.Core
 
         public static List<Obj_AI_Base> VCollision(
             this Prediction.PredictionOutput pred,
-            CollisionableObjects collisionable = CollisionableObjects.Minions | CollisionableObjects.YasuoWall)
+            CollisionableObjects collisionable = CollisionableObjects.Minions)
         {
-            var input = pred.Input;
-            input.CollisionObjects = collisionable;
-            var originalUnit = input.Unit;
-            var col = Prediction.Collisions.GetCollision(new List<Vector3> { pred.UnitPosition }, input);
+            var originalUnit = pred.Input.Unit;
+            var col = Prediction.Collisions.GetCollision(
+                new List<Vector3> { pred.UnitPosition },
+                new Prediction.PredictionInput
+                    {
+                        From = pred.Input.From, RangeCheckFrom = pred.Input.RangeCheckFrom, Delay = pred.Input.Delay,
+                        Radius = pred.Input.Radius, Speed = pred.Input.Speed, Range = pred.Input.Range,
+                        Type = pred.Input.Type, AoE = pred.Input.AoE, CollisionObjects = collisionable
+                    });
             col.RemoveAll(i => i.Compare(originalUnit));
             return col;
         }

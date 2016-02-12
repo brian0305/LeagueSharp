@@ -100,7 +100,7 @@
             get
             {
                 return this.RawRadius + Config.SkillShotsExtraRadius
-                       + (!this.AddHitbox ? 0 : (int)ObjectManager.Player.BoundingRadius);
+                       + (!this.AddHitbox ? 0 : (int)Program.Player.BoundingRadius);
             }
             set
             {

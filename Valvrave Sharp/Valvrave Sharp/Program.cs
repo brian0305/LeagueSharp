@@ -12,6 +12,7 @@
     using LeagueSharp;
     using LeagueSharp.SDK;
     using LeagueSharp.SDK.Core.UI.IMenu;
+    using LeagueSharp.SDK.Core.UI.IMenu.Values;
     using LeagueSharp.SDK.Core.Utils;
 
     using Valvrave_Sharp.Core;
@@ -29,11 +30,13 @@
 
         #region Static Fields
 
-        public static Menu MainMenu;
-
         internal static Items.Item Bilgewater, BotRuinedKing, Youmuu, Tiamat, Hydra, Titanic;
 
         internal static SpellSlot Flash, Ignite, Smite;
+
+        internal static Menu MainMenu;
+
+        internal static Obj_AI_Hero Player;
 
         internal static Spell Q, Q2, W, W2, E, E2, R, R2;
 
@@ -41,15 +44,18 @@
                                                                                {
                                                                                    { "Kennen", () => new Kennen() },
                                                                                    { "LeeSin", () => new LeeSin() },
+                                                                                   //{ "Lucian", () => new Lucian() },
                                                                                    { "Yasuo", () => new Yasuo() },
                                                                                    { "Zed", () => new Zed() }
                                                                                };
 
-        #endregion
+        private static readonly Dictionary<string, int> Skins = new Dictionary<string, int>
+                                                                    {
+                                                                        { "Kennen", 5 }, { "LeeSin", 10 }, { "Yasuo", 2 },
+                                                                        { "Zed", 3 }
+                                                                    };
 
-        #region Properties
-
-        internal static Obj_AI_Hero Player => ObjectManager.Player;
+        private static bool isSkinReset;
 
         #endregion
 
@@ -72,11 +78,40 @@
             MainMenu.Separator("Paypal: dcbrian01@gmail.com");
             if (isSupport)
             {
+                var skins = new List<string>();
+                for (var i = 0; i <= Skins[Player.ChampionName]; i++)
+                {
+                    if (i == 0)
+                    {
+                        skins.Add("Default");
+                    }
+                    else
+                    {
+                        skins.Add("Skin " + i);
+                    }
+                }
+                MainMenu.List("Skin", "Skin Changer", skins.ToArray()).ValueChanged +=
+                    (sender, args) => { isSkinReset = true; };
                 Plugins[Player.ChampionName].Invoke();
                 Invulnerable.Deregister(new InvulnerableEntry("FerociousHowl"));
                 Invulnerable.Deregister(new InvulnerableEntry("Meditate"));
-                /*Drawing.OnDraw +=
-                    args => { Tracker.DetectedSkillshots.ForEach(i => i.Draw(Color.AliceBlue, Color.Red)); };*/
+                isSkinReset = true;
+
+                Game.OnUpdate += args =>
+                    {
+                        if (Player.IsDead)
+                        {
+                            if (!isSkinReset)
+                            {
+                                isSkinReset = true;
+                            }
+                        }
+                        else if (isSkinReset)
+                        {
+                            Player.SetSkin(Player.ChampionName, MainMenu["Skin"].GetValue<MenuList>().Index);
+                            isSkinReset = false;
+                        }
+                    };
             }
             else
             {
@@ -107,6 +142,7 @@
             }
             Events.OnLoad += (sender, eventArgs) =>
                 {
+                    Player = GameObjects.Player;
                     UpdateCheck();
                     var checkSupport = Plugins.ContainsKey(Player.ChampionName);
                     InitMenu(checkSupport);

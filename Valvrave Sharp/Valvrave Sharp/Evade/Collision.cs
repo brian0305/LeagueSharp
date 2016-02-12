@@ -87,9 +87,9 @@
                     GameObjects.Minions.Where(
                         i =>
                         i.IsValidTarget(1200, false, @from.ToVector3())
-                        && (skillshot.Unit.Team == ObjectManager.Player.Team
-                                ? i.Team != ObjectManager.Player.Team
-                                : i.Team == ObjectManager.Player.Team) && (i.IsMinion() || i.IsPet())));
+                        && (skillshot.Unit.Team == Program.Player.Team
+                                ? i.Team != Program.Player.Team
+                                : i.Team == Program.Player.Team) && (i.IsMinion() || i.IsPet())));
                 collisions.AddRange(
                     from minion in minions
                     let pred =
@@ -187,8 +187,7 @@
         {
             Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                 {
-                    if (!sender.IsValid() || sender.Team != ObjectManager.Player.Team
-                        || args.SData.Name != "YasuoWMovingWall")
+                    if (!sender.IsValid() || sender.Team != Program.Player.Team || args.SData.Name != "YasuoWMovingWall")
                     {
                         return;
                     }

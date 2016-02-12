@@ -873,6 +873,30 @@ namespace Valvrave_Sharp.Evade
 
             #endregion Jayce
 
+            #region Jhin
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "Jhin", SpellName = "JhinW", Slot = SpellSlot.W,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 750, Range = 2550, Radius = 40,
+                        MissileSpeed = 5000, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
+                        MissileSpellName = "JhinWMissile", CanBeRemoved = true,
+                        CollisionObjects = CollisionableObjects.Heroes
+                    });
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "Jhin", SpellName = "JhinRShot", Slot = SpellSlot.R,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 3500, Radius = 80,
+                        MissileSpeed = 5000, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
+                        MissileSpellName = "JhinRShotMis", CanBeRemoved = true,
+                        CollisionObjects = CollisionableObjects.Heroes | CollisionableObjects.YasuoWall
+                    });
+
+            #endregion Jhin
+
             #region Jinx
 
             Spells.Add(
@@ -1172,7 +1196,7 @@ namespace Valvrave_Sharp.Evade
                 new SpellData
                     {
                         ChampionName = "Lucian", SpellName = "LucianQ", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotLine, Delay = 500, Range = 1300, Radius = 65,
+                        Type = SkillShotType.SkillshotLine, Delay = 350, Range = 1150, Radius = 65,
                         MissileSpeed = int.MaxValue, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "LucianQ"
                     });
@@ -1181,8 +1205,8 @@ namespace Valvrave_Sharp.Evade
                 new SpellData
                     {
                         ChampionName = "Lucian", SpellName = "LucianW", Slot = SpellSlot.W,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1000, Radius = 55,
-                        MissileSpeed = 1600, FixedRange = true, AddHitbox = true, DangerValue = 2,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 350, Range = 1000, Radius = 55,
+                        MissileSpeed = 1700, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "lucianwmissile",
                         CollisionObjects =
                             CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall
@@ -1192,8 +1216,8 @@ namespace Valvrave_Sharp.Evade
                 new SpellData
                     {
                         ChampionName = "Lucian", SpellName = "LucianRMis", Slot = SpellSlot.R,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 500, Range = 1400, Radius = 110,
-                        MissileSpeed = 2800, FixedRange = true, AddHitbox = true, DangerValue = 2,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 100, Range = 1400, Radius = 110,
+                        MissileSpeed = 2700, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "lucianrmissileoffhand", ExtraMissileNames = new[] { "lucianrmissile" },
                         DontCheckForDuplicates = true, DisabledByDefault = true,
                         CollisionObjects = CollisionableObjects.YasuoWall
@@ -1619,9 +1643,9 @@ namespace Valvrave_Sharp.Evade
             Spells.Add(
                 new SpellData
                     {
-                        ChampionName = "Shen", SpellName = "ShenShadowDash", Slot = SpellSlot.E,
+                        ChampionName = "Shen", SpellName = "ShenE", Slot = SpellSlot.E,
                         Type = SkillShotType.SkillshotMissileLine, Range = 650, Radius = 50, MissileSpeed = 1600,
-                        AddHitbox = true, DangerValue = 3, IsDangerous = true, MissileSpellName = "ShenShadowDash",
+                        AddHitbox = true, DangerValue = 3, IsDangerous = true, MissileSpellName = "ShenE",
                         ExtraRange = 200
                     });
 
@@ -2099,7 +2123,7 @@ namespace Valvrave_Sharp.Evade
                     {
                         ChampionName = "Yasuo", SpellName = "yasuoq3w", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 400, Range = 1150, Radius = 90,
-                        MissileSpeed = 1400, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
+                        MissileSpeed = 1200, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
                         MissileSpellName = "yasuoq3w", CollisionObjects = CollisionableObjects.YasuoWall
                     });
 

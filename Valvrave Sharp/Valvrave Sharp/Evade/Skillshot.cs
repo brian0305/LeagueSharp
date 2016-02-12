@@ -177,7 +177,7 @@
                     this.Arc = new Geometry.Arc(
                         start,
                         end,
-                        Config.SkillShotsExtraRadius + (int)ObjectManager.Player.BoundingRadius);
+                        Config.SkillShotsExtraRadius + (int)Program.Player.BoundingRadius);
                     break;
             }
             this.UpdatePolygon();
@@ -199,7 +199,7 @@
                 {
                     return this.GlobalGetMissilePosition(0)
                            + this.Direction * this.SpellData.MissileSpeed
-                           * (0.5f + this.SpellData.Radius * 2 / ObjectManager.Player.MoveSpeed);
+                           * (0.5f + this.SpellData.Radius * 2 / Program.Player.MoveSpeed);
                 }
                 return this.End;
             }
@@ -352,7 +352,7 @@
         {
             var distance = 0f;
             timeOffset += Game.Ping / 2;
-            speed = speed == -1 ? (int)ObjectManager.Player.MoveSpeed : speed;
+            speed = speed == -1 ? (int)Program.Player.MoveSpeed : speed;
             var allIntersections = new List<FoundIntersection>();
             for (var i = 0; i <= path.Count - 2; i++)
             {
@@ -405,7 +405,7 @@
                                 new SafePathResult(
                                     (this.End.Distance(missilePositionOnIntersection) + 50
                                      <= this.End.Distance(enterIntersectionProjection))
-                                    && ObjectManager.Player.MoveSpeed < this.SpellData.MissileSpeed,
+                                    && Program.Player.MoveSpeed < this.SpellData.MissileSpeed,
                                     allIntersections[0]);
                         }
                         var exitIntersection = allIntersections[i + 1];
@@ -554,7 +554,7 @@
                         0,
                         !this.SpellData.AddHitbox
                             ? this.SpellData.Radius
-                            : this.SpellData.Radius - ObjectManager.Player.BoundingRadius);
+                            : this.SpellData.Radius - Program.Player.BoundingRadius);
                     this.EvadePolygon = this.Circle.ToPolygon(Config.ExtraEvadeDistance);
                     break;
                 case SkillShotType.SkillshotLine:
@@ -563,7 +563,7 @@
                         0,
                         !this.SpellData.AddHitbox
                             ? this.SpellData.Radius
-                            : this.SpellData.Radius - ObjectManager.Player.BoundingRadius);
+                            : this.SpellData.Radius - Program.Player.BoundingRadius);
                     this.EvadePolygon = this.Rectangle.ToPolygon(Config.ExtraEvadeDistance);
                     break;
                 case SkillShotType.SkillshotMissileLine:
@@ -572,7 +572,7 @@
                         0,
                         !this.SpellData.AddHitbox
                             ? this.SpellData.Radius
-                            : this.SpellData.Radius - ObjectManager.Player.BoundingRadius);
+                            : this.SpellData.Radius - Program.Player.BoundingRadius);
                     this.EvadePolygon = this.Rectangle.ToPolygon(Config.ExtraEvadeDistance);
                     break;
                 case SkillShotType.SkillshotCone:

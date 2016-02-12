@@ -45,7 +45,7 @@
 
         #region Properties
 
-        internal static Vector2 PlayerPosition => ObjectManager.Player.ServerPosition.ToVector2();
+        internal static Vector2 PlayerPosition => Program.Player.ServerPosition.ToVector2();
 
         #endregion
 
@@ -63,21 +63,21 @@
                     {
                         return;
                     }
-                    if (ObjectManager.Player.IsDead)
+                    if (Program.Player.IsDead)
                     {
                         return;
                     }
-                    if (ObjectManager.Player.IsCastingInterruptableSpell(true))
+                    if (Program.Player.IsCastingInterruptableSpell(true))
                     {
                         return;
                     }
-                    if (ObjectManager.Player.HasBuffOfType(BuffType.SpellShield)
-                        || ObjectManager.Player.HasBuffOfType(BuffType.SpellImmunity))
+                    if (Program.Player.HasBuffOfType(BuffType.SpellShield)
+                        || Program.Player.HasBuffOfType(BuffType.SpellImmunity))
                     {
                         return;
                     }
-                    Evading?.Invoke(ObjectManager.Player);
-                    var currentPath = ObjectManager.Player.GetWaypoints();
+                    Evading?.Invoke(Program.Player);
+                    var currentPath = Program.Player.GetWaypoints();
                     var safePoint = IsSafePoint(PlayerPosition);
                     var safePath = IsSafePath(currentPath, 100);
                     if (!safePath.IsSafe && !safePoint.IsSafe)
@@ -115,7 +115,7 @@
                         var active = Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active;
                         var text =
                             $"Evade Skillshot: {(active ? (Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active ? "Dangerous" : "On") : "Off")}";
-                        var pos = Drawing.WorldToScreen(ObjectManager.Player.Position);
+                        var pos = Drawing.WorldToScreen(Program.Player.Position);
                         Drawing.DrawText(
                             pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
                             pos.Y + 40,
@@ -210,7 +210,7 @@
                     alreadyAdded = true;
                 }
             }
-            if (skillshot.Unit.Team == ObjectManager.Player.Team)
+            if (skillshot.Unit.Team == Program.Player.Team)
             {
                 return;
             }

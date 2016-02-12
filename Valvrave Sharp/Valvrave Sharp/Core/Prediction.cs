@@ -64,7 +64,7 @@
             var result = new PredictionOutput { Input = input };
             if (!dashData.IsBlink)
             {
-                var endP = dashData.Path.Last();
+                var endP = dashData.EndPos;
                 var dashPred = input.GetPositionOnPath(
                     new List<Vector2> { input.Unit.ServerPosition.ToVector2(), endP },
                     dashData.Speed);
@@ -88,8 +88,7 @@
                                    };
                     }
                 }
-                result.CastPosition = dashData.Path.Last().ToVector3();
-                result.UnitPosition = result.CastPosition;
+                result.UnitPosition = result.CastPosition = endP.ToVector3();
             }
             return result;
         }
@@ -316,7 +315,7 @@
                     i =>
                     i.IsValid
                     && (i.Type == BuffType.Charm || i.Type == BuffType.Knockup || i.Type == BuffType.Stun
-                        || i.Type == BuffType.Suppression || i.Type == BuffType.Snare || i.Type == BuffType.Knockback))
+                        || i.Type == BuffType.Suppression || i.Type == BuffType.Snare))
                     .Aggregate(0d, (current, buff) => Math.Max(current, buff.EndTime));
             return result - Game.Time;
         }
@@ -329,36 +328,9 @@
                 result.Hitchance = HitChance.VeryHigh;
                 return result;
             }
-            /*if (UnitTracker.GetLastSpecialSpellTime(heroUnit) > 0 || heroUnit.IsRecalling())
+            if (UnitTracker.GetLastSpecialSpellTime(heroUnit) > 0 || heroUnit.IsRecalling())
             {
                 result.Hitchance = HitChance.VeryHigh;
-                return result;
-            }
-            var lastWaypoint = heroUnit.GetWaypoints().Last();
-            var distUnitToWaypoint = heroUnit.Distance(lastWaypoint);
-            var distFromToWaypoint = input.From.Distance(lastWaypoint);
-            var distUnitToFrom = heroUnit.Distance(input.From);
-            var speedDelay = distUnitToFrom / input.Speed;
-            if (Math.Abs(input.Speed - float.MaxValue) < float.Epsilon)
-            {
-                speedDelay = 0;
-            }
-            var totalDelay = speedDelay + input.Delay;
-            var moveArea = heroUnit.MoveSpeed * totalDelay;
-            var fixRange = moveArea * 0.5f;
-            var moveAngle = 30 + input.Radius / 17 - totalDelay * 2;
-            var minPath = 900f;
-            if (moveAngle < 31)
-            {
-                moveAngle = 31;
-            }
-            if (input.Type == SkillshotType.SkillshotCircle)
-            {
-                fixRange -= input.Radius / 2;
-            }
-            if (UnitTracker.CanCalcWaypoints(heroUnit))
-            {
-                result.Hitchance = distUnitToFrom < input.Range - fixRange ? HitChance.VeryHigh : HitChance.High;
                 return result;
             }
             if (UnitTracker.GetLastVisableTime(heroUnit) < 0.1)
@@ -366,7 +338,49 @@
                 result.Hitchance = HitChance.Medium;
                 return result;
             }
-            if (distUnitToFrom < 300 || distFromToWaypoint < 200)
+            result.Hitchance = HitChance.Medium;
+            var lastWaypoint = heroUnit.GetWaypoints().Last();
+            var distUnitToWaypoint = heroUnit.Distance(lastWaypoint);
+            var distFromToWaypoint = input.From.Distance(lastWaypoint);
+            var distUnitToFrom = heroUnit.Distance(input.From);
+            var angle = input.From.GetAngle(heroUnit);
+            var speedDelay = distUnitToFrom / input.Speed;
+            if (Math.Abs(input.Speed - float.MaxValue) < float.Epsilon)
+            {
+                speedDelay = 0;
+            }
+            var totalDelay = speedDelay + input.Delay;
+            var moveArea = heroUnit.MoveSpeed * totalDelay;
+            var fixRange = moveArea * 0.4f;
+            var minPath = 900 + moveArea;
+            var moveAngle = Math.Max(30 + input.Radius / 17d - totalDelay - input.Delay * 2, 31);
+            if (GamePath.PathTracker.GetCurrentPath(heroUnit).Time < 0.1)
+            {
+                result.Hitchance = HitChance.High;
+                fixRange = moveArea * 0.3f;
+                minPath = 600 + moveArea;
+                moveAngle += 2;
+            }
+            if (input.Type == SkillshotType.SkillshotCircle)
+            {
+                fixRange -= input.Radius / 2;
+            }
+            if (distFromToWaypoint <= distUnitToFrom && distUnitToFrom > input.Range - fixRange)
+            {
+                result.Hitchance = HitChance.Medium;
+                return result;
+            }
+            if (UnitTracker.CanCalcWaypoints(heroUnit))
+            {
+                result.Hitchance = HitChance.VeryHigh;
+                return result;
+            }
+            if (UnitTracker.SpamSamePlace(heroUnit))
+            {
+                result.Hitchance = HitChance.VeryHigh;
+                return result;
+            }
+            if (distUnitToFrom < 250 || heroUnit.MoveSpeed < 200 || distFromToWaypoint < 100)
             {
                 result.Hitchance = HitChance.VeryHigh;
                 return result;
@@ -376,44 +390,43 @@
                 result.Hitchance = HitChance.VeryHigh;
                 return result;
             }
-            if (distFromToWaypoint > fixRange && input.From.GetAngle(heroUnit) < moveAngle)
+            if (angle < moveAngle)
             {
-                result.Hitchance = HitChance.VeryHigh;
-                return result;
-            }
-            if (distFromToWaypoint <= distUnitToFrom && distUnitToFrom > input.Range - fixRange)
-            {
-                result.Hitchance = HitChance.Medium;
-                return result;
+                if (distUnitToWaypoint > fixRange && GamePath.PathTracker.GetCurrentPath(heroUnit).Time < 0.1)
+                {
+                    result.Hitchance = HitChance.VeryHigh;
+                    return result;
+                }
+                if (Program.Player.IsMoving
+                    && (Program.Player.IsFacing(heroUnit)
+                            ? !heroUnit.IsFacing(Program.Player)
+                            : heroUnit.IsFacing(Program.Player)))
+                {
+                    result.Hitchance = HitChance.VeryHigh;
+                    return result;
+                }
             }
             if (UnitTracker.GetLastAttackTime(heroUnit) < 0.1)
             {
-                if (input.Type == SkillshotType.SkillshotLine && totalDelay < 0.6 + input.Radius * 0.001)
+                if (input.Type == SkillshotType.SkillshotLine && totalDelay < 0.4 + input.Radius * 0.002)
                 {
                     result.Hitchance = HitChance.VeryHigh;
+                    return result;
                 }
-                else if (input.Type == SkillshotType.SkillshotCircle && totalDelay < 0.7 + input.Radius * 0.001)
+                if (input.Type == SkillshotType.SkillshotCircle && totalDelay < 0.6 + input.Radius * 0.002)
                 {
                     result.Hitchance = HitChance.VeryHigh;
+                    return result;
                 }
-                else
-                {
-                    result.Hitchance = HitChance.High;
-                }
-                return result;
-            }
-            if (heroUnit.IsWindingUp)
-            {
                 result.Hitchance = HitChance.High;
-                return result;
             }
-            if (heroUnit.Path.Length == 0 && !heroUnit.IsMoving)
+            else if (heroUnit.Path.Length == 0 || !heroUnit.IsMoving)
             {
-                if (distUnitToFrom > input.Range - fixRange)
+                if (heroUnit.IsWindingUp)
                 {
-                    result.Hitchance = HitChance.Medium;
+                    result.Hitchance = HitChance.High;
                 }
-                else if (UnitTracker.GetLastStopMoveTime(heroUnit) > 0.8)
+                else if (UnitTracker.GetLastStopMoveTime(heroUnit) < 0.5)
                 {
                     result.Hitchance = HitChance.High;
                 }
@@ -421,21 +434,13 @@
                 {
                     result.Hitchance = HitChance.VeryHigh;
                 }
-                return result;
-            }
-            if (input.Type == SkillshotType.SkillshotLine && heroUnit.Path.Length > 0 && heroUnit.IsMoving
-                && GamePath.PathTracker.GetCurrentPath(heroUnit).Time < 0.1 && input.From.GetAngle(heroUnit) < moveAngle
-                && distUnitToWaypoint > moveArea * 0.6)
-            {
-                result.Hitchance = HitChance.VeryHigh;
                 return result;
             }
             if (input.Type == SkillshotType.SkillshotCircle && GamePath.PathTracker.GetCurrentPath(heroUnit).Time < 0.1
-                && distUnitToWaypoint > fixRange && distUnitToFrom < input.Range - fixRange)
+                && distUnitToWaypoint > fixRange)
             {
                 result.Hitchance = HitChance.VeryHigh;
-                return result;
-            }*/
+            }
             return result;
         }
 
@@ -457,7 +462,7 @@
             {
                 Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                     {
-                        if (!sender.IsValid() || sender.Team == ObjectManager.Player.Team
+                        if (!sender.IsValid() || sender.Team == Program.Player.Team
                             || args.SData.Name != "YasuoWMovingWall")
                         {
                             return;
@@ -545,7 +550,7 @@
                         {
                             if (input.From.Extend(position, step * i).IsWall())
                             {
-                                result.Add(ObjectManager.Player);
+                                result.Add(Program.Player);
                                 break;
                             }
                         }
@@ -576,7 +581,7 @@
                                     + (wallIntersect.Point.Distance(input.From) / input.Speed + input.Delay) * 1000;
                             if (t < yasuoWallCastT + 4000)
                             {
-                                result.Add(ObjectManager.Player);
+                                result.Add(Program.Player);
                             }
                         }
                     }
@@ -901,30 +906,32 @@
 
             static UnitTracker()
             {
-                /*Spells.Add(new SpellInfo { Name = "caitlynpiltoverpeacemaker", Duration = 0.5 }); //Caitlyn Q
+                Spells.Add(new SpellInfo { Name = "katarinar", Duration = 1 }); //Kata R
                 Spells.Add(new SpellInfo { Name = "drain", Duration = 1 }); //Fiddle W
                 Spells.Add(new SpellInfo { Name = "crowstorm", Duration = 1 }); //Fiddle R
-                Spells.Add(new SpellInfo { Name = "galioidolofdurand", Duration = 1 }); //Galio R
-                Spells.Add(new SpellInfo { Name = "reapthewhirlwind", Duration = 1 }); //Janna R
-                Spells.Add(new SpellInfo { Name = "katarinar", Duration = 1 }); //Kata R
-                Spells.Add(new SpellInfo { Name = "lucianq", Duration = 0.5 }); //Lucian Q
-                Spells.Add(new SpellInfo { Name = "alzaharnethergrasp", Duration = 1 }); //Malza R
-                Spells.Add(new SpellInfo { Name = "meditate", Duration = 1 }); //Yi W
-                Spells.Add(new SpellInfo { Name = "missfortunebullettime", Duration = 1 }); //MF R
                 Spells.Add(new SpellInfo { Name = "consume", Duration = 0.5 }); //Nunu Q
                 Spells.Add(new SpellInfo { Name = "absolutezero", Duration = 1 }); //Nunu R
-                Spells.Add(new SpellInfo { Name = "shenstandunited", Duration = 1 }); //Shen R
-                Spells.Add(new SpellInfo { Name = "velkozr", Duration = 0.5 }); //Velkoz R
-                Spells.Add(new SpellInfo { Name = "infiniteduress", Duration = 1 }); //WW R
                 Spells.Add(new SpellInfo { Name = "staticfield", Duration = 0.5 }); //Blitz R
                 Spells.Add(new SpellInfo { Name = "cassiopeiapetrifyinggaze", Duration = 0.5 }); //Cass R
                 Spells.Add(new SpellInfo { Name = "ezrealtrueshotbarrage", Duration = 1 }); //Ez R
+                Spells.Add(new SpellInfo { Name = "galioidolofdurand", Duration = 1 }); //Galio R
                 Spells.Add(new SpellInfo { Name = "luxmalicecannon", Duration = 1 }); //Lux R
+                Spells.Add(new SpellInfo { Name = "reapthewhirlwind", Duration = 1 }); //Janna R
                 Spells.Add(new SpellInfo { Name = "jinxw", Duration = 0.6 }); //Jinx W
                 Spells.Add(new SpellInfo { Name = "jinxr", Duration = 0.6 }); //Jinx R
+                Spells.Add(new SpellInfo { Name = "missfortunebullettime", Duration = 1 }); //MF R
+                Spells.Add(new SpellInfo { Name = "shenstandunited", Duration = 1 }); //Shen R
                 Spells.Add(new SpellInfo { Name = "threshq", Duration = 0.75 }); //Thresh Q
                 Spells.Add(new SpellInfo { Name = "threshe", Duration = 0.4 }); //Thresh E
                 Spells.Add(new SpellInfo { Name = "threshrpenta", Duration = 0.75 }); //Thresh R
+                Spells.Add(new SpellInfo { Name = "infiniteduress", Duration = 1 }); //WW R
+                Spells.Add(new SpellInfo { Name = "meditate", Duration = 1 }); //Yi W
+                Spells.Add(new SpellInfo { Name = "alzaharnethergrasp", Duration = 1 }); //Malza R
+                Spells.Add(new SpellInfo { Name = "lucianq", Duration = 0.5 }); //Lucian Q
+                Spells.Add(new SpellInfo { Name = "caitlynpiltoverpeacemaker", Duration = 0.5 }); //Caitlyn Q
+                Spells.Add(new SpellInfo { Name = "velkozr", Duration = 0.5 }); //Velkoz R
+                Spells.Add(new SpellInfo { Name = "jhinr", Duration = 2 }); //Jhin R
+
                 foreach (var hero in GameObjects.Heroes.Where(i => !i.IsMe))
                 {
                     StoredList.Add(
@@ -982,7 +989,7 @@
                         {
                             info.Path.Remove(info.Path.First());
                         }
-                    };*/
+                    };
             }
 
             #endregion
@@ -992,9 +999,18 @@
             internal static bool CanCalcWaypoints(Obj_AI_Hero unit)
             {
                 var info = StoredList.First(i => i.NetworkId == unit.NetworkId);
-                return info.Path.Count >= 3 && info.Path[2].Time - info.Path[0].Time < 0.35
-                       && info.Path[2].Time + 0.1 < Game.Time && info.Path[2].Time + 0.2 > Game.Time
-                       && info.Path[1].Position.Distance(info.Path[2].Position) > unit.Distance(info.Path[2].Position);
+                if (info.Path.Count < 3)
+                {
+                    return false;
+                }
+                if (info.Path[2].Time - info.Path[0].Time < 0.3 && Game.Time - info.Path[2].Time < 0.15
+                    && Game.Time - info.Path[2].Time > 0.08)
+                {
+                    var dist = unit.Distance(info.Path[2].Position);
+                    return info.Path[1].Position.Distance(info.Path[2].Position) > dist
+                           && info.Path[0].Position.Distance(info.Path[1].Position) > dist;
+                }
+                return false;
             }
 
             internal static double GetLastAttackTime(Obj_AI_Hero unit)
@@ -1027,6 +1043,15 @@
                                    (info.Path[0].Position.X + info.Path[1].Position.X + info.Path[2].Position.X) / 3,
                                    (info.Path[0].Position.Y + info.Path[1].Position.Y + info.Path[2].Position.Y) / 3)
                            };
+            }
+
+            internal static bool SpamSamePlace(Obj_AI_Hero unit)
+            {
+                var info = StoredList.First(i => i.NetworkId == unit.NetworkId);
+                return info.Path.Count >= 3 && info.Path[2].Time - info.Path[0].Time < 0.4
+                       && info.Path[2].Time + 0.15 < Game.Time
+                       && info.Path[0].Position.Distance(info.Path[1].Position) < 100
+                       && info.Path[1].Position.Distance(info.Path[2].Position) < 100;
             }
 
             #endregion
@@ -1102,7 +1127,7 @@
             {
                 get
                 {
-                    return this.@from.IsValid() ? this.@from : ObjectManager.Player.ServerPosition;
+                    return this.@from.IsValid() ? this.@from : Program.Player.ServerPosition;
                 }
                 set
                 {
@@ -1120,7 +1145,7 @@
                 {
                     return this.rangeCheckFrom.IsValid()
                                ? this.rangeCheckFrom
-                               : (this.From.IsValid() ? this.From : ObjectManager.Player.ServerPosition);
+                               : (this.From.IsValid() ? this.From : Program.Player.ServerPosition);
                 }
                 set
                 {
@@ -1132,7 +1157,7 @@
 
             public SkillshotType Type { get; set; } = SkillshotType.SkillshotLine;
 
-            public Obj_AI_Base Unit { get; set; } = ObjectManager.Player;
+            public Obj_AI_Base Unit { get; set; } = Program.Player;
 
             public bool UseBoundingRadius { get; set; } = true;
 

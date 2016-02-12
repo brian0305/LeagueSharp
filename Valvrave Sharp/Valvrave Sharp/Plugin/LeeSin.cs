@@ -67,7 +67,6 @@
             Insec.Init();
             var comboMenu = MainMenu.Add(new Menu("Combo", "Combo"));
             {
-                comboMenu.KeyBind("Star", "Star Combo", Keys.X);
                 comboMenu.Bool("Ignite", "Use Ignite");
                 comboMenu.Bool("Item", "Use Item");
                 comboMenu.Bool("W", "Use W", false);
@@ -81,6 +80,9 @@
                 comboMenu.Bool("R", "Use R");
                 comboMenu.Bool("RKill", "If Kill Enemy Behind");
                 comboMenu.Slider("RCountA", "Or Hit Enemy Behind >=", 1, 1, 4);
+                comboMenu.Separator("Star Combo Settings");
+                comboMenu.KeyBind("Star", "Star Combo", Keys.X);
+                comboMenu.Bool("StarKill", "Auto Star Combo If Killable", false);
             }
             var lcMenu = MainMenu.Add(new Menu("LaneClear", "Lane Clear"));
             {
@@ -346,7 +348,7 @@
             {
                 return;
             }
-            var col = pred.VCollision(CollisionableObjects.Minions);
+            var col = pred.VCollision();
             if (col.Count == 0)
             {
                 Q.Cast(pred.CastPosition);
@@ -376,6 +378,17 @@
 
         private static void Combo()
         {
+            if (MainMenu["Combo"]["StarKill"] && R.IsReady() && Q.IsReady() && !IsQOne)
+            {
+                var target = GameObjects.EnemyHeroes.FirstOrDefault(i => i.IsValidTarget(Q2.Range) && HaveQ(i));
+                if (target != null && R.IsInRange(target)
+                    && target.Health + target.PhysicalShield
+                    <= GetQ2Dmg(target, R.GetDamage(target)) + Player.GetAutoAttackDamage(target)
+                    && R.CastOnUnit(target))
+                {
+                    return;
+                }
+            }
             if (CanCastInCombo)
             {
                 if (MainMenu["Combo"]["Q"] && Q.IsReady())
@@ -624,19 +637,25 @@
             {
                 return;
             }
-            foreach (var pred in
+            var minions =
                 GameObjects.EnemyMinions.Where(
                     i =>
-                    i.IsValidTarget(Q.Range) && (i.IsMinion() || i.IsPet(false))
+                    (i.IsMinion() || i.IsPet(false)) && i.IsValidTarget(Q.Range) && Q.GetHealthPrediction(i) > 0
                     && Q.GetHealthPrediction(i) <= Q.GetDamage(i)
-                    && (!i.InAutoAttackRange() ? Q.GetHealthPrediction(i) > 0 : i.Health > Player.GetAutoAttackDamage(i)))
-                    .OrderByDescending(i => i.MaxHealth)
-                    .Select(
-                        i =>
-                        Q.VPrediction(
-                            i,
-                            false,
-                            CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall))
+                    && (i.IsUnderAllyTurret() || (i.IsUnderEnemyTurret() && !Player.IsUnderEnemyTurret())
+                        || i.DistanceToPlayer() > i.GetRealAutoAttackRange() + 50
+                        || i.Health > Player.GetAutoAttackDamage(i))).OrderByDescending(i => i.MaxHealth).ToList();
+            if (minions.Count == 0)
+            {
+                return;
+            }
+            foreach (var pred in
+                minions.Select(
+                    i =>
+                    Q.VPrediction(
+                        i,
+                        false,
+                        CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall))
                     .Where(i => i.Hitchance >= Q.MinHitChance))
             {
                 Q.Cast(pred.CastPosition);
@@ -919,6 +938,11 @@
                             && args.End.Distance(lastGapPos) <= 100)
                         {
                             lastFlashTime = Variables.TickCount;
+                            var target = Variables.TargetSelector.GetSelectedTarget();
+                            if (target.IsValidTarget())
+                            {
+                                R.CastOnUnit(target);
+                            }
                             return;
                         }
                         if (args.Slot == SpellSlot.W && args.SData.Name.ToLower().Contains("one") && args.Target != null)
@@ -938,6 +962,17 @@
                                 canJumpFlash = false;
                             }
                         }
+                    };
+                Obj_AI_Base.OnDoCast += (sender, args) =>
+                    {
+                        if (!sender.IsMe || args.Slot != SpellSlot.R)
+                        {
+                            return;
+                        }
+                        lastEndPos = lastGapPos = new Vector3();
+                        lastInsecTime = 0;
+                        canJumpFlash = false;
+                        Variables.TargetSelector.SetTarget(null);
                     };
             }
 
@@ -1056,13 +1091,15 @@
                 {
                     return false;
                 }
-                var minDist = WardManager.WardRange - GetDistBehind(target);
+                var minDist = CanJumpFlash
+                                  ? WardManager.WardRange + R.Range
+                                  : WardManager.WardRange - GetDistBehind(target);
                 if (IsQOne)
                 {
                     var pred = Q.VPrediction(target, false, CollisionableObjects.YasuoWall);
                     if (pred.Hitchance >= Q.MinHitChance)
                     {
-                        var col = pred.VCollision(CollisionableObjects.Minions);
+                        var col = pred.VCollision();
                         if (col.Count == 0 && Q.Cast(pred.CastPosition))
                         {
                             return true;

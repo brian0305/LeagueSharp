@@ -328,6 +328,7 @@
                 result.Hitchance = HitChance.VeryHigh;
                 return result;
             }
+            return result;
             if (UnitTracker.GetLastSpecialSpellTime(heroUnit) > 0 || heroUnit.IsRecalling())
             {
                 result.Hitchance = HitChance.VeryHigh;
@@ -942,7 +943,8 @@
                                 EndSpecialSpellTick = Variables.TickCount
                             });
                 }
-                AttackableUnit.OnEnterLocalVisiblityClient += (sender, args) =>
+
+                /*AttackableUnit.OnEnterLocalVisiblityClient += (sender, args) =>
                     {
                         if (sender.IsMe || sender.Type != GameObjectType.obj_AI_Hero)
                         {
@@ -989,7 +991,7 @@
                         {
                             info.Path.Remove(info.Path.First());
                         }
-                    };
+                    };*/
             }
 
             #endregion

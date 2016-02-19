@@ -15,9 +15,18 @@ namespace Valvrave_Sharp.Core
 
     internal static class Common
     {
-        #region Public Methods and Operators
+        #region Properties
 
-        public static CastStates Casting(this Spell spell, Obj_AI_Base unit, bool areaOfEffect = false)
+        internal static int GetSmiteDmg
+            =>
+                new[] { 390, 410, 430, 450, 480, 510, 540, 570, 600, 640, 680, 720, 760, 800, 850, 900, 950, 1000 }[
+                    Program.Player.Level - 1];
+
+        #endregion
+
+        #region Methods
+
+        internal static CastStates Casting(this Spell spell, Obj_AI_Base unit, bool areaOfEffect = false)
         {
             if (!unit.IsValidTarget())
             {
@@ -42,12 +51,12 @@ namespace Valvrave_Sharp.Core
                        : CastStates.SuccessfullyCasted;
         }
 
-        public static CastStates CastingBestTarget(this Spell spell, float extraRange = 0, bool aoe = false)
+        internal static CastStates CastingBestTarget(this Spell spell, float extraRange = 0, bool aoe = false)
         {
             return spell.Casting(spell.GetTarget(extraRange), aoe);
         }
 
-        public static InventorySlot GetWardSlot()
+        internal static InventorySlot GetWardSlot()
         {
             var wardIds = new[] { 2049, 2045, 2301, 2302, 2303, 3711, 1408, 1409, 1410, 1411, 3932, 3340, 2043 };
             return
@@ -56,34 +65,29 @@ namespace Valvrave_Sharp.Core
                     .FirstOrDefault();
         }
 
-        public static bool IsCasted(this CastStates state)
+        internal static bool IsCasted(this CastStates state)
         {
             return state == CastStates.SuccessfullyCasted;
         }
 
-        public static bool IsWard(this Obj_AI_Minion minion)
+        internal static bool IsWard(this Obj_AI_Minion minion)
         {
             return minion.GetMinionType().HasFlag(MinionTypes.Ward) && minion.CharData.BaseSkinName != "BlueTrinket";
         }
 
-        public static List<Obj_AI_Base> VCollision(
+        internal static List<Obj_AI_Base> VCollision(
             this Prediction.PredictionOutput pred,
             CollisionableObjects collisionable = CollisionableObjects.Minions)
         {
-            var originalUnit = pred.Input.Unit;
-            var col = Prediction.Collisions.GetCollision(
-                new List<Vector3> { pred.UnitPosition },
-                new Prediction.PredictionInput
-                    {
-                        From = pred.Input.From, RangeCheckFrom = pred.Input.RangeCheckFrom, Delay = pred.Input.Delay,
-                        Radius = pred.Input.Radius, Speed = pred.Input.Speed, Range = pred.Input.Range,
-                        Type = pred.Input.Type, AoE = pred.Input.AoE, CollisionObjects = collisionable
-                    });
+            var input = pred.Input;
+            input.CollisionObjects = collisionable;
+            var originalUnit = input.Unit;
+            var col = Prediction.Collisions.GetCollision(new List<Vector3> { pred.UnitPosition }, input);
             col.RemoveAll(i => i.Compare(originalUnit));
             return col;
         }
 
-        public static FarmLocation VLineFarmLocation(this Spell spell, List<Obj_AI_Minion> minion)
+        internal static FarmLocation VLineFarmLocation(this Spell spell, List<Obj_AI_Minion> minion)
         {
             return
                 spell.GetLineFarmLocation(
@@ -94,7 +98,7 @@ namespace Valvrave_Sharp.Core
                         .ToVector2());
         }
 
-        public static Prediction.PredictionOutput VPrediction(
+        internal static Prediction.PredictionOutput VPrediction(
             this Spell spell,
             Obj_AI_Base unit,
             bool aoe = false,

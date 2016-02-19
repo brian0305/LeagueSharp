@@ -331,8 +331,8 @@
                     }
                     break;
             }
-            if (Variables.Orbwalker.GetActiveMode() < OrbwalkingMode.Combo
-                || Variables.Orbwalker.GetActiveMode() > OrbwalkingMode.Hybrid)
+            if (Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.Combo
+                && Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.Hybrid)
             {
                 AutoQ();
             }

@@ -43,21 +43,6 @@
 
         #region Methods
 
-        private static double GetAngle(this Vector3 from, Obj_AI_Hero target)
-        {
-            var c = target.ServerPosition.ToVector2();
-            var a = target.GetWaypoints().Last();
-            if (c == a)
-            {
-                return 60;
-            }
-            var b = from.ToVector2();
-            var ab = Math.Pow(a.X - b.X, 2) + Math.Pow(a.Y - b.Y, 2);
-            var bc = Math.Pow(b.X - c.X, 2) + Math.Pow(b.Y - c.Y, 2);
-            var ac = Math.Pow(a.X - c.X, 2) + Math.Pow(a.Y - c.Y, 2);
-            return Math.Cos((ab + bc - ac) / (2 * Math.Sqrt(ab) * Math.Sqrt(bc))) * 180 / Math.PI;
-        }
-
         private static PredictionOutput GetDashingPrediction(this PredictionInput input)
         {
             var dashData = input.Unit.GetDashInfo();
@@ -88,7 +73,7 @@
                                    };
                     }
                 }
-                result.UnitPosition = result.CastPosition = endP.ToVector3();
+                result.CastPosition = result.UnitPosition = endP.ToVector3();
             }
             return result;
         }
@@ -275,9 +260,10 @@
                     }
                 }
             }
-            if (result.Hitchance == HitChance.High || result.Hitchance == HitChance.VeryHigh)
+            if ((result.Hitchance == HitChance.High || result.Hitchance == HitChance.VeryHigh)
+                && input.Unit.Type == GameObjectType.obj_AI_Minion)
             {
-                result = input.WayPointAnalysis(result);
+                result.Hitchance = HitChance.VeryHigh;
             }
             if (checkCollision && input.Collision && result.Hitchance > HitChance.Impossible)
             {
@@ -300,149 +286,18 @@
             {
                 speed /= 1.5f;
             }
-            /*var heroUnit = input.Unit as Obj_AI_Hero;
-            if (heroUnit != null && UnitTracker.CanCalcWaypoints(heroUnit))
-            {
-                return input.GetPositionOnPath(UnitTracker.GetWaypoints(heroUnit), speed);
-            }*/
             return input.GetPositionOnPath(input.Unit.GetWaypoints(), speed);
         }
 
         private static double IsImmobileUntil(this Obj_AI_Base unit)
         {
-            var result =
+            return
                 unit.Buffs.Where(
                     i =>
                     i.IsValid
                     && (i.Type == BuffType.Charm || i.Type == BuffType.Knockup || i.Type == BuffType.Stun
                         || i.Type == BuffType.Suppression || i.Type == BuffType.Snare))
-                    .Aggregate(0d, (current, buff) => Math.Max(current, buff.EndTime));
-            return result - Game.Time;
-        }
-
-        private static PredictionOutput WayPointAnalysis(this PredictionInput input, PredictionOutput result)
-        {
-            var heroUnit = input.Unit as Obj_AI_Hero;
-            if (heroUnit == null || input.Radius.Equals(1))
-            {
-                result.Hitchance = HitChance.VeryHigh;
-                return result;
-            }
-            return result;
-            if (UnitTracker.GetLastSpecialSpellTime(heroUnit) > 0 || heroUnit.IsRecalling())
-            {
-                result.Hitchance = HitChance.VeryHigh;
-                return result;
-            }
-            if (UnitTracker.GetLastVisableTime(heroUnit) < 0.1)
-            {
-                result.Hitchance = HitChance.Medium;
-                return result;
-            }
-            result.Hitchance = HitChance.Medium;
-            var lastWaypoint = heroUnit.GetWaypoints().Last();
-            var distUnitToWaypoint = heroUnit.Distance(lastWaypoint);
-            var distFromToWaypoint = input.From.Distance(lastWaypoint);
-            var distUnitToFrom = heroUnit.Distance(input.From);
-            var angle = input.From.GetAngle(heroUnit);
-            var speedDelay = distUnitToFrom / input.Speed;
-            if (Math.Abs(input.Speed - float.MaxValue) < float.Epsilon)
-            {
-                speedDelay = 0;
-            }
-            var totalDelay = speedDelay + input.Delay;
-            var moveArea = heroUnit.MoveSpeed * totalDelay;
-            var fixRange = moveArea * 0.4f;
-            var minPath = 900 + moveArea;
-            var moveAngle = Math.Max(30 + input.Radius / 17d - totalDelay - input.Delay * 2, 31);
-            if (GamePath.PathTracker.GetCurrentPath(heroUnit).Time < 0.1)
-            {
-                result.Hitchance = HitChance.High;
-                fixRange = moveArea * 0.3f;
-                minPath = 600 + moveArea;
-                moveAngle += 2;
-            }
-            if (input.Type == SkillshotType.SkillshotCircle)
-            {
-                fixRange -= input.Radius / 2;
-            }
-            if (distFromToWaypoint <= distUnitToFrom && distUnitToFrom > input.Range - fixRange)
-            {
-                result.Hitchance = HitChance.Medium;
-                return result;
-            }
-            if (UnitTracker.CanCalcWaypoints(heroUnit))
-            {
-                result.Hitchance = HitChance.VeryHigh;
-                return result;
-            }
-            if (UnitTracker.SpamSamePlace(heroUnit))
-            {
-                result.Hitchance = HitChance.VeryHigh;
-                return result;
-            }
-            if (distUnitToFrom < 250 || heroUnit.MoveSpeed < 200 || distFromToWaypoint < 100)
-            {
-                result.Hitchance = HitChance.VeryHigh;
-                return result;
-            }
-            if (distUnitToWaypoint > minPath)
-            {
-                result.Hitchance = HitChance.VeryHigh;
-                return result;
-            }
-            if (angle < moveAngle)
-            {
-                if (distUnitToWaypoint > fixRange && GamePath.PathTracker.GetCurrentPath(heroUnit).Time < 0.1)
-                {
-                    result.Hitchance = HitChance.VeryHigh;
-                    return result;
-                }
-                if (Program.Player.IsMoving
-                    && (Program.Player.IsFacing(heroUnit)
-                            ? !heroUnit.IsFacing(Program.Player)
-                            : heroUnit.IsFacing(Program.Player)))
-                {
-                    result.Hitchance = HitChance.VeryHigh;
-                    return result;
-                }
-            }
-            if (UnitTracker.GetLastAttackTime(heroUnit) < 0.1)
-            {
-                if (input.Type == SkillshotType.SkillshotLine && totalDelay < 0.4 + input.Radius * 0.002)
-                {
-                    result.Hitchance = HitChance.VeryHigh;
-                    return result;
-                }
-                if (input.Type == SkillshotType.SkillshotCircle && totalDelay < 0.6 + input.Radius * 0.002)
-                {
-                    result.Hitchance = HitChance.VeryHigh;
-                    return result;
-                }
-                result.Hitchance = HitChance.High;
-            }
-            else if (heroUnit.Path.Length == 0 || !heroUnit.IsMoving)
-            {
-                if (heroUnit.IsWindingUp)
-                {
-                    result.Hitchance = HitChance.High;
-                }
-                else if (UnitTracker.GetLastStopMoveTime(heroUnit) < 0.5)
-                {
-                    result.Hitchance = HitChance.High;
-                }
-                else
-                {
-                    result.Hitchance = HitChance.VeryHigh;
-                }
-                return result;
-            }
-            if (input.Type == SkillshotType.SkillshotCircle && GamePath.PathTracker.GetCurrentPath(heroUnit).Time < 0.1
-                && distUnitToWaypoint > fixRange)
-            {
-                result.Hitchance = HitChance.VeryHigh;
-            }
-            return result;
+                    .Aggregate(0d, (current, buff) => Math.Max(current, buff.EndTime)) - Game.Time;
         }
 
         #endregion
@@ -496,23 +351,22 @@
                                 i =>
                                     {
                                         input.Unit = i;
-                                        var distUnitToFrom = i.Distance(input.From);
-                                        if (IsDead(input, i, distUnitToFrom))
+                                        if (IsDead(input, i))
                                         {
                                             return;
                                         }
-                                        if (distUnitToFrom < input.Radius || i.Distance(position) < input.Radius)
+                                        if (i.Distance(input.From) < input.Radius || i.Distance(position) < input.Radius)
                                         {
                                             result.Add(i);
                                         }
                                         else
                                         {
                                             var pos = i.ServerPosition;
-                                            var bonusRadius = 20f;
+                                            var bonusRadius = 15;
                                             if (i.IsMoving)
                                             {
                                                 pos = input.GetPrediction(false, false).UnitPosition;
-                                                bonusRadius = 60 + input.Radius;
+                                                bonusRadius = 40;
                                             }
                                             if (pos.ToVector2()
                                                     .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
@@ -549,7 +403,7 @@
                         var step = position.Distance(input.From) / 20;
                         for (var i = 0; i < 20; i++)
                         {
-                            if (input.From.Extend(position, step * i).IsWall())
+                            if (input.From.ToVector2().Extend(position, step * i).IsWall())
                             {
                                 result.Add(Program.Player);
                                 break;
@@ -569,7 +423,7 @@
                             continue;
                         }
                         var wallWidth = 300 + 50 * Convert.ToInt32(wall.Name.Substring(wall.Name.Length - 6, 1));
-                        var wallDirection = (yasuoWallCastPos - wall.Position.ToVector2()).Normalized().Perpendicular();
+                        var wallDirection = (wall.Position.ToVector2() - yasuoWallCastPos).Normalized().Perpendicular();
                         var wallStart = wall.Position.ToVector2() + wallWidth / 2f * wallDirection;
                         var wallEnd = wallStart - wallWidth * wallDirection;
                         var wallIntersect = wallStart.Intersection(
@@ -590,15 +444,14 @@
                 return result.Distinct().ToList();
             }
 
-            private static bool IsDead(PredictionInput input, Obj_AI_Base minion, float distance)
+            private static bool IsDead(PredictionInput input, Obj_AI_Base minion)
             {
-                var delay = (distance / input.Speed) + input.Delay;
+                var delay = (minion.Distance(input.From) / input.Speed) + input.Delay;
                 if (Math.Abs(input.Speed - float.MaxValue) < float.Epsilon)
                 {
                     delay = input.Delay;
                 }
-                var convert = (int)(delay * 1000);
-                return Health.GetPrediction(minion, convert, 0, HealthPredictionType.Simulated) <= 0;
+                return Health.GetPrediction(minion, (int)(delay * 1000), 0, HealthPredictionType.Simulated) <= 0;
             }
 
             #endregion
@@ -888,217 +741,6 @@
                 internal Vector2 Position { get; set; }
 
                 internal Obj_AI_Base Unit { get; set; }
-
-                #endregion
-            }
-        }
-
-        private static class UnitTracker
-        {
-            #region Static Fields
-
-            private static readonly List<SpellInfo> Spells = new List<SpellInfo>();
-
-            private static readonly List<TrackerInfo> StoredList = new List<TrackerInfo>();
-
-            #endregion
-
-            #region Constructors and Destructors
-
-            static UnitTracker()
-            {
-                Spells.Add(new SpellInfo { Name = "katarinar", Duration = 1 }); //Kata R
-                Spells.Add(new SpellInfo { Name = "drain", Duration = 1 }); //Fiddle W
-                Spells.Add(new SpellInfo { Name = "crowstorm", Duration = 1 }); //Fiddle R
-                Spells.Add(new SpellInfo { Name = "consume", Duration = 0.5 }); //Nunu Q
-                Spells.Add(new SpellInfo { Name = "absolutezero", Duration = 1 }); //Nunu R
-                Spells.Add(new SpellInfo { Name = "staticfield", Duration = 0.5 }); //Blitz R
-                Spells.Add(new SpellInfo { Name = "cassiopeiapetrifyinggaze", Duration = 0.5 }); //Cass R
-                Spells.Add(new SpellInfo { Name = "ezrealtrueshotbarrage", Duration = 1 }); //Ez R
-                Spells.Add(new SpellInfo { Name = "galioidolofdurand", Duration = 1 }); //Galio R
-                Spells.Add(new SpellInfo { Name = "luxmalicecannon", Duration = 1 }); //Lux R
-                Spells.Add(new SpellInfo { Name = "reapthewhirlwind", Duration = 1 }); //Janna R
-                Spells.Add(new SpellInfo { Name = "jinxw", Duration = 0.6 }); //Jinx W
-                Spells.Add(new SpellInfo { Name = "jinxr", Duration = 0.6 }); //Jinx R
-                Spells.Add(new SpellInfo { Name = "missfortunebullettime", Duration = 1 }); //MF R
-                Spells.Add(new SpellInfo { Name = "shenstandunited", Duration = 1 }); //Shen R
-                Spells.Add(new SpellInfo { Name = "threshq", Duration = 0.75 }); //Thresh Q
-                Spells.Add(new SpellInfo { Name = "threshe", Duration = 0.4 }); //Thresh E
-                Spells.Add(new SpellInfo { Name = "threshrpenta", Duration = 0.75 }); //Thresh R
-                Spells.Add(new SpellInfo { Name = "infiniteduress", Duration = 1 }); //WW R
-                Spells.Add(new SpellInfo { Name = "meditate", Duration = 1 }); //Yi W
-                Spells.Add(new SpellInfo { Name = "alzaharnethergrasp", Duration = 1 }); //Malza R
-                Spells.Add(new SpellInfo { Name = "lucianq", Duration = 0.5 }); //Lucian Q
-                Spells.Add(new SpellInfo { Name = "caitlynpiltoverpeacemaker", Duration = 0.5 }); //Caitlyn Q
-                Spells.Add(new SpellInfo { Name = "velkozr", Duration = 0.5 }); //Velkoz R
-                Spells.Add(new SpellInfo { Name = "jhinr", Duration = 2 }); //Jhin R
-
-                foreach (var hero in GameObjects.Heroes.Where(i => !i.IsMe))
-                {
-                    StoredList.Add(
-                        new TrackerInfo
-                            {
-                                NetworkId = hero.NetworkId, AttackTick = Variables.TickCount,
-                                StopMoveTick = Variables.TickCount, LastInviTick = Variables.TickCount,
-                                EndSpecialSpellTick = Variables.TickCount
-                            });
-                }
-
-                /*AttackableUnit.OnEnterLocalVisiblityClient += (sender, args) =>
-                    {
-                        if (sender.IsMe || sender.Type != GameObjectType.obj_AI_Hero)
-                        {
-                            return;
-                        }
-                        StoredList.First(i => i.NetworkId == sender.NetworkId).LastInviTick = Variables.TickCount;
-                    };
-                Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
-                    {
-                        if (sender.IsMe || sender.Type != GameObjectType.obj_AI_Hero)
-                        {
-                            return;
-                        }
-                        if (AutoAttack.IsAutoAttack(args.SData.Name))
-                        {
-                            StoredList.First(i => i.NetworkId == sender.NetworkId).AttackTick = Variables.TickCount;
-                        }
-                        else
-                        {
-                            var specialSpell = Spells.FirstOrDefault(i => i.Name.Equals(args.SData.Name.ToLower()));
-                            if (specialSpell != null)
-                            {
-                                StoredList.First(i => i.NetworkId == sender.NetworkId).EndSpecialSpellTick =
-                                    Variables.TickCount + (int)(specialSpell.Duration * 1000);
-                            }
-                        }
-                    };
-                Obj_AI_Base.OnNewPath += (sender, args) =>
-                    {
-                        if (sender.IsMe || sender.Type != GameObjectType.obj_AI_Hero)
-                        {
-                            return;
-                        }
-                        var info = StoredList.First(i => i.NetworkId == sender.NetworkId);
-                        if (args.Path.Length == 1)
-                        {
-                            info.StopMoveTick = Variables.TickCount;
-                        }
-                        else
-                        {
-                            info.Path.Add(new PathInfo { Position = args.Path.Last().ToVector2(), Time = Game.Time });
-                        }
-                        if (info.Path.Count > 3)
-                        {
-                            info.Path.Remove(info.Path.First());
-                        }
-                    };*/
-            }
-
-            #endregion
-
-            #region Methods
-
-            internal static bool CanCalcWaypoints(Obj_AI_Hero unit)
-            {
-                var info = StoredList.First(i => i.NetworkId == unit.NetworkId);
-                if (info.Path.Count < 3)
-                {
-                    return false;
-                }
-                if (info.Path[2].Time - info.Path[0].Time < 0.3 && Game.Time - info.Path[2].Time < 0.15
-                    && Game.Time - info.Path[2].Time > 0.08)
-                {
-                    var dist = unit.Distance(info.Path[2].Position);
-                    return info.Path[1].Position.Distance(info.Path[2].Position) > dist
-                           && info.Path[0].Position.Distance(info.Path[1].Position) > dist;
-                }
-                return false;
-            }
-
-            internal static double GetLastAttackTime(Obj_AI_Hero unit)
-            {
-                return (Variables.TickCount - StoredList.First(i => i.NetworkId == unit.NetworkId).AttackTick) / 1000d;
-            }
-
-            internal static double GetLastSpecialSpellTime(Obj_AI_Hero unit)
-            {
-                return (StoredList.First(i => i.NetworkId == unit.NetworkId).EndSpecialSpellTick - Variables.TickCount)
-                       / 1000d;
-            }
-
-            internal static double GetLastStopMoveTime(Obj_AI_Hero unit)
-            {
-                return (Variables.TickCount - StoredList.First(i => i.NetworkId == unit.NetworkId).StopMoveTick) / 1000d;
-            }
-
-            internal static double GetLastVisableTime(Obj_AI_Hero unit)
-            {
-                return (Variables.TickCount - StoredList.First(i => i.NetworkId == unit.NetworkId).LastInviTick) / 1000d;
-            }
-
-            internal static List<Vector2> GetWaypoints(Obj_AI_Hero unit)
-            {
-                var info = StoredList.First(i => i.NetworkId == unit.NetworkId);
-                return new List<Vector2>
-                           {
-                               new Vector2(
-                                   (info.Path[0].Position.X + info.Path[1].Position.X + info.Path[2].Position.X) / 3,
-                                   (info.Path[0].Position.Y + info.Path[1].Position.Y + info.Path[2].Position.Y) / 3)
-                           };
-            }
-
-            internal static bool SpamSamePlace(Obj_AI_Hero unit)
-            {
-                var info = StoredList.First(i => i.NetworkId == unit.NetworkId);
-                return info.Path.Count >= 3 && info.Path[2].Time - info.Path[0].Time < 0.4
-                       && info.Path[2].Time + 0.15 < Game.Time
-                       && info.Path[0].Position.Distance(info.Path[1].Position) < 100
-                       && info.Path[1].Position.Distance(info.Path[2].Position) < 100;
-            }
-
-            #endregion
-
-            private class PathInfo
-            {
-                #region Properties
-
-                internal Vector2 Position { get; set; }
-
-                internal float Time { get; set; }
-
-                #endregion
-            }
-
-            private class SpellInfo
-            {
-                #region Properties
-
-                internal double Duration { get; set; }
-
-                internal string Name { get; set; }
-
-                #endregion
-            }
-
-            private class TrackerInfo
-            {
-                #region Fields
-
-                internal readonly List<PathInfo> Path = new List<PathInfo>();
-
-                #endregion
-
-                #region Properties
-
-                internal int AttackTick { get; set; }
-
-                internal int EndSpecialSpellTick { get; set; }
-
-                internal int LastInviTick { get; set; }
-
-                internal int NetworkId { get; set; }
-
-                internal int StopMoveTick { get; set; }
 
                 #endregion
             }

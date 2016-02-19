@@ -42,6 +42,7 @@
 
         private static readonly Dictionary<string, Func<object>> Plugins = new Dictionary<string, Func<object>>
                                                                                {
+                                                                                   { "DrMundo", () => new DrMundo() },
                                                                                    { "Kennen", () => new Kennen() },
                                                                                    { "LeeSin", () => new LeeSin() },
                                                                                    //{ "Lucian", () => new Lucian() },
@@ -51,8 +52,8 @@
 
         private static readonly Dictionary<string, int> Skins = new Dictionary<string, int>
                                                                     {
-                                                                        { "Kennen", 5 }, { "LeeSin", 10 }, { "Yasuo", 2 },
-                                                                        { "Zed", 3 }
+                                                                        { "DrMundo", 8 }, { "Kennen", 5 },
+                                                                        { "LeeSin", 10 }, { "Yasuo", 2 }, { "Zed", 3 }
                                                                     };
 
         private static bool isSkinReset;
@@ -144,9 +145,9 @@
                 {
                     Player = GameObjects.Player;
                     UpdateCheck();
-                    var checkSupport = Plugins.ContainsKey(Player.ChampionName);
-                    InitMenu(checkSupport);
-                    if (!checkSupport)
+                    var isSupport = Plugins.ContainsKey(Player.ChampionName);
+                    InitMenu(isSupport);
+                    if (!isSupport)
                     {
                         return;
                     }

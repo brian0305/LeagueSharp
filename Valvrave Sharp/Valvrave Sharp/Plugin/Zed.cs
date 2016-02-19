@@ -47,11 +47,11 @@
 
         public Zed()
         {
-            Q = new Spell(SpellSlot.Q, 925).SetSkillshot(0.3f, 50, 1700, true, SkillshotType.SkillshotLine);
-            Q2 = new Spell(SpellSlot.Q, 925).SetSkillshot(0.3f, 50, 1700, true, SkillshotType.SkillshotLine);
+            Q = new Spell(SpellSlot.Q, 925).SetSkillshot(0.3f, 50, 1800, true, SkillshotType.SkillshotLine);
+            Q2 = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
             spellQ = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
-            W = new Spell(SpellSlot.W, 700).SetSkillshot(0, 40, 1750, false, SkillshotType.SkillshotLine);
-            spellW = new Spell(W.Slot).SetSkillshot(W.Delay, W.Width, W.Speed, false, W.Type);
+            W = new Spell(SpellSlot.W, 700).SetSkillshot(0, 40, 1750, false, Q.Type);
+            spellW = new Spell(W.Slot).SetSkillshot(W.Delay, W.Width, W.Speed, false, Q.Type);
             E = new Spell(SpellSlot.E, 290);
             R = new Spell(SpellSlot.R, 625);
             Q.DamageType = W.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
@@ -70,7 +70,7 @@
                 comboMenu.Bool("WNormal", "Use For Non-R Combo");
                 comboMenu.List("WAdv", "Use For R Combo", new[] { "OFF", "Line", "Triangle", "Mouse" }, 1);
                 comboMenu.Separator("R Settings");
-                comboMenu.Bool("R", "Use R");
+                comboMenu.KeyBind("R", "Use R", Keys.Z, KeyBindType.Toggle);
                 comboMenu.List("RMode", "Mode", new[] { "Always", "Wait Q/E" });
                 comboMenu.Slider(
                     "RStopRange",
@@ -85,9 +85,11 @@
             var hybridMenu = MainMenu.Add(new Menu("Hybrid", "Hybrid"));
             {
                 hybridMenu.List("Mode", "Mode", new[] { "W-E-Q", "E-Q", "Q" });
-                hybridMenu.Separator("Auto Q Settings");
+                hybridMenu.Separator("Auto Q Settings (Champ)");
                 hybridMenu.KeyBind("AutoQ", "KeyBind", Keys.T, KeyBindType.Toggle);
                 hybridMenu.Slider("AutoQMpA", "If Mp >=", 100, 0, 200);
+                hybridMenu.Separator("Auto E Settings (Champ/Shadow)");
+                hybridMenu.Bool("AutoE", "Auto", false);
             }
             var lhMenu = MainMenu.Add(new Menu("LastHit", "Last Hit"));
             {
@@ -109,7 +111,8 @@
                 drawMenu.Bool("W", "W Range", false);
                 drawMenu.Bool("E", "E Range", false);
                 drawMenu.Bool("R", "R Range", false);
-                drawMenu.Bool("RStop", "Prevent Q/W Range", false);
+                drawMenu.Bool("RStop", "Prevent Q/W/E Range", false);
+                drawMenu.Bool("UseR", "R In Combo Status");
                 drawMenu.Bool("Target", "Target");
                 drawMenu.Bool("DMark", "Death Mark");
                 drawMenu.Bool("WPos", "W Shadow");
@@ -134,7 +137,7 @@
                         var posStart = args.Start;
                         var posEnd = posStart.Extend(args.End, Math.Max(posStart.Distance(args.End), 350));
                         lastW = Variables.TickCount
-                                + (int)(1000 * (W.Delay + posStart.Distance(posEnd) / W.Speed) + Game.Ping / 2f);
+                                + (int)(1000 * (posStart.Distance(posEnd) / W.Speed) + Game.Ping / 2f);
                     }
                     else if (args.SData.Name == "ZedR")
                     {
@@ -202,25 +205,29 @@
 
         private static bool CanR
             =>
-                (Q.IsReady(500) && Player.Mana >= Q.Instance.ManaCost - 10)
+                MainMenu["Combo"]["RMode"].GetValue<MenuList>().Index == 0
+                || (Q.IsReady(500) && Player.Mana >= Q.Instance.ManaCost - 10)
                 || (E.IsReady(500) && Player.Mana >= E.Instance.ManaCost - 10);
 
         private static Obj_AI_Hero GetTarget
         {
             get
             {
-                if (RState == 0 && MainMenu["Combo"]["R"] && Variables.Orbwalker.GetActiveMode() == OrbwalkingMode.Combo)
+                var extraRange = RangeTarget;
+                if (Variables.Orbwalker.GetActiveMode() == OrbwalkingMode.Combo
+                    && MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Active && RState == 0)
                 {
                     var targetR =
-                        Variables.TargetSelector.GetTargets(Q.Range + RangeTarget, Q.DamageType)
-                            .OrderBy(i => i.DistanceToPlayer())
+                        Variables.TargetSelector.GetTargets(Q.Range + extraRange, Q.DamageType)
+                            .OrderBy(i => i.HealthPercent)
+                            .ThenBy(i => i.DistanceToPlayer())
                             .FirstOrDefault(i => MainMenu["Combo"]["RCast" + i.ChampionName]);
                     if (targetR != null)
                     {
                         return targetR;
                     }
                 }
-                var targets = Variables.TargetSelector.GetTargets(Q.Range + RangeTarget, Q.DamageType, false);
+                var targets = Variables.TargetSelector.GetTargets(Q.Range + extraRange, Q.DamageType, false);
                 if (targets.Count == 0)
                 {
                     return null;
@@ -240,20 +247,23 @@
         {
             get
             {
+                var stateW = WState;
+                var validW = wShadow.IsValid();
+                var validR = rShadow.IsValid();
                 var range = Q.Width / 2;
-                if (wShadow.IsValid() && rShadow.IsValid())
+                if (validW && validR)
                 {
                     range += Math.Max(rShadow.DistanceToPlayer(), wShadow.DistanceToPlayer());
                 }
-                else if (WState == 0 && rShadow.IsValid())
+                else if (stateW == 0 && validR)
                 {
                     range += Math.Max(rShadow.DistanceToPlayer(), W.Range);
                 }
-                else if (wShadow.IsValid())
+                else if (validW)
                 {
                     range += wShadow.DistanceToPlayer();
                 }
-                else if (WState == 0)
+                else if (stateW == 0)
                 {
                     range += W.Range;
                 }
@@ -454,13 +464,14 @@
             var target = GetTarget;
             if (target != null)
             {
-                var canCast = !MainMenu["Combo"]["R"] || !MainMenu["Combo"]["RCast" + target.ChampionName]
-                              || (RState == 0 && target.DistanceToPlayer() > MainMenu["Combo"]["RStopRange"])
-                              || RState == -1;
+                var useR = MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Active;
+                var targetR = MainMenu["Combo"]["RCast" + target.ChampionName];
+                var stateR = RState;
+                var canCast = !useR || !targetR
+                              || (stateR == 0 && target.DistanceToPlayer() > MainMenu["Combo"]["RStopRange"])
+                              || stateR == -1;
                 Swap(target);
-                if (RState == 0 && MainMenu["Combo"]["R"] && MainMenu["Combo"]["RCast" + target.ChampionName]
-                    && R.IsInRange(target) && (MainMenu["Combo"]["RMode"].GetValue<MenuList>().Index == 0 || CanR)
-                    && R.CastOnUnit(target))
+                if (stateR == 0 && useR && targetR && R.IsInRange(target) && CanR && R.CastOnUnit(target))
                 {
                     return;
                 }
@@ -469,27 +480,25 @@
                 {
                     Player.Spellbook.CastSpell(Ignite, target);
                 }
-                if ((MainMenu["Combo"]["WNormal"] || MainMenu["Combo"]["WAdv"].GetValue<MenuList>().Index > 0)
-                    && WState == 0)
+                var norW = MainMenu["Combo"]["WNormal"];
+                var advW = MainMenu["Combo"]["WAdv"].GetValue<MenuList>().Index;
+                if ((norW || advW > 0) && WState == 0)
                 {
                     var slot = CanW(target);
                     if (slot != SpellSlot.Unknown)
                     {
-                        if (MainMenu["Combo"]["WAdv"].GetValue<MenuList>().Index > 0 && rShadow.IsValid()
-                            && MainMenu["Combo"]["R"] && MainMenu["Combo"]["RCast" + target.ChampionName]
-                            && HaveR(target) && !IsKillByMark(target))
+                        if (advW > 0 && rShadow.IsValid() && useR && targetR && HaveR(target) && !IsKillByMark(target))
                         {
                             CastW(target, slot, true);
                             return;
                         }
-                        if (MainMenu["Combo"]["WNormal"])
+                        if (norW)
                         {
-                            if (RState < 1 && canCast)
+                            if (stateR < 1 && canCast)
                             {
                                 CastW(target, slot);
                             }
-                            if (rShadow.IsValid() && MainMenu["Combo"]["R"]
-                                && MainMenu["Combo"]["RCast" + target.ChampionName] && !HaveR(target))
+                            if (rShadow.IsValid() && useR && targetR && !HaveR(target))
                             {
                                 CastW(target, slot);
                             }
@@ -607,11 +616,12 @@
             {
                 return;
             }
-            if (MainMenu["Hybrid"]["Mode"].GetValue<MenuList>().Index == 0 && WState == 0)
+            var mode = MainMenu["Hybrid"]["Mode"].GetValue<MenuList>().Index;
+            if (mode == 0 && WState == 0)
             {
                 CastW(target, CanW(target));
             }
-            if (MainMenu["Hybrid"]["Mode"].GetValue<MenuList>().Index < 2)
+            if (mode < 2)
             {
                 CastE();
             }
@@ -636,7 +646,7 @@
 
         private static bool IsKillByMark(Obj_AI_Hero target)
         {
-            return HaveR(target) && deathMark != null && target.Distance(deathMark) < 150;
+            return HaveR(target) && deathMark != null;
         }
 
         private static void KillSteal()
@@ -722,13 +732,28 @@
             }
             if (R.Level > 0)
             {
-                if (MainMenu["Draw"]["R"])
+                var useR = MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Active;
+                if (RState == 0)
                 {
-                    Drawing.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.LimeGreen : Color.IndianRed);
+                    if (MainMenu["Draw"]["R"])
+                    {
+                        Drawing.DrawCircle(Player.Position, R.Range, Color.LimeGreen);
+                    }
+                    if (MainMenu["Draw"]["RStop"] && useR)
+                    {
+                        Drawing.DrawCircle(Player.Position, MainMenu["Combo"]["RStopRange"], Color.Orange);
+                    }
                 }
-                if (MainMenu["Draw"]["RStop"] && RState == 0)
+                if (MainMenu["Draw"]["UseR"])
                 {
-                    Drawing.DrawCircle(Player.Position, MainMenu["Combo"]["RStopRange"], Color.Orange);
+                    var pos = Drawing.WorldToScreen(Player.Position);
+                    var text =
+                        $"Use R In Combo: {(useR ? "On" : "Off")} [{MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Key}]";
+                    Drawing.DrawText(
+                        pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
+                        pos.Y + 20,
+                        useR ? Color.White : Color.Gray,
+                        text);
                 }
             }
             if (MainMenu["Draw"]["Target"])
@@ -746,7 +771,7 @@
                 {
                     var pos = Drawing.WorldToScreen(Player.Position);
                     var text = "Death Mark: " + target.ChampionName;
-                    Drawing.DrawText(pos.X - (float)Drawing.GetTextExtent(text).Width / 2, pos.Y + 20, Color.Red, text);
+                    Drawing.DrawText(pos.X - (float)Drawing.GetTextExtent(text).Width / 2, pos.Y + 40, Color.Red, text);
                 }
             }
             if (MainMenu["Draw"]["WPos"] && wShadow.IsValid())
@@ -796,10 +821,16 @@
                     }
                     break;
             }
-            if (Variables.Orbwalker.GetActiveMode() < OrbwalkingMode.Combo
-                || Variables.Orbwalker.GetActiveMode() > OrbwalkingMode.Hybrid)
+            if (Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.Combo)
             {
-                AutoQ();
+                if (MainMenu["Hybrid"]["AutoE"])
+                {
+                    CastE();
+                }
+                if (Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.Hybrid)
+                {
+                    AutoQ();
+                }
             }
         }
 
@@ -823,9 +854,10 @@
             else if (MainMenu["Combo"]["SwapGap"].GetValue<MenuList>().Index > 0 && !E.IsInRange(target)
                      && !IsKillByMark(target))
             {
+                var stateR = RState;
                 var playerDist = target.DistanceToPlayer();
                 var wDist = WState == 1 && wShadow.IsValid() ? wShadow.Distance(target) : float.MaxValue;
-                var rDist = RState == 1 && rShadow.IsValid() ? rShadow.Distance(target) : float.MaxValue;
+                var rDist = stateR == 1 && rShadow.IsValid() ? rShadow.Distance(target) : float.MaxValue;
                 var minDist = Math.Min(Math.Min(wDist, rDist), playerDist);
                 if (minDist < playerDist)
                 {
@@ -834,13 +866,14 @@
                         case 1:
                             if (Math.Abs(minDist - wDist) < float.Epsilon)
                             {
+                                var useR = MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Active;
+                                var targetR = MainMenu["Combo"]["RCast" + target.ChampionName];
                                 var comboW = GetCombo(
                                     target,
                                     Q.IsReady() && minDist < Q.Range,
                                     false,
                                     E.IsReady() && minDist < E.Range,
-                                    MainMenu["Combo"]["R"] && MainMenu["Combo"]["RCast" + target.ChampionName]
-                                    && RState == 0 && minDist < R.Range);
+                                    useR && targetR && stateR == 0 && minDist < R.Range);
                                 if (minDist > target.GetRealAutoAttackRange())
                                 {
                                     comboW[0] -= Player.GetAutoAttackDamage(target);
@@ -850,10 +883,8 @@
                                 {
                                     return;
                                 }
-                                if (MainMenu["Combo"]["R"] && MainMenu["Combo"]["RCast" + target.ChampionName]
-                                    && RState == 0 && !R.IsInRange(target) && minDist < R.Range
-                                    && (MainMenu["Combo"]["RMode"].GetValue<MenuList>().Index == 0 || CanR)
-                                    && W.Cast())
+                                if (useR && targetR && stateR == 0 && !R.IsInRange(target) && minDist < R.Range
+                                    && CanR && W.Cast())
                                 {
                                     return;
                                 }

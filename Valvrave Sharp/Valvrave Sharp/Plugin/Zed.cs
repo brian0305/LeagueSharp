@@ -198,7 +198,6 @@
                             rShadow = sender;
                             break;
                     }
-                    Game.PrintChat("Shadow");
                 };
             Obj_AI_Base.OnPlayAnimation += (sender, args) =>
                 {

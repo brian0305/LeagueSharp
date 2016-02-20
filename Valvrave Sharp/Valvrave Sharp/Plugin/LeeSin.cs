@@ -873,7 +873,7 @@
         {
             #region Static Fields
 
-            private static bool isWardJumpFlash;
+            internal static bool IsWardFlash;
 
             private static Vector2 lastEndPos, lastFlashPos;
 
@@ -903,7 +903,7 @@
                     (WardManager.CanWardJump || (MainMenu["Insec"]["Flash"] && Flash.IsReady()) || IsRecent)
                     && R.IsReady();
 
-            private static bool CanWardJumpFlash
+            private static bool CanWardFlash
                 =>
                     MainMenu["Insec"]["Flash"] && MainMenu["Insec"]["FlashJump"] && WardManager.CanWardJump
                     && Flash.IsReady();
@@ -947,7 +947,7 @@
                         {
                             lastEndPos = lastFlashPos = new Vector2();
                             lastInsecTime = 0;
-                            isWardJumpFlash = false;
+                            IsWardFlash = false;
                             Variables.TargetSelector.SetTarget(null);
                         }
                         if (lastMoveTime > 0 && Variables.TickCount - lastMoveTime > 1000 && !R.IsReady())
@@ -974,6 +974,13 @@
                             1,
                             Color.BlueViolet);
                     };
+                Obj_AI_Base.OnBuffAdd += (sender, args) =>
+                    {
+                        if (sender.IsEnemy && args.Buff.Caster.IsMe && args.Buff.DisplayName == "BlindMonkSonicWave")
+                        {
+                            lastObjQ = sender;
+                        }
+                    };
                 Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                     {
                         if (!sender.IsMe || !MainMenu["Insec"]["Insec"].GetValue<MenuKeyBind>().Active
@@ -995,20 +1002,6 @@
                                     }
                                 });
                     };
-                Spellbook.OnCastSpell += (sender, args) =>
-                    {
-                        if (!sender.Owner.IsMe || !MainMenu["Insec"]["Insec"].GetValue<MenuKeyBind>().Active
-                            || !isWardJumpFlash || args.Slot != SpellSlot.W || !IsWOne || args.Target == null)
-                        {
-                            return;
-                        }
-                        var ward = args.Target as Obj_AI_Minion;
-                        if (ward == null || !ward.IsWard())
-                        {
-                            return;
-                        }
-                        isWardJumpFlash = false;
-                    };
                 Obj_AI_Base.OnDoCast += (sender, args) =>
                     {
                         if (!sender.IsMe || args.Slot != SpellSlot.R)
@@ -1017,15 +1010,8 @@
                         }
                         lastEndPos = lastFlashPos = new Vector2();
                         lastInsecTime = 0;
-                        isWardJumpFlash = false;
+                        IsWardFlash = false;
                         Variables.TargetSelector.SetTarget(null);
-                    };
-                Obj_AI_Base.OnBuffAdd += (sender, args) =>
-                    {
-                        if (sender.IsEnemy && args.Buff.Caster.IsMe && args.Buff.DisplayName == "BlindMonkSonicWave")
-                        {
-                            lastObjQ = sender;
-                        }
                     };
             }
 
@@ -1068,15 +1054,15 @@
                 {
                     var checkFlash = GapCheck(target, true);
                     var checkJump = GapCheck(target);
-                    if (!isWardJumpFlash && !checkFlash.Item2 && !checkJump.Item2 && CanWardJumpFlash
+                    if (!IsWardFlash && !checkFlash.Item2 && !checkJump.Item2 && CanWardFlash
                         && (!isDashing
                             || (!lastObjQ.Compare(target)
                                 && lastObjQ.Distance(target) > WardManager.WardRange - GetDistBehind(target)))
                         && target.DistanceToPlayer() < WardManager.WardRange + R.Range - 80)
                     {
-                        isWardJumpFlash = true;
+                        IsWardFlash = true;
                     }
-                    if (!isWardJumpFlash)
+                    if (!IsWardFlash)
                     {
                         if (checkJump.Item2)
                         {
@@ -1094,7 +1080,7 @@
                         return;
                     }
                 }
-                if ((!CanWardJumpFlash || !isWardJumpFlash) && GapByQ(target))
+                if ((!CanWardFlash || !IsWardFlash) && GapByQ(target))
                 {
                     return;
                 }
@@ -1165,7 +1151,7 @@
                 {
                     return false;
                 }
-                var minDist = CanWardJumpFlash
+                var minDist = CanWardFlash
                                   ? WardManager.WardRange + R.Range
                                   : WardManager.WardRange - GetDistBehind(target);
                 if (IsQOne)
@@ -1406,6 +1392,7 @@
                         {
                             LastInsecJumpTme = Variables.TickCount;
                         }
+                        Insec.IsWardFlash = false;
                         lastPlacePos = new Vector2();
                     };
                 GameObject.OnCreate += (sender, args) =>

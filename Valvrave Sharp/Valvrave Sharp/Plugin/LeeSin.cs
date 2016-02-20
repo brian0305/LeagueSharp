@@ -52,7 +52,7 @@
 
         public LeeSin()
         {
-            Q = new Spell(SpellSlot.Q, 1100).SetSkillshot(0.275f, 60, 1800, true, SkillshotType.SkillshotLine);
+            Q = new Spell(SpellSlot.Q, 1100).SetSkillshot(0.275f, 60, 1850, true, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, 1300);
             W = new Spell(SpellSlot.W, 700);
             E = new Spell(SpellSlot.E, 425).SetTargetted(0.275f, float.MaxValue);
@@ -383,9 +383,9 @@
                         CastQSmite(target);
                     }
                 }
-                else if (MainMenu["Combo"]["Q2"] && !Player.IsDashing())
+                else if (MainMenu["Combo"]["Q2"] && !Player.IsDashing() && objQ.IsValidTarget(Q2.Range))
                 {
-                    var target = Variables.TargetSelector.GetTargets(Q2.Range, Q2.DamageType).FirstOrDefault(HaveQ);
+                    var target = objQ as Obj_AI_Hero;
                     if (target != null)
                     {
                         if ((CanQ2(target) || (!R.IsReady() && IsRecentR && CanR(target))
@@ -397,7 +397,7 @@
                             return;
                         }
                     }
-                    else if (objQ.IsValidTarget(Q2.Range) && MainMenu["Combo"]["Q2Obj"])
+                    else if (MainMenu["Combo"]["Q2Obj"])
                     {
                         var targetQ2 = Q2.GetTarget(200);
                         if (targetQ2 != null && objQ.Distance(targetQ2) < targetQ2.DistanceToPlayer()
@@ -626,7 +626,7 @@
         {
             var minions =
                 GameObjects.Jungle.Concat(GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet(false)))
-                    .Where(i => i.IsValidTarget(Q.Range))
+                    .Where(i => i.IsValidTarget(Q2.Range))
                     .OrderByDescending(i => i.MaxHealth)
                     .ToList();
             if (minions.Count == 0)
@@ -651,7 +651,7 @@
                         && cPassive < 2)
                     {
                         foreach (var minion in
-                            minions.Where(i => !i.InAutoAttackRange() || i.Health > Q.GetDamage(i))
+                            minions.Where(i => Q.IsInRange(i) && (!i.InAutoAttackRange() || i.Health > Q.GetDamage(i)))
                                 .OrderBy(i => i.DistanceToPlayer()))
                         {
                             var pred = Q.VPrediction(minion, false, CollisionableObjects.YasuoWall);
@@ -875,9 +875,9 @@
 
             private static bool isWardJumpFlash;
 
-            private static Vector2 lastEndPos, lastGapPos;
+            private static Vector2 lastEndPos, lastFlashPos;
 
-            private static int lastInsecTime, lastMoveTime, lastRFlashTime, lastFlashRTime, lastWardJumpTime;
+            private static int lastInsecTime, lastMoveTime, lastRFlashTime, lastFlashRTime;
 
             private static Obj_AI_Base lastObjQ;
 
@@ -910,7 +910,7 @@
 
             private static bool IsRecent
                 =>
-                    Variables.TickCount - lastWardJumpTime < 5000
+                    Variables.TickCount - WardManager.LastInsecJumpTme < 5000
                     || (MainMenu["Insec"]["Flash"] && Variables.TickCount - lastFlashRTime < 5000)
                     || Variables.TickCount - WardManager.LastInsecWardTime < 5000;
 
@@ -945,7 +945,7 @@
                         }
                         if (lastInsecTime > 0 && Variables.TickCount - lastInsecTime > 10000)
                         {
-                            lastEndPos = lastGapPos = new Vector2();
+                            lastEndPos = lastFlashPos = new Vector2();
                             lastInsecTime = 0;
                             isWardJumpFlash = false;
                             Variables.TargetSelector.SetTarget(null);
@@ -977,9 +977,9 @@
                 Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                     {
                         if (!sender.IsMe || !MainMenu["Insec"]["Insec"].GetValue<MenuKeyBind>().Active
-                            || !lastGapPos.IsValid() || args.SData.Name != "summonerflash"
+                            || !lastFlashPos.IsValid() || args.SData.Name != "summonerflash"
                             || !MainMenu["Insec"]["Flash"] || Variables.TickCount - lastFlashRTime > 1250
-                            || args.End.Distance(lastGapPos) > 100)
+                            || args.End.Distance(lastFlashPos) > 100)
                         {
                             return;
                         }
@@ -998,7 +998,7 @@
                 Spellbook.OnCastSpell += (sender, args) =>
                     {
                         if (!sender.Owner.IsMe || !MainMenu["Insec"]["Insec"].GetValue<MenuKeyBind>().Active
-                            || args.Slot != SpellSlot.W || !IsWOne || args.Target == null)
+                            || !isWardJumpFlash || args.Slot != SpellSlot.W || !IsWOne || args.Target == null)
                         {
                             return;
                         }
@@ -1007,15 +1007,7 @@
                         {
                             return;
                         }
-                        if (lastGapPos.IsValid() && Variables.TickCount - lastWardJumpTime < 1250
-                            && ward.Distance(lastGapPos) <= 100)
-                        {
-                            lastWardJumpTime = Variables.TickCount;
-                        }
-                        if (isWardJumpFlash)
-                        {
-                            isWardJumpFlash = false;
-                        }
+                        isWardJumpFlash = false;
                     };
                 Obj_AI_Base.OnDoCast += (sender, args) =>
                     {
@@ -1023,7 +1015,7 @@
                         {
                             return;
                         }
-                        lastEndPos = lastGapPos = new Vector2();
+                        lastEndPos = lastFlashPos = new Vector2();
                         lastInsecTime = 0;
                         isWardJumpFlash = false;
                         Variables.TargetSelector.SetTarget(null);
@@ -1044,7 +1036,7 @@
                 {
                     return;
                 }
-                if (Variables.Orbwalker.CanMove() && Variables.TickCount - lastMoveTime > 1000)
+                if (Variables.Orbwalker.CanMove() && Variables.TickCount - lastMoveTime > 500)
                 {
                     if (target != null && lastMoveTime > 0 && CanInsec)
                     {
@@ -1161,7 +1153,7 @@
                 {
                     lastMoveTime = Variables.TickCount;
                 }
-                lastGapPos = posBehind;
+                lastFlashPos = posBehind;
                 lastEndPos = GetPositionAfterKick(target);
                 lastInsecTime = lastFlashRTime = Variables.TickCount;
                 Variables.TargetSelector.SetTarget(target);
@@ -1252,9 +1244,8 @@
                 {
                     lastMoveTime = Variables.TickCount;
                 }
-                lastGapPos = posBehind;
                 lastEndPos = GetPositionAfterKick(target);
-                lastInsecTime = lastWardJumpTime = Variables.TickCount;
+                lastInsecTime = Variables.TickCount;
                 Variables.TargetSelector.SetTarget(target);
             }
 
@@ -1277,8 +1268,7 @@
                 }
                 if (!useFlash)
                 {
-                    if (WardManager.CanWardJump && posBehind.DistanceToPlayer() < WardManager.WardRange
-                        && target.DistanceToPlayer() < WardManager.WardRange - 80)
+                    if (WardManager.CanWardJump && posBehind.DistanceToPlayer() < WardManager.WardRange)
                     {
                         return new Tuple<Vector2, bool>(posBehind, true);
                     }
@@ -1370,7 +1360,7 @@
 
             #region Static Fields
 
-            internal static int LastInsecWardTime;
+            internal static int LastInsecWardTime, LastInsecJumpTme;
 
             private static Vector2 lastPlacePos;
 
@@ -1412,6 +1402,10 @@
                         {
                             return;
                         }
+                        if (Variables.TickCount - LastInsecJumpTme < 1250)
+                        {
+                            LastInsecJumpTme = Variables.TickCount;
+                        }
                         lastPlacePos = new Vector2();
                     };
                 GameObject.OnCreate += (sender, args) =>
@@ -1429,7 +1423,7 @@
                         {
                             LastInsecWardTime = Variables.TickCount;
                         }
-                        if (IsTryingToJump && W.IsReady() && IsWOne)
+                        if (Variables.TickCount - lastPlaceTime < 1250 && W.IsReady() && IsWOne)
                         {
                             W.CastOnUnit(ward);
                         }
@@ -1455,13 +1449,13 @@
                 }
                 if (isInsecByWard)
                 {
-                    LastInsecWardTime = Variables.TickCount;
+                    LastInsecWardTime = LastInsecJumpTme = Variables.TickCount;
                 }
                 lastPlacePos = posPlace;
                 lastPlaceTime = Variables.TickCount;
                 if (isFlee)
                 {
-                    lastPlaceTime += 1100 - Game.Ping / 2;
+                    lastPlaceTime += 1100;
                 }
                 return true;
             }

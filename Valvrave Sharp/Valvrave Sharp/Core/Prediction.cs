@@ -351,10 +351,6 @@
                                 i =>
                                     {
                                         input.Unit = i;
-                                        if (IsDead(input, i))
-                                        {
-                                            return;
-                                        }
                                         if (i.Distance(input.From) < input.Radius || i.Distance(position) < input.Radius)
                                         {
                                             result.Add(i);
@@ -442,16 +438,6 @@
                     }
                 }
                 return result.Distinct().ToList();
-            }
-
-            private static bool IsDead(PredictionInput input, Obj_AI_Base minion)
-            {
-                var delay = (minion.Distance(input.From) / input.Speed) + input.Delay;
-                if (Math.Abs(input.Speed - float.MaxValue) < float.Epsilon)
-                {
-                    delay = input.Delay;
-                }
-                return Health.GetPrediction(minion, (int)(delay * 1000), 0, HealthPredictionType.Simulated) <= 0;
             }
 
             #endregion

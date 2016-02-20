@@ -366,7 +366,7 @@
                                             if (i.IsMoving)
                                             {
                                                 pos = input.GetPrediction(false, false).UnitPosition;
-                                                bonusRadius = 40;
+                                                bonusRadius = 50;
                                             }
                                             if (pos.ToVector2()
                                                     .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)

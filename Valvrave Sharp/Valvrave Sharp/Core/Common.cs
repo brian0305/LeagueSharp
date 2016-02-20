@@ -26,6 +26,11 @@ namespace Valvrave_Sharp.Core
 
         #region Methods
 
+        internal static bool CanHitCircle(this Spell spell, Obj_AI_Hero unit)
+        {
+            return spell.VPredictionPos(unit).DistanceToPlayer() < spell.Range;
+        }
+
         internal static CastStates Casting(this Spell spell, Obj_AI_Base unit, bool areaOfEffect = false)
         {
             if (!unit.IsValidTarget())
@@ -112,6 +117,11 @@ namespace Valvrave_Sharp.Core
                             Range = spell.Range, Collision = spell.Collision, Type = spell.Type,
                             RangeCheckFrom = spell.RangeCheckFrom, AoE = aoe, CollisionObjects = collisionable
                         });
+        }
+
+        internal static Vector3 VPredictionPos(this Spell spell, Obj_AI_Hero unit)
+        {
+            return Prediction.GetPrediction(unit, spell.Delay).UnitPosition;
         }
 
         #endregion

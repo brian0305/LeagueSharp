@@ -235,7 +235,7 @@
 
         private static void LastHit()
         {
-            if (!MainMenu["LastHit"]["Q"] || !Q.IsReady())
+            if (!MainMenu["LastHit"]["Q"] || !Q.IsReady() || Player.Spellbook.IsAutoAttacking)
             {
                 return;
             }

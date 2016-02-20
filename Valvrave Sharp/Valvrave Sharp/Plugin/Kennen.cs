@@ -37,9 +37,9 @@
         public Kennen()
         {
             Q = new Spell(SpellSlot.Q, 1050).SetSkillshot(0.2f, 50, 1700, true, SkillshotType.SkillshotLine);
-            W = new Spell(SpellSlot.W, 950);
+            W = new Spell(SpellSlot.W, 950).SetTargetted(0.25f, float.MaxValue);
             E = new Spell(SpellSlot.E);
-            R = new Spell(SpellSlot.R, 550);
+            R = new Spell(SpellSlot.R, 550).SetTargetted(0.25f, float.MaxValue);
             Q.DamageType = W.DamageType = R.DamageType = DamageType.Magical;
             Q.MinHitChance = HitChance.VeryHigh;
 
@@ -122,7 +122,10 @@
         #region Properties
 
         private static List<Obj_AI_Hero> GetWTarget
-            => Variables.TargetSelector.GetTargets(W.Range, W.DamageType).Where(i => HaveW(i)).ToList();
+            =>
+                Variables.TargetSelector.GetTargets(W.Range, W.DamageType)
+                    .Where(i => HaveW(i) && W.CanHitCircle(i))
+                    .ToList();
 
         #endregion
 
@@ -144,11 +147,15 @@
             {
                 if (R.IsReady())
                 {
-                    var target = Variables.TargetSelector.GetTargets(R.Range, R.DamageType, false);
-                    if (((target.Count > 1 && target.Any(i => i.Health + i.MagicalShield <= R.GetDamage(i)))
-                         || (target.Count > 1
-                             && target.Sum(i => i.HealthPercent) / target.Count <= MainMenu["Combo"]["RHpU"])
-                         || target.Count >= MainMenu["Combo"]["RCountA"]) && R.Cast())
+                    var target =
+                        Variables.TargetSelector.GetTargets(R.Range, R.DamageType, false)
+                            .Where(i => R.CanHitCircle(i))
+                            .ToList();
+                    if (target.Count > 0
+                        && ((target.Count > 1 && target.Any(i => i.Health + i.MagicalShield <= R.GetDamage(i)))
+                            || (target.Count > 1
+                                && target.Sum(i => i.HealthPercent) / target.Count <= MainMenu["Combo"]["RHpU"])
+                            || target.Count >= MainMenu["Combo"]["RCountA"]) && R.Cast())
                     {
                         return;
                     }
@@ -224,22 +231,15 @@
             if (MainMenu["KillSteal"]["Q"] && Q.IsReady())
             {
                 var target = Q.GetTarget(Q.Width / 2);
-                if (target != null)
+                if (target != null && target.Health + target.MagicalShield <= Q.GetDamage(target))
                 {
-                    if ((target.Health + target.MagicalShield <= Q.GetDamage(target))
-                        || (MainMenu["KillSteal"]["W"] && W.IsInRange(target)
-                            && W.Instance.State == SpellState.Surpressed
-                            && target.Health + target.MagicalShield
-                            <= Q.GetDamage(target) + W.GetDamage(target, Damage.DamageStage.Empowered)))
+                    var pred = Q.VPrediction(
+                        target,
+                        false,
+                        CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall);
+                    if (pred.Hitchance >= Q.MinHitChance && Q.Cast(pred.CastPosition))
                     {
-                        var pred = Q.VPrediction(
-                            target,
-                            false,
-                            CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall);
-                        if (pred.Hitchance >= Q.MinHitChance && Q.Cast(pred.CastPosition))
-                        {
-                            return;
-                        }
+                        return;
                     }
                 }
             }
@@ -252,7 +252,7 @@
 
         private static void LastHit()
         {
-            if (!MainMenu["LastHit"]["Q"] || !Q.IsReady())
+            if (!MainMenu["LastHit"]["Q"] || !Q.IsReady() || Player.Spellbook.IsAutoAttacking)
             {
                 return;
             }

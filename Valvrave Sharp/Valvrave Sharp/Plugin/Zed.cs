@@ -39,7 +39,9 @@
 
         private static Obj_AI_Base wShadow, rShadow;
 
-        private static int wTime, rTime;
+        private static int wShadowT, rShadowT;
+
+        private static int wShadowTravelT;
 
         #endregion
 
@@ -52,7 +54,7 @@
             spellQ = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
             W = new Spell(SpellSlot.W, 700).SetSkillshot(0, 40, 1750, false, Q.Type);
             spellW = new Spell(W.Slot).SetSkillshot(W.Delay, W.Width, W.Speed, false, Q.Type);
-            E = new Spell(SpellSlot.E, 290);
+            E = new Spell(SpellSlot.E, 290).SetTargetted(0.02f, float.MaxValue);
             R = new Spell(SpellSlot.R, 625);
             Q.DamageType = W.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
             Q.MinHitChance = HitChance.VeryHigh;
@@ -126,24 +128,77 @@
             Drawing.OnDraw += OnDraw;
             Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                 {
-                    if (!sender.IsMe)
+                    if (!sender.IsMe || args.Slot != SpellSlot.W || !IsWOne)
                     {
                         return;
                     }
-                    if (args.SData.Name == "ZedW")
+                    var posStart = args.Start;
+                    var posEnd = posStart.Extend(args.End, Math.Max(posStart.Distance(args.End), 350));
+                    wShadowTravelT = Variables.TickCount
+                                     + (int)(1000 * (posStart.Distance(posEnd) / W.Speed) + Game.Ping / 2f);
+                };
+            Spellbook.OnCastSpell += (sender, args) =>
+                {
+                    if (!sender.Owner.IsMe)
+                    {
+                        return;
+                    }
+                    if (args.Slot == SpellSlot.W && IsWOne)
                     {
                         rCasted = false;
                         wCasted = true;
-                        var posStart = args.Start;
-                        var posEnd = posStart.Extend(args.End, Math.Max(posStart.Distance(args.End), 350));
-                        lastW = Variables.TickCount
-                                + (int)(1000 * (posStart.Distance(posEnd) / W.Speed) + Game.Ping / 2f);
                     }
-                    else if (args.SData.Name == "ZedR")
+                    else if (args.Slot == SpellSlot.R && IsROne)
                     {
                         wCasted = false;
                         rCasted = true;
                     }
+                };
+            GameObject.OnCreate += (sender, args) =>
+                {
+                    var shadow = sender as Obj_AI_Minion;
+                    if (shadow == null || shadow.CharData.BaseSkinName != "zedshadow" || shadow.IsEnemy)
+                    {
+                        return;
+                    }
+                    if (wCasted)
+                    {
+                        wShadowT = Variables.TickCount;
+                        wShadow = shadow;
+                        wCasted = rCasted = false;
+                        wShadowTravelT = 0;
+                    }
+                    else if (rCasted)
+                    {
+                        rShadowT = Variables.TickCount;
+                        rShadow = shadow;
+                        wCasted = rCasted = false;
+                    }
+                };
+            Obj_AI_Base.OnBuffAdd += (sender, args) =>
+                {
+                    if (!args.Buff.Caster.IsMe)
+                    {
+                        return;
+                    }
+                    var shadow = sender as Obj_AI_Minion;
+                    if (shadow == null || shadow.CharData.BaseSkinName != "zedshadow" || shadow.IsEnemy)
+                    {
+                        return;
+                    }
+                    switch (args.Buff.Name.ToLower())
+                    {
+                        case "zedwshadowbuff":
+                            wShadowT = Variables.TickCount;
+                            wShadow = sender;
+                            wShadowTravelT = 0;
+                            break;
+                        case "zedrshadowbuff":
+                            rShadowT = Variables.TickCount;
+                            rShadow = sender;
+                            break;
+                    }
+                    Game.PrintChat("Shadow");
                 };
             Obj_AI_Base.OnPlayAnimation += (sender, args) =>
                 {
@@ -162,25 +217,7 @@
                 };
             GameObject.OnCreate += (sender, args) =>
                 {
-                    var shadow = sender as Obj_AI_Minion;
-                    if (shadow != null && shadow.CharData.BaseSkinName == "zedshadow" && shadow.IsAlly)
-                    {
-                        if (wCasted)
-                        {
-                            wTime = Variables.TickCount;
-                            wShadow = shadow;
-                            wCasted = rCasted = false;
-                            lastW = 0;
-                        }
-                        else if (rCasted)
-                        {
-                            rTime = Variables.TickCount;
-                            rShadow = shadow;
-                            wCasted = rCasted = false;
-                        }
-                        return;
-                    }
-                    if (deathMark != null || sender.Name != "Zed_Base_R_buf_tell.troy")
+                    if (sender.Name != "Zed_Base_R_buf_tell.troy")
                     {
                         return;
                     }
@@ -196,6 +233,14 @@
                     {
                         deathMark = null;
                     }
+                };
+            Spellbook.OnCastSpell += (sender, args) =>
+                {
+                    if (!sender.Owner.IsMe || args.Slot != SpellSlot.W || !IsWOne)
+                    {
+                        return;
+                    }
+                    lastW = Variables.TickCount;
                 };
         }
 
@@ -241,7 +286,11 @@
             }
         }
 
-        private static bool IsRecentW => lastW > 0 && Variables.TickCount < lastW;
+        private static bool IsRecentW => wShadowTravelT > 0 && Variables.TickCount < wShadowTravelT;
+
+        private static bool IsROne => R.Instance.SData.Name == "ZedR";
+
+        private static bool IsWOne => W.Instance.SData.Name == "ZedW";
 
         private static float RangeTarget
         {
@@ -272,15 +321,14 @@
         }
 
         private static bool RShadowCanQ
-            => rShadow.IsValid() && Variables.TickCount - rTime <= 7500 - Q.Delay * 1000 + 50;
+            => rShadow.IsValid() && Variables.TickCount - rShadowT <= 7500 - Q.Delay * 1000 + 50;
 
-        private static int RState
-            => R.IsReady() ? (R.Instance.Name == "ZedR" ? 0 : 1) : (R.Instance.Name == "ZedR" ? -1 : 2);
+        private static int RState => R.IsReady() ? (IsROne ? 0 : 1) : (IsROne ? -1 : 2);
 
         private static bool WShadowCanQ
-            => wShadow.IsValid() && Variables.TickCount - wTime <= 4500 - Q.Delay * 1000 + 50;
+            => wShadow.IsValid() && Variables.TickCount - wShadowT <= 4500 - Q.Delay * 1000 + 50;
 
-        private static int WState => W.IsReady() ? (W.Instance.Name == "ZedW" ? 0 : 1) : -1;
+        private static int WState => W.IsReady() ? (IsWOne ? 0 : 1) : -1;
 
         #endregion
 
@@ -322,7 +370,7 @@
 
         private static void CastE()
         {
-            if (!E.IsReady() || IsRecentW)
+            if (!E.IsReady() /*|| IsRecentW*/)
             {
                 return;
             }
@@ -334,7 +382,7 @@
 
         private static void CastQ(Obj_AI_Hero target)
         {
-            if (!Q.IsReady() || IsRecentW)
+            if (!Q.IsReady() || Player.Spellbook.IsAutoAttacking /*|| IsRecentW*/)
             {
                 return;
             }
@@ -395,7 +443,7 @@
 
         private static void CastW(Obj_AI_Hero target, SpellSlot slot, bool isRCombo = false)
         {
-            if (slot == SpellSlot.Unknown || Variables.TickCount - W.LastCastAttemptT <= 1000)
+            if (slot == SpellSlot.Unknown || Variables.TickCount - lastW <= 1000)
             {
                 return;
             }
@@ -630,9 +678,10 @@
 
         private static bool IsInRangeE(Obj_AI_Hero target)
         {
-            var distPlayer = target.DistanceToPlayer();
-            var distW = wShadow.IsValid() ? wShadow.Distance(target) : float.MaxValue;
-            var distR = rShadow.IsValid() ? rShadow.Distance(target) : float.MaxValue;
+            var pos = E.VPredictionPos(target);
+            var distPlayer = pos.DistanceToPlayer();
+            var distW = wShadow.IsValid() ? wShadow.Distance(pos) : float.MaxValue;
+            var distR = rShadow.IsValid() ? rShadow.Distance(pos) : float.MaxValue;
             return Math.Min(Math.Min(distR, distW), distPlayer) < E.Range;
         }
 
@@ -646,7 +695,7 @@
 
         private static bool IsKillByMark(Obj_AI_Hero target)
         {
-            return HaveR(target) && deathMark != null;
+            return HaveR(target) && deathMark != null && target.Distance(deathMark) < 150;
         }
 
         private static void KillSteal()
@@ -693,7 +742,7 @@
 
         private static void LastHit()
         {
-            if (!MainMenu["LastHit"]["Q"] || !Q.IsReady())
+            if (!MainMenu["LastHit"]["Q"] || !Q.IsReady() || Player.Spellbook.IsAutoAttacking)
             {
                 return;
             }
@@ -836,7 +885,8 @@
 
         private static void Swap(Obj_AI_Hero target)
         {
-            var eCanKill = E.CanCast(target) && target.Health + target.PhysicalShield <= E.GetDamage(target);
+            var eCanKill = E.IsReady() && E.CanHitCircle(target)
+                           && target.Health + target.PhysicalShield <= E.GetDamage(target);
             if (MainMenu["Combo"]["SwapIfKill"])
             {
                 if (IsKillByMark(target) || eCanKill)

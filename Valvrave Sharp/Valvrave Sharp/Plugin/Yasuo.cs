@@ -53,7 +53,7 @@
             spellQ = new Spell(Q.Slot).SetSkillshot(Q.Delay, Q.Width, Q.Speed, false, Q.Type);
             Q2 = new Spell(Q.Slot, 1100).SetSkillshot(Q.Delay, 90, 1200, true, Q.Type);
             W = new Spell(SpellSlot.W, 400);
-            E = new Spell(SpellSlot.E, 475).SetSkillshot(0, 1, 1025, false, Q.Type);
+            E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1025);
             R = new Spell(SpellSlot.R, 1200);
             Q.DamageType = Q2.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
@@ -579,7 +579,7 @@
 
         private static Obj_AI_Base GetBestObj(List<Obj_AI_Base> obj, Obj_AI_Hero target, bool inQCir = false)
         {
-            var pos = E.VPrediction(target).UnitPosition;
+            var pos = Prediction.GetPrediction(target, E.Delay, 1, E.Speed).UnitPosition;
             return
                 obj.Where(i => !i.Compare(target) && CanDash(i, inQCir, true, pos))
                     .MinOrDefault(i => GetPosAfterDash(i).Distance(pos));

@@ -110,6 +110,10 @@
                 };
             Drawing.OnDraw += args =>
                 {
+                    if (Program.Player.IsDead)
+                    {
+                        return;
+                    }
                     if (Program.MainMenu["Evade"]["Draw"]["Status"])
                     {
                         var active = Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active;

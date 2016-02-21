@@ -26,7 +26,7 @@ namespace Valvrave_Sharp.Core
 
         #region Methods
 
-        internal static bool CanHitCircle(this Spell spell, Obj_AI_Hero unit)
+        internal static bool CanHitCircle(this Spell spell, Obj_AI_Base unit)
         {
             return spell.VPredictionPos(unit).DistanceToPlayer() < spell.Range;
         }
@@ -84,11 +84,15 @@ namespace Valvrave_Sharp.Core
             this Prediction.PredictionOutput pred,
             CollisionableObjects collisionable = CollisionableObjects.Minions)
         {
-            var input = pred.Input;
-            input.CollisionObjects = collisionable;
-            var originalUnit = input.Unit;
-            var col = Prediction.Collisions.GetCollision(new List<Vector3> { pred.UnitPosition }, input);
-            col.RemoveAll(i => i.Compare(originalUnit));
+            var col = Prediction.Collisions.GetCollision(
+                new List<Vector3> { pred.UnitPosition },
+                new Prediction.PredictionInput
+                    {
+                        From = pred.Input.From, RangeCheckFrom = pred.Input.RangeCheckFrom, Type = pred.Input.Type,
+                        Radius = pred.Input.Radius, Delay = pred.Input.Delay, Speed = pred.Input.Speed,
+                        CollisionObjects = collisionable
+                    });
+            col.RemoveAll(i => i.Compare(pred.Input.Unit));
             return col;
         }
 
@@ -114,12 +118,12 @@ namespace Valvrave_Sharp.Core
                     new Prediction.PredictionInput
                         {
                             Unit = unit, Delay = spell.Delay, Radius = spell.Width, Speed = spell.Speed, From = spell.From,
-                            Range = spell.Range, Collision = spell.Collision, Type = spell.Type,
-                            RangeCheckFrom = spell.RangeCheckFrom, AoE = aoe, CollisionObjects = collisionable
+                            RangeCheckFrom = spell.RangeCheckFrom, Range = spell.Range, Collision = spell.Collision,
+                            Type = spell.Type, AoE = aoe, CollisionObjects = collisionable
                         });
         }
 
-        internal static Vector3 VPredictionPos(this Spell spell, Obj_AI_Hero unit)
+        internal static Vector3 VPredictionPos(this Spell spell, Obj_AI_Base unit)
         {
             return Prediction.GetPrediction(unit, spell.Delay).UnitPosition;
         }

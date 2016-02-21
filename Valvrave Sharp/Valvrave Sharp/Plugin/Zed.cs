@@ -54,7 +54,7 @@
             spellQ = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
             W = new Spell(SpellSlot.W, 700).SetSkillshot(0, 40, 1750, false, Q.Type);
             spellW = new Spell(W.Slot).SetSkillshot(W.Delay, W.Width, W.Speed, false, Q.Type);
-            E = new Spell(SpellSlot.E, 290).SetTargetted(0.02f, float.MaxValue);
+            E = new Spell(SpellSlot.E, 290).SetTargetted(0.01f, float.MaxValue);
             R = new Spell(SpellSlot.R, 625);
             Q.DamageType = W.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
             Q.MinHitChance = HitChance.VeryHigh;
@@ -148,7 +148,7 @@
                         rCasted = false;
                         wCasted = true;
                     }
-                    else if (args.Slot == SpellSlot.R && IsROne)
+                    else if (args.Slot == SpellSlot.R && IsROne && args.Target != null && R.IsInRange(args.Target))
                     {
                         wCasted = false;
                         rCasted = true;
@@ -156,8 +156,12 @@
                 };
             GameObject.OnCreate += (sender, args) =>
                 {
+                    if (sender.IsEnemy)
+                    {
+                        return;
+                    }
                     var shadow = sender as Obj_AI_Minion;
-                    if (shadow == null || shadow.CharData.BaseSkinName != "zedshadow" || shadow.IsEnemy)
+                    if (shadow == null || shadow.CharData.BaseSkinName != "zedshadow")
                     {
                         return;
                     }
@@ -177,23 +181,31 @@
                 };
             Obj_AI_Base.OnBuffAdd += (sender, args) =>
                 {
-                    if (!args.Buff.Caster.IsMe)
+                    if (sender.IsEnemy || !args.Buff.Caster.IsMe)
                     {
                         return;
                     }
                     var shadow = sender as Obj_AI_Minion;
-                    if (shadow == null || shadow.CharData.BaseSkinName != "zedshadow" || shadow.IsEnemy)
+                    if (shadow == null || shadow.CharData.BaseSkinName != "zedshadow")
                     {
                         return;
                     }
                     switch (args.Buff.Name.ToLower())
                     {
                         case "zedwshadowbuff":
+                            if (wShadow.Compare(sender))
+                            {
+                                return;
+                            }
                             wShadowT = Variables.TickCount;
                             wShadow = sender;
                             wShadowTravelT = 0;
                             break;
                         case "zedrshadowbuff":
+                            if (rShadow.Compare(sender))
+                            {
+                                return;
+                            }
                             rShadowT = Variables.TickCount;
                             rShadow = sender;
                             break;
@@ -352,15 +364,15 @@
             }
         }
 
-        private static SpellSlot CanW(Obj_AI_Hero target)
+        private static SpellSlot CanW(Obj_AI_Hero target, float dist = -1)
         {
             if (Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost
-                && target.DistanceToPlayer() < W.Range + Q.Range)
+                && (dist > -1 ? dist : target.DistanceToPlayer()) < W.Range + Q.Range)
             {
                 return SpellSlot.Q;
             }
             if (E.IsReady() && Player.Mana >= E.Instance.ManaCost + W.Instance.ManaCost
-                && target.DistanceToPlayer() < W.Range + E.Range)
+                && (dist > -1 ? dist : target.DistanceToPlayer()) < W.Range + E.Range)
             {
                 return SpellSlot.E;
             }
@@ -381,7 +393,7 @@
 
         private static void CastQ(Obj_AI_Hero target)
         {
-            if (!Q.IsReady() || Player.Spellbook.IsAutoAttacking /*|| IsRecentW*/)
+            if (!Q.IsReady() /*|| IsRecentW*/)
             {
                 return;
             }
@@ -511,13 +523,13 @@
             var target = GetTarget;
             if (target != null)
             {
+                Swap(target);
                 var useR = MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Active;
                 var targetR = MainMenu["Combo"]["RCast" + target.ChampionName];
                 var stateR = RState;
                 var canCast = !useR || !targetR
                               || (stateR == 0 && target.DistanceToPlayer() > MainMenu["Combo"]["RStopRange"])
                               || stateR == -1;
-                Swap(target);
                 if (stateR == 0 && useR && targetR && R.IsInRange(target) && CanR && R.CastOnUnit(target))
                 {
                     return;
@@ -554,7 +566,7 @@
                     else if (target.Health + target.PhysicalShield <= Player.GetAutoAttackDamage(target)
                              && !E.IsInRange(target) && !IsKillByMark(target)
                              && target.DistanceToPlayer() < W.Range + target.GetRealAutoAttackRange() - 100
-                             && W.Cast(target.ServerPosition))
+                             && W.Cast(target.ServerPosition.ToVector2().Extend(Player.ServerPosition, -100)))
                     {
                         return;
                     }
@@ -593,7 +605,7 @@
             }
         }
 
-        private static List<double> GetCombo(Obj_AI_Hero target, bool useQ, bool useW, bool useE, bool useR)
+        private static List<double> GetCombo(Obj_AI_Hero target, bool useQ, bool useW, bool useE)
         {
             var dmgTotal = 0d;
             var manaTotal = 0f;
@@ -640,8 +652,8 @@
                 dmgTotal += E.GetDamage(target);
                 manaTotal += E.Instance.ManaCost;
             }
-            dmgTotal += Player.GetAutoAttackDamage(target);
-            if (useR || HaveR(target))
+            dmgTotal += Player.GetAutoAttackDamage(target) * 2;
+            if (HaveR(target))
             {
                 dmgTotal += Player.CalculateDamage(
                     target,
@@ -678,18 +690,15 @@
         private static bool IsInRangeE(Obj_AI_Hero target)
         {
             var pos = E.VPredictionPos(target);
-            var distPlayer = pos.DistanceToPlayer();
-            var distW = wShadow.IsValid() ? wShadow.Distance(pos) : float.MaxValue;
-            var distR = rShadow.IsValid() ? rShadow.Distance(pos) : float.MaxValue;
-            return Math.Min(Math.Min(distR, distW), distPlayer) < E.Range;
+            return pos.DistanceToPlayer() < E.Range || wShadow.IsValid() && wShadow.Distance(pos) < E.Range
+                   || rShadow.IsValid() && rShadow.Distance(pos) < E.Range;
         }
 
         private static bool IsInRangeQ(Obj_AI_Hero target)
         {
-            var distPlayer = target.DistanceToPlayer();
-            var distW = wShadow.IsValid() ? wShadow.Distance(target) : float.MaxValue;
-            var distR = rShadow.IsValid() ? rShadow.Distance(target) : float.MaxValue;
-            return Math.Min(Math.Min(distR, distW), distPlayer) < Q.Range + Q.Width / 2;
+            var range = Q.Range + Q.Width / 2;
+            return target.DistanceToPlayer() < range || wShadow.IsValid() && wShadow.Distance(target) < range
+                   || rShadow.IsValid() && rShadow.Distance(target) < range;
         }
 
         private static bool IsKillByMark(Obj_AI_Hero target)
@@ -884,105 +893,94 @@
 
         private static void Swap(Obj_AI_Hero target)
         {
-            var eCanKill = E.IsReady() && E.CanHitCircle(target)
+            var eCanKill = E.CanCast(target) && E.CanHitCircle(target)
                            && target.Health + target.PhysicalShield <= E.GetDamage(target);
-            if (MainMenu["Combo"]["SwapIfKill"])
+            var markCanKill = IsKillByMark(target);
+            if (MainMenu["Combo"]["SwapIfKill"] && (markCanKill || eCanKill))
             {
-                if (IsKillByMark(target) || eCanKill)
-                {
-                    SwapCountEnemy();
-                }
+                SwapCountEnemy();
+                return;
             }
             if (Player.HealthPercent < MainMenu["Combo"]["SwapIfHpU"])
             {
-                if (IsKillByMark(target) || !eCanKill || Player.HealthPercent < target.HealthPercent)
+                if (markCanKill || !eCanKill || Player.HealthPercent < target.HealthPercent)
                 {
                     SwapCountEnemy();
                 }
             }
-            else if (MainMenu["Combo"]["SwapGap"].GetValue<MenuList>().Index > 0 && !E.IsInRange(target)
-                     && !IsKillByMark(target))
+            else if (MainMenu["Combo"]["SwapGap"].GetValue<MenuList>().Index > 0 && !E.IsInRange(target) && !markCanKill)
             {
-                var stateR = RState;
-                var playerDist = target.DistanceToPlayer();
                 var wDist = WState == 1 && wShadow.IsValid() ? wShadow.Distance(target) : float.MaxValue;
-                var rDist = stateR == 1 && rShadow.IsValid() ? rShadow.Distance(target) : float.MaxValue;
-                var minDist = Math.Min(Math.Min(wDist, rDist), playerDist);
-                if (minDist < playerDist)
+                var rDist = RState == 1 && rShadow.IsValid() ? rShadow.Distance(target) : float.MaxValue;
+                var minDist = Math.Min(wDist, rDist);
+                if (minDist.Equals(float.MaxValue) || target.DistanceToPlayer() <= minDist)
                 {
-                    switch (MainMenu["Combo"]["SwapGap"].GetValue<MenuList>().Index)
-                    {
-                        case 1:
-                            if (Math.Abs(minDist - wDist) < float.Epsilon)
+                    return;
+                }
+                var swapByW = Math.Abs(minDist - wDist) < float.Epsilon;
+                var swapByR = Math.Abs(minDist - rDist) < float.Epsilon;
+                if (swapByW && minDist < R.Range && !R.IsInRange(target)
+                    && MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Active
+                    && MainMenu["Combo"]["RCast" + target.ChampionName] && RState == 0 && CanR && W.Cast())
+                {
+                    return;
+                }
+                switch (MainMenu["Combo"]["SwapGap"].GetValue<MenuList>().Index)
+                {
+                    case 1:
+                        if (IsInRangeE(target) && target.HealthPercent < 15 && Player.HealthPercent > 30
+                            && (Q.IsReady() || E.IsReady()))
+                        {
+                            if (swapByW)
                             {
-                                var useR = MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Active;
-                                var targetR = MainMenu["Combo"]["RCast" + target.ChampionName];
-                                var comboW = GetCombo(
-                                    target,
-                                    Q.IsReady() && minDist < Q.Range,
-                                    false,
-                                    E.IsReady() && minDist < E.Range,
-                                    useR && targetR && stateR == 0 && minDist < R.Range);
-                                if (minDist > target.GetRealAutoAttackRange())
-                                {
-                                    comboW[0] -= Player.GetAutoAttackDamage(target);
-                                }
-                                if (target.Health + target.PhysicalShield <= comboW[0] && Player.Mana >= comboW[1]
-                                    && W.Cast())
-                                {
-                                    return;
-                                }
-                                if (useR && targetR && stateR == 0 && !R.IsInRange(target) && minDist < R.Range
-                                    && CanR && W.Cast())
-                                {
-                                    return;
-                                }
+                                W.Cast();
                             }
-                            else if (Math.Abs(minDist - rDist) < float.Epsilon)
+                            else if (swapByR)
                             {
-                                var comboR = GetCombo(
-                                    target,
-                                    Q.IsReady() && minDist < Q.Range,
-                                    false,
-                                    E.IsReady() && minDist < E.Range,
-                                    false);
-                                if (minDist > target.GetRealAutoAttackRange())
-                                {
-                                    comboR[0] -= Player.GetAutoAttackDamage(target);
-                                }
-                                if (target.Health + target.PhysicalShield <= comboR[0] && Player.Mana >= comboR[1]
-                                    && R.Cast())
-                                {
-                                    return;
-                                }
+                                R.Cast();
                             }
-                            if (minDist < E.Range && target.HealthPercent <= 20
-                                && target.HealthPercent < Player.HealthPercent && (Q.IsReady() || E.IsReady()))
-                            {
-                                if (Math.Abs(minDist - wDist) < float.Epsilon)
-                                {
-                                    W.Cast();
-                                }
-                                else if (Math.Abs(minDist - rDist) < float.Epsilon)
-                                {
-                                    R.Cast();
-                                }
-                            }
-                            break;
-                        case 2:
-                            if (minDist <= 500)
-                            {
-                                if (Math.Abs(minDist - wDist) < float.Epsilon)
-                                {
-                                    W.Cast();
-                                }
-                                else if (Math.Abs(minDist - rDist) < float.Epsilon)
-                                {
-                                    R.Cast();
-                                }
-                            }
-                            break;
-                    }
+                            return;
+                        }
+                        var combo = GetCombo(
+                            target,
+                            Q.IsReady() && minDist < Q.Range,
+                            false,
+                            E.IsReady() && minDist < E.Range);
+                        if (minDist > target.GetRealAutoAttackRange())
+                        {
+                            combo[0] -= Player.GetAutoAttackDamage(target);
+                        }
+                        if (minDist > target.GetRealAutoAttackRange() + 100)
+                        {
+                            combo[0] -= Player.GetAutoAttackDamage(target);
+                        }
+                        if (target.Health + target.PhysicalShield > combo[0] || Player.Mana < combo[1])
+                        {
+                            return;
+                        }
+                        if (swapByW)
+                        {
+                            W.Cast();
+                        }
+                        else if (swapByR)
+                        {
+                            R.Cast();
+                        }
+                        break;
+                    case 2:
+                        if (minDist > 500)
+                        {
+                            return;
+                        }
+                        if (swapByW)
+                        {
+                            W.Cast();
+                        }
+                        else if (swapByR)
+                        {
+                            R.Cast();
+                        }
+                        break;
                 }
             }
         }
@@ -992,7 +990,7 @@
             var wCount = WState == 1 && wShadow.IsValid() ? wShadow.CountEnemyHeroesInRange(400) : int.MaxValue;
             var rCount = RState == 1 && rShadow.IsValid() ? rShadow.CountEnemyHeroesInRange(400) : int.MaxValue;
             var minCount = Math.Min(rCount, wCount);
-            if (Player.CountEnemyHeroesInRange(400) <= minCount)
+            if (minCount == int.MaxValue || Player.CountEnemyHeroesInRange(400) <= minCount)
             {
                 return;
             }

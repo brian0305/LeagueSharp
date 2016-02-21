@@ -296,7 +296,8 @@
                     i =>
                     i.IsValid
                     && (i.Type == BuffType.Charm || i.Type == BuffType.Knockup || i.Type == BuffType.Stun
-                        || i.Type == BuffType.Suppression || i.Type == BuffType.Snare))
+                        || i.Type == BuffType.Suppression || i.Type == BuffType.Snare || i.Type == BuffType.Fear
+                        || i.Type == BuffType.Taunt || i.Type == BuffType.Knockback))
                     .Aggregate(0d, (current, buff) => Math.Max(current, buff.EndTime)) - Game.Time;
         }
 
@@ -358,11 +359,11 @@
                                         else
                                         {
                                             var pos = i.ServerPosition;
-                                            var bonusRadius = 15;
+                                            var bonusRadius = 20;
                                             if (i.IsMoving)
                                             {
                                                 pos = input.GetPrediction(false, false).UnitPosition;
-                                                bonusRadius = 50;
+                                                bonusRadius = 60;
                                             }
                                             if (pos.ToVector2()
                                                     .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
@@ -426,14 +427,15 @@
                             wallEnd,
                             position.ToVector2(),
                             input.From.ToVector2());
-                        if (wallIntersect.Intersects)
+                        if (!wallIntersect.Intersects)
                         {
-                            var t = Variables.TickCount
-                                    + (wallIntersect.Point.Distance(input.From) / input.Speed + input.Delay) * 1000;
-                            if (t < yasuoWallCastT + 4000)
-                            {
-                                result.Add(Program.Player);
-                            }
+                            continue;
+                        }
+                        var t = Variables.TickCount
+                                + (wallIntersect.Point.Distance(input.From) / input.Speed + input.Delay) * 1000;
+                        if (t < yasuoWallCastT + 4000)
+                        {
+                            result.Add(Program.Player);
                         }
                     }
                 }

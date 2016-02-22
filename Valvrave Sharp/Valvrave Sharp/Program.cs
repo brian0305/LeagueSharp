@@ -12,7 +12,6 @@
     using LeagueSharp;
     using LeagueSharp.SDK;
     using LeagueSharp.SDK.Core.UI.IMenu;
-    using LeagueSharp.SDK.Core.UI.IMenu.Values;
     using LeagueSharp.SDK.Core.Utils;
 
     using Valvrave_Sharp.Core;
@@ -79,20 +78,13 @@
             MainMenu.Separator("Paypal: dcbrian01@gmail.com");
             if (isSupport)
             {
-                var skins = new List<string>();
-                for (var i = 0; i <= Skins[Player.ChampionName]; i++)
+                var skinMenu = MainMenu.Add(new Menu("Skin", "Skin Changer"));
                 {
-                    if (i == 0)
-                    {
-                        skins.Add("Default");
-                    }
-                    else
-                    {
-                        skins.Add("Skin " + i);
-                    }
+                    skinMenu.Slider("Index", "Skin", 0, 0, Skins[Player.ChampionName]).ValueChanged +=
+                        (sender, args) => { isSkinReset = true; };
+                    skinMenu.Bool("Own", "Keep Your Own Skin");
                 }
-                MainMenu.List("Skin", "Skin Changer", skins.ToArray()).ValueChanged +=
-                    (sender, args) => { isSkinReset = true; };
+
                 Plugins[Player.ChampionName].Invoke();
                 Invulnerable.Deregister(new InvulnerableEntry("FerociousHowl"));
                 Invulnerable.Deregister(new InvulnerableEntry("Meditate"));
@@ -109,8 +101,11 @@
                         }
                         else if (isSkinReset)
                         {
-                            Player.SetSkin(Player.ChampionName, MainMenu["Skin"].GetValue<MenuList>().Index);
                             isSkinReset = false;
+                            if (!MainMenu["Skin"]["Own"] || Player.CharData.BaseSkinName == Player.SkinName)
+                            {
+                                Player.SetSkin(Player.ChampionName, MainMenu["Skin"]["Index"]);
+                            }
                         }
                     };
             }

@@ -37,11 +37,11 @@
 
         private static bool wCasted, rCasted;
 
-        private static Obj_AI_Base wShadow, rShadow;
+        private static MissileClient wMissile;
+
+        private static Obj_AI_Minion wShadow, rShadow;
 
         private static int wShadowT, rShadowT;
-
-        private static int wShadowTravelT;
 
         #endregion
 
@@ -126,17 +126,6 @@
             Evade.TryEvading += TryEvading;
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
-            Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
-                {
-                    if (!sender.IsMe || args.Slot != SpellSlot.W || !IsWOne)
-                    {
-                        return;
-                    }
-                    var posStart = args.Start;
-                    var posEnd = posStart.Extend(args.End, Math.Max(posStart.Distance(args.End), 350));
-                    wShadowTravelT = Variables.TickCount
-                                     + (int)(1000 * (posStart.Distance(posEnd) / W.Speed) + Game.Ping / 2f);
-                };
             Spellbook.OnCastSpell += (sender, args) =>
                 {
                     if (!sender.Owner.IsMe)
@@ -170,7 +159,6 @@
                         wShadowT = Variables.TickCount;
                         wShadow = shadow;
                         wCasted = rCasted = false;
-                        wShadowTravelT = 0;
                     }
                     else if (rCasted)
                     {
@@ -193,21 +181,20 @@
                     switch (args.Buff.Name.ToLower())
                     {
                         case "zedwshadowbuff":
-                            if (wShadow.Compare(sender))
+                            if (wShadow.Compare(shadow))
                             {
                                 return;
                             }
                             wShadowT = Variables.TickCount;
-                            wShadow = sender;
-                            wShadowTravelT = 0;
+                            wShadow = shadow;
                             break;
                         case "zedrshadowbuff":
-                            if (rShadow.Compare(sender))
+                            if (rShadow.Compare(shadow))
                             {
                                 return;
                             }
                             rShadowT = Variables.TickCount;
-                            rShadow = sender;
+                            rShadow = shadow;
                             break;
                     }
                 };
@@ -228,6 +215,12 @@
                 };
             GameObject.OnCreate += (sender, args) =>
                 {
+                    var missile = sender as MissileClient;
+                    if (missile != null && missile.SpellCaster.IsMe && missile.SData.Name == "ZedWMissile")
+                    {
+                        wMissile = missile;
+                        return;
+                    }
                     if (sender.Name != "Zed_Base_R_buf_tell.troy")
                     {
                         return;
@@ -240,7 +233,11 @@
                 };
             GameObject.OnDelete += (sender, args) =>
                 {
-                    if (sender.Compare(deathMark))
+                    if (sender.Compare(wMissile))
+                    {
+                        wMissile = null;
+                    }
+                    else if (sender.Compare(deathMark))
                     {
                         deathMark = null;
                     }
@@ -296,8 +293,6 @@
                            : targets.FirstOrDefault();
             }
         }
-
-        private static bool IsRecentW => wShadowTravelT > 0 && Variables.TickCount < wShadowTravelT;
 
         private static bool IsROne => R.Instance.SData.Name == "ZedR";
 
@@ -381,7 +376,7 @@
 
         private static void CastE()
         {
-            if (!E.IsReady() /*|| IsRecentW*/)
+            if (!E.IsReady())
             {
                 return;
             }
@@ -393,7 +388,7 @@
 
         private static void CastQ(Obj_AI_Hero target)
         {
-            if (!Q.IsReady() /*|| IsRecentW*/)
+            if (!Q.IsReady())
             {
                 return;
             }
@@ -403,6 +398,11 @@
             if (WShadowCanQ)
             {
                 Q2.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
+                wPred = Q2.VPrediction(target, true, CollisionableObjects.YasuoWall);
+            }
+            else if (!wShadow.IsValid() && wMissile != null)
+            {
+                Q2.UpdateSourcePosition(wMissile.EndPosition, wMissile.EndPosition);
                 wPred = Q2.VPrediction(target, true, CollisionableObjects.YasuoWall);
             }
             Prediction.PredictionOutput rPred = null;
@@ -472,7 +472,7 @@
                 spellW.Width = W.Width;
                 spellW.Speed = W.Speed;
             }
-            var pred = spellW.VPrediction(target, true);
+            var pred = spellW.VPrediction(target);
             if (pred.Hitchance < HitChance.High)
             {
                 return;
@@ -690,8 +690,9 @@
         private static bool IsInRangeE(Obj_AI_Hero target)
         {
             var pos = E.VPredictionPos(target);
-            return pos.DistanceToPlayer() < E.Range || wShadow.IsValid() && wShadow.Distance(pos) < E.Range
-                   || rShadow.IsValid() && rShadow.Distance(pos) < E.Range;
+            return pos.DistanceToPlayer() < E.Range || (wShadow.IsValid() && wShadow.Distance(pos) < E.Range)
+                   || (rShadow.IsValid() && rShadow.Distance(pos) < E.Range)
+                   || (!wShadow.IsValid() && wMissile != null && wMissile.EndPosition.Distance(pos) < E.Range);
         }
 
         private static bool IsInRangeQ(Obj_AI_Hero target)

@@ -254,7 +254,7 @@
                         return;
                     }
                     haveR = false;
-                    FixBlockPos();
+                    FixBlockPos(true);
                 };
             Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                 {
@@ -423,17 +423,15 @@
                                        (nearEnemy.Count > 1 && enemy.Health + enemy.PhysicalShield <= R.GetDamage(enemy))
                                        || nearEnemy.Sum(i => i.HealthPercent) / nearEnemy.Count
                                        <= MainMenu["Combo"]["RHpU"] || nearEnemy.Count >= MainMenu["Combo"]["RCountA"]
-                                   select enemy).OrderByDescending(
-                                       i =>
-                                       GameObjects.EnemyHeroes.Count(
-                                           a => a.IsValidTarget(RWidth, true, i.ServerPosition) && HaveR(a)))
-                        .ThenByDescending(i => new Priority().GetDefaultPriority(i))
-                        .ToList();
+                                   orderby nearEnemy.Count descending
+                                   select enemy).ToList();
+                    if (MainMenu["Combo"]["RDelay"])
+                    {
+                        targets = targets.Where(CanCastDelayR).ToList();
+                    }
                     if (targets.Count > 0)
                     {
-                        var target = !MainMenu["Combo"]["RDelay"]
-                                         ? targets.FirstOrDefault()
-                                         : targets.FirstOrDefault(CanCastDelayR);
+                        var target = targets.MaxOrDefault(i => new Priority().GetDefaultPriority(i));
                         if (target != null && R.CastOnUnit(target))
                         {
                             return;
@@ -544,12 +542,13 @@
             }
         }
 
-        private static void FixBlockPos()
+        private static void FixBlockPos(bool isForR = false)
         {
+            Variables.Orbwalker.SetAttackState(false);
             Player.IssueOrder(GameObjectOrder.MoveTo, Player.ServerPosition.Extend(Game.CursorPos, 200));
-            Variables.Orbwalker.ResetSwingTimer();
+            DelayAction.Add(isForR ? 250 : 150, () => Variables.Orbwalker.SetAttackState(true));
             DelayAction.Add(
-                200,
+                300,
                 () => Player.IssueOrder(GameObjectOrder.MoveTo, Player.ServerPosition.Extend(Game.CursorPos, 200)));
         }
 

@@ -203,6 +203,11 @@
 
         private static void OnDetectSkillshot(Skillshot skillshot)
         {
+            if (Program.MainMenu["Evade"]["DisableFoW"] && !skillshot.Unit.IsVisible
+                && skillshot.DetectionType == DetectionType.RecvPacket)
+            {
+                return;
+            }
             var alreadyAdded = false;
             foreach (var item in DetectedSkillshots)
             {
@@ -448,8 +453,8 @@
                 DetectedSkillshots.Add(skillshotToAdd);
             }
             if ((skillshot.SpellData.DisableFowDetection
-                 || Program.MainMenu["Evade"][skillshot.SpellData.ChampionName.ToLowerInvariant()][
-                     skillshot.SpellData.SpellName]["DisableFoW"])
+                 || (Program.MainMenu["Evade"][skillshot.SpellData.ChampionName.ToLowerInvariant()][
+                     skillshot.SpellData.SpellName]["DisableFoW"] && !skillshot.Unit.IsVisible))
                 && skillshot.DetectionType == DetectionType.RecvPacket)
             {
                 return;

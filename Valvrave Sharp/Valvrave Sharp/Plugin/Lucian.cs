@@ -14,6 +14,8 @@
 
     using Valvrave_Sharp.Core;
 
+    using Color = System.Drawing.Color;
+
     #endregion
 
     internal class Lucian : Program
@@ -28,6 +30,7 @@
 
         public Lucian()
         {
+            Drawing.OnDraw += args => { Tracker.DetectedSkillshots.ForEach(i => i.Draw(Color.White, Color.Red)); };
             Q = new Spell(SpellSlot.Q, 700);
             Q2 = new Spell(SpellSlot.Q, 1150).SetSkillshot(
                 0.35f,
@@ -69,7 +72,6 @@
                 {
                     if (!sender.IsMe || (args.Slot != SpellSlot.Q && args.Slot != SpellSlot.W))
                     {
-                        return;
                     }
                     //Variables.Orbwalker.ResetSwingTimer();
                 };

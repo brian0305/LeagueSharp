@@ -52,7 +52,8 @@
         private static readonly Dictionary<string, int> Skins = new Dictionary<string, int>
                                                                     {
                                                                         { "DrMundo", 8 }, { "Kennen", 5 },
-                                                                        { "LeeSin", 10 }, { "Yasuo", 2 }, { "Zed", 3 }
+                                                                        { "LeeSin", 10 }, { "Lucian", 6 }, { "Yasuo", 2 },
+                                                                        { "Zed", 3 }
                                                                     };
 
         private static bool isSkinReset;
@@ -102,7 +103,7 @@
                         else if (isSkinReset)
                         {
                             isSkinReset = false;
-                            if (!MainMenu["Skin"]["Own"] || Player.CharData.BaseSkinName == Player.SkinName)
+                            if (!MainMenu["Skin"]["Own"] || Player.BaseSkinId == 0)
                             {
                                 Player.SetSkin(Player.ChampionName, MainMenu["Skin"]["Index"]);
                             }

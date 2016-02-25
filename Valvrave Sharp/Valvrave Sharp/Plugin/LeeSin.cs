@@ -40,7 +40,7 @@
 
         private static bool isDashing;
 
-        private static int lastW, lastR;
+        private static int lastW, lastW2, lastE2, lastR;
 
         private static Obj_AI_Base objQ;
 
@@ -52,7 +52,7 @@
 
         public LeeSin()
         {
-            Q = new Spell(SpellSlot.Q, 1100).SetSkillshot(0.275f, 60, 1800, true, SkillshotType.SkillshotLine);
+            Q = new Spell(SpellSlot.Q, 1100).SetSkillshot(0.275f, 60, 1850, true, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, 1300);
             W = new Spell(SpellSlot.W, 700);
             E = new Spell(SpellSlot.E, 425).SetTargetted(0.275f, float.MaxValue);
@@ -199,12 +199,28 @@
                 };
             Spellbook.OnCastSpell += (sender, args) =>
                 {
-                    if (!sender.Owner.IsMe || args.Slot != SpellSlot.W || !IsWOne || args.Target == null
-                        || !W.IsInRange(args.Target))
+                    if (!sender.Owner.IsMe)
                     {
                         return;
                     }
-                    lastW = Variables.TickCount;
+                    if (args.Slot == SpellSlot.W)
+                    {
+                        if (IsWOne)
+                        {
+                            if (args.Target != null && W.IsInRange(args.Target))
+                            {
+                                lastW = Variables.TickCount;
+                            }
+                        }
+                        else
+                        {
+                            lastW2 = Variables.TickCount;
+                        }
+                    }
+                    else if (args.Slot == SpellSlot.E && !IsEOne)
+                    {
+                        lastE2 = Variables.TickCount;
+                    }
                 };
         }
 
@@ -246,7 +262,7 @@
 
         private static void CastECombo()
         {
-            if (!E.IsReady() || Player.Spellbook.IsCastingSpell)
+            if (!E.IsReady() || Player.Spellbook.IsCastingSpell || Variables.TickCount - lastW2 <= 150)
             {
                 return;
             }
@@ -285,7 +301,7 @@
 
         private static void CastELaneClear(List<Obj_AI_Minion> minions)
         {
-            if (!E.IsReady() || Player.Spellbook.IsCastingSpell)
+            if (!E.IsReady() || Player.Spellbook.IsCastingSpell || Variables.TickCount - lastW2 <= 150)
             {
                 return;
             }
@@ -323,20 +339,16 @@
             {
                 Q.Cast(pred.CastPosition);
             }
-            else if (Smite.IsReady() && col.Count == 1 && MainMenu["Combo"]["QCol"])
+            else if (MainMenu["Combo"]["QCol"] && Common.CastSmiteKillCollision(col))
             {
-                var obj = col.First();
-                if (obj.Health <= Common.GetSmiteDmg && obj.DistanceToPlayer() < SmiteRange
-                    && Player.Spellbook.CastSpell(Smite, obj))
-                {
-                    Q.Cast(pred.CastPosition);
-                }
+                Q.Cast(pred.CastPosition);
             }
         }
 
-        private static void CastW()
+        private static void CastW(bool isCombo = true)
         {
-            if (!W.IsReady() || Variables.TickCount - lastW <= 300 || Player.Spellbook.IsCastingSpell)
+            if (!W.IsReady() || Variables.TickCount - lastW <= 300 || Player.Spellbook.IsCastingSpell || isDashing
+                || Variables.TickCount - lastE2 <= 150)
             {
                 return;
             }
@@ -345,7 +357,7 @@
             {
                 return;
             }
-            if (Player.HealthPercent < 10)
+            if (Player.HealthPercent < (isCombo ? 10 : 5))
             {
                 W.Cast();
             }
@@ -644,7 +656,7 @@
             {
                 if (IsQOne)
                 {
-                    var minionCount = minions.Count(i => i.InAutoAttackRange());
+                    var minionCount = minions.Count(i => E.IsInRange(i));
                     if (
                         (minions.Any(
                             i =>
@@ -685,7 +697,7 @@
             }
             if (MainMenu["LaneClear"]["W"])
             {
-                CastW();
+                CastW(false);
             }
         }
 
@@ -1089,7 +1101,7 @@
                         && (!isDashing
                             || (!lastObjQ.Compare(target)
                                 && lastObjQ.Distance(target) > WardManager.WardRange - GetDistBehind(target)))
-                        && target.DistanceToPlayer() < WardManager.WardRange + R.Range)
+                        && target.DistanceToPlayer() < WardManager.WardRange + R.Range + 50)
                     {
                         IsWardFlash = true;
                     }
@@ -1169,7 +1181,7 @@
 
             private static void GapByQ(Obj_AI_Hero target)
             {
-                if (!MainMenu["Insec"]["Q"] || !Q.IsReady())
+                if (!MainMenu["Insec"]["Q"] || !Q.IsReady() || Player.Spellbook.IsCastingSpell || IsDashing)
                 {
                     return;
                 }
@@ -1182,19 +1194,17 @@
                     if (pred.Hitchance >= Q.MinHitChance)
                     {
                         var col = pred.VCollision();
-                        if (col.Count == 0 && Q.Cast(pred.CastPosition))
+                        if (col.Count == 0)
                         {
-                            return;
-                        }
-                        if (Smite.IsReady() && col.Count == 1 && MainMenu["Insec"]["QCol"])
-                        {
-                            var obj = col.First();
-                            if (obj.Health <= Common.GetSmiteDmg && obj.DistanceToPlayer() < SmiteRange
-                                && Player.Spellbook.CastSpell(Smite, obj))
+                            if (Q.Cast(pred.CastPosition))
                             {
-                                Q.Cast(pred.CastPosition);
                                 return;
                             }
+                        }
+                        else if (MainMenu["Insec"]["QCol"] && Common.CastSmiteKillCollision(col))
+                        {
+                            Q.Cast(pred.CastPosition);
+                            return;
                         }
                     }
                     if (!MainMenu["Insec"]["QObj"])
@@ -1226,7 +1236,7 @@
                         Q.Cast(predQ.CastPosition);
                     }
                 }
-                else if (!IsDashing && target.DistanceToPlayer() > minDist
+                else if (target.DistanceToPlayer() > minDist
                          && (HaveQ(target) || (objQ.IsValidTarget(Q2.Range) && target.Distance(objQ) < minDist - 80))
                          && ((WardManager.CanWardJump && Player.Mana >= 80)
                              || (MainMenu["Insec"]["Flash"] && Flash.IsReady())) && Q.Cast())

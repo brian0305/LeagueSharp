@@ -43,10 +43,22 @@
 
         #region Methods
 
+        private static double GetAngle(this Vector3 from, Vector3 to, Vector3 wayPoint)
+        {
+            if (to.ToVector2() == wayPoint.ToVector2())
+            {
+                return 60;
+            }
+            var a = Math.Pow(wayPoint.X - from.X, 2) + Math.Pow(wayPoint.Y - from.Y, 2);
+            var b = Math.Pow(from.X - to.X, 2) + Math.Pow(from.Y - to.Y, 2);
+            var c = Math.Pow(wayPoint.X - to.X, 2) + Math.Pow(wayPoint.Y - to.Y, 2);
+            return Math.Cos((a + b - c) / (2 * Math.Sqrt(a) * Math.Sqrt(b))) * 180 / Math.PI;
+        }
+
         private static PredictionOutput GetDashingPrediction(this PredictionInput input)
         {
             var dashData = input.Unit.GetDashInfo();
-            var result = new PredictionOutput { Input = input };
+            var result = new PredictionOutput();
             if (!dashData.IsBlink)
             {
                 var endP = dashData.EndPos;
@@ -66,11 +78,7 @@
                     if (timeToPoint
                         <= input.Unit.Distance(endP) / dashData.Speed + input.RealRadius / input.Unit.MoveSpeed)
                     {
-                        return new PredictionOutput
-                                   {
-                                       CastPosition = endP.ToVector3(), UnitPosition = endP.ToVector3(),
-                                       Hitchance = HitChance.Dashing
-                                   };
+                        result.Hitchance = HitChance.Dashing;
                     }
                 }
                 result.CastPosition = result.UnitPosition = endP.ToVector3();
@@ -78,20 +86,103 @@
             return result;
         }
 
+        private static HitChance GetHitChance(this PredictionInput input)
+        {
+            var hero = input.Unit as Obj_AI_Hero;
+            if (hero == null || !hero.IsValid || input.Radius.Equals(1))
+            {
+                return HitChance.VeryHigh;
+            }
+            if (hero.IsCastingInterruptableSpell(true) || hero.IsRecalling())
+            {
+                return HitChance.VeryHigh;
+            }
+            var hitChance = HitChance.Medium;
+            var wayPoint = hero.GetWaypoints().Last().ToVector3();
+            var heroPos = hero.ServerPosition;
+            var distUnitToWay = heroPos.Distance(wayPoint);
+            var distUnitToFrom = heroPos.Distance(input.From);
+            var distFromToWay = input.From.Distance(wayPoint);
+            var angle = input.From.GetAngle(heroPos, wayPoint);
+            var delay = input.Delay
+                        + (Math.Abs(input.Speed - float.MaxValue) < float.Epsilon ? 0 : distUnitToFrom / input.Speed);
+            var moveArea = hero.MoveSpeed * delay;
+            var fixRange = moveArea * 0.4f;
+            var minPath = 900 + moveArea;
+            var moveAngle = Math.Max(31, 30 + input.Radius / 17 - delay - input.Delay * 2);
+            var lastPathTime = GamePath.PathTracker.GetCurrentPath(hero).Time;
+            if (lastPathTime < 0.1)
+            {
+                hitChance = HitChance.High;
+                fixRange = moveArea * 0.3f;
+                minPath = 600 + moveArea;
+                moveAngle += 2;
+            }
+            if (input.Type == SkillshotType.SkillshotCircle)
+            {
+                fixRange -= input.Radius / 2;
+            }
+            if (distFromToWay <= distUnitToFrom && distUnitToFrom > input.Range - fixRange)
+            {
+                return HitChance.Medium;
+            }
+            if (distUnitToFrom < 250 || hero.MoveSpeed < 200 || distFromToWay < 100)
+            {
+                return HitChance.VeryHigh;
+            }
+            if (distUnitToWay > minPath)
+            {
+                return HitChance.VeryHigh;
+            }
+            if (angle < moveAngle)
+            {
+                if (distUnitToWay > fixRange * 0.3 && lastPathTime < 0.1)
+                {
+                    return HitChance.VeryHigh;
+                }
+                if (input.Start.IsMoving
+                    && (input.Start.IsFacing(hero) ? !hero.IsFacing(input.Start) : hero.IsFacing(input.Start)))
+                {
+                    return HitChance.VeryHigh;
+                }
+            }
+            if (hero.Spellbook.IsAutoAttacking)
+            {
+                if (input.Type == SkillshotType.SkillshotLine && delay < 0.4 + input.Radius * 0.002)
+                {
+                    return HitChance.VeryHigh;
+                }
+                if (input.Type == SkillshotType.SkillshotCircle && delay < 0.6 + input.Radius * 0.002)
+                {
+                    return HitChance.VeryHigh;
+                }
+                hitChance = HitChance.High;
+            }
+            else if (hero.Path.Length == 0 || !hero.IsMoving)
+            {
+                return hero.IsWindingUp ? HitChance.High : HitChance.VeryHigh;
+            }
+            if (input.Type == SkillshotType.SkillshotCircle && lastPathTime < 0.1 && distUnitToWay > fixRange)
+            {
+                return HitChance.VeryHigh;
+            }
+            return hitChance;
+        }
+
         private static PredictionOutput GetImmobilePrediction(this PredictionInput input, double remainingImmobileT)
         {
-            var timeToReachTargetPosition = input.Delay + input.Unit.Distance(input.From) / input.Speed;
-            return timeToReachTargetPosition <= remainingImmobileT + input.RealRadius / input.Unit.MoveSpeed
-                       ? new PredictionOutput
+            var result = new PredictionOutput
                              {
                                  CastPosition = input.Unit.ServerPosition, UnitPosition = input.Unit.Position,
                                  Hitchance = HitChance.Immobile
-                             }
-                       : new PredictionOutput
-                             {
-                                 Input = input, CastPosition = input.Unit.ServerPosition,
-                                 UnitPosition = input.Unit.ServerPosition, Hitchance = HitChance.High
                              };
+            var timeToReachTargetPosition = input.Delay + input.Unit.Distance(input.From) / input.Speed;
+            if (timeToReachTargetPosition > remainingImmobileT + input.RealRadius / input.Unit.MoveSpeed)
+            {
+                result.UnitPosition = result.CastPosition;
+                result.Hitchance = HitChance.High;
+            }
+            return result;
         }
 
         private static PredictionOutput GetPositionOnPath(
@@ -104,8 +195,8 @@
             {
                 return new PredictionOutput
                            {
-                               Input = input, UnitPosition = input.Unit.ServerPosition,
-                               CastPosition = input.Unit.ServerPosition, Hitchance = HitChance.VeryHigh
+                               CastPosition = input.Unit.ServerPosition, UnitPosition = input.Unit.ServerPosition,
+                               Hitchance = HitChance.VeryHigh
                            };
             }
             var pLength = path.PathLength();
@@ -129,7 +220,7 @@
                                        : tDistance + input.RealRadius);
                         return new PredictionOutput
                                    {
-                                       Input = input, CastPosition = cp.ToVector3(), UnitPosition = p.ToVector3(),
+                                       CastPosition = cp.ToVector3(), UnitPosition = p.ToVector3(),
                                        Hitchance =
                                            GamePath.PathTracker.GetCurrentPath(input.Unit).Time < 0.1
                                                ? HitChance.VeryHigh
@@ -180,7 +271,7 @@
                         }*/
                         return new PredictionOutput
                                    {
-                                       Input = input, CastPosition = pos.ToVector3(), UnitPosition = p.ToVector3(),
+                                       CastPosition = pos.ToVector3(), UnitPosition = p.ToVector3(),
                                        Hitchance =
                                            GamePath.PathTracker.GetCurrentPath(input.Unit).Time < 0.1
                                                ? HitChance.VeryHigh
@@ -190,17 +281,13 @@
                     tT += tB;
                 }
             }
-            var position = path.Last();
+            var position = path.Last().ToVector3();
             return new PredictionOutput
-                       {
-                           Input = input, CastPosition = position.ToVector3(), UnitPosition = position.ToVector3(),
-                           Hitchance = HitChance.Medium
-                       };
+                       { CastPosition = position, UnitPosition = position, Hitchance = HitChance.Medium };
         }
 
         private static PredictionOutput GetPrediction(this PredictionInput input, bool ft, bool checkCollision)
         {
-            PredictionOutput result = null;
             if (!input.Unit.IsValidTarget(float.MaxValue, false))
             {
                 return new PredictionOutput();
@@ -216,8 +303,9 @@
             if (Math.Abs(input.Range - float.MaxValue) > float.Epsilon
                 && input.Unit.DistanceSquared(input.RangeCheckFrom) > Math.Pow(input.Range * 1.5, 2))
             {
-                return new PredictionOutput { Input = input };
+                return new PredictionOutput { Input = input, Hitchance = HitChance.OutOfRange };
             }
+            PredictionOutput result = null;
             if (input.Unit.IsDashing())
             {
                 result = input.GetDashingPrediction();
@@ -260,22 +348,22 @@
                     }
                 }
             }
-            if ((result.Hitchance == HitChance.High || result.Hitchance == HitChance.VeryHigh)
-                && input.Unit.Type == GameObjectType.obj_AI_Minion)
+            if (result.Hitchance == HitChance.High || result.Hitchance == HitChance.VeryHigh)
             {
-                result.Hitchance = HitChance.VeryHigh;
+                result.Hitchance = input.GetHitChance();
             }
             if (checkCollision && input.Collision && result.Hitchance > HitChance.Impossible)
             {
-                var positions = new List<Vector3> { result.UnitPosition /*, result.CastPosition, input.Unit.Position*/ };
+                //var positions = new List<Vector3> { result.UnitPosition, result.CastPosition, input.Unit.Position };
                 var originalUnit = input.Unit;
-                result.CollisionObjects = Collisions.GetCollision(positions, input);
+                result.CollisionObjects = Collisions.GetCollision(new List<Vector3> { result.UnitPosition }, input);
                 result.CollisionObjects.RemoveAll(i => i.Compare(originalUnit));
                 if (result.CollisionObjects.Count > 0)
                 {
                     result.Hitchance = HitChance.Collision;
                 }
             }
+            result.Input = input;
             return result;
         }
 
@@ -296,8 +384,7 @@
                     i =>
                     i.IsValid
                     && (i.Type == BuffType.Charm || i.Type == BuffType.Knockup || i.Type == BuffType.Stun
-                        || i.Type == BuffType.Suppression || i.Type == BuffType.Snare || i.Type == BuffType.Fear
-                        || i.Type == BuffType.Taunt || i.Type == BuffType.Knockback))
+                        || i.Type == BuffType.Suppression || i.Type == BuffType.Snare))
                     .Aggregate(0d, (current, buff) => Math.Max(current, buff.EndTime)) - Game.Time;
         }
 
@@ -347,7 +434,7 @@
                                 i.IsValidTarget(
                                     Math.Min(input.Range + input.Radius + 100, 2000),
                                     true,
-                                    input.RangeCheckFrom) && !result.Any(a => a.Compare(i)))
+                                    input.RangeCheckFrom))
                             .ForEach(
                                 i =>
                                     {
@@ -359,7 +446,7 @@
                                         else
                                         {
                                             var pos = i.ServerPosition;
-                                            var bonusRadius = 20;
+                                            var bonusRadius = 25;
                                             if (i.IsMoving)
                                             {
                                                 pos = input.GetPrediction(false, false).UnitPosition;
@@ -381,7 +468,7 @@
                             i.IsValidTarget(
                                 Math.Min(input.Range + input.Radius + 100, 2000),
                                 true,
-                                input.RangeCheckFrom) && !result.Any(a => a.Compare(i))).ForEach(
+                                input.RangeCheckFrom)).ForEach(
                                     i =>
                                         {
                                             input.Unit = i;
@@ -395,7 +482,7 @@
                                             }
                                         });
                     }
-                    if (input.CollisionObjects.HasFlag(CollisionableObjects.Walls) && !result.Any(i => i.IsMe))
+                    if (input.CollisionObjects.HasFlag(CollisionableObjects.Walls))
                     {
                         var step = position.Distance(input.From) / 20;
                         for (var i = 0; i < 20; i++)
@@ -407,7 +494,7 @@
                             }
                         }
                     }
-                    if (input.CollisionObjects.HasFlag(CollisionableObjects.YasuoWall) && !result.Any(i => i.IsMe)
+                    if (input.CollisionObjects.HasFlag(CollisionableObjects.YasuoWall)
                         && Variables.TickCount - yasuoWallCastT <= 4000)
                     {
                         var wall =
@@ -513,11 +600,10 @@
                         {
                             return new PredictionOutput
                                        {
-                                           AoeTargetsHit = posibleTargets.Select(i => (Obj_AI_Hero)i.Unit).ToList(),
-                                           CastPosition = mecCircle.Center.ToVector3(),
+                                           Input = input, CastPosition = mecCircle.Center.ToVector3(),
                                            UnitPosition = mainTargetPrediction.UnitPosition,
-                                           Hitchance = mainTargetPrediction.Hitchance, Input = input,
-                                           AoeHitCount = posibleTargets.Count
+                                           Hitchance = mainTargetPrediction.Hitchance, AoeHitCount = posibleTargets.Count,
+                                           AoeTargetsHit = posibleTargets.Select(i => (Obj_AI_Hero)i.Unit).ToList()
                                        };
                         }
                         float maxdist = -1;
@@ -593,9 +679,9 @@
                         {
                             return new PredictionOutput
                                        {
-                                           Hitchance = mainTargetPrediction.Hitchance, AoeHitCount = bestCandidateHits,
+                                           Input = input, CastPosition = bestCandidate.ToVector3(),
                                            UnitPosition = mainTargetPrediction.UnitPosition,
-                                           CastPosition = bestCandidate.ToVector3(), Input = input
+                                           Hitchance = mainTargetPrediction.Hitchance, AoeHitCount = bestCandidateHits
                                        };
                         }
                     }
@@ -690,9 +776,9 @@
                             }
                             return new PredictionOutput
                                        {
-                                           Hitchance = mainTargetPrediction.Hitchance, AoeHitCount = bestCandidateHits,
+                                           Input = input, CastPosition = ((p1 + p2) * 0.5f).ToVector3(),
                                            UnitPosition = mainTargetPrediction.UnitPosition,
-                                           CastPosition = ((p1 + p2) * 0.5f).ToVector3(), Input = input
+                                           Hitchance = mainTargetPrediction.Hitchance, AoeHitCount = bestCandidateHits
                                        };
                         }
                     }
@@ -775,9 +861,7 @@
             {
                 get
                 {
-                    return this.rangeCheckFrom.IsValid()
-                               ? this.rangeCheckFrom
-                               : (this.From.IsValid() ? this.From : Program.Player.ServerPosition);
+                    return this.rangeCheckFrom.IsValid() ? this.rangeCheckFrom : this.From;
                 }
                 set
                 {
@@ -786,6 +870,8 @@
             }
 
             public float Speed { get; set; } = float.MaxValue;
+
+            public Obj_AI_Base Start { get; set; } = Program.Player;
 
             public SkillshotType Type { get; set; } = SkillshotType.SkillshotLine;
 

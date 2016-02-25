@@ -31,7 +31,7 @@
 
         public DrMundo()
         {
-            Q = new Spell(SpellSlot.Q, 1050).SetSkillshot(0.275f, 60, 2000, true, SkillshotType.SkillshotLine); //70
+            Q = new Spell(SpellSlot.Q, 1050).SetSkillshot(0.275f, 60, 2100, true, SkillshotType.SkillshotLine); //70
             W = new Spell(SpellSlot.W, 325);
             E = new Spell(SpellSlot.E, 25);
             R = new Spell(SpellSlot.R);
@@ -150,16 +150,15 @@
                         var col = pred.VCollision();
                         if (col.Count == 0)
                         {
-                            Q.Cast(pred.CastPosition);
-                        }
-                        else if (Smite.IsReady() && col.Count == 1 && MainMenu["Combo"]["QCol"])
-                        {
-                            var obj = col.First();
-                            if (obj.Health <= Common.GetSmiteDmg && obj.DistanceToPlayer() < SmiteRange
-                                && Player.Spellbook.CastSpell(Smite, obj))
+                            if (Q.Cast(pred.CastPosition))
                             {
-                                Q.Cast(pred.CastPosition);
+                                return;
                             }
+                        }
+                        else if (MainMenu["Combo"]["QCol"] && Common.CastSmiteKillCollision(col))
+                        {
+                            Q.Cast(pred.CastPosition);
+                            return;
                         }
                     }
                 }

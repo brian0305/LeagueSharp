@@ -267,13 +267,16 @@
             get
             {
                 var extraRange = RangeTarget;
+                if (Q.IsReady())
+                {
+                    extraRange += Q.Width / 2;
+                }
                 if (Variables.Orbwalker.GetActiveMode() == OrbwalkingMode.Combo
                     && MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Active && RState == 0)
                 {
                     var targetR =
                         Variables.TargetSelector.GetTargets(Q.Range + extraRange, Q.DamageType)
-                            .OrderBy(i => i.HealthPercent)
-                            .ThenBy(i => i.DistanceToPlayer())
+                            .OrderByDescending(i => new Priority().GetDefaultPriority(i))
                             .FirstOrDefault(i => MainMenu["Combo"]["RCast" + i.ChampionName]);
                     if (targetR != null)
                     {
@@ -294,6 +297,8 @@
             }
         }
 
+        private static bool IsCastingW => !wShadow.IsValid() && wMissile != null && Player.Distance(wMissile) > 300;
+
         private static bool IsROne => R.Instance.SData.Name == "ZedR";
 
         private static bool IsWOne => W.Instance.SData.Name == "ZedW";
@@ -302,27 +307,19 @@
         {
             get
             {
-                var stateW = WState;
                 var validW = wShadow.IsValid();
                 var validR = rShadow.IsValid();
-                var range = Q.Width / 2;
-                if (validW && validR)
+                var posW = validW ? wShadow.ServerPosition : new Vector3();
+                if (IsCastingW)
                 {
-                    range += Math.Max(rShadow.DistanceToPlayer(), wShadow.DistanceToPlayer());
+                    validW = true;
+                    posW = wMissile.EndPosition;
                 }
-                else if (stateW == 0 && validR)
-                {
-                    range += Math.Max(rShadow.DistanceToPlayer(), W.Range);
-                }
-                else if (validW)
-                {
-                    range += wShadow.DistanceToPlayer();
-                }
-                else if (stateW == 0)
-                {
-                    range += W.Range;
-                }
-                return range;
+                return validW && validR
+                           ? Math.Max(rShadow.DistanceToPlayer(), posW.DistanceToPlayer())
+                           : (WState == 0 && Variables.TickCount - lastW > 150
+                                  ? (validR ? Math.Max(rShadow.DistanceToPlayer(), W.Range) : W.Range)
+                                  : (validW ? posW.DistanceToPlayer() : (validR ? rShadow.DistanceToPlayer() : 0)));
             }
         }
 
@@ -374,13 +371,22 @@
             return SpellSlot.Unknown;
         }
 
-        private static void CastE()
+        private static void CastE(bool onlyKill = false)
         {
             if (!E.IsReady())
             {
                 return;
             }
-            if (Variables.TargetSelector.GetTargets(float.MaxValue, E.DamageType, false).Any(IsInRangeE))
+            var targets = Variables.TargetSelector.GetTargets(350 + RangeTarget, E.DamageType, onlyKill);
+            if (onlyKill)
+            {
+                targets = targets.Where(i => !IsKillByMark(i) && i.Health + i.PhysicalShield <= E.GetDamage(i)).ToList();
+            }
+            if (targets.Count == 0)
+            {
+                return;
+            }
+            if (targets.Any(IsInRangeE))
             {
                 E.Cast();
             }
@@ -398,9 +404,9 @@
             if (WShadowCanQ)
             {
                 Q2.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
-                wPred = Q2.VPrediction(target, true, CollisionableObjects.YasuoWall);
+                wPred = Q2.VPrediction(target, true, CollisionableObjects.YasuoWall, wShadow);
             }
-            else if (!wShadow.IsValid() && wMissile != null)
+            else if (IsCastingW)
             {
                 Q2.UpdateSourcePosition(wMissile.EndPosition, wMissile.EndPosition);
                 wPred = Q2.VPrediction(target, true, CollisionableObjects.YasuoWall);
@@ -409,7 +415,7 @@
             if (RShadowCanQ)
             {
                 Q2.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
-                rPred = Q2.VPrediction(target, true, CollisionableObjects.YasuoWall);
+                rPred = Q2.VPrediction(target, true, CollisionableObjects.YasuoWall, rShadow);
             }
             var pHitChance = pPred.Hitchance;
             var wHitChance = wPred?.Hitchance ?? HitChance.None;
@@ -433,23 +439,21 @@
             }
         }
 
-        private static bool CastQKill(Spell spell, Obj_AI_Base target)
+        private static bool CastQKill(Spell spell, Obj_AI_Base target, Obj_AI_Base start = null)
         {
-            var pred = spell.VPrediction(target, true, CollisionableObjects.YasuoWall);
+            var pred = spell.VPrediction(target, true, CollisionableObjects.YasuoWall, start);
             if (pred.Hitchance < Q.MinHitChance)
             {
                 return false;
             }
             var col = pred.VCollision(CollisionableObjects.Heroes | CollisionableObjects.Minions);
-            if (col.Count == 0 && Q.Cast(pred.CastPosition))
-            {
-                return true;
-            }
-            return col.Count > 0
-                   && (target.Type == GameObjectType.obj_AI_Hero
-                           ? target.Health + target.PhysicalShield
-                           : spell.GetHealthPrediction(target)) <= Q.GetDamage(target, Damage.DamageStage.SecondForm)
-                   && Q.Cast(pred.CastPosition);
+            col.RemoveAll(i => i.Compare(target));
+            return col.Count == 0
+                       ? Q.Cast(pred.CastPosition)
+                       : (target.Type == GameObjectType.obj_AI_Hero
+                              ? target.Health + target.PhysicalShield
+                              : spell.GetHealthPrediction(target)) <= Q.GetDamage(target, Damage.DamageStage.SecondForm)
+                         && Q.Cast(pred.CastPosition);
         }
 
         private static void CastW(Obj_AI_Hero target, SpellSlot slot, bool isRCombo = false)
@@ -460,26 +464,29 @@
             }
             if (slot == SpellSlot.Q)
             {
-                spellW.Range = Q.Range + (Q.IsInRange(target) ? 0 : W.Range);
+                spellW.Range = Q.Range;
                 spellW.Delay = Q.Delay;
                 spellW.Width = Q.Width;
-                spellW.Speed = Q.Speed;
+                if (!Q.IsInRange(target))
+                {
+                    spellW.Range += W.Range;
+                    spellW.Delay += 0.1f;
+                }
             }
             else
             {
                 spellW.Range = E.Range + W.Range;
                 spellW.Delay = W.Delay;
                 spellW.Width = W.Width;
-                spellW.Speed = W.Speed;
             }
-            var pred = spellW.VPrediction(target);
+            var pred = spellW.VPrediction(target, true);
             if (pred.Hitchance < HitChance.High)
             {
                 return;
             }
-            var posPlayer = pred.Input.From.ToVector2();
+            var posPlayer = Player.ServerPosition.ToVector2();
             var posPred = pred.UnitPosition.ToVector2();
-            var posCast = posPred;
+            var posCast = pred.CastPosition.ToVector2();
             if (posPlayer.Distance(posPred) < W.Range - 100)
             {
                 posCast = posPlayer.Extend(posPred, 550);
@@ -692,14 +699,7 @@
             var pos = E.VPredictionPos(target);
             return pos.DistanceToPlayer() < E.Range || (wShadow.IsValid() && wShadow.Distance(pos) < E.Range)
                    || (rShadow.IsValid() && rShadow.Distance(pos) < E.Range)
-                   || (!wShadow.IsValid() && wMissile != null && wMissile.EndPosition.Distance(pos) < E.Range);
-        }
-
-        private static bool IsInRangeQ(Obj_AI_Hero target)
-        {
-            var range = Q.Range + Q.Width / 2;
-            return target.DistanceToPlayer() < range || wShadow.IsValid() && wShadow.Distance(target) < range
-                   || rShadow.IsValid() && rShadow.Distance(target) < range;
+                   || (IsCastingW && wMissile.EndPosition.Distance(pos) < E.Range);
         }
 
         private static bool IsKillByMark(Obj_AI_Hero target)
@@ -712,8 +712,8 @@
             if (MainMenu["KillSteal"]["Q"] && Q.IsReady())
             {
                 var targets =
-                    Variables.TargetSelector.GetTargets(float.MaxValue, Q.DamageType)
-                        .Where(i => !IsKillByMark(i) && IsInRangeQ(i) && i.Health + i.PhysicalShield <= Q.GetDamage(i))
+                    Variables.TargetSelector.GetTargets(Q.Range + Q.Width / 2 + RangeTarget, Q.DamageType)
+                        .Where(i => !IsKillByMark(i) && i.Health + i.PhysicalShield <= Q.GetDamage(i))
                         .ToList();
                 if (targets.Count > 0)
                 {
@@ -727,7 +727,7 @@
                         if (WShadowCanQ)
                         {
                             spellQ.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
-                            if (CastQKill(spellQ, target))
+                            if (CastQKill(spellQ, target, wShadow))
                             {
                                 break;
                             }
@@ -735,17 +735,14 @@
                         if (RShadowCanQ)
                         {
                             spellQ.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
-                            CastQKill(spellQ, target);
+                            CastQKill(spellQ, target, rShadow);
                         }
                     }
                 }
             }
-            if (MainMenu["KillSteal"]["E"] && E.IsReady()
-                && Variables.TargetSelector.GetTargets(float.MaxValue, E.DamageType)
-                       .Where(i => !IsKillByMark(i) && IsInRangeE(i))
-                       .Any(i => i.Health + i.PhysicalShield <= E.GetDamage(i)))
+            if (MainMenu["KillSteal"]["E"] && E.IsReady())
             {
-                E.Cast();
+                CastE(true);
             }
         }
 

@@ -17,7 +17,7 @@ namespace Valvrave_Sharp.Core
     {
         #region Properties
 
-        internal static int GetSmiteDmg
+        private static int GetSmiteDmg
             =>
                 new[] { 390, 410, 430, 450, 480, 510, 540, 570, 600, 640, 680, 720, 760, 800, 850, 900, 950, 1000 }[
                     Program.Player.Level - 1];
@@ -61,6 +61,17 @@ namespace Valvrave_Sharp.Core
             return spell.Casting(spell.GetTarget(extraRange), aoe);
         }
 
+        internal static bool CastSmiteKillCollision(List<Obj_AI_Base> col)
+        {
+            if (col.Count > 1 || !Program.Smite.IsReady())
+            {
+                return false;
+            }
+            var obj = col.First();
+            return obj.Health <= GetSmiteDmg && obj.DistanceToPlayer() < Program.SmiteRange
+                   && Program.Player.Spellbook.CastSpell(Program.Smite, obj);
+        }
+
         internal static InventorySlot GetWardSlot()
         {
             var wardIds = new[] { 2049, 2045, 2301, 2302, 2303, 3711, 1408, 1409, 1410, 1411, 3932, 3340, 2043 };
@@ -84,16 +95,8 @@ namespace Valvrave_Sharp.Core
             this Prediction.PredictionOutput pred,
             CollisionableObjects collisionable = CollisionableObjects.Minions)
         {
-            var col = Prediction.Collisions.GetCollision(
-                new List<Vector3> { pred.UnitPosition },
-                new Prediction.PredictionInput
-                    {
-                        From = pred.Input.From, RangeCheckFrom = pred.Input.RangeCheckFrom, Type = pred.Input.Type,
-                        Radius = pred.Input.Radius, Delay = pred.Input.Delay, Speed = pred.Input.Speed,
-                        CollisionObjects = collisionable
-                    });
-            col.RemoveAll(i => i.Compare(pred.Input.Unit));
-            return col;
+            pred.Input.CollisionObjects = collisionable;
+            return Prediction.Collisions.GetCollision(new List<Vector3> { pred.UnitPosition }, pred.Input);
         }
 
         internal static FarmLocation VLineFarmLocation(this Spell spell, List<Obj_AI_Minion> minion)
@@ -111,7 +114,8 @@ namespace Valvrave_Sharp.Core
             this Spell spell,
             Obj_AI_Base unit,
             bool aoe = false,
-            CollisionableObjects collisionable = CollisionableObjects.Minions | CollisionableObjects.YasuoWall)
+            CollisionableObjects collisionable = CollisionableObjects.Minions | CollisionableObjects.YasuoWall,
+            Obj_AI_Base start = null)
         {
             return
                 Prediction.GetPrediction(
@@ -119,7 +123,8 @@ namespace Valvrave_Sharp.Core
                         {
                             Unit = unit, Delay = spell.Delay, Radius = spell.Width, Speed = spell.Speed, From = spell.From,
                             RangeCheckFrom = spell.RangeCheckFrom, Range = spell.Range, Collision = spell.Collision,
-                            Type = spell.Type, AoE = aoe, CollisionObjects = collisionable
+                            Type = spell.Type, AoE = aoe, CollisionObjects = collisionable,
+                            Start = start ?? Program.Player
                         });
         }
 

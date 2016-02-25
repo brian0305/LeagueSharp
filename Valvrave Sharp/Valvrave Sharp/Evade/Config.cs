@@ -103,6 +103,7 @@
                     drawMenu.Bool("Skillshot", "Skillshot");
                     drawMenu.Bool("Status", "Evade Status");
                 }
+                evadeMenu.Bool("DisableFoW", "Disable All FoW Dodging", false);
                 evadeMenu.KeyBind("Enabled", "Enabled", Keys.K, KeyBindType.Toggle);
                 evadeMenu.KeyBind("OnlyDangerous", "Dodge Only Dangerous", Keys.Space);
             }

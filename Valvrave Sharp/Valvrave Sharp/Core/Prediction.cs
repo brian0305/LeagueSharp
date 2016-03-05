@@ -93,7 +93,13 @@
             {
                 return HitChance.VeryHigh;
             }
-            if (hero.IsCastingInterruptableSpell(true) || hero.IsRecalling())
+            if (hero.HealthPercent < 10 || Program.Player.HealthPercent < 10)
+            {
+                return HitChance.VeryHigh;
+            }
+            var isTrack = UnitTracker.CanTrack(hero);
+            if (hero.IsCastingInterruptableSpell(true) || (isTrack && UnitTracker.GetLastSpecialSpell(hero) > 0)
+                || hero.IsRecalling())
             {
                 return HitChance.VeryHigh;
             }
@@ -126,6 +132,35 @@
             {
                 return HitChance.Medium;
             }
+            if (isTrack && UnitTracker.GetLastAttack(hero) < 0.1)
+            {
+                if (input.Type == SkillshotType.SkillshotLine && delay < 0.4 + input.Radius * 0.002)
+                {
+                    return HitChance.VeryHigh;
+                }
+                if (input.Type == SkillshotType.SkillshotCircle && delay < 0.6 + input.Radius * 0.002)
+                {
+                    return HitChance.VeryHigh;
+                }
+                return HitChance.High;
+            }
+            if (hero.Path.Length == 0 || !hero.IsMoving)
+            {
+                return hero.IsWindingUp || (isTrack && UnitTracker.GetLastStopMove(hero) < 0.5)
+                           ? HitChance.High
+                           : HitChance.VeryHigh;
+            }
+            if (isTrack)
+            {
+                if (UnitTracker.IsSpamClick(hero))
+                {
+                    return HitChance.VeryHigh;
+                }
+                if (UnitTracker.IsSpamPlace(hero))
+                {
+                    return HitChance.VeryHigh;
+                }
+            }
             if (distUnitToFrom < 250 || hero.MoveSpeed < 200 || distFromToWay < 100)
             {
                 return HitChance.VeryHigh;
@@ -140,27 +175,11 @@
                 {
                     return HitChance.VeryHigh;
                 }
-                if (input.Start.IsMoving
-                    && (input.Start.IsFacing(hero) ? !hero.IsFacing(input.Start) : hero.IsFacing(input.Start)))
+                if (input.CheckStartMove && Program.Player.IsMoving
+                    && (Program.Player.IsFacing(hero) ? !hero.IsFacing(Program.Player) : hero.IsFacing(Program.Player)))
                 {
                     return HitChance.VeryHigh;
                 }
-            }
-            if (hero.Spellbook.IsAutoAttacking)
-            {
-                if (input.Type == SkillshotType.SkillshotLine && delay < 0.4 + input.Radius * 0.002)
-                {
-                    return HitChance.VeryHigh;
-                }
-                if (input.Type == SkillshotType.SkillshotCircle && delay < 0.6 + input.Radius * 0.002)
-                {
-                    return HitChance.VeryHigh;
-                }
-                hitChance = HitChance.High;
-            }
-            else if (hero.Path.Length == 0 || !hero.IsMoving)
-            {
-                return hero.IsWindingUp ? HitChance.High : HitChance.VeryHigh;
             }
             if (input.Type == SkillshotType.SkillshotCircle && lastPathTime < 0.1 && distUnitToWay > fixRange)
             {
@@ -374,6 +393,11 @@
             {
                 speed /= 1.5f;
             }
+            var hero = input.Unit as Obj_AI_Hero;
+            if (hero != null && UnitTracker.CanTrack(hero) && UnitTracker.IsSpamClick(hero))
+            {
+                return input.GetPositionOnPath(UnitTracker.GetWaypoints(hero), speed);
+            }
             return input.GetPositionOnPath(input.Unit.GetWaypoints(), speed);
         }
 
@@ -446,11 +470,11 @@
                                         else
                                         {
                                             var pos = i.ServerPosition;
-                                            var bonusRadius = 25;
+                                            var bonusRadius = 20f;
                                             if (i.IsMoving)
                                             {
                                                 pos = input.GetPrediction(false, false).UnitPosition;
-                                                bonusRadius = 60;
+                                                bonusRadius = 60 + input.Radius;
                                             }
                                             if (pos.ToVector2()
                                                     .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
@@ -820,6 +844,202 @@
             }
         }
 
+        private static class UnitTracker
+        {
+            #region Static Fields
+
+            private static readonly List<SpellInfo> Spells = new List<SpellInfo>();
+
+            private static readonly Dictionary<int, TrackerInfo> StoredList = new Dictionary<int, TrackerInfo>();
+
+            #endregion
+
+            #region Constructors and Destructors
+
+            static UnitTracker()
+            {
+                Spells.Add(new SpellInfo { Name = "katarinar", Duration = 1 }); //Kata R
+                Spells.Add(new SpellInfo { Name = "drain", Duration = 1 }); //Fiddle W
+                Spells.Add(new SpellInfo { Name = "crowstorm", Duration = 1 }); //Fiddle R
+                Spells.Add(new SpellInfo { Name = "consume", Duration = 0.5 }); //Nunu Q
+                Spells.Add(new SpellInfo { Name = "absolutezero", Duration = 1 }); //Nunu R
+                Spells.Add(new SpellInfo { Name = "staticfield", Duration = 0.5 }); //Blitz R
+                Spells.Add(new SpellInfo { Name = "cassiopeiapetrifyinggaze", Duration = 0.5 }); //Cass R
+                Spells.Add(new SpellInfo { Name = "ezrealtrueshotbarrage", Duration = 1 }); //Ez R
+                Spells.Add(new SpellInfo { Name = "galioidolofdurand", Duration = 1 }); //Galio R
+                Spells.Add(new SpellInfo { Name = "luxmalicecannon", Duration = 1 }); //Lux R
+                Spells.Add(new SpellInfo { Name = "reapthewhirlwind", Duration = 1 }); //Janna R
+                Spells.Add(new SpellInfo { Name = "jinxw", Duration = 0.6 }); //Jinx W
+                Spells.Add(new SpellInfo { Name = "jinxr", Duration = 0.6 }); //Jinx R
+                Spells.Add(new SpellInfo { Name = "missfortunebullettime", Duration = 1 }); //MF R
+                Spells.Add(new SpellInfo { Name = "shenstandunited", Duration = 1 }); //Shen R
+                Spells.Add(new SpellInfo { Name = "threshq", Duration = 0.75 }); //Thresh Q
+                Spells.Add(new SpellInfo { Name = "threshe", Duration = 0.4 }); //Thresh E
+                Spells.Add(new SpellInfo { Name = "threshrpenta", Duration = 0.75 }); //Thresh R
+                Spells.Add(new SpellInfo { Name = "infiniteduress", Duration = 1 }); //WW R
+                Spells.Add(new SpellInfo { Name = "meditate", Duration = 1 }); //Yi W
+                Spells.Add(new SpellInfo { Name = "alzaharnethergrasp", Duration = 1 }); //Malza R
+                Spells.Add(new SpellInfo { Name = "lucianq", Duration = 0.5 }); //Lucian Q
+                Spells.Add(new SpellInfo { Name = "caitlynpiltoverpeacemaker", Duration = 0.5 }); //Caitlyn Q
+                Spells.Add(new SpellInfo { Name = "velkozr", Duration = 0.5 }); //Velkoz R
+                Spells.Add(new SpellInfo { Name = "jhinr", Duration = 2 }); //Jhin R
+
+                foreach (var hero in GameObjects.Heroes.Where(i => !i.IsMe && !StoredList.ContainsKey(i.NetworkId)))
+                {
+                    var info = new TrackerInfo();
+                    info.AttackTick = info.StopMoveTick = info.EndSpecialSpellTick = Variables.TickCount;
+                    StoredList.Add(hero.NetworkId, info);
+                }
+
+                Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
+                    {
+                        if (sender.IsMe || sender.Type != GameObjectType.obj_AI_Hero
+                            || !StoredList.ContainsKey(sender.NetworkId))
+                        {
+                            return;
+                        }
+                        if (AutoAttack.IsAutoAttack(args.SData.Name))
+                        {
+                            StoredList[sender.NetworkId].AttackTick = Variables.TickCount;
+                        }
+                        else if (args.Slot >= SpellSlot.Q && args.Slot <= SpellSlot.R)
+                        {
+                            var specialSpell = Spells.FirstOrDefault(i => i.Name.Equals(args.SData.Name.ToLower()));
+                            if (specialSpell != null)
+                            {
+                                StoredList[sender.NetworkId].EndSpecialSpellTick = Variables.TickCount
+                                                                                   + (int)(specialSpell.Duration * 1000);
+                            }
+                        }
+                    };
+                Obj_AI_Base.OnNewPath += (sender, args) =>
+                    {
+                        if (sender.IsMe || sender.Type != GameObjectType.obj_AI_Hero
+                            || !StoredList.ContainsKey(sender.NetworkId))
+                        {
+                            return;
+                        }
+                        if (args.Path.Length == 1)
+                        {
+                            StoredList[sender.NetworkId].StopMoveTick = Variables.TickCount;
+                        }
+                        else
+                        {
+                            StoredList[sender.NetworkId].Path.Add(
+                                new PathInfo { Position = args.Path.Last().ToVector2(), Time = Game.Time });
+                        }
+                        if (StoredList[sender.NetworkId].Path.Count > 3)
+                        {
+                            StoredList[sender.NetworkId].Path.Remove(StoredList[sender.NetworkId].Path.First());
+                        }
+                    };
+            }
+
+            #endregion
+
+            #region Methods
+
+            internal static bool CanTrack(Obj_AI_Hero unit)
+            {
+                return StoredList.ContainsKey(unit.NetworkId);
+            }
+
+            internal static double GetLastAttack(Obj_AI_Hero unit)
+            {
+                return (Variables.TickCount - StoredList[unit.NetworkId].AttackTick) / 1000d;
+            }
+
+            internal static double GetLastSpecialSpell(Obj_AI_Hero unit)
+            {
+                return (StoredList[unit.NetworkId].EndSpecialSpellTick - Variables.TickCount) / 1000d;
+            }
+
+            internal static double GetLastStopMove(Obj_AI_Hero unit)
+            {
+                return (Variables.TickCount - StoredList[unit.NetworkId].StopMoveTick) / 1000d;
+            }
+
+            internal static List<Vector2> GetWaypoints(Obj_AI_Hero unit)
+            {
+                var info = StoredList[unit.NetworkId];
+                return new List<Vector2>
+                           {
+                               new Vector2(
+                                   (info.Path[0].Position.X + info.Path[1].Position.X + info.Path[2].Position.X) / 3,
+                                   (info.Path[0].Position.Y + info.Path[1].Position.Y + info.Path[2].Position.Y) / 3)
+                           };
+            }
+
+            internal static bool IsSpamClick(Obj_AI_Hero unit)
+            {
+                var info = StoredList[unit.NetworkId];
+                if (info.Path.Count < 3)
+                {
+                    return false;
+                }
+                if (info.Path[2].Time - info.Path[0].Time < 0.3 && Game.Time - info.Path[2].Time < 0.15
+                    && Game.Time - info.Path[2].Time > 0.08)
+                {
+                    var dist = unit.Distance(info.Path[2].Position);
+                    return info.Path[1].Position.Distance(info.Path[2].Position) > dist
+                           && info.Path[0].Position.Distance(info.Path[1].Position) > dist;
+                }
+                return false;
+            }
+
+            internal static bool IsSpamPlace(Obj_AI_Hero unit)
+            {
+                var info = StoredList[unit.NetworkId];
+                return info.Path.Count >= 3 && info.Path[2].Time - info.Path[0].Time < 0.4
+                       && info.Path[2].Time + 0.15 < Game.Time
+                       && info.Path[0].Position.Distance(info.Path[1].Position) < 100
+                       && info.Path[1].Position.Distance(info.Path[2].Position) < 100;
+            }
+
+            #endregion
+
+            private class PathInfo
+            {
+                #region Properties
+
+                internal Vector2 Position { get; set; }
+
+                internal float Time { get; set; }
+
+                #endregion
+            }
+
+            private class SpellInfo
+            {
+                #region Properties
+
+                internal double Duration { get; set; }
+
+                internal string Name { get; set; }
+
+                #endregion
+            }
+
+            private class TrackerInfo
+            {
+                #region Fields
+
+                internal readonly List<PathInfo> Path = new List<PathInfo>();
+
+                #endregion
+
+                #region Properties
+
+                internal int AttackTick { get; set; }
+
+                internal int EndSpecialSpellTick { get; set; }
+
+                internal int StopMoveTick { get; set; }
+
+                #endregion
+            }
+        }
+
         internal class PredictionInput
         {
             #region Fields
@@ -833,6 +1053,8 @@
             #region Public Properties
 
             public bool AoE { get; set; }
+
+            public bool CheckStartMove { get; set; } = true;
 
             public bool Collision { get; set; }
 
@@ -870,8 +1092,6 @@
             }
 
             public float Speed { get; set; } = float.MaxValue;
-
-            public Obj_AI_Base Start { get; set; } = Program.Player;
 
             public SkillshotType Type { get; set; } = SkillshotType.SkillshotLine;
 

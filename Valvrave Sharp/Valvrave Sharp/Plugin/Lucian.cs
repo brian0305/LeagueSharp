@@ -14,8 +14,6 @@
 
     using Valvrave_Sharp.Core;
 
-    using Color = System.Drawing.Color;
-
     #endregion
 
     internal class Lucian : Program
@@ -24,26 +22,22 @@
 
         private static bool haveR;
 
+        private static int lastE;
+
         #endregion
 
         #region Constructors and Destructors
 
         public Lucian()
         {
-            Drawing.OnDraw += args => { Tracker.DetectedSkillshots.ForEach(i => i.Draw(Color.White, Color.Red)); };
             Q = new Spell(SpellSlot.Q, 700);
-            Q2 = new Spell(SpellSlot.Q, 1150).SetSkillshot(
-                0.35f,
-                65,
-                float.MaxValue,
-                false,
-                SkillshotType.SkillshotLine);
-            W = new Spell(SpellSlot.W, 1000).SetSkillshot(0.35f, 55, 1700, true, SkillshotType.SkillshotLine);
+            Q2 = new Spell(Q.Slot, 1150).SetSkillshot(0.35f, 60, float.MaxValue, false, SkillshotType.SkillshotLine);
+            W = new Spell(SpellSlot.W, 1000).SetSkillshot(0.35f, 55, 1650, true, Q2.Type);
             E = new Spell(SpellSlot.E, 475);
-            R = new Spell(SpellSlot.R, 1400).SetSkillshot(0.1f, 110, 2700, true, SkillshotType.SkillshotLine);
+            R = new Spell(SpellSlot.R, 1200).SetSkillshot(0.1f, 110, 2700, true, Q2.Type);
             Q.DamageType = Q2.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
             W.DamageType = DamageType.Magical;
-            Q2.MinHitChance = W.MinHitChance = R.MinHitChance = HitChance.High;
+            Q2.MinHitChance = W.MinHitChance = R.MinHitChance = HitChance.VeryHigh;
 
             Game.OnUpdate += OnUpdate;
             Obj_AI_Base.OnBuffAdd += (sender, args) =>
@@ -68,46 +62,37 @@
                         haveR = false;
                     }
                 };
-            Obj_AI_Base.OnDoCast += (sender, args) =>
+            Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                 {
-                    if (!sender.IsMe || (args.Slot != SpellSlot.Q && args.Slot != SpellSlot.W))
+                    if (!sender.IsMe)
                     {
+                        return;
                     }
-                    //Variables.Orbwalker.ResetSwingTimer();
+                    if (args.Slot == SpellSlot.Q)
+                    {
+                        Player.IssueOrder(GameObjectOrder.MoveTo, args.Start.Extend(args.Target.Position, 100));
+                    }
+                    else if (args.Slot == SpellSlot.W)
+                    {
+                        Player.IssueOrder(GameObjectOrder.MoveTo, args.Start.Extend(args.End, 100));
+                    }
+                    else if (args.Slot == SpellSlot.E)
+                    {
+                        lastE = Variables.TickCount - 20;
+                    }
                 };
             Variables.Orbwalker.OnAction += (sender, args) =>
                 {
-                    if (args.Type != OrbwalkingType.AfterAttack
-                        || Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.Combo)
+                    if (args.Type != OrbwalkingType.AfterAttack)
                     {
                         return;
                     }
-                    var target = args.Target as Obj_AI_Hero;
-                    if (target == null)
+                    if (Variables.Orbwalker.GetActiveMode() == OrbwalkingMode.Combo)
                     {
-                        return;
-                    }
-                    if (E.IsReady())
-                    {
-                        const float Angle = 65 * ((float)Math.PI / 180);
-                        var posTemp = Vector3.Subtract(target.ServerPosition, Player.ServerPosition).ToVector2();
-                        var posDash =
-                            Vector2.Add(
-                                new Vector2(
-                                    (float)(posTemp.X * Math.Cos(Angle) - posTemp.Y * Math.Sin(Angle)) / 4,
-                                    (float)(posTemp.X * Math.Sin(Angle) + posTemp.Y * Math.Cos(Angle)) / 4),
-                                Player.ServerPosition.ToVector2());
-                        E.Cast(posDash);
-                    }
-                    else
-                    {
-                        if (Q.IsReady())
+                        var target = args.Target as Obj_AI_Hero;
+                        if (target != null)
                         {
-                            Q.CastOnUnit(target);
-                        }
-                        else if (W.IsReady())
-                        {
-                            W.Cast(target.ServerPosition);
+                            AfterAttackCombo(target);
                         }
                     }
                 };
@@ -115,27 +100,86 @@
 
         #endregion
 
+        #region Properties
+
+        private static bool IsDashing => Variables.TickCount - lastE <= 100 || Player.IsDashing();
+
+        #endregion
+
         #region Methods
+
+        private static void AfterAttackCombo(Obj_AI_Hero target)
+        {
+            if (E.IsReady())
+            {
+                var posPlayer = Player.ServerPosition.ToVector2();
+                var posTarget = target.ServerPosition.ToVector2();
+                var posDashTo = new Vector2();
+                var posAfterE =
+                    CheckDashPos(posPlayer.CircleCircleIntersection(posTarget, E.Range, 500 + Player.BoundingRadius));
+                if (posAfterE.IsValid())
+                {
+                    posDashTo = posAfterE;
+                }
+                else
+                {
+                    posAfterE = posPlayer.Extend(posTarget, -E.Range);
+                    if (Player.HealthPercent >= 80 || !posAfterE.IsUnderEnemyTurret()
+                        || posAfterE.CountEnemyHeroesInRange(E.Range, target)
+                        < posAfterE.CountAllyHeroesInRange(E.Range, Player))
+                    {
+                        posDashTo = posAfterE;
+                    }
+                }
+                if (!posDashTo.IsValid())
+                {
+                    posDashTo = Game.CursorPos.ToVector2();
+                }
+                E.Cast(posDashTo);
+            }
+            else if (Q.IsReady())
+            {
+                Q.CastOnUnit(target);
+            }
+            else if (W.IsReady())
+            {
+                W.Cast(target.ServerPosition);
+            }
+        }
+
+        private static Vector2 CheckDashPos(Vector2[] vector)
+        {
+            if (vector.Length == 0)
+            {
+                return new Vector2();
+            }
+            foreach (var pos in vector.OrderBy(i => i.Distance(Game.CursorPos)))
+            {
+                if (Player.HealthPercent >= 75)
+                {
+                    return pos;
+                }
+                if (pos.IsUnderEnemyTurret() && pos.CountEnemyHeroesInRange(500) > pos.CountAllyHeroesInRange(E.Range))
+                {
+                    continue;
+                }
+                return pos;
+            }
+            return new Vector2();
+        }
 
         private static void Combo()
         {
-            if (Variables.Orbwalker.GetTarget() != null)
+            if (Variables.Orbwalker.GetTarget() != null || IsDashing || Player.Spellbook.IsAutoAttacking)
             {
                 return;
             }
             if (Q.IsReady())
             {
-                var target = Q.GetTarget() ?? Q2.GetTarget(Q2.Width / 2);
+                var target = /*Q.GetTarget() ??*/ Q2.GetTarget(Q2.Width / 2);
                 if (target != null)
                 {
-                    if (Q.IsInRange(target))
-                    {
-                        if (Q.CastOnUnit(target))
-                        {
-                            return;
-                        }
-                    }
-                    else
+                    if (!Q.IsInRange(target))
                     {
                         var pred = Q2.VPrediction(target);
                         if (pred.Hitchance >= Q2.MinHitChance)
@@ -159,9 +203,16 @@
                             }
                         }
                     }
+                    /*else
+                    {
+                        if (Q.CastOnUnit(target))
+                        {
+                            return;
+                        }
+                    }*/
                 }
             }
-            if (W.IsReady() && !Player.IsDashing())
+            if (W.IsReady())
             {
                 var target = W.GetTarget(W.Width / 2);
                 if (target != null && (!Q.IsInRange(target) || !Q.IsReady()))
@@ -169,7 +220,23 @@
                     var pred = W.VPrediction(target, true, CollisionableObjects.YasuoWall);
                     if (pred.Hitchance >= W.MinHitChance)
                     {
-                        W.Cast(pred.CastPosition);
+                        var col = pred.VCollision();
+                        if (col.Count == 0)
+                        {
+                            W.Cast(pred.CastPosition);
+                        }
+                        else
+                        {
+                            foreach (var predCol in
+                                col.Select(i => W.VPrediction(i))
+                                    .Where(
+                                        i =>
+                                        i.Hitchance >= W.MinHitChance
+                                        && i.UnitPosition.Distance(pred.UnitPosition) < 250))
+                            {
+                                W.Cast(predCol.CastPosition);
+                            }
+                        }
                     }
                 }
             }

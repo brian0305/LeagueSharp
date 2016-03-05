@@ -35,6 +35,8 @@
 
         #region Static Fields
 
+        private static bool blockOrder;
+
         private static int cDash;
 
         private static bool haveQ3, haveR;
@@ -53,11 +55,11 @@
 
         public Yasuo()
         {
-            Q = new Spell(SpellSlot.Q, 515).SetSkillshot(0.4f, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
+            Q = new Spell(SpellSlot.Q, 520).SetSkillshot(0.4f, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, 1100).SetSkillshot(Q.Delay, 90, 1200, true, Q.Type);
-            qCircle = new Spell(Q.Slot, 275).SetTargetted(0.02f, float.MaxValue);
+            qCircle = new Spell(Q.Slot, 275).SetTargetted(0.015f, float.MaxValue);
             W = new Spell(SpellSlot.W, 400);
-            E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1025);
+            E = new Spell(SpellSlot.E, 475).SetTargetted(0.005f, 1025);
             R = new Spell(SpellSlot.R, 1200);
             Q.DamageType = Q2.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
@@ -74,7 +76,7 @@
                 comboMenu.Bool("ETower", "Under Tower", false);
                 comboMenu.Bool("EStackQ", "Stack Q While Gap", false);
                 comboMenu.Separator("R Settings");
-                comboMenu.Bool("R", "Use R");
+                comboMenu.KeyBind("R", "Use R", Keys.X, KeyBindType.Toggle);
                 comboMenu.Bool("RDelay", "Delay Cast");
                 comboMenu.Slider("RHpU", "If Enemies Hp < (%)", 60);
                 comboMenu.Slider("RCountA", "Or Count >=", 2, 1, 5);
@@ -131,6 +133,7 @@
                 drawMenu.Bool("Q", "Q Range", false);
                 drawMenu.Bool("E", "E Range", false);
                 drawMenu.Bool("R", "R Range", false);
+                drawMenu.Bool("UseR", "R In Combo Status");
                 drawMenu.Bool("StackQ", "Auto Stack Q Status");
             }
             MainMenu.KeyBind("StackQ", "Auto Stack Q", Keys.Z, KeyBindType.Toggle);
@@ -143,11 +146,17 @@
                 {
                     if (Player.IsDead)
                     {
-                        posDash = new Vector3();
-                        timeDash = 0;
+                        if (posDash.IsValid())
+                        {
+                            posDash = new Vector3();
+                        }
+                        if (timeDash > 0)
+                        {
+                            timeDash = 0;
+                        }
                         return;
                     }
-                    if (!Player.IsDashing() && posDash.IsValid())
+                    if (posDash.IsValid() && !Player.IsDashing())
                     {
                         if (timeDash > 0 && Player.GetDashInfo().EndTick == 0)
                         {
@@ -158,7 +167,7 @@
                             posDash = new Vector3();
                         }
                     }
-                    var qDelay = 0.4f * (1 - Math.Min((Player.AttackSpeedMod - 1) * 0.58552631578947f, 0.6675f));
+                    var qDelay = Math.Max(0.4f * (1 - Math.Min((Player.AttackSpeedMod - 1) * 0.5114f, 0.5625f)), 0.175f);
                     if (!Q.Delay.Equals(qDelay))
                     {
                         Q.Delay = Q2.Delay = qDelay;
@@ -203,13 +212,17 @@
                     posDash = args.EndPos.ToVector3();
                     timeDash = args.EndTick;
                 };
-            Obj_AI_Base.OnBuffUpdateCount += (sender, args) =>
+            Game.OnUpdate += args =>
                 {
-                    if (!sender.IsMe || !args.Buff.Caster.IsMe || args.Buff.DisplayName != "YasuoDashScalar")
+                    if (cDash == 0 || cDash == 2)
                     {
                         return;
                     }
-                    cDash = args.Buff.Count;
+                    var count = Player.GetBuffCount("YasuoDashScalar");
+                    if (count > cDash)
+                    {
+                        cDash = count;
+                    }
                 };
             Obj_AI_Base.OnBuffAdd += (sender, args) =>
                 {
@@ -226,63 +239,62 @@
                             cDash = 1;
                             break;
                         case "YasuoRArmorPen":
-                            haveR = true;
-                            DelayAction.Add(1500, () => haveR = false);
+                            haveR = blockOrder = true;
                             break;
                     }
                 };
             Obj_AI_Base.OnBuffRemove += (sender, args) =>
                 {
-                    if (!sender.IsMe || !args.Buff.Caster.IsMe)
+                    if (!args.Buff.Caster.IsMe)
                     {
                         return;
                     }
-                    switch (args.Buff.DisplayName)
+                    if (sender.IsMe)
                     {
-                        case "YasuoQ3W":
-                            haveQ3 = false;
-                            break;
-                        case "YasuoDashScalar":
-                            cDash = 0;
-                            break;
+                        switch (args.Buff.DisplayName)
+                        {
+                            case "YasuoQ3W":
+                                haveQ3 = false;
+                                break;
+                            case "YasuoDashScalar":
+                                cDash = 0;
+                                break;
+                        }
                     }
-                };
-            AttackableUnit.OnDamage += (sender, args) =>
-                {
-                    if (!haveR || Player.NetworkId != args.SourceNetworkId)
+                    else if (sender.IsEnemy && args.Buff.DisplayName == "yasuorknockupcombotar" && haveR)
                     {
-                        return;
+                        haveR = false;
+                        DelayAction.Add(200, () => blockOrder = false);
                     }
-                    haveR = false;
-                    FixBlockPos(true);
                 };
             Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                 {
-                    if (!sender.IsMe || args.Slot != SpellSlot.Q || !IsDashing)
+                    if (!sender.IsMe)
                     {
                         return;
                     }
-                    FixBlockPos();
+                    if (args.Slot == SpellSlot.Q)
+                    {
+                        Player.IssueOrder(GameObjectOrder.MoveTo, args.Start.Extend(args.End, 100));
+                        if (!IsDashing)
+                        {
+                            return;
+                        }
+                        Variables.Orbwalker.SetAttackState(false);
+                        DelayAction.Add(350, () => Variables.Orbwalker.SetAttackState(true));
+                    }
+                    else if (args.Slot == SpellSlot.E)
+                    {
+                        lastE = Variables.TickCount - 20;
+                    }
                 };
             Spellbook.OnCastSpell += (sender, args) =>
                 {
-                    if (!sender.Owner.IsMe || args.Slot != SpellSlot.Q)
+                    if (!sender.Owner.IsMe || args.Slot != SpellSlot.Q || Variables.TickCount - lastE > 150)
                     {
                         return;
                     }
-                    if (Variables.TickCount - lastE <= 100)
-                    {
-                        args.Process = false;
-                    }
-                };
-            Spellbook.OnCastSpell += (sender, args) =>
-                {
-                    if (!sender.Owner.IsMe || args.Slot != SpellSlot.E || args.Target == null
-                        || !E.IsInRange(args.Target))
-                    {
-                        return;
-                    }
-                    lastE = Variables.TickCount;
+                    args.Process = false;
                 };
         }
 
@@ -290,7 +302,7 @@
 
         #region Properties
 
-        private static bool CanCastQCir => posDash.IsValid() && posDash.DistanceToPlayer() < 100;
+        private static bool CanCastQCir => posDash.IsValid() && posDash.DistanceToPlayer() < 60 + Player.BoundingRadius;
 
         private static List<Obj_AI_Base> GetDashObj
             =>
@@ -409,7 +421,7 @@
 
         private static void Combo()
         {
-            if (MainMenu["Combo"]["R"] && R.IsReady())
+            if (MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Active && R.IsReady())
             {
                 var targetR = GetRTarget;
                 if (targetR.Count > 0)
@@ -439,7 +451,8 @@
                     }
                 }
             }
-            if (MainMenu["Combo"]["EGap"] && E.IsReady())
+            if (MainMenu["Combo"]["EGap"] && E.IsReady() && !Player.Spellbook.IsAutoAttacking
+                && !Player.Spellbook.IsCastingSpell)
             {
                 var underTower = MainMenu["Combo"]["ETower"];
                 if (MainMenu["Combo"]["EMode"].GetValue<MenuList>().Index == 0)
@@ -464,7 +477,7 @@
                         return;
                     }
                     var target = Q.GetTarget(100) ?? Q2.GetTarget();
-                    if (target != null && target.DistanceToPlayer() > target.GetRealAutoAttackRange() / 2)
+                    if (target != null && target.DistanceToPlayer() > target.GetRealAutoAttackRange() / 1.5)
                     {
                         var nearObj = GetBestObj(dashObj, target, true) ?? GetBestObj(dashObj, target);
                         if (nearObj != null)
@@ -535,21 +548,14 @@
                 Evade.SkillshotAboutToHit(
                     sender,
                     yasuoW.Delay - MainMenu["Evade"]["Spells"][yasuoW.Name]["WDelay"],
-                    true).OrderByDescending(i => i.DangerLevel).FirstOrDefault(i => i.DangerLevel >= yasuoW.DangerLevel);
+                    true)
+                    .Where(i => i.CanDodge)
+                    .OrderByDescending(i => i.DangerLevel)
+                    .FirstOrDefault(i => i.DangerLevel >= yasuoW.DangerLevel);
             if (skillshot != null)
             {
                 sender.Spellbook.CastSpell(yasuoW.Slot, sender.ServerPosition.Extend(skillshot.Start, 100));
             }
-        }
-
-        private static void FixBlockPos(bool isForR = false)
-        {
-            Variables.Orbwalker.SetAttackState(false);
-            Player.IssueOrder(GameObjectOrder.MoveTo, Player.ServerPosition.Extend(Game.CursorPos, 200));
-            DelayAction.Add(isForR ? 250 : 150, () => Variables.Orbwalker.SetAttackState(true));
-            DelayAction.Add(
-                300,
-                () => Player.IssueOrder(GameObjectOrder.MoveTo, Player.ServerPosition.Extend(Game.CursorPos, 200)));
         }
 
         private static void Flee()
@@ -571,7 +577,7 @@
 
         private static Obj_AI_Base GetBestObj(List<Obj_AI_Base> obj, Obj_AI_Hero target, bool inQCir = false)
         {
-            var pos = Prediction.GetPrediction(target, E.Delay, 1, E.Speed).UnitPosition;
+            var pos = E.VPredictionPos(target);
             return
                 obj.Where(i => !i.Compare(target) && CanDash(i, inQCir, true, pos))
                     .MinOrDefault(i => GetPosAfterDash(i).Distance(pos));
@@ -749,7 +755,8 @@
         {
             var useQ = MainMenu["LaneClear"]["Q"];
             var useQ3 = MainMenu["LaneClear"]["Q3"];
-            if (MainMenu["LaneClear"]["E"] && E.IsReady())
+            if (MainMenu["LaneClear"]["E"] && E.IsReady() && !Player.Spellbook.IsAutoAttacking
+                && !Player.Spellbook.IsCastingSpell)
             {
                 var minions =
                     GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet(false))
@@ -920,9 +927,27 @@
             {
                 Drawing.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
-            if (MainMenu["Draw"]["R"] && R.IsReady())
+            if (R.Level > 0)
             {
-                Drawing.DrawCircle(Player.Position, R.Range, GetRTarget.Count > 0 ? Color.LimeGreen : Color.IndianRed);
+                if (MainMenu["Draw"]["R"] && R.IsReady())
+                {
+                    Drawing.DrawCircle(
+                        Player.Position,
+                        R.Range,
+                        GetRTarget.Count > 0 ? Color.LimeGreen : Color.IndianRed);
+                }
+                if (MainMenu["Draw"]["UseR"])
+                {
+                    var useR = MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Active;
+                    var pos = Drawing.WorldToScreen(Player.Position);
+                    var text =
+                        $"Use R In Combo: {(useR ? "On" : "Off")} [{MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Key}]";
+                    Drawing.DrawText(
+                        pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
+                        pos.Y + 60,
+                        useR ? Color.White : Color.Gray,
+                        text);
+                }
             }
             if (MainMenu["Draw"]["StackQ"] && Q.Level > 0)
             {
@@ -933,7 +958,7 @@
                 var pos = Drawing.WorldToScreen(Player.Position);
                 Drawing.DrawText(
                     pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
-                    pos.Y + 20,
+                    pos.Y + 40,
                     useQ && qReady && !haveQ3 ? Color.White : Color.Gray,
                     text);
             }
@@ -941,7 +966,7 @@
 
         private static void OnUpdate(EventArgs args)
         {
-            if (Player.IsDead || MenuGUI.IsChatOpen || MenuGUI.IsShopOpen || Player.IsRecalling() || haveR)
+            if (Player.IsDead || MenuGUI.IsChatOpen || MenuGUI.IsShopOpen || Player.IsRecalling() || blockOrder)
             {
                 return;
             }
@@ -1019,21 +1044,12 @@
             {
                 return;
             }
+            yasuoE.Speed = (int)E.Speed;
             var target =
-                Evader.GetEvadeTargets(
-                    yasuoE.ValidTargets,
-                    yasuoE.Speed,
-                    yasuoE.Delay,
-                    yasuoE.MaxRange,
-                    false,
-                    false,
-                    true)
-                    .Where(
-                        i =>
-                        Evade.IsSafePoint(GetPosAfterDash(i)).IsSafe
-                        && (!GetPosAfterDash(i).IsUnderEnemyTurret()
-                            || MainMenu["Evade"]["Spells"][yasuoE.Name]["ETower"]))
-                    .MinOrDefault(i => i.Distance(to));
+                yasuoE.GetEvadeTargets(false, true)
+                    .OrderBy(i => GetPosAfterDash(i).CountEnemyHeroesInRange(400))
+                    .ThenBy(i => GetPosAfterDash(i).Distance(to))
+                    .FirstOrDefault();
             if (target != null)
             {
                 Player.Spellbook.CastSpell(yasuoE.Slot, target);

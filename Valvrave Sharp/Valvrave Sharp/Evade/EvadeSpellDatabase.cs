@@ -28,10 +28,10 @@
 
             if (Program.Player.ChampionName == "Yasuo")
             {
-                spell = new DashData("Yasuo E", SpellSlot.E, 475, true, 100, 1000, 2)
+                spell = new DashData("Yasuo E", SpellSlot.E, 475, true, 10, 1025, 2)
                             {
                                 ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions },
-                                UnderTower = true
+                                CheckBuffName = "YasuoDashWrapper", UnderTower = true
                             };
                 Spells.Add(spell);
             }

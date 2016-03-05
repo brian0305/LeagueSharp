@@ -31,7 +31,7 @@
 
         public DrMundo()
         {
-            Q = new Spell(SpellSlot.Q, 1050).SetSkillshot(0.275f, 60, 2100, true, SkillshotType.SkillshotLine); //70
+            Q = new Spell(SpellSlot.Q, 1050).SetSkillshot(0.275f, 60, 2100, true, SkillshotType.SkillshotLine);
             W = new Spell(SpellSlot.W, 325);
             E = new Spell(SpellSlot.E, 25);
             R = new Spell(SpellSlot.R);

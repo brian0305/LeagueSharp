@@ -156,7 +156,7 @@
             }
             var castTime = Variables.TickCount - Game.Ping / 2 - (spellData.MissileDelayed ? 0 : spellData.Delay)
                            - (int)(1000f * missilePosition.Distance(unitPosition) / spellData.MissileSpeed);
-            TriggerOnDetectSkillshot(DetectionType.RecvPacket, spellData, castTime, unitPosition, endPos, unit);
+            TriggerOnDetectSkillshot(DetectionType.RecvPacket, spellData, castTime, unitPosition, endPos, unit, missile);
         }
 
         private static void MissileOnDelete(GameObject sender, EventArgs args)
@@ -272,9 +272,10 @@
             int startT,
             Vector2 start,
             Vector2 end,
-            Obj_AI_Base unit)
+            Obj_AI_Base unit,
+            MissileClient missile = null)
         {
-            OnDetectSkillshot?.Invoke(new Skillshot(detectionType, spellData, startT, start, end, unit));
+            OnDetectSkillshot?.Invoke(new Skillshot(detectionType, spellData, startT, start, end, unit, missile));
         }
 
         #endregion

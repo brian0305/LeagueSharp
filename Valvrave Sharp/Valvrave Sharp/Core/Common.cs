@@ -115,7 +115,7 @@ namespace Valvrave_Sharp.Core
             Obj_AI_Base unit,
             bool aoe = false,
             CollisionableObjects collisionable = CollisionableObjects.Minions | CollisionableObjects.YasuoWall,
-            Obj_AI_Base start = null)
+            bool checkMove = true)
         {
             return
                 Prediction.GetPrediction(
@@ -123,14 +123,13 @@ namespace Valvrave_Sharp.Core
                         {
                             Unit = unit, Delay = spell.Delay, Radius = spell.Width, Speed = spell.Speed, From = spell.From,
                             RangeCheckFrom = spell.RangeCheckFrom, Range = spell.Range, Collision = spell.Collision,
-                            Type = spell.Type, AoE = aoe, CollisionObjects = collisionable,
-                            Start = start ?? Program.Player
+                            Type = spell.Type, AoE = aoe, CollisionObjects = collisionable, CheckStartMove = checkMove
                         });
         }
 
         internal static Vector3 VPredictionPos(this Spell spell, Obj_AI_Base unit)
         {
-            return Prediction.GetPrediction(unit, spell.Delay).UnitPosition;
+            return Prediction.GetPrediction(unit, spell.Delay, 1, spell.Speed).UnitPosition;
         }
 
         #endregion

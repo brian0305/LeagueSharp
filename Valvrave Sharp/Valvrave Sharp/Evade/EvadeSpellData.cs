@@ -27,6 +27,8 @@
 
         public bool CanShieldAllies;
 
+        public string CheckBuffName = "";
+
         public string CheckSpellName = "";
 
         public int Delay;
@@ -49,11 +51,11 @@
 
         public bool IsSpellShield;
 
-        public float MaxRange;
-
         public MoveSpeedAmount MoveSpeedTotalAmount;
 
         public string Name;
+
+        public float Range;
 
         public bool RequiresPreMove;
 
@@ -118,7 +120,7 @@
             int dangerLevel)
         {
             this.Name = name;
-            this.MaxRange = range;
+            this.Range = range;
             this.Slot = slot;
             this.FixedRange = fixedRange;
             this.Delay = delay;
@@ -137,7 +139,7 @@
         public BlinkData(string name, SpellSlot slot, float range, int delay, int dangerLevel)
         {
             this.Name = name;
-            this.MaxRange = range;
+            this.Range = range;
             this.Slot = slot;
             this.Delay = delay;
             this.DangerLevel = dangerLevel;

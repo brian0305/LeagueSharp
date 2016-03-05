@@ -107,7 +107,11 @@
 
         public Vector2 End;
 
+        public Geometry.Polygon EvadePolygon;
+
         public bool ForceDisabled;
+
+        public MissileClient Missile;
 
         public Geometry.Polygon Polygon;
 
@@ -122,6 +126,8 @@
         public Vector2 Start;
 
         public int StartTick;
+
+        public Obj_AI_Base Unit;
 
         private bool cachedValue;
 
@@ -143,7 +149,8 @@
             int startT,
             Vector2 start,
             Vector2 end,
-            Obj_AI_Base unit)
+            Obj_AI_Base unit,
+            MissileClient missile = null)
         {
             this.DetectionType = detectionType;
             this.SpellData = spellData;
@@ -152,6 +159,7 @@
             this.End = end;
             this.Direction = (end - start).Normalized();
             this.Unit = unit;
+            this.Missile = missile;
             switch (spellData.Type)
             {
                 case SkillShotType.SkillshotCircle:
@@ -186,6 +194,22 @@
         #endregion
 
         #region Public Properties
+
+        public bool CanDodge
+        {
+            get
+            {
+                if (this.DetectionType == DetectionType.ProcessSpell)
+                {
+                    return true;
+                }
+                var missileValid = this.Missile != null && this.Missile.IsValid && this.Missile.IsVisible;
+                return Program.MainMenu["Evade"]["DisableFoW"]
+                           ? missileValid
+                           : !Program.MainMenu["Evade"][this.SpellData.ChampionName.ToLowerInvariant()][
+                               this.SpellData.SpellName]["DisableFoW"] || missileValid;
+            }
+        }
 
         public Vector2 CollisionEnd
         {
@@ -238,19 +262,15 @@
             }
         }
 
-        public Geometry.Polygon EvadePolygon { get; set; }
-
         public bool IsActive
             =>
                 this.SpellData.MissileAccel != 0
                     ? Variables.TickCount <= this.StartTick + 5000
                     : Variables.TickCount
-                      <= this.StartTick + this.SpellData.Delay + this.SpellData.ExtraDuration
-                      + 1000 * (this.Start.Distance(this.End) / this.SpellData.MissileSpeed);
+                      <= this.StartTick + this.SpellData.ExtraDuration + this.SpellData.Delay
+                      + (int)(1000 * this.Start.Distance(this.End) / this.SpellData.MissileSpeed);
 
         public bool IsGlobal => this.SpellData.RawRange == 20000;
-
-        public Obj_AI_Base Unit { get; set; }
 
         #endregion
 
@@ -374,8 +394,10 @@
                                 from));
                     }
                 }
-                var sortedList = segmentIntersections.OrderBy(o => o.Distance).ToList();
-                allIntersections.AddRange(sortedList);
+                if (segmentIntersections.Count > 0)
+                {
+                    allIntersections.AddRange(segmentIntersections.OrderBy(o => o.Distance).ToList());
+                }
                 distance += from.Distance(to);
             }
             if (this.SpellData.Type == SkillShotType.SkillshotMissileLine
@@ -467,10 +489,10 @@
             return new SafePathResult(this.IsSafe(myPositionWhenExplodesWithOffset), allIntersections[0]);
         }
 
-        public bool IsSafeToBlink(Vector2 point, int timeOffset, int delay = 0)
+        public bool IsSafeToBlink(Vector2 point, int timeOffset, int delay)
         {
             timeOffset /= 2;
-            if (this.IsSafe(Evade.PlayerPosition))
+            if (this.IsSafe(point))
             {
                 return true;
             }
@@ -478,11 +500,11 @@
             {
                 var missilePositionAfterBlink = this.GetMissilePosition(delay + timeOffset);
                 var myPositionProjection = Evade.PlayerPosition.ProjectOn(this.Start, this.End);
-                return
-                    !(missilePositionAfterBlink.Distance(this.End)
-                      < myPositionProjection.SegmentPoint.Distance(this.End));
+                return missilePositionAfterBlink.Distance(this.End)
+                       >= myPositionProjection.SegmentPoint.Distance(this.End);
             }
-            var timeToExplode = this.SpellData.ExtraDuration + this.SpellData.Delay
+            var timeToExplode = (this.SpellData.DontAddExtraDuration ? 0 : this.SpellData.ExtraDuration)
+                                + this.SpellData.Delay
                                 + (int)(1000 * this.Start.Distance(this.End) / this.SpellData.MissileSpeed)
                                 - (Variables.TickCount - this.StartTick);
             return timeToExplode > timeOffset + delay;

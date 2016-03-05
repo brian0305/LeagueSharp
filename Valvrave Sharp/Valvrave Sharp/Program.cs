@@ -12,7 +12,6 @@
     using LeagueSharp;
     using LeagueSharp.SDK;
     using LeagueSharp.SDK.Core.UI.IMenu;
-    using LeagueSharp.SDK.Core.Utils;
 
     using Valvrave_Sharp.Core;
     using Valvrave_Sharp.Plugin;
@@ -44,19 +43,19 @@
                                                                                    { "DrMundo", () => new DrMundo() },
                                                                                    { "Kennen", () => new Kennen() },
                                                                                    { "LeeSin", () => new LeeSin() },
-                                                                                   //{ "Lucian", () => new Lucian() },
+                                                                                   { "Lucian", () => new Lucian() },
                                                                                    { "Yasuo", () => new Yasuo() },
                                                                                    { "Zed", () => new Zed() }
                                                                                };
 
         private static readonly Dictionary<string, int> Skins = new Dictionary<string, int>
                                                                     {
-                                                                        { "DrMundo", 8 }, { "Kennen", 5 },
-                                                                        { "LeeSin", 10 }, { "Lucian", 6 }, { "Yasuo", 2 },
+                                                                        { "DrMundo", 8 }, { "Kennen", 6 },
+                                                                        { "LeeSin", 10 }, { "Lucian", 6 }, { "Yasuo", 3 },
                                                                         { "Zed", 3 }
                                                                     };
 
-        private static bool isSkinReset;
+        private static bool isSkinReset = true;
 
         #endregion
 
@@ -85,11 +84,7 @@
                         (sender, args) => { isSkinReset = true; };
                     skinMenu.Bool("Own", "Keep Your Own Skin");
                 }
-
                 Plugins[Player.ChampionName].Invoke();
-                Invulnerable.Deregister(new InvulnerableEntry("FerociousHowl"));
-                Invulnerable.Deregister(new InvulnerableEntry("Meditate"));
-                isSkinReset = true;
 
                 Game.OnUpdate += args =>
                     {
@@ -127,8 +122,8 @@
             {
                 Smite = Player.GetSpellSlot(smiteName);
             }
-            Ignite = Player.GetSpellSlot("summonerdot");
-            Flash = Player.GetSpellSlot("summonerflash");
+            Ignite = Player.GetSpellSlot("SummonerDot");
+            Flash = Player.GetSpellSlot("SummonerFlash");
         }
 
         private static void Main(string[] args)

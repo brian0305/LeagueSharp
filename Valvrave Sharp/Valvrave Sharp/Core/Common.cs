@@ -95,8 +95,15 @@ namespace Valvrave_Sharp.Core
             this Prediction.PredictionOutput pred,
             CollisionableObjects collisionable = CollisionableObjects.Minions)
         {
-            pred.Input.CollisionObjects = collisionable;
-            return Prediction.Collisions.GetCollision(new List<Vector3> { pred.UnitPosition }, pred.Input);
+            var col = Prediction.Collisions.GetCollision(
+                new List<Vector3> { pred.UnitPosition },
+                new Prediction.PredictionInput
+                    {
+                        From = pred.Input.From, Type = pred.Input.Type, Delay = pred.Input.Delay,
+                        Radius = pred.Input.Radius, Speed = pred.Input.Speed, CollisionObjects = collisionable
+                    });
+            col.RemoveAll(i => i.Compare(pred.Input.Unit));
+            return col;
         }
 
         internal static FarmLocation VLineFarmLocation(this Spell spell, List<Obj_AI_Minion> minion)
@@ -104,7 +111,7 @@ namespace Valvrave_Sharp.Core
             return
                 spell.GetLineFarmLocation(
                     minion.Select(i => spell.VPrediction(i, false, CollisionableObjects.YasuoWall))
-                        .Where(i => i.Hitchance >= HitChance.VeryHigh)
+                        .Where(i => i.Hitchance >= spell.MinHitChance)
                         .Select(i => i.UnitPosition)
                         .ToList()
                         .ToVector2());

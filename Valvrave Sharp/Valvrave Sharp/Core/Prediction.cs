@@ -463,25 +463,26 @@
                                 i =>
                                     {
                                         input.Unit = i;
-                                        if (i.Distance(input.From) < input.Radius || i.Distance(position) < input.Radius)
+                                        var pos = i.ServerPosition;
+                                        var bonusRadius = 15f;
+                                        if (i.IsMoving)
+                                        {
+                                            pos = input.GetPrediction(false, false).UnitPosition;
+                                            bonusRadius += i.BoundingRadius + input.Radius / 2;
+                                        }
+                                        if (pos.ToVector2()
+                                                .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
+                                            <= Math.Pow(input.Radius + bonusRadius + i.BoundingRadius, 2))
                                         {
                                             result.Add(i);
                                         }
-                                        else
+                                        else if (pos.Distance(input.From) < input.Radius)
                                         {
-                                            var pos = i.ServerPosition;
-                                            var bonusRadius = 20f;
-                                            if (i.IsMoving)
-                                            {
-                                                pos = input.GetPrediction(false, false).UnitPosition;
-                                                bonusRadius = 60 + input.Radius;
-                                            }
-                                            if (pos.ToVector2()
-                                                    .DistanceSquared(input.From.ToVector2(), position.ToVector2(), true)
-                                                <= Math.Pow(input.Radius + bonusRadius + i.BoundingRadius, 2))
-                                            {
-                                                result.Add(i);
-                                            }
+                                            result.Add(i);
+                                        }
+                                        else if (pos.Distance(position) < input.Radius)
+                                        {
+                                            result.Add(i);
                                         }
                                     });
                     }

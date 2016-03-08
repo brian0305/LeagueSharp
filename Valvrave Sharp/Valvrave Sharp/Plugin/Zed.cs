@@ -440,7 +440,6 @@
                 return false;
             }
             var col = pred.VCollision(CollisionableObjects.Heroes | CollisionableObjects.Minions);
-            col.RemoveAll(i => i.Compare(target));
             return col.Count == 0
                        ? Q.Cast(pred.CastPosition)
                        : (target.Type == GameObjectType.obj_AI_Hero

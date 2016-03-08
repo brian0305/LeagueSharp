@@ -952,14 +952,13 @@
             if (MainMenu["Draw"]["StackQ"] && Q.Level > 0)
             {
                 var useQ = MainMenu["StackQ"].GetValue<MenuKeyBind>().Active;
-                var qReady = Q.IsReady();
                 var text =
-                    $"Auto Stack Q: {(useQ ? (haveQ3 ? "Full" : (qReady ? "Ready" : "Not Ready")) : "Off")} [{MainMenu["StackQ"].GetValue<MenuKeyBind>().Key}]";
+                    $"Auto Stack Q: {(useQ ? (haveQ3 ? "Full" : (Q.IsReady() ? "Ready" : "Not Ready")) : "Off")} [{MainMenu["StackQ"].GetValue<MenuKeyBind>().Key}]";
                 var pos = Drawing.WorldToScreen(Player.Position);
                 Drawing.DrawText(
                     pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
                     pos.Y + 40,
-                    useQ && qReady && !haveQ3 ? Color.White : Color.Gray,
+                    useQ ? Color.White : Color.Gray,
                     text);
             }
         }

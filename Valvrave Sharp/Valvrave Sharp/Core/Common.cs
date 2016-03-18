@@ -95,13 +95,17 @@ namespace Valvrave_Sharp.Core
             this Prediction.PredictionOutput pred,
             CollisionableObjects collisionable = CollisionableObjects.Minions)
         {
-            var col = Prediction.Collisions.GetCollision(
-                new List<Vector3> { pred.UnitPosition },
-                new Prediction.PredictionInput
-                    {
-                        From = pred.Input.From, Type = pred.Input.Type, Delay = pred.Input.Delay,
-                        Radius = pred.Input.Radius, Speed = pred.Input.Speed, CollisionObjects = collisionable
-                    });
+            var input = new Prediction.PredictionInput
+                            {
+                                Delay = pred.Input.Delay, Radius = pred.Input.Radius, Speed = pred.Input.Speed,
+                                Range = pred.Input.Range, Type = pred.Input.Type, CollisionObjects = collisionable,
+                                CheckStartMove = pred.Input.CheckStartMove
+                            };
+            if (!input.CheckStartMove)
+            {
+                input.From = pred.Input.From;
+            }
+            var col = Prediction.Collisions.GetCollision(new List<Vector2> { pred.PosUnit }, input);
             col.RemoveAll(i => i.Compare(pred.Input.Unit));
             return col;
         }
@@ -112,9 +116,8 @@ namespace Valvrave_Sharp.Core
                 spell.GetLineFarmLocation(
                     minion.Select(i => spell.VPrediction(i, false, CollisionableObjects.YasuoWall))
                         .Where(i => i.Hitchance >= spell.MinHitChance)
-                        .Select(i => i.UnitPosition)
-                        .ToList()
-                        .ToVector2());
+                        .Select(i => i.PosUnit)
+                        .ToList());
         }
 
         internal static Prediction.PredictionOutput VPrediction(
@@ -124,19 +127,28 @@ namespace Valvrave_Sharp.Core
             CollisionableObjects collisionable = CollisionableObjects.Minions | CollisionableObjects.YasuoWall,
             bool checkMove = true)
         {
-            return
-                Prediction.GetPrediction(
-                    new Prediction.PredictionInput
-                        {
-                            Unit = unit, Delay = spell.Delay, Radius = spell.Width, Speed = spell.Speed, From = spell.From,
-                            RangeCheckFrom = spell.RangeCheckFrom, Range = spell.Range, Collision = spell.Collision,
-                            Type = spell.Type, AoE = aoe, CollisionObjects = collisionable, CheckStartMove = checkMove
-                        });
+            var input = new Prediction.PredictionInput
+                            {
+                                Unit = unit, Delay = spell.Delay, Radius = spell.Width, Speed = spell.Speed,
+                                Range = spell.Range, Collision = spell.Collision, Type = spell.Type, AoE = aoe,
+                                CollisionObjects = collisionable, CheckStartMove = checkMove
+                            };
+            if (!input.CheckStartMove)
+            {
+                input.From = spell.From.ToVector2();
+                input.RangeCheckFrom = spell.RangeCheckFrom.ToVector2();
+            }
+            return Prediction.GetPrediction(input);
         }
 
-        internal static Vector3 VPredictionPos(this Spell spell, Obj_AI_Base unit)
+        internal static Vector3 VPredictionPos(this Spell spell, Obj_AI_Base unit, bool useRange = false)
         {
-            return Prediction.GetPrediction(unit, spell.Delay, 1, spell.Speed).UnitPosition;
+            var input = new Prediction.PredictionInput { Unit = unit, Delay = spell.Delay, Speed = spell.Speed };
+            if (useRange)
+            {
+                input.Range = spell.Range;
+            }
+            return Prediction.GetPrediction(input).UnitPosition;
         }
 
         #endregion

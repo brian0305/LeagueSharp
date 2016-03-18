@@ -123,7 +123,7 @@
                         var pos = Drawing.WorldToScreen(Program.Player.Position);
                         Drawing.DrawText(
                             pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
-                            pos.Y + 80,
+                            pos.Y + 60,
                             active
                                 ? (Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active
                                        ? Color.Yellow

@@ -76,10 +76,6 @@
                     {
                         Player.IssueOrder(GameObjectOrder.MoveTo, args.Start.Extend(args.End, 100));
                     }
-                    else if (args.Slot == SpellSlot.E)
-                    {
-                        lastE = Variables.TickCount - 20;
-                    }
                 };
             Variables.Orbwalker.OnAction += (sender, args) =>
                 {
@@ -95,6 +91,14 @@
                             AfterAttackCombo(target);
                         }
                     }
+                };
+            Spellbook.OnCastSpell += (sender, args) =>
+                {
+                    if (!sender.Owner.IsMe || args.Slot != SpellSlot.E)
+                    {
+                        return;
+                    }
+                    lastE = Variables.TickCount;
                 };
         }
 
@@ -194,8 +198,8 @@
                                         i =>
                                         pred.UnitPosition.ToVector2()
                                             .DistanceSquared(
-                                                pred.Input.From.ToVector2(),
-                                                pred.Input.From.ToVector2().Extend(i.ServerPosition, Q2.Range),
+                                                pred.Input.From,
+                                                pred.Input.From.Extend(i.ServerPosition, Q2.Range),
                                                 true) <= Math.Pow(pred.Input.RealRadius, 2));
                             if (obj != null && Q.CastOnUnit(obj))
                             {

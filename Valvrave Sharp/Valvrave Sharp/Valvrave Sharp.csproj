@@ -52,13 +52,13 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="LeagueSharp">
-      <HintPath>E:\Project\League Sharp\System\LeagueSharp.dll</HintPath>
+      <HintPath>E:\Project\LeagueSharp\Loader\System\LeagueSharp.dll</HintPath>
     </Reference>
     <Reference Include="LeagueSharp.SDK">
-      <HintPath>E:\Project\League Sharp\System\LeagueSharp.SDK.dll</HintPath>
+      <HintPath>E:\Project\LeagueSharp\Loader\System\LeagueSharp.SDK.dll</HintPath>
     </Reference>
     <Reference Include="SharpDX">
-      <HintPath>E:\Project\League Sharp\System\SharpDX.dll</HintPath>
+      <HintPath>E:\Project\LeagueSharp\Loader\System\SharpDX.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

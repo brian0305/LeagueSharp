@@ -144,8 +144,9 @@
                 {
                     var level = wall.Name.Substring(wall.Name.Length - 6, 1);
                     var wallWidth = 300 + 50 * Convert.ToInt32(level);
-                    var wallDirection = (wall.Position.ToVector2() - wallCastedPos).Normalized().Perpendicular();
-                    var wallStart = wall.Position.ToVector2() + wallWidth / 2f * wallDirection;
+                    var wallPos = wall.Position.ToVector2();
+                    var wallDirection = (wallPos - wallCastedPos).Normalized().Perpendicular();
+                    var wallStart = wallPos + wallWidth / 2f * wallDirection;
                     var wallEnd = wallStart - wallWidth * wallDirection;
                     var wallPolygon = new Geometry.Rectangle(wallStart, wallEnd, 75).ToPolygon();
                     var intersections = new List<Vector2>();

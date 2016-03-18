@@ -33,8 +33,6 @@
 
         private static int lastW;
 
-        private static Spell spellQ, spellW;
-
         private static bool wCasted, rCasted;
 
         private static MissileClient wMissile;
@@ -51,10 +49,9 @@
         {
             Q = new Spell(SpellSlot.Q, 925).SetSkillshot(0.275f, 50, 1700, true, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
-            spellQ = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
-            W = new Spell(SpellSlot.W, 700).SetSkillshot(0, 40, 1750, false, Q.Type);
-            spellW = new Spell(W.Slot).SetSkillshot(W.Delay, W.Width, W.Speed, false, Q.Type);
-            E = new Spell(SpellSlot.E, 290).SetTargetted(0.005f, float.MaxValue);
+            Q3 = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
+            W = new Spell(SpellSlot.W, 700).SetTargetted(0, 1750);
+            E = new Spell(SpellSlot.E, 290).SetTargetted(0.01f, float.MaxValue);
             R = new Spell(SpellSlot.R, 625);
             Q.DamageType = W.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
             Q.MinHitChance = HitChance.VeryHigh;
@@ -298,7 +295,7 @@
             }
         }
 
-        private static bool IsCastingW => !wShadow.IsValid() && wMissile != null && Player.Distance(wMissile) > 300;
+        private static bool IsCastingW => !wShadow.IsValid() && wMissile != null && Player.Distance(wMissile) > 450;
 
         private static bool IsROne => R.Instance.SData.Name == "ZedR";
 
@@ -319,7 +316,7 @@
                 return validW && validR
                            ? Math.Max(rShadow.DistanceToPlayer(), posW.DistanceToPlayer())
                            : (WState == 0 && Variables.TickCount - lastW > 150
-                                  ? (validR ? Math.Max(rShadow.DistanceToPlayer(), 600) : 600)
+                                  ? (validR ? Math.Max(rShadow.DistanceToPlayer(), W.Range) : W.Range)
                                   : (validW ? posW.DistanceToPlayer() : (validR ? rShadow.DistanceToPlayer() : 0)));
             }
         }
@@ -359,15 +356,15 @@
 
         private static SpellSlot CanW(Obj_AI_Hero target, float dist = -1)
         {
-            if (Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost
-                && (dist > -1 ? dist : target.DistanceToPlayer()) < W.Range - 100 + Q.Range)
-            {
-                return SpellSlot.Q;
-            }
             if (E.IsReady() && Player.Mana >= E.Instance.ManaCost + W.Instance.ManaCost
                 && (dist > -1 ? dist : target.DistanceToPlayer()) < W.Range + E.Range)
             {
                 return SpellSlot.E;
+            }
+            if (Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost
+                && (dist > -1 ? dist : target.DistanceToPlayer()) < W.Range - 100 + Q.Range)
+            {
+                return SpellSlot.Q;
             }
             return SpellSlot.Unknown;
         }
@@ -454,54 +451,18 @@
             {
                 return;
             }
-            if (slot == SpellSlot.Q)
-            {
-                spellW.Range = Q.Range;
-                spellW.Delay = Q.Delay;
-                spellW.Width = Q.Width;
-                spellW.Speed = Q.Speed;
-                if (!Q.IsInRange(target))
-                {
-                    spellW.Range += W.Range;
-                    spellW.Delay += W.Delay + (W.Range / W.Speed);
-                }
-            }
-            else
-            {
-                spellW.Range = W.Range;
-                spellW.Delay = W.Delay;
-                spellW.Width = W.Width;
-                spellW.Speed = W.Speed;
-                if (!W.IsInRange(target))
-                {
-                    spellW.Range += E.Range;
-                    spellW.Delay += W.Delay + (W.Range / W.Speed);
-                }
-            }
-            var pred = spellW.VPrediction(target, true);
-            if (pred.Hitchance < HitChance.High)
-            {
-                return;
-            }
-            var posPlayer = Player.ServerPosition.ToVector2();
-            var posPred = pred.UnitPosition.ToVector2();
-            var posCast = pred.CastPosition.ToVector2();
-            if (posPlayer.Distance(posPred) < 550)
-            {
-                posCast = posPlayer.Extend(posPred, 550);
-            }
+            var posCast = W.VPredictionPos(target, true);
             if (isRCombo)
             {
-                var posShadowR = rShadow.ServerPosition.ToVector2();
-                var rangePlaceW = posPlayer.Distance(posPred) < 550 ? 550 : W.Range;
                 switch (MainMenu["Combo"]["WAdv"].GetValue<MenuList>().Index)
                 {
                     case 1:
-                        posCast = posPlayer + (posPred - posShadowR).Normalized() * rangePlaceW;
+                        posCast = W.From + (posCast - rShadow.ServerPosition).Normalized() * 500;
                         break;
                     case 2:
-                        var subPos1 = posPlayer + (posPred - posShadowR).Normalized().Perpendicular() * rangePlaceW;
-                        var subPos2 = posPlayer + (posShadowR - posPred).Normalized().Perpendicular() * rangePlaceW;
+                        var shadowPos = rShadow.ServerPosition;
+                        var subPos1 = W.From + (posCast - shadowPos).Normalized().Perpendicular() * 500;
+                        var subPos2 = W.From + (shadowPos - posCast).Normalized().Perpendicular() * 500;
                         if (!subPos1.IsWall() && subPos2.IsWall())
                         {
                             posCast = subPos1;
@@ -512,15 +473,19 @@
                         }
                         else
                         {
-                            posCast = subPos1.CountEnemyHeroesInRange(500) > subPos2.CountEnemyHeroesInRange(500)
+                            posCast = subPos1.CountEnemyHeroesInRange(350) > subPos2.CountEnemyHeroesInRange(350)
                                           ? subPos1
                                           : subPos2;
                         }
                         break;
                     case 3:
-                        posCast = Game.CursorPos.ToVector2();
+                        posCast = Game.CursorPos;
                         break;
                 }
+            }
+            else if (posCast.DistanceToPlayer() < 550)
+            {
+                posCast = W.From.Extend(posCast, 500);
             }
             W.Cast(posCast);
         }
@@ -573,7 +538,7 @@
                     else if (target.Health + target.PhysicalShield <= Player.GetAutoAttackDamage(target)
                              && !E.IsInRange(target) && !IsKillByMark(target)
                              && target.DistanceToPlayer() < W.Range + target.GetRealAutoAttackRange() - 100
-                             && W.Cast(target.ServerPosition.ToVector2().Extend(Player.ServerPosition, -100)))
+                             && W.Cast(target.ServerPosition.Extend(Player.ServerPosition, -100)))
                     {
                         return;
                     }
@@ -637,13 +602,13 @@
                         DamageType.Physical,
                         Math.Max(target.MaxHealth * 0.1, 100));
                 }
-                if (Tiamat.IsReady)
+                if (Tiamat.IsReady || Hydra.IsReady)
                 {
                     dmgTotal += Player.CalculateDamage(target, DamageType.Physical, Player.TotalAttackDamage);
                 }
-                if (Hydra.IsReady)
+                if (Titanic.IsReady)
                 {
-                    dmgTotal += Player.CalculateDamage(target, DamageType.Physical, Player.TotalAttackDamage);
+                    dmgTotal += Player.CalculateDamage(target, DamageType.Physical, 40 + (0.1f * Player.MaxHealth));
                 }
             }
             if (useQ)
@@ -727,31 +692,31 @@
                 {
                     foreach (var target in targets)
                     {
-                        spellQ.UpdateSourcePosition();
-                        if (CastQKill(spellQ, target))
+                        Q3.UpdateSourcePosition();
+                        if (CastQKill(Q3, target))
                         {
                             break;
                         }
                         if (WShadowCanQ)
                         {
-                            spellQ.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
-                            if (CastQKill(spellQ, target, false))
+                            Q3.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
+                            if (CastQKill(Q3, target, false))
                             {
                                 break;
                             }
                         }
                         else if (IsCastingW)
                         {
-                            spellQ.UpdateSourcePosition(wMissile.EndPosition, wMissile.EndPosition);
-                            if (CastQKill(spellQ, target, false))
+                            Q3.UpdateSourcePosition(wMissile.EndPosition, wMissile.EndPosition);
+                            if (CastQKill(Q3, target, false))
                             {
                                 break;
                             }
                         }
                         if (RShadowCanQ)
                         {
-                            spellQ.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
-                            CastQKill(spellQ, target, false);
+                            Q3.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
+                            CastQKill(Q3, target, false);
                         }
                     }
                 }
@@ -803,14 +768,14 @@
             }
             if (R.Level > 0)
             {
-                var useR = MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Active;
+                var rMenu = MainMenu["Combo"]["R"].GetValue<MenuKeyBind>();
                 if (RState == 0)
                 {
                     if (MainMenu["Draw"]["R"])
                     {
                         Drawing.DrawCircle(Player.Position, R.Range, Color.LimeGreen);
                     }
-                    if (MainMenu["Draw"]["RStop"] && useR)
+                    if (MainMenu["Draw"]["RStop"] && rMenu.Active)
                     {
                         Drawing.DrawCircle(Player.Position, MainMenu["Combo"]["RStopRange"], Color.Orange);
                     }
@@ -818,12 +783,11 @@
                 if (MainMenu["Draw"]["UseR"])
                 {
                     var pos = Drawing.WorldToScreen(Player.Position);
-                    var text =
-                        $"Use R In Combo: {(useR ? "On" : "Off")} [{MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Key}]";
+                    var text = $"Use R In Combo: {(rMenu.Active ? "On" : "Off")} [{rMenu.Key}]";
                     Drawing.DrawText(
                         pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
                         pos.Y + 20,
-                        useR ? Color.White : Color.Gray,
+                        rMenu.Active ? Color.White : Color.Gray,
                         text);
                 }
             }
@@ -1054,6 +1018,10 @@
             {
                 Youmuu.Cast();
             }
+            if (Player.IsWindingUp)
+            {
+                return;
+            }
             if (Tiamat.IsReady && Player.CountEnemyHeroesInRange(Tiamat.Range) > 0)
             {
                 Tiamat.Cast();
@@ -1062,7 +1030,7 @@
             {
                 Hydra.Cast();
             }
-            if (Titanic.IsReady && Player.CountEnemyHeroesInRange(Titanic.Range) > 0)
+            if (Titanic.IsReady && Variables.Orbwalker.GetTarget() != null)
             {
                 Titanic.Cast();
             }

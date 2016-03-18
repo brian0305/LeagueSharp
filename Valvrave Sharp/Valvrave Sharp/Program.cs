@@ -36,7 +36,7 @@
 
         internal static Obj_AI_Hero Player;
 
-        internal static Spell Q, Q2, W, W2, E, E2, R, R2;
+        internal static Spell Q, Q2, Q3, W, W2, E, E2, R, R2;
 
         private static readonly Dictionary<string, Func<object>> Plugins = new Dictionary<string, Func<object>>
                                                                                {

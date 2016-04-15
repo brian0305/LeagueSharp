@@ -13,7 +13,7 @@
 
         public bool AddHitbox;
 
-        public bool CanBeRemoved = false;
+        public bool CanBeRemoved;
 
         public bool Centered;
 
@@ -25,17 +25,17 @@
 
         public int Delay;
 
-        public bool DisabledByDefault = false;
+        public bool DisabledByDefault;
 
-        public bool DisableFowDetection = false;
+        public bool DisableFowDetection;
 
         public bool DontAddExtraDuration;
 
-        public bool DontCheckForDuplicates = false;
+        public bool DontCheckForDuplicates;
 
-        public bool DontCross = false;
+        public bool DontCross;
 
-        public bool DontRemove = false;
+        public bool DontRemove;
 
         public int ExtraDuration;
 
@@ -47,9 +47,9 @@
 
         public bool FixedRange;
 
-        public bool FollowCaster = false;
+        public bool FollowCaster;
 
-        public bool ForceRemove = false;
+        public bool ForceRemove;
 
         public string FromObject = "";
 
@@ -57,7 +57,7 @@
 
         public bool Invert;
 
-        public bool IsDangerous = false;
+        public bool IsDangerous;
 
         public int MissileAccel = 0;
 
@@ -85,7 +85,7 @@
 
         public string SpellName;
 
-        public bool TakeClosestPath = false;
+        public bool TakeClosestPath;
 
         public string ToggleParticleName = "";
 

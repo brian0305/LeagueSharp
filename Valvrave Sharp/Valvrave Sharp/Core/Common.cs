@@ -31,7 +31,16 @@ namespace Valvrave_Sharp.Core
             return spell.VPredictionPos(unit).DistanceToPlayer() < spell.Range;
         }
 
-        internal static CastStates Casting(this Spell spell, Obj_AI_Base unit, bool areaOfEffect = false)
+        internal static bool CanLastHit(this Spell spell, Obj_AI_Base unit, double dmg, double subDmg = 0)
+        {
+            var hpPred = spell.GetHealthPrediction(unit);
+            return hpPred > 0 && hpPred - subDmg < dmg;
+        }
+
+        internal static CastStates Casting(
+            this Spell spell,
+            Obj_AI_Base unit,
+            CollisionableObjects[] collisionable = null)
         {
             if (!unit.IsValidTarget())
             {
@@ -41,24 +50,25 @@ namespace Valvrave_Sharp.Core
             {
                 return CastStates.NotReady;
             }
-            var prediction = spell.VPrediction(unit, areaOfEffect);
-            if (prediction.CollisionObjects.Count > 0)
+            var pred = spell.VPrediction(unit, collisionable);
+            if (pred.CollisionObjects.Count > 0)
             {
                 return CastStates.Collision;
             }
-            if (prediction.Hitchance < spell.MinHitChance)
+            if (pred.Hitchance < spell.MinHitChance
+                && (!pred.Input.AoE || pred.Hitchance < HitChance.High || pred.AoeTargetsHitCount < 2))
             {
                 return CastStates.LowHitChance;
             }
             spell.LastCastAttemptT = Variables.TickCount;
-            return !Program.Player.Spellbook.CastSpell(spell.Slot, prediction.CastPosition)
-                       ? CastStates.NotCasted
-                       : CastStates.SuccessfullyCasted;
+            return Program.Player.Spellbook.CastSpell(spell.Slot, pred.CastPosition)
+                       ? CastStates.SuccessfullyCasted
+                       : CastStates.NotCasted;
         }
 
-        internal static CastStates CastingBestTarget(this Spell spell, float extraRange = 0, bool aoe = false)
+        internal static CastStates CastingBestTarget(this Spell spell, CollisionableObjects[] collisionable = null)
         {
-            return spell.Casting(spell.GetTarget(extraRange), aoe);
+            return spell.Casting(spell.GetTarget(spell.Width / 2), collisionable);
         }
 
         internal static bool CastSmiteKillCollision(List<Obj_AI_Base> col)
@@ -93,19 +103,16 @@ namespace Valvrave_Sharp.Core
 
         internal static List<Obj_AI_Base> VCollision(
             this Prediction.PredictionOutput pred,
-            CollisionableObjects collisionable = CollisionableObjects.Minions)
+            CollisionableObjects[] collisionable = null)
         {
-            var input = new Prediction.PredictionInput
-                            {
-                                Delay = pred.Input.Delay, Radius = pred.Input.Radius, Speed = pred.Input.Speed,
-                                Range = pred.Input.Range, Type = pred.Input.Type, CollisionObjects = collisionable,
-                                CheckStartMove = pred.Input.CheckStartMove
-                            };
-            if (!input.CheckStartMove)
-            {
-                input.From = pred.Input.From;
-            }
-            var col = Prediction.Collisions.GetCollision(new List<Vector2> { pred.PosUnit }, input);
+            var col = Prediction.Collisions.GetCollision(
+                pred.UnitPosition,
+                new Prediction.PredictionInput
+                    {
+                        Delay = pred.Input.Delay, Radius = pred.Input.Radius, Speed = pred.Input.Speed,
+                        Range = pred.Input.Range, Type = pred.Input.Type,
+                        CollisionObjects = collisionable ?? new[] { CollisionableObjects.Minions }, From = pred.Input.From
+                    });
             col.RemoveAll(i => i.Compare(pred.Input.Unit));
             return col;
         }
@@ -114,41 +121,34 @@ namespace Valvrave_Sharp.Core
         {
             return
                 spell.GetLineFarmLocation(
-                    minion.Select(i => spell.VPrediction(i, false, CollisionableObjects.YasuoWall))
+                    minion.Select(i => spell.VPrediction(i, new[] { CollisionableObjects.YasuoWall }))
                         .Where(i => i.Hitchance >= spell.MinHitChance)
-                        .Select(i => i.PosUnit)
+                        .Select(i => i.UnitPosition.ToVector2())
                         .ToList());
         }
 
         internal static Prediction.PredictionOutput VPrediction(
             this Spell spell,
             Obj_AI_Base unit,
-            bool aoe = false,
-            CollisionableObjects collisionable = CollisionableObjects.Minions | CollisionableObjects.YasuoWall,
-            bool checkMove = true)
+            CollisionableObjects[] collisionable = null)
         {
-            var input = new Prediction.PredictionInput
-                            {
-                                Unit = unit, Delay = spell.Delay, Radius = spell.Width, Speed = spell.Speed,
-                                Range = spell.Range, Collision = spell.Collision, Type = spell.Type, AoE = aoe,
-                                CollisionObjects = collisionable, CheckStartMove = checkMove
-                            };
-            if (!input.CheckStartMove)
-            {
-                input.From = spell.From.ToVector2();
-                input.RangeCheckFrom = spell.RangeCheckFrom.ToVector2();
-            }
-            return Prediction.GetPrediction(input);
+            return
+                Prediction.GetPrediction(
+                    new Prediction.PredictionInput
+                        {
+                            Unit = unit, Delay = spell.Delay, Radius = spell.Width, Speed = spell.Speed,
+                            Range = spell.Range, Collision = spell.Collision, Type = spell.Type,
+                            AoE = spell.Type == SkillshotType.SkillshotCircle || !spell.Collision || spell.Width > 80,
+                            CollisionObjects =
+                                collisionable ?? new[] { CollisionableObjects.Minions, CollisionableObjects.YasuoWall },
+                            From = spell.From
+                        });
         }
 
         internal static Vector3 VPredictionPos(this Spell spell, Obj_AI_Base unit, bool useRange = false)
         {
-            var input = new Prediction.PredictionInput { Unit = unit, Delay = spell.Delay, Speed = spell.Speed };
-            if (useRange)
-            {
-                input.Range = spell.Range;
-            }
-            return Prediction.GetPrediction(input).UnitPosition;
+            var pos = Prediction.GetPrediction(unit, spell.Delay, 1, spell.Speed).UnitPosition;
+            return useRange && spell.From.Distance(pos) > spell.Range ? unit.ServerPosition : pos;
         }
 
         #endregion

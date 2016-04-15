@@ -134,7 +134,7 @@
             {
                 return;
             }
-            Q.CastingBestTarget(Q.Width / 2);
+            Q.CastingBestTarget();
         }
 
         private static void Combo()
@@ -144,20 +144,13 @@
                 var target = Q.GetTarget(Q.Width / 2);
                 if (target != null)
                 {
-                    var pred = Q.VPrediction(target, false, CollisionableObjects.YasuoWall);
+                    var pred = Q.VPrediction(target, new[] { CollisionableObjects.YasuoWall });
                     if (pred.Hitchance >= Q.MinHitChance)
                     {
                         var col = pred.VCollision();
-                        if (col.Count == 0)
+                        if ((col.Count == 0 || (MainMenu["Combo"]["QCol"] && Common.CastSmiteKillCollision(col)))
+                            && Q.Cast(pred.CastPosition))
                         {
-                            if (Q.Cast(pred.CastPosition))
-                            {
-                                return;
-                            }
-                        }
-                        else if (MainMenu["Combo"]["QCol"] && Common.CastSmiteKillCollision(col))
-                        {
-                            Q.Cast(pred.CastPosition);
                             return;
                         }
                     }
@@ -202,7 +195,7 @@
             {
                 return;
             }
-            Q.CastingBestTarget(Q.Width / 2);
+            Q.CastingBestTarget();
         }
 
         private static void KillSteal()
@@ -210,16 +203,15 @@
             if (MainMenu["KillSteal"]["Q"] && Q.IsReady())
             {
                 var target = Q.GetTarget(Q.Width / 2);
-                if (target != null && target.Health + target.MagicalShield <= Q.GetDamage(target))
-                {
-                    var pred = Q.VPrediction(
+                if (target != null && target.Health + target.MagicalShield <= Q.GetDamage(target)
+                    && Q.Casting(
                         target,
-                        false,
-                        CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall);
-                    if (pred.Hitchance >= Q.MinHitChance && Q.Cast(pred.CastPosition))
-                    {
-                        return;
-                    }
+                        new[]
+                            {
+                                CollisionableObjects.Heroes, CollisionableObjects.Minions, CollisionableObjects.YasuoWall
+                            }).IsCasted())
+                {
+                    return;
                 }
             }
             if (MainMenu["KillSteal"]["E"] && E.IsReady())
@@ -241,8 +233,7 @@
             var minions =
                 GameObjects.EnemyMinions.Where(
                     i =>
-                    (i.IsMinion() || i.IsPet(false)) && i.IsValidTarget(Q.Range) && Q.GetHealthPrediction(i) > 0
-                    && Q.GetHealthPrediction(i) <= Q.GetDamage(i)
+                    (i.IsMinion() || i.IsPet(false)) && i.IsValidTarget(Q.Range) && Q.CanLastHit(i, Q.GetDamage(i))
                     && (i.IsUnderAllyTurret() || (i.IsUnderEnemyTurret() && !Player.IsUnderEnemyTurret())
                         || i.DistanceToPlayer() > i.GetRealAutoAttackRange() + 50
                         || i.Health > Player.GetAutoAttackDamage(i))).OrderByDescending(i => i.MaxHealth).ToList();
@@ -250,23 +241,24 @@
             {
                 return;
             }
-            foreach (var pred in
-                minions.Select(
-                    i =>
-                    Q.VPrediction(
-                        i,
-                        false,
-                        CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall))
-                    .Where(i => i.Hitchance >= Q.MinHitChance))
+            foreach (var minion in minions)
             {
-                Q.Cast(pred.CastPosition);
+                if (
+                    Q.Casting(
+                        minion,
+                        new[]
+                            {
+                                CollisionableObjects.Heroes, CollisionableObjects.Minions, CollisionableObjects.YasuoWall
+                            }).IsCasted())
+                {
+                    break;
+                }
             }
         }
 
         private static void OnAction(object sender, OrbwalkingActionArgs args)
         {
-            if (!E.IsReady() || args.Type != OrbwalkingType.AfterAttack
-                || args.Target.Type != GameObjectType.obj_AI_Hero)
+            if (!E.IsReady() || args.Type != OrbwalkingType.AfterAttack || !(args.Target is Obj_AI_Hero))
             {
                 return;
             }

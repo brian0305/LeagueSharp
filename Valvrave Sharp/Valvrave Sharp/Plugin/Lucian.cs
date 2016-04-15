@@ -70,11 +70,15 @@
                     }
                     if (args.Slot == SpellSlot.Q)
                     {
-                        Player.IssueOrder(GameObjectOrder.MoveTo, args.Start.Extend(args.Target.Position, 100));
+                        Player.IssueOrder(
+                            GameObjectOrder.AttackTo,
+                            args.Start.Extend(args.Target.Position, Player.BoundingRadius + 30));
                     }
                     else if (args.Slot == SpellSlot.W)
                     {
-                        Player.IssueOrder(GameObjectOrder.MoveTo, args.Start.Extend(args.End, 100));
+                        Player.IssueOrder(
+                            GameObjectOrder.AttackTo,
+                            args.Start.Extend(args.End, Player.BoundingRadius + 30));
                     }
                 };
             Variables.Orbwalker.OnAction += (sender, args) =>
@@ -91,14 +95,6 @@
                             AfterAttackCombo(target);
                         }
                     }
-                };
-            Spellbook.OnCastSpell += (sender, args) =>
-                {
-                    if (!sender.Owner.IsMe || args.Slot != SpellSlot.E)
-                    {
-                        return;
-                    }
-                    lastE = Variables.TickCount;
                 };
         }
 
@@ -139,7 +135,10 @@
                 {
                     posDashTo = Game.CursorPos.ToVector2();
                 }
-                E.Cast(posDashTo);
+                if (E.Cast(posDashTo))
+                {
+                    lastE = Variables.TickCount;
+                }
             }
             else if (Q.IsReady())
             {
@@ -147,7 +146,7 @@
             }
             else if (W.IsReady())
             {
-                W.Cast(target.ServerPosition);
+                W.Cast(W.VPredictionPos(target));
             }
         }
 
@@ -180,40 +179,30 @@
             }
             if (Q.IsReady())
             {
-                var target = /*Q.GetTarget() ??*/ Q2.GetTarget(Q2.Width / 2);
-                if (target != null)
+                var target = Q2.GetTarget(Q2.Width / 2);
+                if (target != null && !Q.IsInRange(target))
                 {
-                    if (!Q.IsInRange(target))
+                    var pred = Q2.VPrediction(target);
+                    if (pred.Hitchance >= Q2.MinHitChance)
                     {
-                        var pred = Q2.VPrediction(target);
-                        if (pred.Hitchance >= Q2.MinHitChance)
-                        {
-                            var objs = new List<Obj_AI_Base>();
-                            objs.AddRange(GameObjects.EnemyHeroes.Where(i => !i.Compare(target)));
-                            objs.AddRange(GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet()));
-                            objs.AddRange(GameObjects.Jungle);
-                            var obj =
-                                objs.Where(i => i.IsValidTarget(Q.Range))
-                                    .FirstOrDefault(
-                                        i =>
-                                        pred.UnitPosition.ToVector2()
-                                            .DistanceSquared(
-                                                pred.Input.From,
-                                                pred.Input.From.Extend(i.ServerPosition, Q2.Range),
-                                                true) <= Math.Pow(pred.Input.RealRadius, 2));
-                            if (obj != null && Q.CastOnUnit(obj))
-                            {
-                                return;
-                            }
-                        }
-                    }
-                    /*else
-                    {
-                        if (Q.CastOnUnit(target))
+                        var objs = new List<Obj_AI_Base>();
+                        objs.AddRange(GameObjects.EnemyHeroes.Where(i => !i.Compare(target)));
+                        objs.AddRange(GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet()));
+                        objs.AddRange(GameObjects.Jungle);
+                        /*var obj =
+                            objs.Where(i => i.IsValidTarget(Q.Range))
+                                .FirstOrDefault(
+                                    i =>
+                                    pred.UnitPosition.ToVector2()
+                                        .DistanceSquared(
+                                            pred.Input.From,
+                                            pred.Input.From.Extend(i.ServerPosition, Q2.Range),
+                                            true) <= Math.Pow(pred.Input.RealRadius, 2));
+                        if (obj != null && Q.CastOnUnit(obj))
                         {
                             return;
-                        }
-                    }*/
+                        }*/
+                    }
                 }
             }
             if (W.IsReady())
@@ -221,7 +210,7 @@
                 var target = W.GetTarget(W.Width / 2);
                 if (target != null && (!Q.IsInRange(target) || !Q.IsReady()))
                 {
-                    var pred = W.VPrediction(target, true, CollisionableObjects.YasuoWall);
+                    var pred = W.VPrediction(target, new[] { CollisionableObjects.YasuoWall });
                     if (pred.Hitchance >= W.MinHitChance)
                     {
                         var col = pred.VCollision();
@@ -244,6 +233,11 @@
                     }
                 }
             }
+        }
+
+        private static double GetRDmg(Obj_AI_Hero target)
+        {
+            return R.GetDamage(target) * new[] { 20, 25, 30 }[R.Level - 1];
         }
 
         private static void OnUpdate(EventArgs args)

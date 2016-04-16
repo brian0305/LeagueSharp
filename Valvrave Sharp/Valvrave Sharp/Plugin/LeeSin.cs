@@ -313,12 +313,12 @@
 
         private static void CastQSmite(Obj_AI_Hero target)
         {
-            var pred = Q.VPrediction(target, new[] { CollisionableObjects.YasuoWall });
+            var pred = Q.GetPrediction(target, false, -1, CollisionableObjects.YasuoWall);
             if (pred.Hitchance < Q.MinHitChance)
             {
                 return;
             }
-            var col = pred.VCollision();
+            var col = pred.GetCollision();
             if (col.Count == 0 || (MainMenu["Combo"]["QCol"] && Common.CastSmiteKillCollision(col)))
             {
                 Q.Cast(pred.CastPosition);
@@ -530,7 +530,7 @@
                 }
                 var cHit = 1;
                 foreach (var targetHit in from target in targetHits
-                                          let posPred = R2.VPredictionPos(target)
+                                          let posPred = R2.GetPredPosition(target)
                                           let project = posPred.ProjectOn(R2.From, R2.From.Extend(@from, -R2.Range))
                                           where
                                               project.IsOnSegment
@@ -602,11 +602,9 @@
                                 && Player.Mana - Q.Instance.ManaCost >= 30))
                         && Q.Casting(
                             target,
-                            new[]
-                                {
-                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
-                                    CollisionableObjects.YasuoWall
-                                }).IsCasted())
+                            false,
+                            CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall)
+                               .IsCasted())
                     {
                         return;
                     }
@@ -783,10 +781,9 @@
                 if (
                     Q.Casting(
                         minion,
-                        new[]
-                            {
-                                CollisionableObjects.Heroes, CollisionableObjects.Minions, CollisionableObjects.YasuoWall
-                            }).IsCasted())
+                        false,
+                        CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall)
+                        .IsCasted())
                 {
                     break;
                 }
@@ -801,18 +798,18 @@
             }
             if (MainMenu["Draw"]["Q"] && Q.Level > 0)
             {
-                Drawing.DrawCircle(
+                Render.Circle.DrawCircle(
                     Player.Position,
                     (IsQOne ? Q : Q2).Range,
                     Q.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
             if (MainMenu["Draw"]["W"] && W.Level > 0 && IsWOne)
             {
-                Drawing.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.LimeGreen : Color.IndianRed);
+                Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
             if (MainMenu["Draw"]["E"] && E.Level > 0)
             {
-                Drawing.DrawCircle(
+                Render.Circle.DrawCircle(
                     Player.Position,
                     (IsEOne ? E : E2).Range,
                     E.IsReady() ? Color.LimeGreen : Color.IndianRed);
@@ -821,7 +818,7 @@
             {
                 if (MainMenu["Draw"]["R"])
                 {
-                    Drawing.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.LimeGreen : Color.IndianRed);
+                    Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.LimeGreen : Color.IndianRed);
                 }
                 if (MainMenu["Draw"]["KnockUp"])
                 {
@@ -1138,8 +1135,11 @@
                             var target = GetTarget;
                             if (target != null)
                             {
-                                Drawing.DrawCircle(target.Position, target.BoundingRadius * 1.35f, Color.BlueViolet);
-                                Drawing.DrawCircle(
+                                Render.Circle.DrawCircle(
+                                    target.Position,
+                                    target.BoundingRadius * 1.35f,
+                                    Color.BlueViolet);
+                                Render.Circle.DrawCircle(
                                     GetPositionBehind(target),
                                     target.BoundingRadius * 1.35f,
                                     Color.BlueViolet);
@@ -1152,7 +1152,7 @@
                         }
                         if (MainMenu["Insec"]["DWardFlash"] && CanWardFlash)
                         {
-                            Drawing.DrawCircle(Player.Position, RangeWardFlash, Color.Orange);
+                            Render.Circle.DrawCircle(Player.Position, RangeWardFlash, Color.Orange);
                         }
                     };
                 Obj_AI_Base.OnBuffAdd += (sender, args) =>
@@ -1326,10 +1326,10 @@
                 var minDist = CanWardFlash ? RangeWardFlash : RangeNormal;
                 if (IsQOne)
                 {
-                    var pred = Q.VPrediction(target, new[] { CollisionableObjects.YasuoWall });
+                    var pred = Q.GetPrediction(target, false, -1, CollisionableObjects.YasuoWall);
                     if (pred.Hitchance >= Q.MinHitChance)
                     {
-                        var col = pred.VCollision();
+                        var col = pred.GetCollision();
                         if ((col.Count == 0 || (MainMenu["Insec"]["QCol"] && Common.CastSmiteKillCollision(col)))
                             && Q.Cast(pred.CastPosition))
                         {
@@ -1478,8 +1478,8 @@
 
             internal static bool CanWardJump => CanCastWard && W.IsReady() && IsWOne;
 
-            private static bool CanCastWard
-                => Variables.TickCount - lastPlaceTime > 1250 && Common.GetWardSlot() != null;
+            private static bool CanCastWard => Variables.TickCount - lastPlaceTime > 1250 && Items.GetWardSlot() != null
+                ;
 
             private static bool IsTryingToJump => lastPlacePos.IsValid() && Variables.TickCount - lastPlaceTime < 1250;
 
@@ -1553,7 +1553,7 @@
                 {
                     return false;
                 }
-                var ward = Common.GetWardSlot();
+                var ward = Items.GetWardSlot();
                 if (ward == null)
                 {
                     return false;

@@ -146,7 +146,7 @@
             }
             else if (W.IsReady())
             {
-                W.Cast(W.VPredictionPos(target));
+                W.Cast(W.GetPredPosition(target));
             }
         }
 
@@ -182,7 +182,7 @@
                 var target = Q2.GetTarget(Q2.Width / 2);
                 if (target != null && !Q.IsInRange(target))
                 {
-                    var pred = Q2.VPrediction(target);
+                    var pred = Q2.GetPrediction(target);
                     if (pred.Hitchance >= Q2.MinHitChance)
                     {
                         var objs = new List<Obj_AI_Base>();
@@ -210,10 +210,10 @@
                 var target = W.GetTarget(W.Width / 2);
                 if (target != null && (!Q.IsInRange(target) || !Q.IsReady()))
                 {
-                    var pred = W.VPrediction(target, new[] { CollisionableObjects.YasuoWall });
+                    var pred = W.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
                     if (pred.Hitchance >= W.MinHitChance)
                     {
-                        var col = pred.VCollision();
+                        var col = pred.GetCollision();
                         if (col.Count == 0)
                         {
                             W.Cast(pred.CastPosition);
@@ -221,7 +221,7 @@
                         else
                         {
                             foreach (var predCol in
-                                col.Select(i => W.VPrediction(i))
+                                col.Select(i => W.GetPrediction(i))
                                     .Where(
                                         i =>
                                         i.Hitchance >= W.MinHitChance

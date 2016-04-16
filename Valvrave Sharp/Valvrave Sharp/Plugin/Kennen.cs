@@ -234,10 +234,9 @@
                 if (target != null && target.Health + target.MagicalShield <= Q.GetDamage(target)
                     && Q.Casting(
                         target,
-                        new[]
-                            {
-                                CollisionableObjects.Heroes, CollisionableObjects.Minions, CollisionableObjects.YasuoWall
-                            }).IsCasted())
+                        false,
+                        CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall)
+                           .IsCasted())
                 {
                     return;
                 }
@@ -271,10 +270,9 @@
                 if (
                     Q.Casting(
                         minion,
-                        new[]
-                            {
-                                CollisionableObjects.Heroes, CollisionableObjects.Minions, CollisionableObjects.YasuoWall
-                            }).IsCasted())
+                        false,
+                        CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall)
+                        .IsCasted())
                 {
                     break;
                 }
@@ -289,15 +287,15 @@
             }
             if (MainMenu["Draw"]["Q"] && Q.Level > 0)
             {
-                Drawing.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.LimeGreen : Color.IndianRed);
+                Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
             if (MainMenu["Draw"]["W"] && W.Level > 0)
             {
-                Drawing.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.LimeGreen : Color.IndianRed);
+                Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
             if (MainMenu["Draw"]["R"] && R.Level > 0)
             {
-                Drawing.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.LimeGreen : Color.IndianRed);
+                Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
         }
 

@@ -9,6 +9,7 @@
     using LeagueSharp;
     using LeagueSharp.SDK;
     using LeagueSharp.SDK.Clipper;
+    using LeagueSharp.SDK.Core.Utils;
 
     using SharpDX;
 
@@ -114,7 +115,7 @@
                 var outerCenters = this.Start.CircleCircleIntersection(this.End, outerRadius, outerRadius);
                 var innerCenter = innerCenters[0];
                 var outerCenter = outerCenters[0];
-                Drawing.DrawCircle(innerCenter.ToVector3(), 100, Color.White);
+                Render.Circle.DrawCircle(innerCenter.ToVector3(), 100, Color.White);
                 var direction = (this.End - outerCenter).Normalized();
                 var end = (this.Start - outerCenter).Normalized();
                 var maxAngle = (float)(direction.AngleBetween(end) * Math.PI / 180);

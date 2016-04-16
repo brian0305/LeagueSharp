@@ -338,7 +338,7 @@
             {
                 return;
             }
-            Q.CastingBestTarget(new[] { CollisionableObjects.YasuoWall });
+            Q.CastingBestTarget(true, CollisionableObjects.YasuoWall);
         }
 
         private static SpellSlot CanW(Obj_AI_Hero target, float dist = -1)
@@ -384,7 +384,7 @@
                 return;
             }
             Q2.UpdateSourcePosition();
-            var pred = Q2.VPrediction(target, new[] { CollisionableObjects.YasuoWall });
+            var pred = Q2.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
             if (pred.Hitchance >= Q.MinHitChance)
             {
                 Q2.Cast(pred.CastPosition);
@@ -395,12 +395,12 @@
                 if (WShadowCanQ)
                 {
                     Q2.UpdateSourcePosition(wShadow.ServerPosition);
-                    pred = Q2.VPrediction(target, new[] { CollisionableObjects.YasuoWall });
+                    pred = Q2.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
                 }
                 else if (IsCastingW)
                 {
                     Q2.UpdateSourcePosition(wMissile.EndPosition);
-                    pred = Q2.VPrediction(target, new[] { CollisionableObjects.YasuoWall });
+                    pred = Q2.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
                 }
                 if (pred != null && pred.Hitchance >= Q.MinHitChance)
                 {
@@ -409,7 +409,7 @@
                 else if (RShadowCanQ)
                 {
                     Q2.UpdateSourcePosition(rShadow.ServerPosition);
-                    pred = Q2.VPrediction(target, new[] { CollisionableObjects.YasuoWall });
+                    pred = Q2.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
                     if (pred.Hitchance >= Q.MinHitChance)
                     {
                         Q2.Cast(pred.CastPosition);
@@ -420,12 +420,12 @@
 
         private static bool CastQKill(Spell spell, Obj_AI_Base target)
         {
-            var pred = spell.VPrediction(target, new[] { CollisionableObjects.YasuoWall });
+            var pred = spell.GetPrediction(target, false, -1, CollisionableObjects.YasuoWall);
             if (pred.Hitchance < Q.MinHitChance)
             {
                 return false;
             }
-            var col = pred.VCollision(new[] { CollisionableObjects.Heroes, CollisionableObjects.Minions });
+            var col = pred.GetCollision(CollisionableObjects.Heroes | CollisionableObjects.Minions);
             if (col.Count == 0)
             {
                 return spell.Cast(pred.CastPosition);
@@ -444,7 +444,7 @@
             {
                 return;
             }
-            var posCast = W.VPredictionPos(target, true);
+            var posCast = W.GetPredPosition(target, true);
             var posStart = W.From;
             if (isRCombo)
             {
@@ -673,7 +673,7 @@
 
         private static bool IsInRangeE(Obj_AI_Hero target)
         {
-            var pos = E.VPredictionPos(target);
+            var pos = E.GetPredPosition(target);
             return pos.DistanceToPlayer() < E.Range || (wShadow.IsValid() && wShadow.Distance(pos) < E.Range)
                    || (rShadow.IsValid() && rShadow.Distance(pos) < E.Range)
                    || (IsCastingW && wMissile.EndPosition.Distance(pos) < E.Range);
@@ -765,15 +765,15 @@
             }
             if (MainMenu["Draw"]["Q"] && Q.Level > 0)
             {
-                Drawing.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.LimeGreen : Color.IndianRed);
+                Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
             if (MainMenu["Draw"]["W"] && W.Level > 0)
             {
-                Drawing.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.LimeGreen : Color.IndianRed);
+                Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
             if (MainMenu["Draw"]["E"] && E.Level > 0)
             {
-                Drawing.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.LimeGreen : Color.IndianRed);
+                Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
             if (R.Level > 0)
             {
@@ -782,11 +782,11 @@
                 {
                     if (MainMenu["Draw"]["R"])
                     {
-                        Drawing.DrawCircle(Player.Position, R.Range, Color.LimeGreen);
+                        Render.Circle.DrawCircle(Player.Position, R.Range, Color.LimeGreen);
                     }
                     if (MainMenu["Draw"]["RStop"] && rMenu.Active)
                     {
-                        Drawing.DrawCircle(Player.Position, MainMenu["Combo"]["RStopRange"], Color.Orange);
+                        Render.Circle.DrawCircle(Player.Position, MainMenu["Combo"]["RStopRange"], Color.Orange);
                     }
                 }
                 if (MainMenu["Draw"]["UseR"])
@@ -805,7 +805,7 @@
                 var target = GetTarget;
                 if (target != null)
                 {
-                    Drawing.DrawCircle(target.Position, target.BoundingRadius * 1.5f, Color.Aqua);
+                    Render.Circle.DrawCircle(target.Position, target.BoundingRadius * 1.5f, Color.Aqua);
                 }
             }
             if (MainMenu["Draw"]["DMark"] && rShadow.IsValid())
@@ -820,13 +820,13 @@
             }
             if (MainMenu["Draw"]["WPos"] && wShadow.IsValid())
             {
-                Drawing.DrawCircle(wShadow.Position, wShadow.BoundingRadius, Color.MediumSlateBlue);
+                Render.Circle.DrawCircle(wShadow.Position, wShadow.BoundingRadius, Color.MediumSlateBlue);
                 var pos = Drawing.WorldToScreen(wShadow.Position);
                 Drawing.DrawText(pos.X - (float)Drawing.GetTextExtent("W").Width / 2, pos.Y, Color.BlueViolet, "W");
             }
             if (MainMenu["Draw"]["RPos"] && rShadow.IsValid())
             {
-                Drawing.DrawCircle(rShadow.Position, rShadow.BoundingRadius, Color.MediumSlateBlue);
+                Render.Circle.DrawCircle(rShadow.Position, rShadow.BoundingRadius, Color.MediumSlateBlue);
                 var pos = Drawing.WorldToScreen(rShadow.Position);
                 Drawing.DrawText(pos.X - (float)Drawing.GetTextExtent("R").Width / 2, pos.Y, Color.BlueViolet, "R");
             }

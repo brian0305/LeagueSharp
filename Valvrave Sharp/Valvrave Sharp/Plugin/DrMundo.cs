@@ -144,10 +144,10 @@
                 var target = Q.GetTarget(Q.Width / 2);
                 if (target != null)
                 {
-                    var pred = Q.VPrediction(target, new[] { CollisionableObjects.YasuoWall });
+                    var pred = Q.GetPrediction(target, false, -1, CollisionableObjects.YasuoWall);
                     if (pred.Hitchance >= Q.MinHitChance)
                     {
-                        var col = pred.VCollision();
+                        var col = pred.GetCollision();
                         if ((col.Count == 0 || (MainMenu["Combo"]["QCol"] && Common.CastSmiteKillCollision(col)))
                             && Q.Cast(pred.CastPosition))
                         {
@@ -206,10 +206,9 @@
                 if (target != null && target.Health + target.MagicalShield <= Q.GetDamage(target)
                     && Q.Casting(
                         target,
-                        new[]
-                            {
-                                CollisionableObjects.Heroes, CollisionableObjects.Minions, CollisionableObjects.YasuoWall
-                            }).IsCasted())
+                        false,
+                        CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall)
+                           .IsCasted())
                 {
                     return;
                 }
@@ -246,10 +245,9 @@
                 if (
                     Q.Casting(
                         minion,
-                        new[]
-                            {
-                                CollisionableObjects.Heroes, CollisionableObjects.Minions, CollisionableObjects.YasuoWall
-                            }).IsCasted())
+                        false,
+                        CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall)
+                        .IsCasted())
                 {
                     break;
                 }
@@ -280,11 +278,11 @@
             }
             if (MainMenu["Draw"]["Q"] && Q.Level > 0)
             {
-                Drawing.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.LimeGreen : Color.IndianRed);
+                Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
             if (MainMenu["Draw"]["W"] && W.Level > 0)
             {
-                Drawing.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.LimeGreen : Color.IndianRed);
+                Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
         }
 

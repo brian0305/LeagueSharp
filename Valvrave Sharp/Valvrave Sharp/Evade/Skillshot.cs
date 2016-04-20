@@ -8,7 +8,7 @@
 
     using LeagueSharp;
     using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Core.UI.IMenu.Values;
+    using LeagueSharp.SDK.UI;
 
     using SharpDX;
 
@@ -268,7 +268,11 @@
                     ? Variables.TickCount <= this.StartTick + 5000
                     : Variables.TickCount
                       <= this.StartTick + this.SpellData.ExtraDuration + this.SpellData.Delay
-                      + (int)(1000 * this.Start.Distance(this.End) / this.SpellData.MissileSpeed);
+                      + (int)
+                        (1000
+                         * (Math.Abs(this.SpellData.MissileSpeed - int.MaxValue) > 0
+                                ? this.Start.Distance(this.End) / this.SpellData.MissileSpeed
+                                : 0));
 
         public bool IsGlobal => this.SpellData.RawRange == 20000;
 
@@ -304,7 +308,8 @@
             int x;
             if (this.SpellData.MissileAccel == 0)
             {
-                x = t * this.SpellData.MissileSpeed / 1000;
+                x = t * (Math.Abs(this.SpellData.MissileSpeed - int.MaxValue) > 0 ? this.SpellData.MissileSpeed : 0)
+                    / 1000;
             }
             else
             {
@@ -348,8 +353,11 @@
             if (!this.IsSafe(unit.ServerPosition.ToVector2()))
             {
                 var timeToExplode = this.SpellData.ExtraDuration + this.SpellData.Delay
-                                    + (int)(1000 * this.Start.Distance(this.End) / this.SpellData.MissileSpeed)
-                                    - (Variables.TickCount - this.StartTick);
+                                    + (int)
+                                      (1000
+                                       * (Math.Abs(this.SpellData.MissileSpeed - int.MaxValue) > 0
+                                              ? this.Start.Distance(this.End) / this.SpellData.MissileSpeed
+                                              : 0)) - (Variables.TickCount - this.StartTick);
                 if (timeToExplode <= time)
                 {
                     return true;
@@ -478,8 +486,11 @@
             }
             var timeToExplode = (this.SpellData.DontAddExtraDuration ? 0 : this.SpellData.ExtraDuration)
                                 + this.SpellData.Delay
-                                + (int)(1000 * this.Start.Distance(this.End) / this.SpellData.MissileSpeed)
-                                - (Variables.TickCount - this.StartTick);
+                                + (int)
+                                  (1000
+                                   * (Math.Abs(this.SpellData.MissileSpeed - int.MaxValue) > 0
+                                          ? this.Start.Distance(this.End) / this.SpellData.MissileSpeed
+                                          : 0)) - (Variables.TickCount - this.StartTick);
             var myPositionWhenExplodes = path.PositionAfter(timeToExplode, speed, delay);
             if (!this.IsSafe(myPositionWhenExplodes))
             {
@@ -505,8 +516,11 @@
             }
             var timeToExplode = (this.SpellData.DontAddExtraDuration ? 0 : this.SpellData.ExtraDuration)
                                 + this.SpellData.Delay
-                                + (int)(1000 * this.Start.Distance(this.End) / this.SpellData.MissileSpeed)
-                                - (Variables.TickCount - this.StartTick);
+                                + (int)
+                                  (1000
+                                   * (Math.Abs(this.SpellData.MissileSpeed - int.MaxValue) > 0
+                                          ? this.Start.Distance(this.End) / this.SpellData.MissileSpeed
+                                          : 0)) - (Variables.TickCount - this.StartTick);
             return timeToExplode > timeOffset + delay;
         }
 

@@ -8,11 +8,12 @@
     using System.Windows.Forms;
 
     using LeagueSharp;
+    using LeagueSharp.Data.Enumerations;
     using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Core.UI.IMenu.Values;
-    using LeagueSharp.SDK.Core.Utils;
-    using LeagueSharp.SDK.Core.Wrappers.Damages;
-    using LeagueSharp.SDK.Modes;
+    using LeagueSharp.SDK.Enumerations;
+    using LeagueSharp.SDK.TSModes;
+    using LeagueSharp.SDK.UI;
+    using LeagueSharp.SDK.Utils;
 
     using SharpDX;
 
@@ -20,7 +21,7 @@
     using Valvrave_Sharp.Evade;
 
     using Color = System.Drawing.Color;
-    using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+    using Menu = LeagueSharp.SDK.UI.Menu;
     using Skillshot = Valvrave_Sharp.Evade.Skillshot;
 
     #endregion
@@ -53,11 +54,11 @@
 
         public Yasuo()
         {
-            Q = new Spell(SpellSlot.Q, 510).SetSkillshot(0.4f, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
+            Q = new Spell(SpellSlot.Q, 500).SetSkillshot(0.4f, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, 1100).SetSkillshot(Q.Delay, 90, 1250, true, Q.Type);
             Q3 = new Spell(Q.Slot, 250).SetTargetted(0.01f, float.MaxValue);
             W = new Spell(SpellSlot.W, 400);
-            E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1025);
+            E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1000);
             E2 = new Spell(Q.Slot).SetTargetted(Q3.Delay, E.Speed);
             R = new Spell(SpellSlot.R, 1200);
             Q.DamageType = Q2.DamageType = R.DamageType = DamageType.Physical;
@@ -181,7 +182,7 @@
                             Q2.Delay = qDelay;
                         }
                     }
-                    var eSpeed = 1025 + (Player.MoveSpeed - 345);
+                    var eSpeed = 1000 + (Player.MoveSpeed - 345);
                     if (!E.Speed.Equals(eSpeed))
                     {
                         E.Speed = E2.Speed = eSpeed;
@@ -249,17 +250,18 @@
                             break;
                         case "yasuoeqcombosoundmiss":
                         case "YasuoEQComboSoundHit":
-                            Variables.Orbwalker.ResetSwingTimer();
                             DelayAction.Add(
                                 70,
                                 () =>
                                     {
-                                        if (!Player.IsDead)
+                                        if (Player.IsDead)
                                         {
-                                            Player.IssueOrder(
-                                                GameObjectOrder.AttackTo,
-                                                Player.ServerPosition.Extend(Game.CursorPos, Player.BoundingRadius * 2));
+                                            return;
                                         }
+                                        Variables.Orbwalker.ResetSwingTimer();
+                                        Player.IssueOrder(
+                                            GameObjectOrder.AttackTo,
+                                            Player.ServerPosition.Extend(Game.CursorPos, Player.BoundingRadius * 2));
                                     });
                             break;
                     }
@@ -294,7 +296,7 @@
                                 Variables.Orbwalker.SetAttackState(true);
                                 Variables.Orbwalker.SetMovementState(true);
                             });
-                    DelayAction.Add(22, () => isBlockQ = false);
+                    DelayAction.Add(20, () => isBlockQ = false);
                 };
             Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                 {
@@ -302,7 +304,7 @@
                     {
                         return;
                     }
-                    Player.IssueOrder(GameObjectOrder.AttackTo, args.Start.Extend(args.End, Player.BoundingRadius));
+                    Player.IssueOrder(GameObjectOrder.AttackTo, args.Start.Extend(args.End, Player.BoundingRadius * 2));
                 };
         }
 
@@ -366,7 +368,7 @@
                 return false;
             }
             var dur = buff.EndTime - buff.StartTime;
-            return buff.EndTime - Game.Time <= (dur <= 0.75 ? 0.3 : 0.24) * dur;
+            return buff.EndTime - Game.Time <= (dur <= 0.75 ? 0.3 : 0.235) * dur;
         }
 
         private static bool CanDash(
@@ -623,7 +625,7 @@
 
         private static double GetEDmg(Obj_AI_Base target)
         {
-            return E.GetDamage(target) + E.GetDamage(target, Damage.DamageStage.Buff);
+            return E.GetDamage(target) + E.GetDamage(target, DamageStage.Buff);
         }
 
         private static Vector3 GetPosAfterDash(Obj_AI_Base target)
@@ -925,7 +927,7 @@
                     }
                 }
             }
-            if (MainMenu["LastHit"]["E"] && E.IsReady() && !Player.Spellbook.IsAutoAttacking)
+            if (MainMenu["LastHit"]["E"] && E.IsReady() && !Player.IsWindingUp)
             {
                 var minion =
                     GameObjects.EnemyMinions.Where(

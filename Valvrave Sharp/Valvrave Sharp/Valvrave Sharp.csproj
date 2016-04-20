@@ -54,6 +54,9 @@
     <Reference Include="LeagueSharp">
       <HintPath>E:\Project\LeagueSharp\Loader\System\LeagueSharp.dll</HintPath>
     </Reference>
+    <Reference Include="LeagueSharp.Data">
+      <HintPath>E:\Project\LeagueSharp\Loader\System\LeagueSharp.Data.dll</HintPath>
+    </Reference>
     <Reference Include="LeagueSharp.SDK">
       <HintPath>E:\Project\LeagueSharp\Loader\System\LeagueSharp.SDK.dll</HintPath>
     </Reference>

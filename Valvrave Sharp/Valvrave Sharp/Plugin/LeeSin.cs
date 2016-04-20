@@ -8,18 +8,19 @@
     using System.Windows.Forms;
 
     using LeagueSharp;
+    using LeagueSharp.Data.Enumerations;
     using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Core.UI.IMenu.Values;
-    using LeagueSharp.SDK.Core.Utils;
-    using LeagueSharp.SDK.Core.Wrappers.Damages;
-    using LeagueSharp.SDK.Modes;
+    using LeagueSharp.SDK.Enumerations;
+    using LeagueSharp.SDK.TSModes;
+    using LeagueSharp.SDK.UI;
+    using LeagueSharp.SDK.Utils;
 
     using SharpDX;
 
     using Valvrave_Sharp.Core;
 
     using Color = System.Drawing.Color;
-    using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+    using Menu = LeagueSharp.SDK.UI.Menu;
 
     #endregion
 
@@ -402,7 +403,7 @@
                 var target = Variables.TargetSelector.GetTargets(Q2.Range, Q2.DamageType).FirstOrDefault(HaveQ);
                 if (target != null
                     && target.Health + target.PhysicalShield
-                    > Q.GetDamage(target, Damage.DamageStage.SecondCast) + Player.GetAutoAttackDamage(target)
+                    > Q.GetDamage(target, DamageStage.SecondCast) + Player.GetAutoAttackDamage(target)
                     && target.Health + target.PhysicalShield
                     <= GetQ2Dmg(target, R.GetDamage(target)) + Player.GetAutoAttackDamage(target))
                 {
@@ -434,7 +435,7 @@
                     {
                         if ((CanQ2(target) || (!R.IsReady() && IsRecentR && CanR(target))
                              || target.Health + target.PhysicalShield
-                             <= Q.GetDamage(target, Damage.DamageStage.SecondCast) + Player.GetAutoAttackDamage(target)
+                             <= Q.GetDamage(target, DamageStage.SecondCast) + Player.GetAutoAttackDamage(target)
                              || ((R.IsReady()
                                   || (!target.HasBuff("BlindMonkDragonsRage") && Variables.TickCount - lastR > 1000))
                                  && target.DistanceToPlayer() > target.GetRealAutoAttackRange() + 100) || cPassive == 0)
@@ -614,8 +615,7 @@
                     var target = Variables.TargetSelector.GetTargets(Q2.Range, Q2.DamageType).FirstOrDefault(HaveQ);
                     if (target != null
                         && target.Health + target.PhysicalShield
-                        <= Q.GetDamage(target, Damage.DamageStage.SecondCast) + Player.GetAutoAttackDamage(target)
-                        && Q2.Cast())
+                        <= Q.GetDamage(target, DamageStage.SecondCast) + Player.GetAutoAttackDamage(target) && Q2.Cast())
                     {
                         isDashing = true;
                         return;
@@ -743,8 +743,7 @@
                 {
                     var q2Minion = objQ;
                     if (q2Minion.IsValidTarget(Q2.Range)
-                        && (CanQ2(q2Minion, true)
-                            || q2Minion.Health <= Q.GetDamage(q2Minion, Damage.DamageStage.SecondCast)
+                        && (CanQ2(q2Minion, true) || q2Minion.Health <= Q.GetDamage(q2Minion, DamageStage.SecondCast)
                             || q2Minion.DistanceToPlayer() > q2Minion.GetRealAutoAttackRange() + 100 || cPassive == 0)
                         && Q2.Cast())
                     {
@@ -914,7 +913,7 @@
                 }
                 else if (!IsDashing && HaveQ(target)
                          && (target.Health + target.PhysicalShield
-                             <= Q.GetDamage(target, Damage.DamageStage.SecondCast) + Player.GetAutoAttackDamage(target)
+                             <= Q.GetDamage(target, DamageStage.SecondCast) + Player.GetAutoAttackDamage(target)
                              || (!R.IsReady() && IsRecentR && CanR(target))) && Q2.Cast())
                 {
                     isDashing = true;

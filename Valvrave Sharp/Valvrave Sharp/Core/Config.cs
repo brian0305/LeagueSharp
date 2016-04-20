@@ -4,10 +4,10 @@
 
     using System.Windows.Forms;
 
-    using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Core.UI.IMenu.Values;
+    using LeagueSharp.SDK.Enumerations;
+    using LeagueSharp.SDK.UI;
 
-    using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+    using Menu = LeagueSharp.SDK.UI.Menu;
 
     #endregion
 

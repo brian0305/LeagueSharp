@@ -9,14 +9,15 @@
     using System.Windows.Forms;
 
     using LeagueSharp;
+    using LeagueSharp.Data.Enumerations;
     using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Core.UI.IMenu.Values;
-    using LeagueSharp.SDK.Core.Utils;
-    using LeagueSharp.SDK.Core.Wrappers.Damages;
+    using LeagueSharp.SDK.Enumerations;
+    using LeagueSharp.SDK.UI;
+    using LeagueSharp.SDK.Utils;
 
     using Valvrave_Sharp.Core;
 
-    using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+    using Menu = LeagueSharp.SDK.UI.Menu;
 
     #endregion
 
@@ -185,8 +186,7 @@
                     if (haveR)
                     {
                         if ((target.Count(i => HaveW(i, true)) > 1
-                             || target.Any(
-                                 i => i.Health + i.MagicalShield <= W.GetDamage(i, Damage.DamageStage.Empowered))
+                             || target.Any(i => i.Health + i.MagicalShield <= W.GetDamage(i, DamageStage.Empowered))
                              || target.Count > 2 || (target.Count(i => HaveW(i, true)) > 0 && target.Count > 1))
                             && W.Cast())
                         {
@@ -242,7 +242,7 @@
                 }
             }
             if (MainMenu["KillSteal"]["W"] && W.IsReady()
-                && GetWTarget.Any(i => i.Health + i.MagicalShield <= W.GetDamage(i, Damage.DamageStage.Empowered)))
+                && GetWTarget.Any(i => i.Health + i.MagicalShield <= W.GetDamage(i, DamageStage.Empowered)))
             {
                 W.Cast();
             }

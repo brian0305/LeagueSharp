@@ -6,8 +6,10 @@ namespace Valvrave_Sharp.Core
     using System.Linq;
 
     using LeagueSharp;
+    using LeagueSharp.Data.Enumerations;
     using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Core.Utils;
+    using LeagueSharp.SDK.Enumerations;
+    using LeagueSharp.SDK.Utils;
 
     using SharpDX;
 
@@ -71,10 +73,12 @@ namespace Valvrave_Sharp.Core
             {
                 return CastStates.LowHitChance;
             }
+            if (!Program.Player.Spellbook.CastSpell(spell.Slot, pred.CastPosition))
+            {
+                return CastStates.NotCasted;
+            }
             spell.LastCastAttemptT = Variables.TickCount;
-            return Program.Player.Spellbook.CastSpell(spell.Slot, pred.CastPosition)
-                       ? CastStates.SuccessfullyCasted
-                       : CastStates.NotCasted;
+            return CastStates.SuccessfullyCasted;
         }
 
         internal static CastStates CastingBestTarget(

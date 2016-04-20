@@ -9,7 +9,7 @@
 
     using LeagueSharp;
     using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Core.Utils;
+    using LeagueSharp.SDK.Utils;
 
     using SharpDX;
 

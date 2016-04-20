@@ -8,14 +8,15 @@
     using System.Windows.Forms;
 
     using LeagueSharp;
+    using LeagueSharp.Data.Enumerations;
     using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Core.UI.IMenu.Values;
-    using LeagueSharp.SDK.Core.Utils;
-    using LeagueSharp.SDK.Core.Wrappers.Damages;
+    using LeagueSharp.SDK.Enumerations;
+    using LeagueSharp.SDK.UI;
+    using LeagueSharp.SDK.Utils;
 
     using Valvrave_Sharp.Core;
 
-    using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+    using Menu = LeagueSharp.SDK.UI.Menu;
 
     #endregion
 
@@ -139,6 +140,11 @@
 
         private static void Combo()
         {
+            if (MainMenu["Combo"]["R"] && R.IsReady() && Player.HealthPercent < MainMenu["Combo"]["RHpU"]
+                && Player.CountEnemyHeroesInRange(600) > 0 && R.Cast())
+            {
+                return;
+            }
             if (Q.IsReady())
             {
                 var target = Q.GetTarget(Q.Width / 2);

@@ -8,8 +8,9 @@
     using System.Text.RegularExpressions;
 
     using LeagueSharp;
+    using LeagueSharp.Data.Enumerations;
     using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Core.Utils;
+    using LeagueSharp.SDK.Utils;
 
     using SharpDX;
 
@@ -59,7 +60,7 @@
 
         public static FastPredResult FastPrediction(Vector2 from, Obj_AI_Base unit, int delay, int speed)
         {
-            var tDelay = delay / 1000f + unit.Distance(@from) / speed;
+            var tDelay = delay / 1000f + (Math.Abs(speed - int.MaxValue) > 0 ? unit.Distance(@from) / speed : 0);
             var d = tDelay * unit.MoveSpeed;
             var path = unit.GetWaypoints();
             if (path.PathLength() > d)
@@ -169,7 +170,11 @@
                                          + Math.Max(
                                              0,
                                              skillshot.SpellData.Delay - (Variables.TickCount - skillshot.StartTick))
-                                         + 100 + 1000 * intersection.Distance(@from) / skillshot.SpellData.MissileSpeed;
+                                         + 100
+                                         + 1000
+                                         * (Math.Abs(skillshot.SpellData.MissileSpeed - int.MaxValue) > 0
+                                                ? intersection.Distance(@from) / skillshot.SpellData.MissileSpeed
+                                                : 0);
                         if (collisionT - wallCastT < 4000)
                         {
                             if (skillshot.SpellData.Type != SkillShotType.SkillshotMissileLine)

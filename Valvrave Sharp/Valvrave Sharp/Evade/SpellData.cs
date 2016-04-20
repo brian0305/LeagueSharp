@@ -3,7 +3,7 @@
     #region
 
     using LeagueSharp;
-    using LeagueSharp.SDK;
+    using LeagueSharp.Data.Enumerations;
 
     #endregion
 

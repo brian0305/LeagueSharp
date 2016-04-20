@@ -7,10 +7,11 @@
     using System.Windows.Forms;
 
     using LeagueSharp.SDK;
+    using LeagueSharp.SDK.Enumerations;
 
     using Valvrave_Sharp.Core;
 
-    using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+    using Menu = LeagueSharp.SDK.UI.Menu;
 
     #endregion
 

@@ -7,7 +7,7 @@ namespace Valvrave_Sharp.Evade
     using System.Linq;
 
     using LeagueSharp;
-    using LeagueSharp.SDK;
+    using LeagueSharp.Data.Enumerations;
 
     #endregion
 

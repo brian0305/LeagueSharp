@@ -8,11 +8,12 @@
     using System.Windows.Forms;
 
     using LeagueSharp;
+    using LeagueSharp.Data.Enumerations;
     using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Core.UI.IMenu.Values;
-    using LeagueSharp.SDK.Core.Utils;
-    using LeagueSharp.SDK.Core.Wrappers.Damages;
-    using LeagueSharp.SDK.Modes;
+    using LeagueSharp.SDK.Enumerations;
+    using LeagueSharp.SDK.TSModes;
+    using LeagueSharp.SDK.UI;
+    using LeagueSharp.SDK.Utils;
 
     using SharpDX;
 
@@ -20,7 +21,7 @@
     using Valvrave_Sharp.Evade;
 
     using Color = System.Drawing.Color;
-    using Menu = LeagueSharp.SDK.Core.UI.IMenu.Menu;
+    using Menu = LeagueSharp.SDK.UI.Menu;
     using Skillshot = Valvrave_Sharp.Evade.Skillshot;
 
     #endregion
@@ -430,7 +431,7 @@
             {
                 return spell.Cast(pred.CastPosition);
             }
-            var subDmg = Q.GetDamage(target, Damage.DamageStage.SecondForm);
+            var subDmg = Q.GetDamage(target, DamageStage.SecondForm);
             if (target is Obj_AI_Hero && target.Health + target.PhysicalShield <= subDmg)
             {
                 return spell.Cast(pred.CastPosition);

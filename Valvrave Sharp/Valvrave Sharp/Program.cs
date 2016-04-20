@@ -11,7 +11,7 @@
 
     using LeagueSharp;
     using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Core.UI.IMenu;
+    using LeagueSharp.SDK.UI;
 
     using Valvrave_Sharp.Core;
     using Valvrave_Sharp.Plugin;

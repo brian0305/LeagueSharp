@@ -902,11 +902,8 @@
                 {
                     var minion =
                         GameObjects.EnemyMinions.Where(
-                            i =>
-                            (i.IsMinion() || i.IsPet(false)) && i.IsValidTarget(485) && Q.CanLastHit(i, GetQDmg(i))
-                            && (i.IsUnderAllyTurret() || (i.IsUnderEnemyTurret() && !Player.IsUnderEnemyTurret())
-                                || i.DistanceToPlayer() > i.GetRealAutoAttackRange() + 50
-                                || i.Health > Player.GetAutoAttackDamage(i))).MaxOrDefault(i => i.MaxHealth);
+                            i => (i.IsMinion() || i.IsPet(false)) && i.IsValidTarget(485) && Q.CanLastHit(i, GetQDmg(i)))
+                            .MaxOrDefault(i => i.MaxHealth);
                     if (minion != null && Q.Casting(minion).IsCasted())
                     {
                         return;
@@ -918,10 +915,7 @@
                         GameObjects.EnemyMinions.Where(
                             i =>
                             (i.IsMinion() || i.IsPet(false)) && i.IsValidTarget(Q2.Range - i.BoundingRadius / 2)
-                            && Q2.CanLastHit(i, GetQDmg(i))
-                            && (i.IsUnderAllyTurret() || (i.IsUnderEnemyTurret() && !Player.IsUnderEnemyTurret())
-                                || i.DistanceToPlayer() > i.GetRealAutoAttackRange() + 50
-                                || i.Health > Player.GetAutoAttackDamage(i))).MaxOrDefault(i => i.MaxHealth);
+                            && Q2.CanLastHit(i, GetQDmg(i))).MaxOrDefault(i => i.MaxHealth);
                     if (minion != null && Q2.Casting(minion, false, CollisionableObjects.YasuoWall).IsCasted())
                     {
                         return;

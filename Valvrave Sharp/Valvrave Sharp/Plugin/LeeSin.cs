@@ -765,11 +765,9 @@
             }
             var minions =
                 GameObjects.EnemyMinions.Where(
-                    i =>
-                    (i.IsMinion() || i.IsPet(false)) && i.IsValidTarget(Q.Range) && Q.CanLastHit(i, Q.GetDamage(i))
-                    && (i.IsUnderAllyTurret() || (i.IsUnderEnemyTurret() && !Player.IsUnderEnemyTurret())
-                        || i.DistanceToPlayer() > i.GetRealAutoAttackRange() + 50
-                        || i.Health > Player.GetAutoAttackDamage(i))).OrderByDescending(i => i.MaxHealth).ToList();
+                    i => (i.IsMinion() || i.IsPet(false)) && i.IsValidTarget(Q.Range) && Q.CanLastHit(i, Q.GetDamage(i)))
+                    .OrderByDescending(i => i.MaxHealth)
+                    .ToList();
             if (minions.Count == 0)
             {
                 return;

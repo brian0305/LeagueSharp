@@ -1208,7 +1208,7 @@
                 if (R.IsInRange(target))
                 {
                     var posEnd = GetPositionKickTo(target);
-                    var posTarget = target.Position;
+                    var posTarget = target.ServerPosition;
                     var posPlayer = Player.Position;
                     if (posPlayer.Distance(posEnd) > posTarget.Distance(posEnd))
                     {

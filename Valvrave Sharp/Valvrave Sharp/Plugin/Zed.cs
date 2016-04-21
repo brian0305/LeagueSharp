@@ -701,14 +701,14 @@
                     {
                         if (CastQKill(Q, target))
                         {
-                            break;
+                            return;
                         }
                         if (WShadowCanQ)
                         {
                             Q3.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
                             if (CastQKill(Q3, target))
                             {
-                                break;
+                                return;
                             }
                         }
                         else if (IsCastingW)
@@ -716,7 +716,7 @@
                             Q3.UpdateSourcePosition(wMissile.EndPosition, wMissile.EndPosition);
                             if (CastQKill(Q3, target))
                             {
-                                break;
+                                return;
                             }
                         }
                         if (RShadowCanQ)
@@ -748,13 +748,7 @@
             {
                 return;
             }
-            foreach (var minion in minions)
-            {
-                if (CastQKill(Q, minion))
-                {
-                    break;
-                }
-            }
+            minions.ForEach(i => CastQKill(Q, i));
         }
 
         private static void OnDraw(EventArgs args)

@@ -701,13 +701,7 @@
                             }
                             if (minionJungle.Count > 0)
                             {
-                                foreach (var minion in minionJungle)
-                                {
-                                    if (Q.Casting(minion).IsCasted())
-                                    {
-                                        break;
-                                    }
-                                }
+                                minionJungle.ForEach(i => Q.Casting(i));
                             }
                             else
                             {
@@ -718,25 +712,26 @@
                                         .ThenBy(i => i.Health)
                                         .ThenByDescending(i => i.MaxHealth)
                                         .ToList();
-                                if (minionLane.Count > 0)
+                                if (minionLane.Count == 0)
                                 {
-                                    foreach (var minion in minionLane)
+                                    return;
+                                }
+                                foreach (var minion in minionLane)
+                                {
+                                    if (minion.InAutoAttackRange())
                                     {
-                                        if (minion.InAutoAttackRange())
+                                        if (Q.GetHealthPrediction(minion) > Q.GetDamage(minion)
+                                            && Q.Casting(minion).IsCasted())
                                         {
-                                            if (Q.GetHealthPrediction(minion) > Q.GetDamage(minion)
-                                                && Q.Casting(minion).IsCasted())
-                                            {
-                                                break;
-                                            }
+                                            return;
                                         }
-                                        else if ((Variables.Orbwalker.GetTarget() != null
-                                                      ? Q.CanLastHit(minion, Q.GetDamage(minion))
-                                                      : Q.GetHealthPrediction(minion) > Q.GetDamage(minion))
-                                                 && Q.Casting(minion).IsCasted())
-                                        {
-                                            break;
-                                        }
+                                    }
+                                    else if ((Variables.Orbwalker.GetTarget() != null
+                                                  ? Q.CanLastHit(minion, Q.GetDamage(minion))
+                                                  : Q.GetHealthPrediction(minion) > Q.GetDamage(minion))
+                                             && Q.Casting(minion).IsCasted())
+                                    {
+                                        return;
                                     }
                                 }
                             }
@@ -772,18 +767,12 @@
             {
                 return;
             }
-            foreach (var minion in minions)
-            {
-                if (
-                    Q.Casting(
-                        minion,
-                        false,
-                        CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall)
-                        .IsCasted())
-                {
-                    break;
-                }
-            }
+            minions.ForEach(
+                i =>
+                Q.Casting(
+                    i,
+                    false,
+                    CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall));
         }
 
         private static void OnDraw(EventArgs args)
@@ -1353,13 +1342,7 @@
                     {
                         return;
                     }
-                    foreach (var obj in nearObj)
-                    {
-                        if (Q.Casting(obj).IsCasted())
-                        {
-                            break;
-                        }
-                    }
+                    nearObj.ForEach(i => Q.Casting(i));
                 }
                 else if (target.DistanceToPlayer() > minDist
                          && (HaveQ(target) || (objQ.IsValidTarget(Q2.Range) && target.Distance(objQ) < minDist - 50))

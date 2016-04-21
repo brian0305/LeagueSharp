@@ -244,18 +244,12 @@
             {
                 return;
             }
-            foreach (var minion in minions)
-            {
-                if (
-                    Q.Casting(
-                        minion,
-                        false,
-                        CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall)
-                        .IsCasted())
-                {
-                    break;
-                }
-            }
+            minions.ForEach(
+                i =>
+                Q.Casting(
+                    i,
+                    false,
+                    CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall));
         }
 
         private static void OnAction(object sender, OrbwalkingActionArgs args)

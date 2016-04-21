@@ -51,10 +51,10 @@
 
         public LeeSin()
         {
-            Q = new Spell(SpellSlot.Q, 1100).SetSkillshot(0.275f, 60, 1850, true, SkillshotType.SkillshotLine);
+            Q = new Spell(SpellSlot.Q, 1100).SetSkillshot(0.265f, 60, 1850, true, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, 1300);
             W = new Spell(SpellSlot.W, 700);
-            E = new Spell(SpellSlot.E, 425).SetTargetted(0.275f, float.MaxValue);
+            E = new Spell(SpellSlot.E, 425).SetTargetted(0.265f, float.MaxValue);
             E2 = new Spell(E.Slot, 570);
             R = new Spell(SpellSlot.R, 375);
             R2 = new Spell(R.Slot).SetSkillshot(0.325f, 0, 950, false, Q.Type);
@@ -484,7 +484,7 @@
                 return;
             }
             var posPlayer = Player.ServerPosition;
-            var posJump = pos.Distance(posPlayer) <= W.Range ? pos : posPlayer.Extend(pos, W.Range);
+            var posJump = pos.Distance(posPlayer) < W.Range ? pos : posPlayer.Extend(pos, W.Range);
             var objJump =
                 GameObjects.AllyHeroes.Where(i => !i.IsMe)
                     .Cast<Obj_AI_Base>()
@@ -521,7 +521,7 @@
                 var posTarget = targetKick.ServerPosition;
                 R2.Width = targetKick.BoundingRadius;
                 R2.Range = RKickRange + R2.Width / 2;
-                R2.UpdateSourcePosition(posTarget);
+                R2.UpdateSourcePosition(posTarget, posTarget);
                 var targetHits =
                     GameObjects.EnemyHeroes.Where(
                         i => i.IsValidTarget(R2.Range, true, R2.From) && !i.Compare(targetKick) && !i.IsZombie).ToList();
@@ -673,6 +673,10 @@
             {
                 CastELaneClear(minions);
             }
+            if (MainMenu["LaneClear"]["W"])
+            {
+                CastW(false, minions);
+            }
             if (MainMenu["LaneClear"]["Q"] && Q.IsReady())
             {
                 if (IsQOne)
@@ -748,13 +752,8 @@
                         && Q2.Cast())
                     {
                         isDashing = true;
-                        return;
                     }
                 }
-            }
-            if (MainMenu["LaneClear"]["W"])
-            {
-                CastW(false, minions);
             }
         }
 
@@ -932,7 +931,7 @@
             {
                 R.CastOnUnit(target);
             }
-            else if (target.DistanceToPlayer() < WardManager.WardRange + R.Range - 50 && Player.Mana >= 70)
+            else if (target.DistanceToPlayer() < WardManager.WardRange + R.Range - 50 && Player.Mana >= 70 && !isDashing)
             {
                 Flee(target.ServerPosition, true);
             }
@@ -1174,7 +1173,7 @@
                         var target = Variables.TargetSelector.GetSelectedTarget();
                         if (target.IsValidTarget())
                         {
-                            DelayAction.Add(3, () => R.CastOnUnit(target));
+                            DelayAction.Add(1, () => R.CastOnUnit(target));
                         }
                     };
                 Obj_AI_Base.OnDoCast += (sender, args) =>
@@ -1207,6 +1206,22 @@
                 if (target == null || !CanInsec)
                 {
                     return;
+                }
+                if (R.IsInRange(target))
+                {
+                    var posEnd = GetPositionKickTo(target);
+                    var posTarget = target.Position;
+                    var posPlayer = Player.Position;
+                    if (posPlayer.Distance(posEnd) > posTarget.Distance(posEnd))
+                    {
+                        var project = posTarget.Extend(posPlayer, -RKickRange)
+                            .ProjectOn(posTarget, posEnd.Extend(posTarget, -(RKickRange * 0.5f)));
+                        if (project.IsOnSegment && project.SegmentPoint.Distance(posEnd) <= RKickRange * 0.5f
+                            && R.CastOnUnit(target))
+                        {
+                            return;
+                        }
+                    }
                 }
                 if (!IsRecent)
                 {
@@ -1241,22 +1256,6 @@
                     {
                         Variables.TargetSelector.SetTarget(target);
                         return;
-                    }
-                }
-                if (R.IsInRange(target))
-                {
-                    var posEnd = GetPositionKickTo(target);
-                    var posTarget = target.ServerPosition;
-                    var posPlayer = Player.ServerPosition;
-                    if (posPlayer.Distance(posEnd) > posTarget.Distance(posEnd))
-                    {
-                        var project = posTarget.Extend(posPlayer, -RKickRange)
-                            .ProjectOn(posTarget, posEnd.Extend(posTarget, -(RKickRange * 0.5f)));
-                        if (project.IsOnSegment && project.SegmentPoint.Distance(posEnd) <= RKickRange * 0.5f
-                            && R.CastOnUnit(target))
-                        {
-                            return;
-                        }
                     }
                 }
                 if (!IsDashing && (!CanWardFlash || !IsWardFlash))
@@ -1558,7 +1557,7 @@
                     return false;
                 }
                 var posPlayer = Player.ServerPosition;
-                var posPlace = pos.Distance(posPlayer) <= WardRange ? pos : posPlayer.Extend(pos, WardRange);
+                var posPlace = pos.Distance(posPlayer) < WardRange ? pos : posPlayer.Extend(pos, WardRange);
                 if (!Player.Spellbook.CastSpell(ward.SpellSlot, posPlace))
                 {
                     return false;

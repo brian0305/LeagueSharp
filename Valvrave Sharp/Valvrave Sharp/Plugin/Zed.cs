@@ -48,11 +48,11 @@
 
         public Zed()
         {
-            Q = new Spell(SpellSlot.Q, 925).SetSkillshot(0.275f, 50, 1700, true, SkillshotType.SkillshotLine);
+            Q = new Spell(SpellSlot.Q, 925).SetSkillshot(0.265f, 50, 1700, true, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
             Q3 = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
-            W = new Spell(SpellSlot.W, 700).SetTargetted(0, 1750);
-            E = new Spell(SpellSlot.E, 290).SetTargetted(0.001f, float.MaxValue);
+            W = new Spell(SpellSlot.W, 700).SetTargetted(0.01f, 1750);
+            E = new Spell(SpellSlot.E, 290).SetTargetted(0.005f, float.MaxValue);
             R = new Spell(SpellSlot.R, 625);
             Q.DamageType = W.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
             Q.MinHitChance = HitChance.VeryHigh;
@@ -217,9 +217,12 @@
             GameObject.OnCreate += (sender, args) =>
                 {
                     var missile = sender as MissileClient;
-                    if (missile != null && missile.SpellCaster.IsMe && missile.SData.Name == "ZedWMissile")
+                    if (missile != null)
                     {
-                        wMissile = missile;
+                        if (missile.SpellCaster.IsMe && missile.SData.Name == "ZedWMissile")
+                        {
+                            wMissile = missile;
+                        }
                         return;
                     }
                     if (sender.Name != "Zed_Base_R_buf_tell.troy")
@@ -342,15 +345,15 @@
             Q.CastingBestTarget(true, CollisionableObjects.YasuoWall);
         }
 
-        private static SpellSlot CanW(Obj_AI_Hero target, float dist = -1)
+        private static SpellSlot CanW(Obj_AI_Hero target)
         {
             if (E.IsReady() && Player.Mana >= E.Instance.ManaCost + W.Instance.ManaCost
-                && (dist > -1 ? dist : target.DistanceToPlayer()) < W.Range + E.Range)
+                && target.DistanceToPlayer() < W.Range + E.Range - 20)
             {
                 return SpellSlot.E;
             }
             if (Q.IsReady() && Player.Mana >= Q.Instance.ManaCost + W.Instance.ManaCost
-                && (dist > -1 ? dist : target.DistanceToPlayer()) < W.Range + Q.Range - 50)
+                && target.DistanceToPlayer() < W.Range + Q.Range)
             {
                 return SpellSlot.Q;
             }
@@ -384,36 +387,35 @@
             {
                 return;
             }
-            Q2.UpdateSourcePosition();
-            var pred = Q2.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
+            var pred = Q.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
             if (pred.Hitchance >= Q.MinHitChance)
             {
-                Q2.Cast(pred.CastPosition);
+                Q.Cast(pred.CastPosition);
             }
             else
             {
-                pred = null;
+                PredictionOutput predShadow = null;
                 if (WShadowCanQ)
                 {
-                    Q2.UpdateSourcePosition(wShadow.ServerPosition);
-                    pred = Q2.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
+                    Q2.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
+                    predShadow = Q2.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
                 }
                 else if (IsCastingW)
                 {
-                    Q2.UpdateSourcePosition(wMissile.EndPosition);
-                    pred = Q2.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
+                    Q2.UpdateSourcePosition(wMissile.EndPosition, wMissile.EndPosition);
+                    predShadow = Q2.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
                 }
-                if (pred != null && pred.Hitchance >= Q.MinHitChance)
+                if (predShadow != null && predShadow.Hitchance >= Q.MinHitChance)
                 {
-                    Q2.Cast(pred.CastPosition);
+                    Q.Cast(predShadow.CastPosition);
                 }
                 else if (RShadowCanQ)
                 {
-                    Q2.UpdateSourcePosition(rShadow.ServerPosition);
-                    pred = Q2.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
-                    if (pred.Hitchance >= Q.MinHitChance)
+                    Q2.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
+                    predShadow = Q2.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
+                    if (predShadow.Hitchance >= Q.MinHitChance)
                     {
-                        Q2.Cast(pred.CastPosition);
+                        Q.Cast(predShadow.CastPosition);
                     }
                 }
             }
@@ -429,19 +431,19 @@
             var col = pred.GetCollision(CollisionableObjects.Heroes | CollisionableObjects.Minions);
             if (col.Count == 0)
             {
-                return spell.Cast(pred.CastPosition);
+                return Q.Cast(pred.CastPosition);
             }
             var subDmg = Q.GetDamage(target, DamageStage.SecondForm);
             if (target is Obj_AI_Hero && target.Health + target.PhysicalShield <= subDmg)
             {
-                return spell.Cast(pred.CastPosition);
+                return Q.Cast(pred.CastPosition);
             }
-            return target is Obj_AI_Minion && spell.CanLastHit(target, subDmg) && spell.Cast(pred.CastPosition);
+            return target is Obj_AI_Minion && spell.CanLastHit(target, subDmg) && Q.Cast(pred.CastPosition);
         }
 
         private static void CastW(Obj_AI_Hero target, SpellSlot slot, bool isRCombo = false)
         {
-            if (slot == SpellSlot.Unknown || Variables.TickCount - lastW <= 500)
+            if (slot == SpellSlot.Unknown || Variables.TickCount - lastW <= 1000)
             {
                 return;
             }
@@ -697,14 +699,13 @@
                 {
                     foreach (var target in targets)
                     {
-                        Q3.UpdateSourcePosition();
-                        if (CastQKill(Q3, target))
+                        if (CastQKill(Q, target))
                         {
                             break;
                         }
                         if (WShadowCanQ)
                         {
-                            Q3.UpdateSourcePosition(wShadow.ServerPosition);
+                            Q3.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
                             if (CastQKill(Q3, target))
                             {
                                 break;
@@ -712,7 +713,7 @@
                         }
                         else if (IsCastingW)
                         {
-                            Q3.UpdateSourcePosition(wMissile.EndPosition);
+                            Q3.UpdateSourcePosition(wMissile.EndPosition, wMissile.EndPosition);
                             if (CastQKill(Q3, target))
                             {
                                 break;
@@ -720,7 +721,7 @@
                         }
                         if (RShadowCanQ)
                         {
-                            Q3.UpdateSourcePosition(rShadow.ServerPosition);
+                            Q3.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
                             CastQKill(Q3, target);
                         }
                     }

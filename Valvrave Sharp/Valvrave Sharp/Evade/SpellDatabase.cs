@@ -1513,21 +1513,6 @@ namespace Valvrave_Sharp.Evade
 
             #endregion Quinn
 
-            #region Rengar
-
-            Spells.Add(
-                new SpellData
-                    {
-                        ChampionName = "Rengar", SpellName = "RengarE", Slot = SpellSlot.E,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1000, Radius = 70,
-                        MissileSpeed = 1500, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
-                        MissileSpellName = "RengarEFinal", CanBeRemoved = true,
-                        CollisionObjects =
-                            CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall
-                    });
-
-            #endregion Rengar
-
             #region RekSai
 
             Spells.Add(
@@ -1542,6 +1527,21 @@ namespace Valvrave_Sharp.Evade
                     });
 
             #endregion RekSai
+
+            #region Rengar
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "Rengar", SpellName = "RengarE", Slot = SpellSlot.E,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1000, Radius = 70,
+                        MissileSpeed = 1500, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
+                        MissileSpellName = "RengarEFinal", CanBeRemoved = true,
+                        CollisionObjects =
+                            CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall
+                    });
+
+            #endregion Rengar
 
             #region Riven
 
@@ -1626,41 +1626,6 @@ namespace Valvrave_Sharp.Evade
 
             #endregion Sejuani
 
-            #region Sion
-
-            Spells.Add(
-                new SpellData
-                    {
-                        ChampionName = "Sion", SpellName = "SionE", Slot = SpellSlot.E,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 800, Radius = 80,
-                        MissileSpeed = 1800, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
-                        MissileSpellName = "SionEMissile",
-                        CollisionObjects = CollisionableObjects.Heroes | CollisionableObjects.YasuoWall
-                    });
-
-            Spells.Add(
-                new SpellData
-                    {
-                        ChampionName = "Sion", SpellName = "SionR", Slot = SpellSlot.R,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 500, Range = 800, Radius = 120,
-                        MissileSpeed = 1000, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
-                        CollisionObjects = CollisionableObjects.Heroes
-                    });
-
-            #endregion Sion
-
-            #region Soraka
-
-            Spells.Add(
-                new SpellData
-                    {
-                        ChampionName = "Soraka", SpellName = "SorakaQ", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotCircle, Delay = 500, Range = 800, Radius = 235, MissileSpeed = 1750,
-                        AddHitbox = true, DangerValue = 2, CollisionObjects = CollisionableObjects.YasuoWall
-                    });
-
-            #endregion Soraka
-
             #region Shen
 
             Spells.Add(
@@ -1705,6 +1670,29 @@ namespace Valvrave_Sharp.Evade
                     });
 
             #endregion Shyvana
+
+            #region Sion
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "Sion", SpellName = "SionE", Slot = SpellSlot.E,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 800, Radius = 80,
+                        MissileSpeed = 1800, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
+                        MissileSpellName = "SionEMissile",
+                        CollisionObjects = CollisionableObjects.Heroes | CollisionableObjects.YasuoWall
+                    });
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "Sion", SpellName = "SionR", Slot = SpellSlot.R,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 500, Range = 800, Radius = 120,
+                        MissileSpeed = 1000, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
+                        CollisionObjects = CollisionableObjects.Heroes
+                    });
+
+            #endregion Sion
 
             #region Sivir
 
@@ -1753,6 +1741,18 @@ namespace Valvrave_Sharp.Evade
                     });
 
             #endregion Sona
+
+            #region Soraka
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "Soraka", SpellName = "SorakaQ", Slot = SpellSlot.Q,
+                        Type = SkillShotType.SkillshotCircle, Delay = 500, Range = 800, Radius = 235, MissileSpeed = 1750,
+                        AddHitbox = true, DangerValue = 2, CollisionObjects = CollisionableObjects.YasuoWall
+                    });
+
+            #endregion Soraka
 
             #region Swain
 
@@ -1805,6 +1805,21 @@ namespace Valvrave_Sharp.Evade
 
             #endregion Syndra
 
+            #region Tahm Kench
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "TahmKench", SpellName = "TahmKenchQ", Slot = SpellSlot.Q,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 951, Radius = 70,
+                        MissileSpeed = 2800, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
+                        MissileSpellName = "tahmkenchqmissile", CanBeRemoved = true,
+                        CollisionObjects =
+                            CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall
+                    });
+
+            #endregion Tahm Kench
+
             #region Talon
 
             Spells.Add(
@@ -1827,22 +1842,20 @@ namespace Valvrave_Sharp.Evade
                         MissileSpellName = "talonrakemissiletwo", CollisionObjects = CollisionableObjects.YasuoWall
                     });
 
-            #endregion Riven
+            #endregion Talon
 
-            #region Tahm Kench
+            #region Taric
 
             Spells.Add(
                 new SpellData
                     {
-                        ChampionName = "TahmKench", SpellName = "TahmKenchQ", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 951, Radius = 70,
-                        MissileSpeed = 2800, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
-                        MissileSpellName = "tahmkenchqmissile", CanBeRemoved = true,
-                        CollisionObjects =
-                            CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall
+                        ChampionName = "Taric", SpellName = "TaricE", Slot = SpellSlot.E,
+                        Type = SkillShotType.SkillshotLine, Delay = 1000, Range = 750, Radius = 100,
+                        MissileSpeed = int.MaxValue, FixedRange = true, AddHitbox = true, DangerValue = 3,
+                        IsDangerous = true, MissileSpellName = "TaricE", CollisionObjects = CollisionableObjects.YasuoWall
                     });
 
-            #endregion Tahm Kench
+            #endregion Taric
 
             #region Thresh
 

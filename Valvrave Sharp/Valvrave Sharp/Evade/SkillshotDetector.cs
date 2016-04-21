@@ -45,6 +45,7 @@
                         Variables.TickCount - Game.Ping / 2,
                         sender.Position.ToVector2(),
                         sender.Position.ToVector2(),
+                        sender.Position.ToVector2(),
                         GameObjects.Heroes.MinOrDefault(i => i.IsAlly ? 1 : 0));
                 };
             GameObject.OnDelete += (sender, args) =>
@@ -156,7 +157,15 @@
             }
             var castTime = Variables.TickCount - Game.Ping / 2 - (spellData.MissileDelayed ? 0 : spellData.Delay)
                            - (int)(1000f * missilePosition.Distance(unitPosition) / spellData.MissileSpeed);
-            TriggerOnDetectSkillshot(DetectionType.RecvPacket, spellData, castTime, unitPosition, endPos, unit, missile);
+            TriggerOnDetectSkillshot(
+                DetectionType.RecvPacket,
+                spellData,
+                castTime,
+                unitPosition,
+                endPos,
+                endPos,
+                unit,
+                missile);
         }
 
         private static void MissileOnDelete(GameObject sender, EventArgs args)
@@ -234,6 +243,7 @@
                         Variables.TickCount - Game.Ping / 2,
                         start,
                         end,
+                        end,
                         unit);
                 }
             }
@@ -263,6 +273,7 @@
                 Variables.TickCount - Game.Ping / 2,
                 startPos,
                 endPos,
+                args.End.ToVector2(),
                 unit);
         }
 
@@ -272,10 +283,12 @@
             int startT,
             Vector2 start,
             Vector2 end,
+            Vector2 originalEnd,
             Obj_AI_Base unit,
             MissileClient missile = null)
         {
-            OnDetectSkillshot?.Invoke(new Skillshot(detectionType, spellData, startT, start, end, unit, missile));
+            OnDetectSkillshot?.Invoke(
+                new Skillshot(detectionType, spellData, startT, start, end, unit, missile) { OriginalEnd = originalEnd });
         }
 
         #endregion

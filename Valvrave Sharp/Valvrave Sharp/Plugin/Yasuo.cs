@@ -58,8 +58,8 @@
             Q2 = new Spell(Q.Slot, 1100).SetSkillshot(Q.Delay, 90, 1250, true, Q.Type);
             Q3 = new Spell(Q.Slot, 250).SetTargetted(0.01f, float.MaxValue);
             W = new Spell(SpellSlot.W, 400);
-            E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1000);
-            E2 = new Spell(Q.Slot).SetTargetted(Q3.Delay, E.Speed);
+            E = new Spell(SpellSlot.E, 475).SetTargetted(0.01f, 1250);
+            E2 = new Spell(Q.Slot).SetTargetted(E.Delay + Q3.Delay, E.Speed);
             R = new Spell(SpellSlot.R, 1200);
             Q.DamageType = Q2.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
@@ -182,7 +182,7 @@
                             Q2.Delay = qDelay;
                         }
                     }
-                    var eSpeed = 1000 + (Player.MoveSpeed - 345);
+                    var eSpeed = 1250 + (Player.MoveSpeed - 345);
                     if (!E.Speed.Equals(eSpeed))
                     {
                         E.Speed = E2.Speed = eSpeed;
@@ -683,7 +683,8 @@
                 {
                     return;
                 }
-                if (state == CastStates.InvalidTarget && MainMenu["Hybrid"]["QLastHit"] && Q.GetTarget(100) == null)
+                if (state == CastStates.InvalidTarget && MainMenu["Hybrid"]["QLastHit"] && Q.GetTarget(100) == null
+                    && !Player.Spellbook.IsAutoAttacking)
                 {
                     var minion =
                         GameObjects.EnemyMinions.Where(
@@ -790,7 +791,7 @@
         {
             var useQ = MainMenu["LaneClear"]["Q"];
             var useQ3 = MainMenu["LaneClear"]["Q3"];
-            if (MainMenu["LaneClear"]["E"] && E.IsReady() && !Player.IsWindingUp)
+            if (MainMenu["LaneClear"]["E"] && E.IsReady())
             {
                 var minions =
                     GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet(false))
@@ -934,10 +935,8 @@
                         i =>
                         (i.IsMinion() || i.IsPet(false)) && i.IsValidTarget(E.Range) && !HaveE(i)
                         && E.CanLastHit(i, GetEDmg(i)) && Evade.IsSafePoint(GetPosAfterDash(i).ToVector2()).IsSafe
-                        && (!GetPosAfterDash(i).IsUnderEnemyTurret() || MainMenu["LastHit"]["ETower"])
-                        && (i.IsUnderAllyTurret() || (i.IsUnderEnemyTurret() && !Player.IsUnderEnemyTurret())
-                            || i.DistanceToPlayer() > i.GetRealAutoAttackRange() + 50
-                            || i.Health > Player.GetAutoAttackDamage(i))).MaxOrDefault(i => i.MaxHealth);
+                        && (!GetPosAfterDash(i).IsUnderEnemyTurret() || MainMenu["LastHit"]["ETower"]))
+                        .MaxOrDefault(i => i.MaxHealth);
                 if (minion != null && E.CastOnUnit(minion))
                 {
                     lastE = Variables.TickCount;
@@ -1283,8 +1282,6 @@
                     new SpellData { ChampionName = "Swain", SpellNames = new[] { "swaintorment" }, Slot = SpellSlot.E });
                 Spells.Add(
                     new SpellData { ChampionName = "Syndra", SpellNames = new[] { "syndrar" }, Slot = SpellSlot.R });
-                Spells.Add(
-                    new SpellData { ChampionName = "Taric", SpellNames = new[] { "dazzle" }, Slot = SpellSlot.E });
                 Spells.Add(
                     new SpellData { ChampionName = "Teemo", SpellNames = new[] { "blindingdart" }, Slot = SpellSlot.Q });
                 Spells.Add(

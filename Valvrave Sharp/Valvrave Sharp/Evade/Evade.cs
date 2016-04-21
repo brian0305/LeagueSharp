@@ -285,6 +285,30 @@
                             skillshot.Unit));
                     return;
                 }
+                if (skillshot.SpellData.SpellName == "TaricE")
+                {
+                    var source = skillshot.Unit as Obj_AI_Hero;
+                    if (source != null && source.ChampionName == "Taric")
+                    {
+                        var target =
+                            GameObjects.Heroes.FirstOrDefault(
+                                h => h.Team == source.Team && h.HasBuff("taricwleashactive"));
+                        if (target != null)
+                        {
+                            var start = target.ServerPosition.ToVector2();
+                            var direction = (skillshot.OriginalEnd - start).Normalized();
+                            var end = start + direction * skillshot.SpellData.Range;
+                            DetectedSkillshots.Add(
+                                new Skillshot(
+                                    skillshot.DetectionType,
+                                    skillshot.SpellData,
+                                    skillshot.StartTick,
+                                    start,
+                                    end,
+                                    target) { OriginalEnd = skillshot.OriginalEnd });
+                        }
+                    }
+                }
                 if (skillshot.SpellData.SpellName == "SyndraE" || skillshot.SpellData.SpellName == "syndrae5")
                 {
                     const int Angle = 60;

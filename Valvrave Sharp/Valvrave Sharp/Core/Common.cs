@@ -119,7 +119,7 @@ namespace Valvrave_Sharp.Core
         internal static Vector3 GetPredPosition(this Spell spell, Obj_AI_Base unit, bool useRange = false)
         {
             var pos = Movement.GetPrediction(unit, spell.Delay, 1, spell.Speed).UnitPosition;
-            return useRange && spell.From.Distance(pos) > spell.Range ? unit.ServerPosition : pos;
+            return useRange && spell.From.Distance(pos) >= spell.Range ? unit.ServerPosition : pos;
         }
 
         internal static bool IsCasted(this CastStates state)

@@ -113,6 +113,8 @@
 
         public MissileClient Missile;
 
+        public Vector2 OriginalEnd;
+
         public Geometry.Polygon Polygon;
 
         public Geometry.Rectangle Rectangle;
@@ -543,6 +545,13 @@
             {
                 this.End = this.Unit.ServerPosition.ToVector2();
                 this.Direction = (this.End - this.Start).Normalized();
+                this.UpdatePolygon();
+            }
+            if (this.SpellData.SpellName == "TaricE")
+            {
+                this.Start = this.Unit.ServerPosition.ToVector2();
+                this.End = this.Start + this.Direction * this.SpellData.Range;
+                this.Rectangle = new Geometry.Rectangle(this.Start, this.End, this.SpellData.Radius);
                 this.UpdatePolygon();
             }
             if (this.SpellData.SpellName == "SionR")

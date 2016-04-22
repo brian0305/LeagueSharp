@@ -52,7 +52,7 @@
             Q2 = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
             Q3 = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
             W = new Spell(SpellSlot.W, 700).SetTargetted(0.01f, 1750);
-            E = new Spell(SpellSlot.E, 290).SetTargetted(0.005f, float.MaxValue);
+            E = new Spell(SpellSlot.E, 290).SetTargetted(0.001f, float.MaxValue);
             R = new Spell(SpellSlot.R, 625);
             Q.DamageType = W.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
             Q.MinHitChance = HitChance.VeryHigh;

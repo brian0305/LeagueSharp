@@ -860,7 +860,6 @@
                             .Concat(GameObjects.Jungle)
                             .Where(i => i.IsValidTarget(!haveQ3 ? 485 : Q2.Range - i.BoundingRadius / 2))
                             .OrderByDescending(i => i.MaxHealth)
-                            .Cast<Obj_AI_Base>()
                             .ToList();
                     if (minions.Count == 0)
                     {

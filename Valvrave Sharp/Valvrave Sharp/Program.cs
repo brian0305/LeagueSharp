@@ -130,6 +130,7 @@
             {
                 return;
             }
+			Bootstrap.Init(args);
             Events.OnLoad += (sender, eventArgs) =>
                 {
                     Player = GameObjects.Player;

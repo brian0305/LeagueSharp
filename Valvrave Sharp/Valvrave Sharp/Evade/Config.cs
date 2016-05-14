@@ -6,12 +6,12 @@
     using System.Linq;
     using System.Windows.Forms;
 
-    using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Enumerations;
+    using LeagueSharp.SDKEx;
+    using LeagueSharp.SDKEx.Enumerations;
 
     using Valvrave_Sharp.Core;
 
-    using Menu = LeagueSharp.SDK.UI.Menu;
+    using Menu = LeagueSharp.SDKEx.UI.Menu;
 
     #endregion
 

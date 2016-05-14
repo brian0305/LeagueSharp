@@ -10,8 +10,8 @@
     using System.Text.RegularExpressions;
 
     using LeagueSharp;
-    using LeagueSharp.SDK;
-    using LeagueSharp.SDK.UI;
+    using LeagueSharp.SDKEx;
+    using LeagueSharp.SDKEx.UI;
 
     using Valvrave_Sharp.Core;
     using Valvrave_Sharp.Plugin;

@@ -8,9 +8,9 @@
 
     using LeagueSharp;
     using LeagueSharp.Data.Enumerations;
-    using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Polygons;
-    using LeagueSharp.SDK.Utils;
+    using LeagueSharp.SDKEx;
+    using LeagueSharp.SDKEx.Polygons;
+    using LeagueSharp.SDKEx.Utils;
 
     using SharpDX;
 

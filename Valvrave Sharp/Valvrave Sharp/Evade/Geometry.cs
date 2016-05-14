@@ -7,9 +7,9 @@
     using System.Linq;
 
     using LeagueSharp;
-    using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Clipper;
-    using LeagueSharp.SDK.Utils;
+    using LeagueSharp.SDKEx;
+    using LeagueSharp.SDKEx.Clipper;
+    using LeagueSharp.SDKEx.Utils;
 
     using SharpDX;
 

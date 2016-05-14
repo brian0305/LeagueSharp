@@ -7,13 +7,13 @@ namespace Valvrave_Sharp.Core
 
     using LeagueSharp;
     using LeagueSharp.Data.Enumerations;
-    using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Enumerations;
-    using LeagueSharp.SDK.Utils;
+    using LeagueSharp.SDKEx;
+    using LeagueSharp.SDKEx.Enumerations;
+    using LeagueSharp.SDKEx.Utils;
 
     using SharpDX;
 
-    using Collision = LeagueSharp.SDK.Collision;
+    using Collision = LeagueSharp.SDKEx.Collision;
 
     #endregion
 

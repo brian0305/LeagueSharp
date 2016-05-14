@@ -52,16 +52,16 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="clipper_library">
-      <HintPath>E:\Project\League Sharp\System\clipper_library.dll</HintPath>
+      <HintPath>C:\L\System\clipper_library.dll</HintPath>
     </Reference>
     <Reference Include="LeagueSharp">
-      <HintPath>E:\Project\League Sharp\System\LeagueSharp.dll</HintPath>
+      <HintPath>C:\L\System\LeagueSharp.dll</HintPath>
     </Reference>
     <Reference Include="LeagueSharp.Common">
-      <HintPath>E:\Project\League Sharp\System\LeagueSharp.Common.dll</HintPath>
+      <HintPath>C:\L\System\LeagueSharp.Common.dll</HintPath>
     </Reference>
     <Reference Include="SharpDX">
-      <HintPath>E:\Project\League Sharp\System\SharpDX.dll</HintPath>
+      <HintPath>C:\L\System\SharpDX.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

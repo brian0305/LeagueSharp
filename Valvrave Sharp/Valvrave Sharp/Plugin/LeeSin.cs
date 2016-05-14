@@ -9,18 +9,18 @@
 
     using LeagueSharp;
     using LeagueSharp.Data.Enumerations;
-    using LeagueSharp.SDK;
-    using LeagueSharp.SDK.Enumerations;
-    using LeagueSharp.SDK.TSModes;
-    using LeagueSharp.SDK.UI;
-    using LeagueSharp.SDK.Utils;
+    using LeagueSharp.SDKEx;
+    using LeagueSharp.SDKEx.Enumerations;
+    using LeagueSharp.SDKEx.TSModes;
+    using LeagueSharp.SDKEx.UI;
+    using LeagueSharp.SDKEx.Utils;
 
     using SharpDX;
 
     using Valvrave_Sharp.Core;
 
     using Color = System.Drawing.Color;
-    using Menu = LeagueSharp.SDK.UI.Menu;
+    using Menu = LeagueSharp.SDKEx.UI.Menu;
 
     #endregion
 

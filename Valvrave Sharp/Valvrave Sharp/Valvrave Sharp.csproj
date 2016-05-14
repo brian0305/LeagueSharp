@@ -52,16 +52,16 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="LeagueSharp">
-      <HintPath>E:\Project\LeagueSharp\Loader\System\LeagueSharp.dll</HintPath>
+      <HintPath>F:\Project\LeagueSharp\Loader\System\LeagueSharp.dll</HintPath>
     </Reference>
     <Reference Include="LeagueSharp.Data">
-      <HintPath>E:\Project\LeagueSharp\Loader\System\LeagueSharp.Data.dll</HintPath>
+      <HintPath>F:\Project\LeagueSharp\Loader\System\LeagueSharp.Data.dll</HintPath>
     </Reference>
     <Reference Include="LeagueSharp.SDK">
-      <HintPath>E:\Project\LeagueSharp\Loader\System\LeagueSharp.SDK.dll</HintPath>
+      <HintPath>F:\Project\LeagueSharp\Loader\System\LeagueSharp.SDK.dll</HintPath>
     </Reference>
     <Reference Include="SharpDX">
-      <HintPath>E:\Project\LeagueSharp\Loader\System\SharpDX.dll</HintPath>
+      <HintPath>F:\Project\LeagueSharp\Loader\System\SharpDX.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -90,7 +90,6 @@
     <Compile Include="Plugin\DrMundo.cs" />
     <Compile Include="Plugin\Kennen.cs" />
     <Compile Include="Plugin\LeeSin.cs" />
-    <Compile Include="Plugin\Lucian.cs" />
     <Compile Include="Plugin\Yasuo.cs" />
     <Compile Include="Plugin\Zed.cs" />
     <Compile Include="Program.cs" />

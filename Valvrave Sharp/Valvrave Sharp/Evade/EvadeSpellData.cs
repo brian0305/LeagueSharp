@@ -6,7 +6,7 @@
 
     #endregion
 
-    public enum SpellValidTargets
+    internal enum SpellValidTargets
     {
         AllyMinions,
 
@@ -25,49 +25,49 @@
     {
         #region Fields
 
-        public bool CanShieldAllies;
+        internal bool CanShieldAllies;
 
-        public string CheckBuffName = "";
+        internal string CheckBuffName = "";
 
-        public string CheckSpellName = "";
+        internal string CheckSpellName = "";
 
-        public int Delay;
+        internal int Delay;
 
-        public bool ExtraDelay;
+        internal bool ExtraDelay;
 
-        public bool FixedRange;
+        internal bool FixedRange;
 
-        public bool Invert;
+        internal bool Invert;
 
-        public bool IsBlink;
+        internal bool IsBlink;
 
-        public bool IsDash;
+        internal bool IsDash;
 
-        public bool IsInvulnerability;
+        internal bool IsInvulnerability;
 
-        public bool IsMovementSpeedBuff;
+        internal bool IsMovementSpeedBuff;
 
-        public bool IsShield;
+        internal bool IsShield;
 
-        public bool IsSpellShield;
+        internal bool IsSpellShield;
 
-        public MoveSpeedAmount MoveSpeedTotalAmount;
+        internal MoveSpeedAmount MoveSpeedTotalAmount;
 
-        public string Name;
+        internal string Name;
 
-        public float Range;
+        internal float Range;
 
-        public bool RequiresPreMove;
+        internal bool RequiresPreMove;
 
-        public bool SelfCast;
+        internal bool SelfCast;
 
-        public SpellSlot Slot;
+        internal SpellSlot Slot;
 
-        public int Speed;
+        internal int Speed;
 
-        public bool UnderTower;
+        internal bool UnderTower;
 
-        public SpellValidTargets[] ValidTargets;
+        internal SpellValidTargets[] ValidTargets;
 
         private int dangerLevel;
 
@@ -75,13 +75,13 @@
 
         #region Delegates
 
-        public delegate float MoveSpeedAmount();
+        internal delegate float MoveSpeedAmount();
 
         #endregion
 
-        #region Public Properties
+        #region Properties
 
-        public int DangerLevel
+        internal int DangerLevel
         {
             get
             {
@@ -93,15 +93,15 @@
             }
         }
 
-        public bool Enable => Program.MainMenu["Evade"]["Spells"][this.Name]["Enabled"];
+        internal bool Enable => Program.MainMenu["Evade"]["Spells"][this.Name]["Enabled"];
 
-        public bool IsReady
+        internal bool IsReady
             =>
                 (this.CheckSpellName == ""
                  || Program.Player.Spellbook.GetSpell(this.Slot).SData.Name.ToLower() == this.CheckSpellName)
                 && Program.Player.Spellbook.CanUseSpell(this.Slot) == SpellState.Ready;
 
-        public bool IsTargetted => this.ValidTargets != null;
+        internal bool IsTargetted => this.ValidTargets != null;
 
         #endregion
     }
@@ -110,7 +110,7 @@
     {
         #region Constructors and Destructors
 
-        public DashData(
+        internal DashData(
             string name,
             SpellSlot slot,
             float range,
@@ -136,7 +136,7 @@
     {
         #region Constructors and Destructors
 
-        public BlinkData(string name, SpellSlot slot, float range, int delay, int dangerLevel)
+        internal BlinkData(string name, SpellSlot slot, float range, int delay, int dangerLevel)
         {
             this.Name = name;
             this.Range = range;
@@ -153,7 +153,7 @@
     {
         #region Constructors and Destructors
 
-        public InvulnerabilityData(string name, SpellSlot slot, int delay, int dangerLevel)
+        internal InvulnerabilityData(string name, SpellSlot slot, int delay, int dangerLevel)
         {
             this.Name = name;
             this.Slot = slot;
@@ -169,7 +169,7 @@
     {
         #region Constructors and Destructors
 
-        public ShieldData(string name, SpellSlot slot, int delay, int dangerLevel, bool isSpellShield = false)
+        internal ShieldData(string name, SpellSlot slot, int delay, int dangerLevel, bool isSpellShield = false)
         {
             this.Name = name;
             this.Slot = slot;
@@ -186,7 +186,7 @@
     {
         #region Constructors and Destructors
 
-        public MoveBuffData(string name, SpellSlot slot, int delay, int dangerLevel, MoveSpeedAmount amount)
+        internal MoveBuffData(string name, SpellSlot slot, int delay, int dangerLevel, MoveSpeedAmount amount)
         {
             this.Name = name;
             this.Slot = slot;

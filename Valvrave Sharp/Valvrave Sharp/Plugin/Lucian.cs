@@ -22,7 +22,7 @@
     {
         #region Static Fields
 
-        private static bool haveR;
+        private static bool haveR, canCast;
 
         private static int lastE;
 
@@ -66,7 +66,7 @@
                 };
             Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                 {
-                    if (!sender.IsMe)
+                    if (!sender.IsMe || Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.Combo)
                     {
                         return;
                     }
@@ -74,13 +74,15 @@
                     {
                         Player.IssueOrder(
                             GameObjectOrder.AttackTo,
-                            args.Start.Extend(args.Target.Position, Player.BoundingRadius + 30));
+                            args.Start.Extend(args.Target.Position, Player.BoundingRadius * 2));
+                        canCast = false;
                     }
                     else if (args.Slot == SpellSlot.W)
                     {
                         Player.IssueOrder(
                             GameObjectOrder.AttackTo,
-                            args.Start.Extend(args.End, Player.BoundingRadius + 30));
+                            args.Start.Extend(args.End, Player.BoundingRadius * 2));
+                        canCast = false;
                     }
                 };
             Variables.Orbwalker.OnAction += (sender, args) =>
@@ -89,6 +91,7 @@
                     {
                         return;
                     }
+                    canCast = true;
                     if (Variables.Orbwalker.GetActiveMode() == OrbwalkingMode.Combo)
                     {
                         var target = args.Target as Obj_AI_Hero;
@@ -112,6 +115,7 @@
 
         private static void AfterAttackCombo(Obj_AI_Hero target)
         {
+            canCast = false;
             if (E.IsReady())
             {
                 var posPlayer = Player.ServerPosition.ToVector2();
@@ -140,15 +144,104 @@
                 if (E.Cast(posDashTo))
                 {
                     lastE = Variables.TickCount;
+                    return;
                 }
             }
-            else if (Q.IsReady())
+            if (Q.CastOnUnit(target))
             {
-                Q.CastOnUnit(target);
+                return;
             }
-            else if (W.IsReady())
+            if (W.Cast(W.GetPredPosition(target)))
             {
-                W.Cast(W.GetPredPosition(target));
+                return;
+            }
+            canCast = true;
+        }
+
+        private static void Combo()
+        {
+            if (IsDashing || Player.Spellbook.IsAutoAttacking)
+            {
+                return;
+            }
+            if (E.IsReady() && Variables.Orbwalker.GetTarget() == null)
+            {
+                var target = E.GetTarget(Player.GetRealAutoAttackRange());
+                if (target != null)
+                {
+                    var posDash = Player.ServerPosition.Extend(Game.CursorPos, E.Range);
+                    if (posDash.CountEnemyHeroesInRange(Q.Range + E.Range / 2) < 2
+                        && target.Distance(posDash) < target.GetRealAutoAttackRange() && E.Cast(posDash))
+                    {
+                        lastE = Variables.TickCount;
+                        return;
+                    }
+                }
+            }
+            var canCombo = Variables.Orbwalker.GetTarget() == null && canCast;
+            if (Q.IsReady())
+            {
+                var target = Q.GetTarget();
+                if (target != null)
+                {
+                    if (canCombo && Q.CastOnUnit(target))
+                    {
+                        return;
+                    }
+                }
+                else
+                {
+                    target = Q2.GetTarget(Q2.Width / 2);
+                    if (target != null)
+                    {
+                        var objs = new List<Obj_AI_Base>();
+                        objs.AddRange(GameObjects.EnemyHeroes.Where(i => !i.Compare(target)));
+                        objs.AddRange(GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet()));
+                        objs.AddRange(GameObjects.Jungle);
+                        var obj =
+                            objs.Where(i => i.IsValidTarget(Q.Range))
+                                .FirstOrDefault(
+                                    i =>
+                                    Q2.GetPredPosition(target, true)
+                                        .ToVector2()
+                                        .Distance(
+                                            i.ServerPosition.ToVector2(),
+                                            Player.ServerPosition.ToVector2().Extend(i.ServerPosition, Q2.Range),
+                                            true) <= Q2.Width + target.BoundingRadius / 2);
+                        if (obj != null && Q.CastOnUnit(obj))
+                        {
+                            return;
+                        }
+                    }
+                }
+            }
+            if (W.IsReady() && canCombo)
+            {
+                var target = W.GetTarget(W.Width / 2);
+                if (target != null && (!Q.IsInRange(target) || !Q.IsReady()))
+                {
+                    var pred = W.GetPrediction(target, false, -1, CollisionableObjects.YasuoWall);
+                    if (pred.Hitchance >= W.MinHitChance)
+                    {
+                        var col = pred.GetCollision();
+                        if (col.Count == 0)
+                        {
+                            W.Cast(pred.CastPosition);
+                        }
+                        else
+                        {
+                            foreach (var predCol in
+                                col.Select(i => W.GetPrediction(i))
+                                    .Where(
+                                        i =>
+                                        i.Hitchance >= W.MinHitChance
+                                        && i.UnitPosition.Distance(pred.UnitPosition) < 200))
+                            {
+                                W.Cast(predCol.CastPosition);
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -171,70 +264,6 @@
                 return pos;
             }
             return new Vector2();
-        }
-
-        private static void Combo()
-        {
-            if (Variables.Orbwalker.GetTarget() != null || IsDashing || Player.Spellbook.IsAutoAttacking)
-            {
-                return;
-            }
-            if (Q.IsReady())
-            {
-                var target = Q2.GetTarget(Q2.Width / 2);
-                if (target != null && !Q.IsInRange(target))
-                {
-                    var pred = Q2.GetPrediction(target);
-                    if (pred.Hitchance >= Q2.MinHitChance)
-                    {
-                        var objs = new List<Obj_AI_Base>();
-                        objs.AddRange(GameObjects.EnemyHeroes.Where(i => !i.Compare(target)));
-                        objs.AddRange(GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet()));
-                        objs.AddRange(GameObjects.Jungle);
-                        /*var obj =
-                            objs.Where(i => i.IsValidTarget(Q.Range))
-                                .FirstOrDefault(
-                                    i =>
-                                    pred.UnitPosition.ToVector2()
-                                        .DistanceSquared(
-                                            pred.Input.From,
-                                            pred.Input.From.Extend(i.ServerPosition, Q2.Range),
-                                            true) <= Math.Pow(pred.Input.RealRadius, 2));
-                        if (obj != null && Q.CastOnUnit(obj))
-                        {
-                            return;
-                        }*/
-                    }
-                }
-            }
-            if (W.IsReady())
-            {
-                var target = W.GetTarget(W.Width / 2);
-                if (target != null && (!Q.IsInRange(target) || !Q.IsReady()))
-                {
-                    var pred = W.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
-                    if (pred.Hitchance >= W.MinHitChance)
-                    {
-                        var col = pred.GetCollision();
-                        if (col.Count == 0)
-                        {
-                            W.Cast(pred.CastPosition);
-                        }
-                        else
-                        {
-                            foreach (var predCol in
-                                col.Select(i => W.GetPrediction(i))
-                                    .Where(
-                                        i =>
-                                        i.Hitchance >= W.MinHitChance
-                                        && i.UnitPosition.Distance(pred.UnitPosition) < 250))
-                            {
-                                W.Cast(predCol.CastPosition);
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         private static double GetRDmg(Obj_AI_Hero target)

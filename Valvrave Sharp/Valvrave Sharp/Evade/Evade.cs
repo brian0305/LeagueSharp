@@ -22,25 +22,25 @@
     {
         #region Static Fields
 
-        public static List<Skillshot> DetectedSkillshots = new List<Skillshot>();
+        internal static List<Skillshot> DetectedSkillshots = new List<Skillshot>();
 
-        public static int LastWardJumpAttempt = 0;
+        internal static int LastWardJumpAttempt = 0;
 
         #endregion
 
         #region Delegates
 
-        public delegate void EvadingH(Obj_AI_Base sender);
+        internal delegate void EvadingH(Obj_AI_Base sender);
 
-        public delegate void TryEvadingH(List<Skillshot> skillshot, Vector2 to);
+        internal delegate void TryEvadingH(List<Skillshot> skillshot, Vector2 to);
 
         #endregion
 
-        #region Public Events
+        #region Events
 
-        public static event EvadingH Evading;
+        internal static event EvadingH Evading;
 
-        public static event TryEvadingH TryEvading;
+        internal static event TryEvadingH TryEvading;
 
         #endregion
 
@@ -50,12 +50,15 @@
 
         #endregion
 
-        #region Public Methods and Operators
+        #region Methods
 
-        public static void Init()
+        internal static void Init()
         {
+            EvadeSpellDatabase.Init();
+            SpellDatabase.Init();
             Config.CreateMenu(Program.MainMenu);
             Collision.Init();
+            SkillshotDetector.Init();
             Game.OnUpdate += args =>
                 {
                     DetectedSkillshots.RemoveAll(i => !i.IsActive);
@@ -79,7 +82,7 @@
                     }
                     Evading?.Invoke(Program.Player);
                     var currentPath = Program.Player.GetWaypoints();
-                    var safePoint = IsSafePoint(PlayerPosition, true);
+                    var safePoint = IsSafePoints(PlayerPosition);
                     var safePath = IsSafePath(currentPath, 100);
                     if (!safePath.IsSafe && !safePoint.IsSafe)
                     {
@@ -104,8 +107,7 @@
                                         Variables.TickCount,
                                         missile.Position.ToVector2(),
                                         missile.Position.ToVector2() + i * direction * spellData.Range,
-                                        skillshot.Unit,
-                                        missile));
+                                        skillshot.Unit));
                             }
                         }
                     }
@@ -145,12 +147,12 @@
                 };
         }
 
-        public static bool IsAboutToHit(Obj_AI_Base unit, int time)
+        internal static bool IsAboutToHit(Obj_AI_Base unit, int time)
         {
             return SkillshotAboutToHit(unit, time).Count > 0;
         }
 
-        public static SafePathResult IsSafePath(List<Vector2> path, int timeOffset, int speed = -1, int delay = 0)
+        internal static SafePathResult IsSafePath(List<Vector2> path, int timeOffset, int speed = -1, int delay = 0)
         {
             var isSafe = true;
             var intersections = new List<FoundIntersection>();
@@ -174,21 +176,17 @@
             return new SafePathResult(false, intersetion.Valid ? intersetion : intersection);
         }
 
-        public static IsSafeResult IsSafePoint(Vector2 point, bool isCheck = false)
+        internal static bool IsSafePoint(Vector2 point)
         {
-            var result = new IsSafeResult { SkillshotList = new List<Skillshot>() };
-            DetectedSkillshots.Where(i => i.Enable && i.IsDanger(point) && (!isCheck || i.CanDodge))
-                .ForEach(i => result.SkillshotList.Add(i));
-            result.IsSafe = result.SkillshotList.Count == 0;
-            return result;
+            return IsSafePoints(point).IsSafe;
         }
 
-        public static bool IsSafeToBlink(Vector2 point, int timeOffset, int delay)
+        internal static bool IsSafeToBlink(Vector2 point, int timeOffset, int delay)
         {
             return DetectedSkillshots.Where(i => i.Enable).All(i => i.IsSafeToBlink(point, timeOffset, delay));
         }
 
-        public static List<Skillshot> SkillshotAboutToHit(Obj_AI_Base unit, int time, bool onlyWindWall = false)
+        internal static List<Skillshot> SkillshotAboutToHit(Obj_AI_Base unit, int time, bool onlyWindWall = false)
         {
             time += 150;
             return
@@ -200,13 +198,37 @@
                     .ToList();
         }
 
-        #endregion
-
-        #region Methods
+        private static IsSafeResult IsSafePoints(Vector2 point)
+        {
+            var result = new IsSafeResult { SkillshotList = new List<Skillshot>() };
+            DetectedSkillshots.Where(i => i.Enable && !i.IsSafe(point)).ForEach(i => result.SkillshotList.Add(i));
+            result.IsSafe = result.SkillshotList.Count == 0;
+            return result;
+        }
 
         private static void OnDetectSkillshot(Skillshot skillshot)
         {
+            if (!skillshot.Unit.IsVisible)
+            {
+                var preventDodgeFoW = Program.MainMenu["Evade"]["DisableFoW"];
+                if (!preventDodgeFoW && !skillshot.SpellData.DisableFowDetection
+                    && skillshot.DetectionType == DetectionType.RecvPacket)
+                {
+                    preventDodgeFoW =
+                        Program.MainMenu["Evade"][skillshot.SpellData.ChampionName.ToLowerInvariant()][
+                            skillshot.SpellData.SpellName]["DisableFoW"];
+                }
+                if (preventDodgeFoW)
+                {
+                    return;
+                }
+            }
             if (skillshot.Unit.Team == Program.Player.Team)
+            {
+                return;
+            }
+            if (skillshot.Start.Distance(PlayerPosition)
+                > (skillshot.SpellData.Range + skillshot.SpellData.Radius + 1000) * 1.5)
             {
                 return;
             }
@@ -217,11 +239,6 @@
                         i =>
                         i.Direction.AngleBetween(skillshot.Direction) < 5
                         && (i.Start.Distance(skillshot.Start) < 100 || skillshot.SpellData.FromObjects.Length == 0));
-            if (skillshot.Start.Distance(PlayerPosition)
-                > (skillshot.SpellData.Range + skillshot.SpellData.Radius + 1000) * 1.5)
-            {
-                return;
-            }
             if (alreadyAdded && !skillshot.SpellData.DontCheckForDuplicates)
             {
                 return;
@@ -292,7 +309,7 @@
                     {
                         var target =
                             GameObjects.Heroes.FirstOrDefault(
-                                h => h.Team == source.Team && h.HasBuff("taricwleashactive"));
+                                h => h.Team == source.Team && h.IsVisible && h.HasBuff("taricwleashactive"));
                         if (target != null)
                         {
                             var start = target.ServerPosition.ToVector2();
@@ -345,10 +362,24 @@
                     }
                     return;
                 }
-                if (skillshot.SpellData.SpellName == "AlZaharCalloftheVoid")
+                if (skillshot.SpellData.SpellName == "MalzaharQ")
                 {
                     var start = skillshot.End - skillshot.Direction.Perpendicular() * 400;
                     var end = skillshot.End + skillshot.Direction.Perpendicular() * 400;
+                    DetectedSkillshots.Add(
+                        new Skillshot(
+                            skillshot.DetectionType,
+                            skillshot.SpellData,
+                            skillshot.StartTick,
+                            start,
+                            end,
+                            skillshot.Unit));
+                    return;
+                }
+                if (skillshot.SpellData.SpellName == "ZyraQ")
+                {
+                    var start = skillshot.End - skillshot.Direction.Perpendicular() * 450;
+                    var end = skillshot.End + skillshot.Direction.Perpendicular() * 450;
                     DetectedSkillshots.Add(
                         new Skillshot(
                             skillshot.DetectionType,
@@ -471,10 +502,7 @@
                         skillshot.StartTick,
                         skillshot.Start,
                         skillshot.End,
-                        skillshot.Unit,
-                        skillshot.DetectionType == DetectionType.RecvPacket && skillshot.Missile != null
-                            ? skillshot.Missile
-                            : null));
+                        skillshot.Unit));
             }
             if (skillshot.SpellData.DisableFowDetection && skillshot.DetectionType == DetectionType.RecvPacket)
             {
@@ -485,13 +513,13 @@
 
         #endregion
 
-        public struct IsSafeResult
+        private struct IsSafeResult
         {
             #region Fields
 
-            public bool IsSafe;
+            internal bool IsSafe;
 
-            public List<Skillshot> SkillshotList;
+            internal List<Skillshot> SkillshotList;
 
             #endregion
         }

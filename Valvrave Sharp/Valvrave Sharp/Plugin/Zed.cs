@@ -564,11 +564,7 @@
 
         private static void Evading(Obj_AI_Base sender)
         {
-            var skillshot =
-                Evade.SkillshotAboutToHit(sender, 50)
-                    .Where(i => i.CanDodge)
-                    .OrderByDescending(i => i.DangerLevel)
-                    .ToList();
+            var skillshot = Evade.SkillshotAboutToHit(sender, 50).OrderByDescending(i => i.DangerLevel).ToList();
             if (skillshot.Count == 0)
             {
                 return;
@@ -615,7 +611,7 @@
                 }
                 if (Titanic.IsReady)
                 {
-                    dmgTotal += Player.CalculateDamage(target, DamageType.Physical, 40 + (0.1f * Player.MaxHealth));
+                    dmgTotal += Player.CalculateDamage(target, DamageType.Physical, 40 + 0.1f * Player.MaxHealth);
                 }
             }
             if (useQ)

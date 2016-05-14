@@ -43,7 +43,6 @@
                                                                                    { "DrMundo", () => new DrMundo() },
                                                                                    { "Kennen", () => new Kennen() },
                                                                                    { "LeeSin", () => new LeeSin() },
-                                                                                   { "Lucian", () => new Lucian() },
                                                                                    { "Yasuo", () => new Yasuo() },
                                                                                    { "Zed", () => new Zed() }
                                                                                };
@@ -51,8 +50,7 @@
         private static readonly Dictionary<string, int> Skins = new Dictionary<string, int>
                                                                     {
                                                                         { "DrMundo", 8 }, { "Kennen", 6 },
-                                                                        { "LeeSin", 10 }, { "Lucian", 6 }, { "Yasuo", 3 },
-                                                                        { "Zed", 3 }
+                                                                        { "LeeSin", 10 }, { "Yasuo", 3 }, { "Zed", 3 }
                                                                     };
 
         private static bool isSkinReset = true;

@@ -38,7 +38,7 @@
         public Kennen()
         {
             Q = new Spell(SpellSlot.Q, 1050).SetSkillshot(0.2f, 50, 1700, true, SkillshotType.SkillshotLine);
-            W = new Spell(SpellSlot.W, 950).SetTargetted(0.25f, float.MaxValue);
+            W = new Spell(SpellSlot.W, 800).SetTargetted(0.25f, float.MaxValue);
             E = new Spell(SpellSlot.E);
             R = new Spell(SpellSlot.R, 550).SetTargetted(0.25f, float.MaxValue);
             Q.DamageType = W.DamageType = R.DamageType = DamageType.Magical;

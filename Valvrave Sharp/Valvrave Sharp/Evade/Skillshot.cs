@@ -16,7 +16,7 @@
 
     #endregion
 
-    public enum SkillShotType
+    internal enum SkillShotType
     {
         SkillshotCircle,
 
@@ -33,26 +33,26 @@
         SkillshotArc
     }
 
-    public enum DetectionType
+    internal enum DetectionType
     {
         RecvPacket,
 
         ProcessSpell
     }
 
-    public struct SafePathResult
+    internal struct SafePathResult
     {
         #region Fields
 
-        public FoundIntersection Intersection;
+        internal FoundIntersection Intersection;
 
-        public bool IsSafe;
+        internal bool IsSafe;
 
         #endregion
 
         #region Constructors and Destructors
 
-        public SafePathResult(bool isSafe, FoundIntersection intersection)
+        internal SafePathResult(bool isSafe, FoundIntersection intersection)
         {
             this.IsSafe = isSafe;
             this.Intersection = intersection;
@@ -61,25 +61,25 @@
         #endregion
     }
 
-    public struct FoundIntersection
+    internal struct FoundIntersection
     {
         #region Fields
 
-        public Vector2 ComingFrom;
+        internal Vector2 ComingFrom;
 
-        public float Distance;
+        internal float Distance;
 
-        public Vector2 Point;
+        internal Vector2 Point;
 
-        public int Time;
+        internal int Time;
 
-        public bool Valid;
+        internal bool Valid;
 
         #endregion
 
         #region Constructors and Destructors
 
-        public FoundIntersection(float distance, int time, Vector2 point, Vector2 comingFrom)
+        internal FoundIntersection(float distance, int time, Vector2 point, Vector2 comingFrom)
         {
             this.Distance = distance;
             this.ComingFrom = comingFrom;
@@ -91,45 +91,43 @@
         #endregion
     }
 
-    public class Skillshot
+    internal class Skillshot
     {
         #region Fields
 
-        public Geometry.Arc Arc;
+        internal Geometry.Arc Arc;
 
-        public Geometry.Circle Circle;
+        internal Geometry.Circle Circle;
 
-        public DetectionType DetectionType;
+        internal DetectionType DetectionType;
 
-        public Vector2 Direction;
+        internal Vector2 Direction;
 
-        public Geometry.Polygon DrawingPolygon;
+        internal Geometry.Polygon DrawingPolygon;
 
-        public Vector2 End;
+        internal Vector2 End;
 
-        public Geometry.Polygon EvadePolygon;
+        internal Geometry.Polygon EvadePolygon;
 
-        public bool ForceDisabled;
+        internal bool ForceDisabled;
 
-        public MissileClient Missile;
+        internal Vector2 OriginalEnd;
 
-        public Vector2 OriginalEnd;
+        internal Geometry.Polygon Polygon;
 
-        public Geometry.Polygon Polygon;
+        internal Geometry.Rectangle Rectangle;
 
-        public Geometry.Rectangle Rectangle;
+        internal Geometry.Ring Ring;
 
-        public Geometry.Ring Ring;
+        internal Geometry.Sector Sector;
 
-        public Geometry.Sector Sector;
+        internal SpellData SpellData;
 
-        public SpellData SpellData;
+        internal Vector2 Start;
 
-        public Vector2 Start;
+        internal int StartTick;
 
-        public int StartTick;
-
-        public Obj_AI_Base Unit;
+        internal Obj_AI_Base Unit;
 
         private bool cachedValue;
 
@@ -145,14 +143,13 @@
 
         #region Constructors and Destructors
 
-        public Skillshot(
+        internal Skillshot(
             DetectionType detectionType,
             SpellData spellData,
             int startT,
             Vector2 start,
             Vector2 end,
-            Obj_AI_Base unit,
-            MissileClient missile = null)
+            Obj_AI_Base unit)
         {
             this.DetectionType = detectionType;
             this.SpellData = spellData;
@@ -161,7 +158,6 @@
             this.End = end;
             this.Direction = (end - start).Normalized();
             this.Unit = unit;
-            this.Missile = missile;
             switch (spellData.Type)
             {
                 case SkillShotType.SkillshotCircle:
@@ -195,48 +191,14 @@
 
         #endregion
 
-        #region Public Properties
+        #region Properties
 
-        public bool CanDodge
-        {
-            get
-            {
-                if (this.DetectionType == DetectionType.ProcessSpell)
-                {
-                    return true;
-                }
-                var missileValid = this.Missile != null && this.Missile.IsValid && this.Missile.IsVisible;
-                return Program.MainMenu["Evade"]["DisableFoW"]
-                           ? missileValid
-                           : !Program.MainMenu["Evade"][this.SpellData.ChampionName.ToLowerInvariant()][
-                               this.SpellData.SpellName]["DisableFoW"] || missileValid;
-            }
-        }
-
-        public Vector2 CollisionEnd
-        {
-            get
-            {
-                if (this.collisionEnd.IsValid())
-                {
-                    return this.collisionEnd;
-                }
-                if (this.IsGlobal)
-                {
-                    return this.GlobalGetMissilePosition(0)
-                           + this.Direction * this.SpellData.MissileSpeed
-                           * (0.5f + this.SpellData.Radius * 2 / Program.Player.MoveSpeed);
-                }
-                return this.End;
-            }
-        }
-
-        public int DangerLevel
+        internal int DangerLevel
             =>
                 Program.MainMenu["Evade"][this.SpellData.ChampionName.ToLowerInvariant()][this.SpellData.SpellName][
                     "DangerLevel"];
 
-        public bool Enable
+        internal bool Enable
         {
             get
             {
@@ -264,7 +226,7 @@
             }
         }
 
-        public bool IsActive
+        internal bool IsActive
             =>
                 this.SpellData.MissileAccel != 0
                     ? Variables.TickCount <= this.StartTick + 5000
@@ -276,13 +238,31 @@
                                 ? this.Start.Distance(this.End) / this.SpellData.MissileSpeed
                                 : 0));
 
-        public bool IsGlobal => this.SpellData.RawRange == 20000;
+        private Vector2 CollisionEnd
+        {
+            get
+            {
+                if (this.collisionEnd.IsValid())
+                {
+                    return this.collisionEnd;
+                }
+                if (this.IsGlobal)
+                {
+                    return this.GlobalGetMissilePosition(0)
+                           + this.Direction * this.SpellData.MissileSpeed
+                           * (0.5f + this.SpellData.Radius * 2 / Program.Player.MoveSpeed);
+                }
+                return this.End;
+            }
+        }
+
+        private bool IsGlobal => this.SpellData.RawRange == 20000;
 
         #endregion
 
-        #region Public Methods and Operators
+        #region Methods
 
-        public void Draw(Color color, Color missileColor, int width = 1)
+        internal void Draw(Color color, Color missileColor, int width = 1)
         {
             if (
                 !Program.MainMenu["Evade"][this.SpellData.ChampionName.ToLowerInvariant()][this.SpellData.SpellName][
@@ -304,7 +284,7 @@
             }
         }
 
-        public Vector2 GetMissilePosition(int time)
+        internal Vector2 GetMissilePosition(int time)
         {
             var t = Math.Max(0, Variables.TickCount + time - this.StartTick - this.SpellData.Delay);
             int x;
@@ -335,14 +315,7 @@
             return this.Start + this.Direction * t;
         }
 
-        public Vector2 GlobalGetMissilePosition(int time)
-        {
-            var t = Math.Max(0, Variables.TickCount + time - this.StartTick - this.SpellData.Delay);
-            t = (int)Math.Max(0, Math.Min(this.End.Distance(this.Start), t * this.SpellData.MissileSpeed / 1000f));
-            return this.Start + this.Direction * t;
-        }
-
-        public bool IsAboutToHit(int time, Obj_AI_Base unit)
+        internal bool IsAboutToHit(int time, Obj_AI_Base unit)
         {
             if (this.SpellData.Type == SkillShotType.SkillshotMissileLine)
             {
@@ -368,17 +341,12 @@
             return false;
         }
 
-        public bool IsDanger(Vector2 point)
-        {
-            return !this.IsSafe(point);
-        }
-
-        public bool IsSafe(Vector2 point)
+        internal bool IsSafe(Vector2 point)
         {
             return this.Polygon.IsOutside(point);
         }
 
-        public SafePathResult IsSafePath(List<Vector2> path, int timeOffset, int speed = -1, int delay = 0)
+        internal SafePathResult IsSafePath(List<Vector2> path, int timeOffset, int speed = -1, int delay = 0)
         {
             var distance = 0f;
             timeOffset += Game.Ping / 2;
@@ -502,7 +470,7 @@
             return new SafePathResult(this.IsSafe(myPositionWhenExplodesWithOffset), allIntersections[0]);
         }
 
-        public bool IsSafeToBlink(Vector2 point, int timeOffset, int delay)
+        internal bool IsSafeToBlink(Vector2 point, int timeOffset, int delay)
         {
             timeOffset /= 2;
             if (this.IsSafe(point))
@@ -526,7 +494,7 @@
             return timeToExplode > timeOffset + delay;
         }
 
-        public void OnUpdate()
+        internal void OnUpdate()
         {
             if (this.SpellData.CollisionObjects.GetFlags().Any() && Variables.TickCount - this.lastCollisionCalc > 50)
             {
@@ -589,7 +557,14 @@
             }
         }
 
-        public void UpdatePolygon()
+        private Vector2 GlobalGetMissilePosition(int time)
+        {
+            var t = Math.Max(0, Variables.TickCount + time - this.StartTick - this.SpellData.Delay);
+            t = (int)Math.Max(0, Math.Min(this.End.Distance(this.Start), t * this.SpellData.MissileSpeed / 1000f));
+            return this.Start + this.Direction * t;
+        }
+
+        private void UpdatePolygon()
         {
             switch (this.SpellData.Type)
             {

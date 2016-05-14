@@ -32,7 +32,7 @@ namespace Valvrave_Sharp.Core
 
         internal static bool CanHitCircle(this Spell spell, Obj_AI_Base unit)
         {
-            return spell.GetPredPosition(unit).DistanceToPlayer() < spell.Range;
+            return spell.IsInRange(spell.GetPredPosition(unit));
         }
 
         internal static bool CanLastHit(this Spell spell, Obj_AI_Base unit, double dmg, double subDmg = 0)
@@ -119,7 +119,7 @@ namespace Valvrave_Sharp.Core
         internal static Vector3 GetPredPosition(this Spell spell, Obj_AI_Base unit, bool useRange = false)
         {
             var pos = Movement.GetPrediction(unit, spell.Delay, 1, spell.Speed).UnitPosition;
-            return useRange && spell.From.Distance(pos) >= spell.Range ? unit.ServerPosition : pos;
+            return useRange && !spell.IsInRange(pos) ? unit.ServerPosition : pos;
         }
 
         internal static bool IsCasted(this CastStates state)

@@ -8,32 +8,30 @@
 
     #endregion
 
-    internal class EvadeSpellDatabase
+    internal static class EvadeSpellDatabase
     {
         #region Static Fields
 
-        public static List<EvadeSpellData> Spells = new List<EvadeSpellData>();
+        internal static List<EvadeSpellData> Spells = new List<EvadeSpellData>();
 
         #endregion
 
-        #region Constructors and Destructors
+        #region Methods
 
-        static EvadeSpellDatabase()
+        internal static void Init()
         {
-            EvadeSpellData spell;
-
             #region Champion Dashes
 
             #region Yasuo
 
             if (Program.Player.ChampionName == "Yasuo")
             {
-                spell = new DashData("Yasuo E", SpellSlot.E, 475, true, 10, 1250, 2)
-                            {
-                                ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions },
-                                CheckBuffName = "YasuoDashWrapper", UnderTower = true
-                            };
-                Spells.Add(spell);
+                Spells.Add(
+                    new DashData("Yasuo E", SpellSlot.E, 475, true, 100, 1250, 2)
+                        {
+                            ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions },
+                            CheckBuffName = "YasuoDashWrapper", UnderTower = true
+                        });
             }
 
             #endregion
@@ -46,15 +44,15 @@
 
             if (Program.Player.ChampionName == "Zed")
             {
-                spell = new BlinkData("Zed W2", SpellSlot.W, 20000, 50, 3)
-                            { CheckSpellName = "zedw2", SelfCast = true, UnderTower = true };
-                Spells.Add(spell);
-                spell = new BlinkData("Zed R1", SpellSlot.R, 625, 50, 4)
-                            { CheckSpellName = "zedr", ValidTargets = new[] { SpellValidTargets.EnemyChampions } };
-                Spells.Add(spell);
-                spell = new BlinkData("Zed R2", SpellSlot.R, 20000, 50, 4)
-                            { CheckSpellName = "zedr2", SelfCast = true, UnderTower = true };
-                Spells.Add(spell);
+                Spells.Add(
+                    new BlinkData("Zed W2", SpellSlot.W, 20000, 100, 2)
+                        { CheckSpellName = "zedw2", SelfCast = true, UnderTower = true });
+                Spells.Add(
+                    new BlinkData("Zed R1", SpellSlot.R, 625, 100, 4)
+                        { CheckSpellName = "zedr", ValidTargets = new[] { SpellValidTargets.EnemyChampions } });
+                Spells.Add(
+                    new BlinkData("Zed R2", SpellSlot.R, 20000, 100, 3)
+                        { CheckSpellName = "zedr2", SelfCast = true, UnderTower = true });
             }
 
             #endregion
@@ -67,8 +65,7 @@
 
             if (Program.Player.ChampionName == "Yasuo")
             {
-                spell = new InvulnerabilityData("Yasuo W", SpellSlot.W, 250, 3) { ExtraDelay = true };
-                Spells.Add(spell);
+                Spells.Add(new InvulnerabilityData("Yasuo W", SpellSlot.W, 250, 3) { ExtraDelay = true });
             }
 
             #endregion

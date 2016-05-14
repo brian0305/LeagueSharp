@@ -7,95 +7,95 @@
 
     #endregion
 
-    public class SpellData
+    internal class SpellData
     {
         #region Fields
 
-        public bool AddHitbox;
+        internal bool AddHitbox;
 
-        public bool CanBeRemoved;
+        internal bool CanBeRemoved;
 
-        public bool Centered;
+        internal bool Centered;
 
-        public string ChampionName;
+        internal CollisionableObjects CollisionObjects;
 
-        public CollisionableObjects CollisionObjects;
+        internal string ChampionName;
 
-        public int DangerValue;
+        internal int DangerValue;
 
-        public int Delay;
+        internal int Delay;
 
-        public bool DisabledByDefault;
+        internal bool DisabledByDefault;
 
-        public bool DisableFowDetection;
+        internal bool DisableFowDetection;
 
-        public bool DontAddExtraDuration;
+        internal bool DontAddExtraDuration;
 
-        public bool DontCheckForDuplicates;
+        internal bool DontCross;
 
-        public bool DontCross;
+        internal bool DontCheckForDuplicates;
 
-        public bool DontRemove;
+        internal bool DontRemove;
 
-        public int ExtraDuration;
+        internal int ExtraDuration;
 
-        public string[] ExtraMissileNames = { };
+        internal string[] ExtraMissileNames = { };
 
-        public int ExtraRange = -1;
+        internal int ExtraRange = -1;
 
-        public string[] ExtraSpellNames = { };
+        internal string[] ExtraSpellNames = { };
 
-        public bool FixedRange;
+        internal bool FixedRange;
 
-        public bool FollowCaster;
+        internal bool FollowCaster;
 
-        public bool ForceRemove;
+        internal bool ForceRemove;
 
-        public string FromObject = "";
+        internal string FromObject = "";
 
-        public string[] FromObjects = { };
+        internal string[] FromObjects = { };
 
-        public bool Invert;
+        internal bool Invert;
 
-        public bool IsDangerous;
+        internal bool IsDangerous;
 
-        public int MissileAccel = 0;
+        internal int MissileAccel = 0;
 
-        public bool MissileDelayed;
+        internal bool MissileDelayed;
 
-        public bool MissileFollowsUnit;
+        internal bool MissileFollowsUnit;
 
-        public int MissileMaxSpeed;
+        internal int MissileMaxSpeed;
 
-        public int MissileMinSpeed;
+        internal int MissileMinSpeed;
 
-        public int MissileSpeed;
+        internal int MissileSpeed;
 
-        public string MissileSpellName = "";
+        internal string MissileSpellName = "";
 
-        public float MultipleAngle;
+        internal float MultipleAngle;
 
-        public int MultipleNumber = -1;
+        internal int MultipleNumber = -1;
 
-        public int RingRadius;
+        internal int RingRadius;
 
-        public SpellSlot Slot;
+        internal SpellSlot Slot;
 
-        public string SourceObjectName = "";
+        internal string SourceObjectName = "";
 
-        public string SpellName;
+        internal string SpellName;
 
-        public bool TakeClosestPath;
+        internal bool TakeClosestPath;
 
-        public string ToggleParticleName = "";
+        internal string ToggleParticleName = "";
 
-        public SkillShotType Type;
+        internal SkillShotType Type;
 
         #endregion
 
-        #region Public Properties
+        #region Properties
 
-        public int Radius
+        internal int Radius
         {
             get
             {
@@ -108,7 +108,7 @@
             }
         }
 
-        public int Range
+        internal int Range
         {
             get
             {
@@ -123,9 +123,9 @@
             }
         }
 
-        public int RawRadius { get; private set; }
+        internal int RawRadius { get; private set; }
 
-        public int RawRange { get; private set; }
+        internal int RawRange { get; private set; }
 
         #endregion
     }

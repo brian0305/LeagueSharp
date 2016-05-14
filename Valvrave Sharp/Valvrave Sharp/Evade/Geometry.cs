@@ -17,7 +17,7 @@
 
     #endregion
 
-    public static class Geometry
+    internal static class Geometry
     {
         #region Constants
 
@@ -25,9 +25,9 @@
 
         #endregion
 
-        #region Public Methods and Operators
+        #region Methods
 
-        public static List<List<IntPoint>> ClipPolygons(List<Polygon> polygons)
+        internal static List<List<IntPoint>> ClipPolygons(List<Polygon> polygons)
         {
             var subj = new List<List<IntPoint>>(polygons.Count);
             var clip = new List<List<IntPoint>>(polygons.Count);
@@ -44,7 +44,7 @@
             return solution;
         }
 
-        public static Vector2 PositionAfter(this List<Vector2> self, int t, int speed, int delay = 0)
+        internal static Vector2 PositionAfter(this List<Vector2> self, int t, int speed, int delay = 0)
         {
             var distance = Math.Max(0, t - delay) * speed / 1000;
             for (var i = 0; i <= self.Count - 2; i++)
@@ -61,14 +61,14 @@
             return self[self.Count - 1];
         }
 
-        public static Polygon ToPolygon(this List<IntPoint> v)
+        internal static Polygon ToPolygon(this List<IntPoint> v)
         {
             var polygon = new Polygon();
             v.ForEach(i => polygon.Add(new Vector2(i.X, i.Y)));
             return polygon;
         }
 
-        public static List<Polygon> ToPolygons(this List<List<IntPoint>> v)
+        internal static List<Polygon> ToPolygons(this List<List<IntPoint>> v)
         {
             return v.Select(i => i.ToPolygon()).ToList();
         }

@@ -92,13 +92,14 @@
                     {
                         return;
                     }
-                    if (args.Buff.DisplayName == "KennenLightningRush")
+                    switch (args.Buff.DisplayName)
                     {
-                        haveE = true;
-                    }
-                    else if (args.Buff.DisplayName == "KennenShurikenStorm")
-                    {
-                        haveR = true;
+                        case "KennenLightningRush":
+                            haveE = true;
+                            break;
+                        case "KennenShurikenStorm":
+                            haveR = true;
+                            break;
                     }
                 };
             Obj_AI_Base.OnBuffRemove += (sender, args) =>
@@ -107,13 +108,14 @@
                     {
                         return;
                     }
-                    if (args.Buff.DisplayName == "KennenLightningRush")
+                    switch (args.Buff.DisplayName)
                     {
-                        haveE = false;
-                    }
-                    else if (args.Buff.DisplayName == "KennenShurikenStorm")
-                    {
-                        haveR = false;
+                        case "KennenLightningRush":
+                            haveE = false;
+                            break;
+                        case "KennenShurikenStorm":
+                            haveR = false;
+                            break;
                     }
                 };
         }

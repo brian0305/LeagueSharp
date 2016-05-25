@@ -38,15 +38,13 @@
 
         private static int cDash;
 
-        private static int endDashT;
-
         private static bool haveQ3, haveR;
 
-        private static bool isBlockQ;
+        private static bool isDash;
 
         private static int lastE;
 
-        private static Vector3 posDash;
+        private static Vector2 posDash;
 
         #endregion
 
@@ -59,14 +57,15 @@
             Q3 = new Spell(Q.Slot, 250).SetTargetted(0.01f, float.MaxValue);
             W = new Spell(SpellSlot.W, 400);
             E = new Spell(SpellSlot.E, 475).SetTargetted(0.01f, 1250);
-            E2 = new Spell(Q.Slot).SetTargetted(E.Delay + Q3.Delay, E.Speed);
+            E2 = new Spell(E.Slot).SetTargetted(E.Delay + Q3.Delay, E.Speed);
             R = new Spell(SpellSlot.R, 1200);
             Q.DamageType = Q2.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
             Q.MinHitChance = Q2.MinHitChance = HitChance.VeryHigh;
-            Q.CastCondition += () => !isBlockQ;
-            Q2.CastCondition += () => !isBlockQ;
-            Q3.CastCondition += () => !isBlockQ && IsDashing;
+            Q.CastCondition += () => !haveR;
+            Q2.CastCondition += () => !haveR;
+            Q3.CastCondition += () => !haveR && IsDashing;
+            E.CastCondition += () => !posDash.IsValid();
 
             var comboMenu = MainMenu.Add(new Menu("Combo", "Combo"));
             {
@@ -152,17 +151,17 @@
                 {
                     if (Player.IsDead)
                     {
-                        if (endDashT > 0)
+                        if (isDash)
                         {
-                            endDashT = 0;
-                            posDash = new Vector3();
+                            isDash = false;
+                            posDash = new Vector2();
                         }
                         return;
                     }
-                    if (endDashT > 0 && !Player.IsDashing())
+                    if (isDash && !Player.IsDashing())
                     {
-                        endDashT = 0;
-                        DelayAction.Add(70, () => posDash = new Vector3());
+                        isDash = false;
+                        DelayAction.Add(70, () => posDash = new Vector2());
                     }
                     if (!haveQ3 && Q.Delay > 0.18f)
                     {
@@ -196,10 +195,7 @@
                     {
                         return;
                     }
-                    if (Q.GetTarget(50) != null
-                        || GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet(false))
-                               .Concat(GameObjects.Jungle)
-                               .Count(i => i.IsValidTarget(Q.Range + 50)) > 0)
+                    if (Q.GetTarget(50) != null || Common.ListMinions().Count(i => i.IsValidTarget(Q.Range + 50)) > 0)
                     {
                         return;
                     }
@@ -215,19 +211,8 @@
                     {
                         return;
                     }
-                    posDash = args.EndPos.ToVector3();
-                    endDashT = args.EndTick;
-                };
-            Game.OnUpdate += args =>
-                {
-                    if (Player.IsDead)
-                    {
-                        return;
-                    }
-                    if (cDash == 1 && Player.GetBuffCount("YasuoDashScalar") == 2)
-                    {
-                        cDash = 2;
-                    }
+                    isDash = true;
+                    posDash = args.EndPos;
                 };
             Obj_AI_Base.OnBuffAdd += (sender, args) =>
                 {
@@ -244,7 +229,7 @@
                             cDash = 1;
                             break;
                         case "YasuoRArmorPen":
-                            haveR = isBlockQ = true;
+                            haveR = true;
                             Variables.Orbwalker.SetAttackState(false);
                             Variables.Orbwalker.SetMovementState(false);
                             break;
@@ -282,21 +267,23 @@
                             break;
                     }
                 };
+            Obj_AI_Base.OnBuffUpdateCount += (sender, args) =>
+                {
+                    if (!sender.IsMe || !args.Buff.Caster.IsMe || args.Buff.DisplayName != "YasuoDashScalar")
+                    {
+                        return;
+                    }
+                    cDash = 2;
+                };
             Obj_AI_Base.OnBuffRemove += (sender, args) =>
                 {
-                    if (sender.IsAlly || !haveR || args.Buff.DisplayName != "yasuorknockupcombotar")
+                    if (!haveR || !sender.IsEnemy || !args.Buff.Caster.IsMe || args.Buff.DisplayName != "YasuoRStun")
                     {
                         return;
                     }
                     haveR = false;
-                    DelayAction.Add(
-                        7,
-                        () =>
-                            {
-                                Variables.Orbwalker.SetAttackState(true);
-                                Variables.Orbwalker.SetMovementState(true);
-                            });
-                    DelayAction.Add(22, () => isBlockQ = false);
+                    Variables.Orbwalker.SetAttackState(true);
+                    Variables.Orbwalker.SetMovementState(true);
                 };
             Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                 {
@@ -316,15 +303,13 @@
 
         private static List<Obj_AI_Base> GetQCirObj
             =>
-                GameObjects.EnemyHeroes.Cast<Obj_AI_Base>()
-                    .Concat(GameObjects.Jungle)
-                    .Concat(GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet()))
+                Common.ListEnemies(true)
                     .Where(i => i.IsValidTarget() && Q3.GetPredPosition(i).Distance(posDash) < Q3.Range)
                     .ToList();
 
         private static List<Obj_AI_Base> GetQCirTarget
             =>
-                Variables.TargetSelector.GetTargets(Q3.Range, Q.DamageType, false, posDash)
+                Variables.TargetSelector.GetTargets(Q3.Range, Q.DamageType, false, posDash.ToVector3())
                     .Where(i => Q3.GetPredPosition(i).Distance(posDash) < Q3.Range)
                     .Cast<Obj_AI_Base>()
                     .ToList();
@@ -441,7 +426,7 @@
                     }
                     if (targets.Count > 0)
                     {
-                        var target = targets.MaxOrDefault(i => new Priority().GetDefaultPriority(i));
+                        var target = targets.MaxOrDefault(i => new Priority().GetPriority(i));
                         if (target != null && R.CastOnUnit(target))
                         {
                             return;
@@ -449,7 +434,7 @@
                     }
                 }
             }
-            if (MainMenu["Combo"]["EGap"] && E.IsReady() && !Player.Spellbook.IsAutoAttacking)
+            if (MainMenu["Combo"]["EGap"] && E.IsReady())
             {
                 var underTower = MainMenu["Combo"]["ETower"];
                 if (MainMenu["Combo"]["EMode"].GetValue<MenuList>().Index == 0)
@@ -476,7 +461,7 @@
                         return;
                     }
                     target = Q.GetTarget(100) ?? Q2.GetTarget();
-                    if (target != null)
+                    if (target != null && (!Player.Spellbook.IsAutoAttacking || Player.HealthPercent < 40))
                     {
                         var nearObj = GetBestObj(listDashObj, target);
                         var canDash = cDash == 0 && nearObj != null && !HaveE(target);
@@ -569,7 +554,7 @@
                     true).OrderByDescending(i => i.DangerLevel).FirstOrDefault(i => i.DangerLevel >= yasuoW.DangerLevel);
             if (skillshot != null)
             {
-                sender.Spellbook.CastSpell(yasuoW.Slot, sender.ServerPosition.Extend(skillshot.Start, 100));
+                W.Cast(sender.ServerPosition.Extend(skillshot.Start, 100));
             }
         }
 
@@ -613,9 +598,7 @@
         private static List<Obj_AI_Base> GetDashObj(bool underTower = false)
         {
             return
-                GameObjects.EnemyHeroes.Cast<Obj_AI_Base>()
-                    .Concat(GameObjects.Jungle)
-                    .Concat(GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet(false)))
+                Common.ListEnemies()
                     .Where(i => i.IsValidTarget(E.Range) && (underTower || !GetPosAfterDash(i).IsUnderEnemyTurret()))
                     .ToList();
         }
@@ -793,8 +776,7 @@
             if (MainMenu["LaneClear"]["E"] && E.IsReady())
             {
                 var minions =
-                    GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet(false))
-                        .Concat(GameObjects.Jungle)
+                    Common.ListMinions()
                         .Where(
                             i =>
                             i.IsValidTarget(E.Range) && !HaveE(i)
@@ -820,8 +802,7 @@
                                 continue;
                             }
                             var nearMinion =
-                                GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet(false))
-                                    .Concat(GameObjects.Jungle)
+                                Common.ListMinions()
                                     .Where(i => i.IsValidTarget(Q3.Range, true, GetPosAfterDash(mob)))
                                     .ToList();
                             if (nearMinion.Count > 2 || nearMinion.Count(i => mob.Health <= GetQDmg(mob)) > 1)
@@ -852,11 +833,10 @@
                         }
                     }
                 }
-                else if (!Player.Spellbook.IsAutoAttacking)
+                else
                 {
                     var minions =
-                        GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet(false))
-                            .Concat(GameObjects.Jungle)
+                        Common.ListMinions()
                             .Where(i => !haveQ3 ? IsInRangeQ(i) : i.IsValidTarget(Q2.Range - i.BoundingRadius / 2))
                             .OrderByDescending(i => i.MaxHealth)
                             .ToList();
@@ -920,7 +900,7 @@
                     }
                 }
             }
-            if (MainMenu["LastHit"]["E"] && E.IsReady() && !Player.IsWindingUp)
+            if (MainMenu["LastHit"]["E"] && E.IsReady() && !Player.Spellbook.IsAutoAttacking)
             {
                 var minion =
                     GameObjects.EnemyMinions.Where(
@@ -1039,12 +1019,7 @@
             {
                 return;
             }
-            var minions =
-                GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet(false))
-                    .Concat(GameObjects.Jungle)
-                    .Where(IsInRangeQ)
-                    .OrderByDescending(i => i.MaxHealth)
-                    .ToList();
+            var minions = Common.ListMinions().Where(IsInRangeQ).OrderByDescending(i => i.MaxHealth).ToList();
             if (minions.Count == 0)
             {
                 return;
@@ -1073,7 +1048,7 @@
                     .OrderBy(i => GetPosAfterDash(i).CountEnemyHeroesInRange(400))
                     .ThenBy(i => GetPosAfterDash(i).Distance(to))
                     .FirstOrDefault();
-            if (target != null && Player.Spellbook.CastSpell(yasuoE.Slot, target))
+            if (target != null && E.CastOnUnit(target))
             {
                 lastE = Variables.TickCount;
             }

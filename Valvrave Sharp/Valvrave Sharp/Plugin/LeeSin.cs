@@ -123,29 +123,18 @@
 
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
-            Game.OnUpdate += args =>
-                {
-                    if (cPassive == 0 || cPassive == 1)
-                    {
-                        return;
-                    }
-                    var count = Player.GetBuffCount("BlindMonkFlurry");
-                    if (count < cPassive)
-                    {
-                        cPassive = count;
-                    }
-                };
             Obj_AI_Base.OnBuffAdd += (sender, args) =>
                 {
                     if (sender.IsMe)
                     {
-                        if (args.Buff.DisplayName == "BlindMonkFlurry")
+                        switch (args.Buff.DisplayName)
                         {
-                            cPassive = 2;
-                        }
-                        else if (args.Buff.DisplayName == "BlindMonkQTwoDash")
-                        {
-                            isDashing = true;
+                            case "BlindMonkFlurry":
+                                cPassive = 2;
+                                break;
+                            case "BlindMonkQTwoDash":
+                                isDashing = true;
+                                break;
                         }
                     }
                     else if (sender.IsEnemy && args.Buff.Caster.IsMe)
@@ -164,19 +153,28 @@
                 {
                     if (sender.IsMe)
                     {
-                        if (args.Buff.DisplayName == "BlindMonkFlurry")
+                        switch (args.Buff.DisplayName)
                         {
-                            cPassive = 0;
-                        }
-                        else if (args.Buff.DisplayName == "BlindMonkQTwoDash")
-                        {
-                            isDashing = false;
+                            case "BlindMonkFlurry":
+                                cPassive = 0;
+                                break;
+                            case "BlindMonkQTwoDash":
+                                isDashing = false;
+                                break;
                         }
                     }
                     else if (sender.IsEnemy && args.Buff.Caster.IsMe && args.Buff.DisplayName == "BlindMonkSonicWave")
                     {
                         objQ = null;
                     }
+                };
+            Obj_AI_Base.OnBuffUpdateCount += (sender, args) =>
+                {
+                    if (!sender.IsMe || !args.Buff.Caster.IsMe || args.Buff.DisplayName != "BlindMonkFlurry")
+                    {
+                        return;
+                    }
+                    cPassive = args.Buff.Count;
                 };
             Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                 {
@@ -223,16 +221,16 @@
             }
         }
 
-        private static bool CanE2(Obj_AI_Base target, bool isClear = false)
+        private static bool CanE2(Obj_AI_Base target)
         {
             var buff = target.GetBuff("BlindMonkTempest");
-            return buff != null && buff.EndTime - Game.Time < (isClear ? 0.2 : 0.3) * (buff.EndTime - buff.StartTime);
+            return buff != null && buff.EndTime - Game.Time < 0.25 * (buff.EndTime - buff.StartTime);
         }
 
-        private static bool CanQ2(Obj_AI_Base target, bool isClear = false)
+        private static bool CanQ2(Obj_AI_Base target)
         {
             var buff = target.GetBuff("BlindMonkSonicWave");
-            return buff != null && buff.EndTime - Game.Time < (isClear ? 0.2 : 0.3) * (buff.EndTime - buff.StartTime);
+            return buff != null && buff.EndTime - Game.Time < 0.25 * (buff.EndTime - buff.StartTime);
         }
 
         private static bool CanR(Obj_AI_Hero target)
@@ -241,12 +239,24 @@
             return buff != null && buff.EndTime - Game.Time <= 0.75 * (buff.EndTime - buff.StartTime);
         }
 
-        private static void CastECombo()
+        private static void CastE(List<Obj_AI_Minion> minions = null)
         {
-            if (!E.IsReady() || Variables.TickCount - lastW <= 150 || Variables.TickCount - lastW2 <= 150)
+            if (!E.IsReady() || isDashing || Variables.TickCount - lastW <= 150 || Variables.TickCount - lastW2 <= 100)
             {
                 return;
             }
+            if (minions == null)
+            {
+                CastECombo();
+            }
+            else
+            {
+                CastELaneClear(minions);
+            }
+        }
+
+        private static void CastECombo()
+        {
             if (IsEOne)
             {
                 var target =
@@ -283,10 +293,6 @@
 
         private static void CastELaneClear(List<Obj_AI_Minion> minions)
         {
-            if (!E.IsReady() || Variables.TickCount - lastW <= 200 || Variables.TickCount - lastW2 <= 200)
-            {
-                return;
-            }
             if (IsEOne)
             {
                 if (cPassive > 0)
@@ -302,12 +308,9 @@
             else
             {
                 var minion = minions.Where(i => i.IsValidTarget(E2.Range) && HaveE(i)).ToList();
-                if (minion.Count > 0 && (cPassive == 0 || minion.Any(i => CanE2(i, true))))
+                if (minion.Count > 0 && (cPassive == 0 || minion.Any(CanE2)) && E2.Cast())
                 {
-                    if (E2.Cast())
-                    {
-                        lastE2 = Variables.TickCount;
-                    }
+                    lastE2 = Variables.TickCount;
                 }
             }
         }
@@ -351,44 +354,51 @@
             Player.Spellbook.CastSpell(Flash, target.ServerPosition.Extend(pos, -(150 + target.BoundingRadius / 2)));
         }
 
-        private static void CastW(bool isCombo = true, List<Obj_AI_Minion> minions = null)
+        private static void CastW(List<Obj_AI_Minion> minions = null)
         {
-            if (!W.IsReady() || Variables.TickCount - lastW <= 300 || isDashing || Player.Spellbook.IsCastingSpell
-                || Variables.TickCount - lastE2 <= 200)
+            if (!W.IsReady() || Variables.TickCount - lastW <= 300 || isDashing || Variables.TickCount - lastE2 <= 100)
             {
                 return;
             }
-            var target = Variables.Orbwalker.GetTarget();
-            if (!isCombo && !Player.Spellbook.IsAutoAttacking && Variables.Orbwalker.CanAttack() && minions != null
-                && minions.Count > 0)
+            var hero = Variables.Orbwalker.GetTarget() as Obj_AI_Hero;
+            Obj_AI_Minion minion = null;
+            if (minions != null && minions.Count > 0)
             {
-                target = minions.FirstOrDefault(i => i.InAutoAttackRange());
+                minion = minions.FirstOrDefault(i => i.InAutoAttackRange());
             }
-            if (target == null)
+            if (hero == null && minion == null)
             {
                 return;
             }
-            if ((Player.HealthPercent < (isCombo ? 8 : 5) || (!IsWOne && Variables.TickCount - lastW > 2600)
-                 || cPassive == 0) && W.Cast())
+            if (hero != null && Player.HealthPercent < hero.HealthPercent && Player.HealthPercent < 30)
             {
                 if (IsWOne)
                 {
-                    lastW = Variables.TickCount;
+                    if (W.Cast())
+                    {
+                        lastW = Variables.TickCount;
+                        return;
+                    }
                 }
-                else
+                else if (W.Cast())
                 {
                     lastW2 = Variables.TickCount;
+                    return;
                 }
-                return;
             }
-            if (target is Obj_AI_Hero && Player.HealthPercent < target.HealthPercent && Player.HealthPercent < 30
-                && W.Cast())
+            if (Player.HealthPercent < (minions == null ? 8 : 5) || (!IsWOne && Variables.TickCount - lastW > 2600)
+                || cPassive == 0
+                || (minion != null && minion.Team == GameObjectTeam.Neutral
+                    && minion.GetJungleType() != JungleType.Small && Player.HealthPercent < 40 && IsWOne))
             {
                 if (IsWOne)
                 {
-                    lastW = Variables.TickCount;
+                    if (W.Cast())
+                    {
+                        lastW = Variables.TickCount;
+                    }
                 }
-                else
+                else if (W.Cast())
                 {
                     lastW2 = Variables.TickCount;
                 }
@@ -459,7 +469,7 @@
             }
             if (MainMenu["Combo"]["E"])
             {
-                CastECombo();
+                CastE();
             }
             if (MainMenu["Combo"]["W"])
             {
@@ -485,14 +495,15 @@
             }
             var posPlayer = Player.ServerPosition;
             var posJump = pos.Distance(posPlayer) < W.Range ? pos : posPlayer.Extend(pos, W.Range);
+            var objJumps = new List<Obj_AI_Base>();
+            objJumps.AddRange(GameObjects.AllyHeroes.Where(i => !i.IsMe));
+            objJumps.AddRange(GameObjects.AllyWards.Where(i => i.IsWard()));
+            objJumps.AddRange(
+                GameObjects.AllyMinions.Where(
+                    i => i.IsMinion() || i.IsPet() || SpecialPet.Contains(i.CharData.BaseSkinName.ToLower())));
             var objJump =
-                GameObjects.AllyHeroes.Where(i => !i.IsMe)
-                    .Cast<Obj_AI_Base>()
-                    .Concat(
-                        GameObjects.AllyMinions.Where(
-                            i => i.IsMinion() || i.IsPet() || SpecialPet.Contains(i.CharData.BaseSkinName.ToLower()))
-                            .Concat(GameObjects.AllyWards.Where(i => i.IsWard())))
-                    .Where(i => i.IsValidTarget(W.Range, false) && i.Distance(posJump) < (isStar ? R.Range - 50 : 200))
+                objJumps.Where(
+                    i => i.IsValidTarget(W.Range, false) && i.Distance(posJump) < (isStar ? R.Range - 50 : 200))
                     .MinOrDefault(i => i.Distance(posJump));
             if (objJump != null)
             {
@@ -516,7 +527,7 @@
                     i =>
                     i.IsValidTarget(R.Range, true, from) && i.Health + i.PhysicalShield > R.GetDamage(i)
                     && !i.HasBuffOfType(BuffType.SpellShield) && !i.HasBuffOfType(BuffType.SpellImmunity))
-                    .OrderByDescending(i => i.MaxHealth))
+                    .OrderByDescending(i => i.BonusHealth))
             {
                 var posTarget = targetKick.ServerPosition;
                 R2.Width = targetKick.BoundingRadius;
@@ -661,21 +672,18 @@
         private static void LaneClear()
         {
             var minions =
-                GameObjects.Jungle.Concat(GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet(false)))
-                    .Where(i => i.IsValidTarget(Q2.Range))
-                    .OrderByDescending(i => i.MaxHealth)
-                    .ToList();
+                Common.ListMinions().Where(i => i.IsValidTarget(Q2.Range)).OrderByDescending(i => i.MaxHealth).ToList();
             if (minions.Count == 0)
             {
                 return;
             }
             if (MainMenu["LaneClear"]["E"])
             {
-                CastELaneClear(minions);
+                CastE(minions);
             }
             if (MainMenu["LaneClear"]["W"])
             {
-                CastW(false, minions);
+                CastW(minions);
             }
             if (MainMenu["LaneClear"]["Q"] && Q.IsReady())
             {
@@ -742,7 +750,7 @@
                 {
                     var q2Minion = objQ;
                     if (q2Minion.IsValidTarget(Q2.Range)
-                        && (CanQ2(q2Minion, true) || q2Minion.Health <= Q.GetDamage(q2Minion, DamageStage.SecondCast)
+                        && (CanQ2(q2Minion) || q2Minion.Health <= Q.GetDamage(q2Minion, DamageStage.SecondCast)
                             || q2Minion.DistanceToPlayer() > q2Minion.GetRealAutoAttackRange() + 100 || cPassive == 0)
                         && Q2.Cast())
                     {
@@ -852,7 +860,7 @@
                             var target =
                                 Variables.TargetSelector.GetTargets(R.Range, R.DamageType)
                                     .Where(i => i.Health + i.PhysicalShield > R.GetDamage(i))
-                                    .MaxOrDefault(i => new Priority().GetDefaultPriority(i));
+                                    .MaxOrDefault(i => new Priority().GetPriority(i));
                             if (target != null && R.CastOnUnit(target))
                             {
                                 Variables.TargetSelector.SetTarget(target);
@@ -1142,10 +1150,11 @@
                     };
                 Obj_AI_Base.OnBuffAdd += (sender, args) =>
                     {
-                        if (sender.IsEnemy && args.Buff.Caster.IsMe && args.Buff.DisplayName == "BlindMonkSonicWave")
+                        if (!sender.IsEnemy || !args.Buff.Caster.IsMe || args.Buff.DisplayName != "BlindMonkSonicWave")
                         {
-                            lastObjQ = sender;
+                            return;
                         }
+                        lastObjQ = sender;
                     };
                 Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                     {
@@ -1328,15 +1337,11 @@
                         return;
                     }
                     var nearObj =
-                        GameObjects.EnemyHeroes.Where(i => !i.Compare(target))
-                            .Cast<Obj_AI_Base>()
-                            .Concat(
-                                GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet())
-                                    .Concat(GameObjects.Jungle))
+                        Common.ListEnemies(true)
                             .Where(
                                 i =>
-                                i.IsValidTarget(Q.Range) && Q.GetHealthPrediction(i) > Q.GetDamage(i)
-                                && i.Distance(target) < minDist - 50)
+                                !i.Compare(target) && i.IsValidTarget(Q.Range)
+                                && Q.GetHealthPrediction(i) > Q.GetDamage(i) && i.Distance(target) < minDist - 50)
                             .OrderBy(i => i.Distance(target))
                             .ThenByDescending(i => i.Health)
                             .ToList();

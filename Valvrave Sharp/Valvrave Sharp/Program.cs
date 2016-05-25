@@ -59,6 +59,37 @@
 
         #region Methods
 
+        private static void CheckVersion()
+        {
+            try
+            {
+                using (var web = new WebClient())
+                {
+                    var rawFile =
+                        web.DownloadString(
+                            "https://raw.githubusercontent.com/brian0305/LeagueSharp/master/Valvrave%20Sharp/Valvrave%20Sharp/Properties/AssemblyInfo.cs");
+                    var checkFile =
+                        new Regex(@"\[assembly\: AssemblyVersion\(""(\d{1,})\.(\d{1,})\.(\d{1,})\.(\d{1,})""\)\]").Match
+                            (rawFile);
+                    if (!checkFile.Success)
+                    {
+                        return;
+                    }
+                    var gitVersion =
+                        new Version(
+                            $"{checkFile.Groups[1]}.{checkFile.Groups[2]}.{checkFile.Groups[3]}.{checkFile.Groups[4]}");
+                    if (gitVersion > Assembly.GetExecutingAssembly().GetName().Version)
+                    {
+                        PrintChat("Outdated! Newest Version: " + gitVersion);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+
         private static void InitItem()
         {
             Bilgewater = new Items.Item(ItemId.Bilgewater_Cutlass, 550);
@@ -130,10 +161,11 @@
             {
                 return;
             }
+            Bootstrap.Init(args);
             Events.OnLoad += (sender, eventArgs) =>
                 {
                     Player = GameObjects.Player;
-                    UpdateCheck();
+                    CheckVersion();
                     var isSupport = Plugins.ContainsKey(Player.ChampionName);
                     InitMenu(isSupport);
                     if (!isSupport)
@@ -148,37 +180,6 @@
         private static void PrintChat(string text)
         {
             Game.PrintChat("Valvrave Sharp => {0}", text);
-        }
-
-        private static void UpdateCheck()
-        {
-            try
-            {
-                using (var web = new WebClient())
-                {
-                    var rawFile =
-                        web.DownloadString(
-                            "https://raw.githubusercontent.com/brian0305/LeagueSharp/master/Valvrave%20Sharp/Valvrave%20Sharp/Properties/AssemblyInfo.cs");
-                    var checkFile =
-                        new Regex(@"\[assembly\: AssemblyVersion\(""(\d{1,})\.(\d{1,})\.(\d{1,})\.(\d{1,})""\)\]").Match
-                            (rawFile);
-                    if (!checkFile.Success)
-                    {
-                        return;
-                    }
-                    var gitVersion =
-                        new Version(
-                            $"{checkFile.Groups[1]}.{checkFile.Groups[2]}.{checkFile.Groups[3]}.{checkFile.Groups[4]}");
-                    if (gitVersion > Assembly.GetExecutingAssembly().GetName().Version)
-                    {
-                        PrintChat("Outdated! Newest Version: " + gitVersion);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
         }
 
         #endregion

@@ -91,25 +91,19 @@
                 };
             Obj_AI_Base.OnBuffAdd += (sender, args) =>
                 {
-                    if (!sender.IsMe || !args.Buff.Caster.IsMe)
+                    if (!sender.IsMe || !args.Buff.Caster.IsMe || args.Buff.DisplayName != "BurningAgony")
                     {
                         return;
                     }
-                    if (args.Buff.DisplayName == "BurningAgony")
-                    {
-                        haveW = true;
-                    }
+                    haveW = true;
                 };
             Obj_AI_Base.OnBuffRemove += (sender, args) =>
                 {
-                    if (!sender.IsMe || !args.Buff.Caster.IsMe)
+                    if (!sender.IsMe || !args.Buff.Caster.IsMe || args.Buff.DisplayName != "BurningAgony")
                     {
                         return;
                     }
-                    if (args.Buff.DisplayName == "BurningAgony")
-                    {
-                        haveW = false;
-                    }
+                    haveW = false;
                 };
         }
 

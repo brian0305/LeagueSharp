@@ -272,7 +272,7 @@
                 {
                     var targetR =
                         Variables.TargetSelector.GetTargets(Q.Range + extraRange, Q.DamageType)
-                            .OrderByDescending(i => new Priority().GetDefaultPriority(i))
+                            .OrderByDescending(i => new Priority().GetPriority(i))
                             .ThenBy(i => i.DistanceToPlayer())
                             .FirstOrDefault(i => MainMenu["Combo"]["RCast" + i.ChampionName]);
                     if (targetR != null)
@@ -443,7 +443,7 @@
 
         private static void CastW(Obj_AI_Hero target, SpellSlot slot, bool isRCombo = false)
         {
-            if (slot == SpellSlot.Unknown || Variables.TickCount - lastW <= 1000)
+            if (slot == SpellSlot.Unknown || Variables.TickCount - lastW <= 300)
             {
                 return;
             }
@@ -572,9 +572,8 @@
             var zedW2 = EvadeSpellDatabase.Spells.FirstOrDefault(i => i.Enable && i.IsReady && i.Slot == SpellSlot.W);
             if (zedW2 != null && wShadow.IsValid() && !Evade.IsAboutToHit(wShadow, 30)
                 && (!wShadow.IsUnderEnemyTurret() || MainMenu["Evade"]["Spells"][zedW2.Name]["WTower"])
-                && skillshot.Any(i => i.DangerLevel >= zedW2.DangerLevel))
+                && skillshot.Any(i => i.DangerLevel >= zedW2.DangerLevel) && W.Cast())
             {
-                sender.Spellbook.CastSpell(zedW2.Slot);
                 return;
             }
             var zedR2 =
@@ -584,7 +583,7 @@
                 && (!rShadow.IsUnderEnemyTurret() || MainMenu["Evade"]["Spells"][zedR2.Name]["RTower"])
                 && skillshot.Any(i => i.DangerLevel >= zedR2.DangerLevel))
             {
-                sender.Spellbook.CastSpell(zedR2.Slot);
+                R.Cast();
             }
         }
 
@@ -996,7 +995,7 @@
                     .FirstOrDefault();
             if (target != null)
             {
-                Player.Spellbook.CastSpell(zedR1.Slot, target);
+                R.CastOnUnit(target);
             }
         }
 

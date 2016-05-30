@@ -32,7 +32,7 @@
 
         public DrMundo()
         {
-            Q = new Spell(SpellSlot.Q, 1050).SetSkillshot(0.265f, 60, 2100, true, SkillshotType.SkillshotLine);
+            Q = new Spell(SpellSlot.Q, 1050).SetSkillshot(0.25f, 60, 2000, true, SkillshotType.SkillshotLine);
             W = new Spell(SpellSlot.W, 325);
             E = new Spell(SpellSlot.E, 25);
             R = new Spell(SpellSlot.R);
@@ -91,7 +91,7 @@
                 };
             Obj_AI_Base.OnBuffAdd += (sender, args) =>
                 {
-                    if (!sender.IsMe || !args.Buff.Caster.IsMe || args.Buff.DisplayName != "BurningAgony")
+                    if (!sender.IsMe || args.Buff.DisplayName != "BurningAgony")
                     {
                         return;
                     }
@@ -99,7 +99,7 @@
                 };
             Obj_AI_Base.OnBuffRemove += (sender, args) =>
                 {
-                    if (!sender.IsMe || !args.Buff.Caster.IsMe || args.Buff.DisplayName != "BurningAgony")
+                    if (!sender.IsMe || args.Buff.DisplayName != "BurningAgony")
                     {
                         return;
                     }

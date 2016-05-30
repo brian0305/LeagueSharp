@@ -51,13 +51,13 @@
 
         public LeeSin()
         {
-            Q = new Spell(SpellSlot.Q, 1100).SetSkillshot(0.265f, 60, 1850, true, SkillshotType.SkillshotLine);
+            Q = new Spell(SpellSlot.Q, 1100).SetSkillshot(0.25f, 60, 1800, true, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, 1300);
             W = new Spell(SpellSlot.W, 700);
-            E = new Spell(SpellSlot.E, 425).SetTargetted(0.265f, float.MaxValue);
+            E = new Spell(SpellSlot.E, 425).SetTargetted(0.25f, float.MaxValue);
             E2 = new Spell(E.Slot, 570);
             R = new Spell(SpellSlot.R, 375);
-            R2 = new Spell(R.Slot).SetSkillshot(0.325f, 0, 950, false, Q.Type);
+            R2 = new Spell(R.Slot).SetSkillshot(0.325f, 0, 950, false, SkillshotType.SkillshotLine);
             Q.DamageType = Q2.DamageType = W.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
             Q.MinHitChance = HitChance.VeryHigh;
@@ -137,13 +137,13 @@
                                 break;
                         }
                     }
-                    else if (sender.IsEnemy && args.Buff.Caster.IsMe)
+                    else if (sender.IsEnemy)
                     {
                         if (args.Buff.DisplayName == "BlindMonkSonicWave")
                         {
                             objQ = sender;
                         }
-                        else if (args.Buff.Name == "blindmonkrroot" && sender is Obj_AI_Hero && Flash.IsReady())
+                        else if (args.Buff.Name == "blindmonkrroot" && Flash.IsReady())
                         {
                             CastRFlash(sender);
                         }
@@ -163,14 +163,14 @@
                                 break;
                         }
                     }
-                    else if (sender.IsEnemy && args.Buff.Caster.IsMe && args.Buff.DisplayName == "BlindMonkSonicWave")
+                    else if (sender.IsEnemy && args.Buff.DisplayName == "BlindMonkSonicWave")
                     {
                         objQ = null;
                     }
                 };
             Obj_AI_Base.OnBuffUpdateCount += (sender, args) =>
                 {
-                    if (!sender.IsMe || !args.Buff.Caster.IsMe || args.Buff.DisplayName != "BlindMonkFlurry")
+                    if (!sender.IsMe || args.Buff.DisplayName != "BlindMonkFlurry")
                     {
                         return;
                     }
@@ -260,7 +260,7 @@
             if (IsEOne)
             {
                 var target =
-                    Variables.TargetSelector.GetTargets(E.Range + 20, E.DamageType, false)
+                    Variables.TargetSelector.GetTargets(E.Range + 20, E.DamageType)
                         .Where(i => E.CanHitCircle(i))
                         .ToList();
                 if (target.Count == 0)
@@ -535,7 +535,7 @@
                 R2.UpdateSourcePosition(posTarget, posTarget);
                 var targetHits =
                     GameObjects.EnemyHeroes.Where(
-                        i => i.IsValidTarget(R2.Range, true, R2.From) && !i.Compare(targetKick) && !i.IsZombie).ToList();
+                        i => i.IsValidTarget(R2.Range, true, R2.From) && !i.Compare(targetKick)).ToList();
                 if (targetHits.Count == 0)
                 {
                     continue;
@@ -623,7 +623,7 @@
                 }
                 else if (!IsDashing)
                 {
-                    var target = Variables.TargetSelector.GetTargets(Q2.Range, Q2.DamageType).FirstOrDefault(HaveQ);
+                    var target = objQ as Obj_AI_Hero;
                     if (target != null
                         && target.Health + target.PhysicalShield
                         <= Q.GetDamage(target, DamageStage.SecondCast) + Player.GetAutoAttackDamage(target) && Q2.Cast())
@@ -642,7 +642,7 @@
             if (MainMenu["KillSteal"]["R"] && R.IsReady())
             {
                 var targetList =
-                    Variables.TargetSelector.GetTargets(R.Range, R.DamageType)
+                    Variables.TargetSelector.GetTargets(R.Range, R.DamageType, false)
                         .Where(i => MainMenu["KillSteal"]["RCast" + i.ChampionName])
                         .ToList();
                 if (targetList.Count > 0)
@@ -888,7 +888,7 @@
             var target = Q.GetTarget(Q.Width / 2);
             if (!IsQOne)
             {
-                target = Variables.TargetSelector.GetTargets(Q2.Range, Q2.DamageType).FirstOrDefault(HaveQ);
+                target = objQ as Obj_AI_Hero;
             }
             if (!Q.IsReady())
             {
@@ -1150,7 +1150,7 @@
                     };
                 Obj_AI_Base.OnBuffAdd += (sender, args) =>
                     {
-                        if (!sender.IsEnemy || !args.Buff.Caster.IsMe || args.Buff.DisplayName != "BlindMonkSonicWave")
+                        if (!sender.IsEnemy || args.Buff.DisplayName != "BlindMonkSonicWave")
                         {
                             return;
                         }
@@ -1492,7 +1492,7 @@
                     };
                 Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                     {
-                        if (!sender.IsMe || !lastPlacePos.IsValid() || args.Slot != SpellSlot.W
+                        if (!lastPlacePos.IsValid() || !sender.IsMe || args.Slot != SpellSlot.W
                             || !args.SData.Name.ToLower().Contains("one"))
                         {
                             return;
@@ -1510,14 +1510,10 @@
                         Insec.IsWardFlash = false;
                         lastPlacePos = new Vector3();
                     };
-                GameObject.OnCreate += (sender, args) =>
+                GameObjectNotifier<Obj_AI_Minion>.OnCreate += (sender, minion) =>
                     {
-                        if (!lastPlacePos.IsValid() || sender.IsEnemy || !W.IsInRange(sender))
-                        {
-                            return;
-                        }
-                        var ward = sender as Obj_AI_Minion;
-                        if (ward == null || !ward.IsWard() || ward.Distance(lastPlacePos) > 150)
+                        if (!lastPlacePos.IsValid() || minion.Distance(lastPlacePos) > 150 || !minion.IsAlly
+                            || !minion.IsWard() || !W.IsInRange(minion))
                         {
                             return;
                         }
@@ -1526,7 +1522,7 @@
                         {
                             LastInsecWardTime = tick;
                         }
-                        if (tick - lastPlaceTime < 1250 && W.IsReady() && IsWOne && W.CastOnUnit(ward))
+                        if (tick - lastPlaceTime < 1250 && W.IsReady() && IsWOne && W.CastOnUnit(minion))
                         {
                             lastW = tick;
                         }

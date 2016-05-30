@@ -88,7 +88,7 @@
             Drawing.OnDraw += OnDraw;
             Obj_AI_Base.OnBuffAdd += (sender, args) =>
                 {
-                    if (!sender.IsMe || !args.Buff.Caster.IsMe)
+                    if (!sender.IsMe)
                     {
                         return;
                     }
@@ -104,7 +104,7 @@
                 };
             Obj_AI_Base.OnBuffRemove += (sender, args) =>
                 {
-                    if (!sender.IsMe || !args.Buff.Caster.IsMe)
+                    if (!sender.IsMe)
                     {
                         return;
                     }
@@ -151,7 +151,7 @@
                 if (R.IsReady())
                 {
                     var target =
-                        Variables.TargetSelector.GetTargets(R.Range, R.DamageType, false)
+                        Variables.TargetSelector.GetTargets(R.Range, R.DamageType)
                             .Where(i => R.CanHitCircle(i))
                             .ToList();
                     if (target.Count > 0

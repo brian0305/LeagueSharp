@@ -30,7 +30,7 @@
     {
         #region Constants
 
-        private const float QDelay = 0.215f, Q2Delay = 0.3f;
+        private const float QDelay = 0.38f, Q2Delay = 0.35f, QDelays = 0.19f, Q2Delays = 0.285f;
 
         private const int RWidth = 400;
 
@@ -54,12 +54,12 @@
 
         public Yasuo()
         {
-            Q = new Spell(SpellSlot.Q, 510).SetSkillshot(0.4f, 40, float.MaxValue, false, SkillshotType.SkillshotLine);
-            Q2 = new Spell(Q.Slot, 1100).SetSkillshot(Q.Delay, 90, 1300, true, Q.Type);
+            Q = new Spell(SpellSlot.Q, 505).SetSkillshot(QDelay, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
+            Q2 = new Spell(Q.Slot, 1100).SetSkillshot(Q2Delay, 90, 1200, true, Q.Type);
             Q3 = new Spell(Q.Slot, 250).SetTargetted(0.005f, float.MaxValue);
             W = new Spell(SpellSlot.W, 400);
-            E = new Spell(SpellSlot.E, 475).SetTargetted(0.005f, 1250);
-            E2 = new Spell(E.Slot).SetTargetted(E.Delay + Q3.Delay, E.Speed);
+            E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1050);
+            E2 = new Spell(E.Slot).SetTargetted(Q3.Delay, E.Speed);
             R = new Spell(SpellSlot.R, 1200);
             Q.DamageType = Q2.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
@@ -164,7 +164,7 @@
                     }
                     Q.Delay = GetQDelay(false);
                     Q2.Delay = GetQDelay(true);
-                    E.Speed = E2.Speed = 1250 + (Player.MoveSpeed - 345);
+                    E.Speed = E2.Speed = 1045 + (Player.MoveSpeed - 345);
                 };
             Variables.Orbwalker.OnAction += (sender, args) =>
                 {
@@ -207,18 +207,6 @@
                         case "YasuoDashScalar":
                             cDash = 1;
                             break;
-                        case "yasuoeqcombosoundmiss":
-                        case "YasuoEQComboSoundHit":
-                            DelayAction.Add(
-                                70,
-                                () =>
-                                    {
-                                        Variables.Orbwalker.ResetSwingTimer();
-                                        Player.IssueOrder(
-                                            GameObjectOrder.AttackTo,
-                                            Player.ServerPosition.Extend(Game.CursorPos, Player.BoundingRadius * 2));
-                                    });
-                            break;
                     }
                 };
             Obj_AI_Base.OnBuffRemove += (sender, args) =>
@@ -245,13 +233,19 @@
                     }
                     cDash = 2;
                 };
-            Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
+            Obj_AI_Base.OnDoCast += (sender, args) =>
                 {
-                    if (!sender.IsMe || args.Slot != SpellSlot.Q)
+                    if (!sender.IsMe || !args.SData.Name.StartsWith("YasuoQ") || args.SData.Name.EndsWith("Mis"))
                     {
                         return;
                     }
-                    Player.IssueOrder(GameObjectOrder.AttackTo, args.Start.Extend(args.End, Player.BoundingRadius * 2));
+                    if (args.SData.Name.EndsWith("W"))
+                    {
+                        DelayAction.Add(50, Variables.Orbwalker.ResetSwingTimer);
+                    }
+                    Player.IssueOrder(
+                        GameObjectOrder.AttackTo,
+                        Player.ServerPosition.Extend(args.End, -(Player.BoundingRadius * 2)));
                 };
         }
 
@@ -570,7 +564,7 @@
 
         private static double GetEDmg(Obj_AI_Base target)
         {
-            return E.GetDamage(target) + E.GetDamage(target, DamageStage.Buff) - 10;
+            return E.GetDamage(target) + E.GetDamage(target, DamageStage.Buff) - 5;
         }
 
         private static Vector3 GetPosAfterDash(Obj_AI_Base target)
@@ -580,13 +574,14 @@
 
         private static float GetQDelay(bool isQ3)
         {
-            var delayOri = 0.4f;
-            var delayMax = !isQ3 ? QDelay : Q2Delay;
+            var delayOri = !isQ3 ? QDelay : Q2Delay;
+            var delayMax = !isQ3 ? QDelays : Q2Delays;
             var perReduce = 1 - delayMax / delayOri;
-            var delay = Math.Max(
-                delayOri * (1 - Math.Min((Player.AttackSpeedMod - 1) * (perReduce / 1.1f), perReduce)),
-                delayMax);
-            return (float)Math.Round((decimal)delay, 3, MidpointRounding.AwayFromZero);
+            var delayReal =
+                Math.Max(
+                    delayOri * (1 - Math.Min((Player.AttackSpeedMod - 1) * (perReduce / 1.1f), perReduce)),
+                    delayMax);
+            return (float)Math.Round((decimal)delayReal, 3, MidpointRounding.AwayFromZero);
         }
 
         private static double GetQDmg(Obj_AI_Base target)
@@ -660,7 +655,7 @@
 
         private static bool IsInRangeQ(Obj_AI_Minion minion)
         {
-            return minion.IsValidTarget(Math.Max(475 + minion.BoundingRadius / 3 - 4, 475));
+            return minion.IsValidTarget(Math.Max(475 + minion.BoundingRadius / 3 - 5, 475));
         }
 
         private static void KillSteal()
@@ -680,7 +675,7 @@
                 }
                 else
                 {
-                    var target = !haveQ3 ? Q.GetTarget(Q.Width) : Q2.GetTarget(Q2.Width / 2);
+                    var target = !haveQ3 ? Q.GetTarget(Q.Width / 2) : Q2.GetTarget(Q2.Width / 2);
                     if (target != null && target.Health + target.PhysicalShield <= GetQDmg(target))
                     {
                         if (!haveQ3)

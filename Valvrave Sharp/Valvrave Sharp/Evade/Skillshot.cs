@@ -281,6 +281,7 @@
                     Drawing.WorldToScreen(
                         (position - this.SpellData.Radius * this.Direction.Perpendicular()).ToVector3());
                 Drawing.DrawLine(from[0], from[1], to[0], to[1], 2, missileColor);
+                //Render.Circle.DrawCircle(position.ToVector3(), this.SpellData.RawRadius, Color.Blue);
             }
         }
 

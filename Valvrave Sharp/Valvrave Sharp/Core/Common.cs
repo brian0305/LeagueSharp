@@ -101,18 +101,19 @@ namespace Valvrave_Sharp.Core
         }
 
         internal static List<Obj_AI_Base> GetCollision(
-            this PredictionOutput pred,
+            this Spell spell,
+            Obj_AI_Base target,
+            List<Vector3> to,
             CollisionableObjects collisionable = CollisionableObjects.Minions)
         {
             var col = Collision.GetCollision(
-                new List<Vector3> { pred.UnitPosition, pred.Input.Unit.Position },
+                to,
                 new PredictionInput
                     {
-                        Delay = pred.Input.Delay, Radius = pred.Input.Radius, Speed = pred.Input.Speed,
-                        Range = pred.Input.Range, Type = pred.Input.Type, CollisionObjects = collisionable,
-                        From = pred.Input.From
+                        Delay = spell.Delay, Radius = spell.Width, Speed = spell.Speed, From = spell.From,
+                        Range = spell.Range, Type = spell.Type, CollisionObjects = collisionable
                     });
-            col.RemoveAll(i => i.Compare(pred.Input.Unit));
+            col.RemoveAll(i => i.Compare(target));
             return col;
         }
 

@@ -223,7 +223,7 @@
                     return;
                 }
             }
-            if (skillshot.Unit.Team == Program.Player.Team)
+            if (skillshot.Unit.Team == Program.Player.Team && !Config.TestOnAllies)
             {
                 return;
             }

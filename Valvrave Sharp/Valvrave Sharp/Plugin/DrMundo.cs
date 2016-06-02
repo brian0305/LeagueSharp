@@ -3,7 +3,7 @@
     #region
 
     using System;
-    using System.Drawing;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Windows.Forms;
 
@@ -14,8 +14,11 @@
     using LeagueSharp.SDK.UI;
     using LeagueSharp.SDK.Utils;
 
+    using SharpDX;
+
     using Valvrave_Sharp.Core;
 
+    using Color = System.Drawing.Color;
     using Menu = LeagueSharp.SDK.UI.Menu;
 
     #endregion
@@ -139,6 +142,10 @@
             {
                 return;
             }
+            if (Q.CastingBestTarget().IsCasted())
+            {
+                return;
+            }
             if (Q.IsReady())
             {
                 var target = Q.GetTarget(Q.Width / 2);
@@ -147,7 +154,7 @@
                     var pred = Q.GetPrediction(target, false, -1, CollisionableObjects.YasuoWall);
                     if (pred.Hitchance >= Q.MinHitChance)
                     {
-                        var col = pred.GetCollision();
+                        var col = Q.GetCollision(target, new List<Vector3> { pred.UnitPosition, target.Position });
                         if ((col.Count == 0 || (MainMenu["Combo"]["QCol"] && Common.CastSmiteKillCollision(col)))
                             && Q.Cast(pred.CastPosition))
                         {

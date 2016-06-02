@@ -48,10 +48,10 @@
 
         public Zed()
         {
-            Q = new Spell(SpellSlot.Q, 925).SetSkillshot(0.25f, 50, 1650, true, SkillshotType.SkillshotLine);
+            Q = new Spell(SpellSlot.Q, 925).SetSkillshot(0.25f, 50, 1700, true, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
             Q3 = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
-            W = new Spell(SpellSlot.W, 700).SetTargetted(0.005f, 1750);
+            W = new Spell(SpellSlot.W, 700).SetSkillshot(0, 60, 1750, false, SkillshotType.SkillshotLine);
             E = new Spell(SpellSlot.E, 290).SetTargetted(0.005f, float.MaxValue);
             R = new Spell(SpellSlot.R, 625);
             Q.DamageType = W.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
@@ -421,17 +421,23 @@
             {
                 return false;
             }
-            var col = pred.GetCollision(CollisionableObjects.Heroes | CollisionableObjects.Minions);
+            var col = spell.GetCollision(
+                target,
+                new List<Vector3> { pred.UnitPosition, target.Position },
+                CollisionableObjects.Heroes | CollisionableObjects.Minions);
             if (col.Count == 0)
             {
                 return Q.Cast(pred.CastPosition);
             }
             var subDmg = Q.GetDamage(target, DamageStage.SecondForm);
-            if (target is Obj_AI_Hero && target.Health + target.PhysicalShield <= subDmg)
+            switch (target.Type)
             {
-                return Q.Cast(pred.CastPosition);
+                case GameObjectType.obj_AI_Hero:
+                    return target.Health + target.PhysicalShield <= subDmg && Q.Cast(pred.CastPosition);
+                case GameObjectType.obj_AI_Minion:
+                    return spell.CanLastHit(target, subDmg) && Q.Cast(pred.CastPosition);
             }
-            return target is Obj_AI_Minion && spell.CanLastHit(target, subDmg) && Q.Cast(pred.CastPosition);
+            return false;
         }
 
         private static void CastW(Obj_AI_Hero target, SpellSlot slot, bool isRCombo = false)
@@ -440,7 +446,7 @@
             {
                 return;
             }
-            var posCast = W.GetPredPosition(target, true);
+            var posCast = W.GetPrediction(target).UnitPosition;
             var posStart = W.From;
             if (isRCombo)
             {

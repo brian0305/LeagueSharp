@@ -37,6 +37,12 @@
 
         #endregion
 
+        #region Static Fields
+
+        internal static bool TestOnAllies = false;
+
+        #endregion
+
         #region Methods
 
         internal static void CreateMenu(Menu mainMenu)
@@ -68,9 +74,10 @@
                     }
                 }
                 foreach (var hero in
-                    GameObjects.EnemyHeroes.Where(
+                    GameObjects.Heroes.Where(
                         i =>
-                        SpellDatabase.Spells.Any(
+                        (i.IsEnemy || TestOnAllies)
+                        && SpellDatabase.Spells.Any(
                             a =>
                             string.Equals(a.ChampionName, i.ChampionName, StringComparison.InvariantCultureIgnoreCase)))
                     )
@@ -80,10 +87,13 @@
                 foreach (var spell in
                     SpellDatabase.Spells.Where(
                         i =>
-                        GameObjects.EnemyHeroes.Any(
-                            a =>
-                            string.Equals(a.ChampionName, i.ChampionName, StringComparison.InvariantCultureIgnoreCase)))
-                    )
+                        GameObjects.Heroes.Where(a => a.IsEnemy || TestOnAllies)
+                            .Any(
+                                a =>
+                                string.Equals(
+                                    a.ChampionName,
+                                    i.ChampionName,
+                                    StringComparison.InvariantCultureIgnoreCase))))
                 {
                     var subMenu =
                         ((Menu)evadeMenu[spell.ChampionName.ToLowerInvariant()]).Add(

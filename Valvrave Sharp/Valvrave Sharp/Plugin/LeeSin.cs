@@ -85,6 +85,7 @@
                 comboMenu.Separator("Star Combo Settings");
                 comboMenu.KeyBind("Star", "Star Combo", Keys.X);
                 comboMenu.Bool("StarKill", "Auto Star Combo If Killable", false);
+                comboMenu.Bool("StarKillWJ", "-> Ward Jump In Auto Star Combo", false);
             }
             var lcMenu = MainMenu.Add(new Menu("LaneClear", "Lane Clear"));
             {
@@ -322,7 +323,7 @@
             {
                 return;
             }
-            var col = pred.GetCollision();
+            var col = Q.GetCollision(target, new List<Vector3> { pred.UnitPosition, target.Position });
             if (col.Count == 0 || (MainMenu["Combo"]["QCol"] && Common.CastSmiteKillCollision(col)))
             {
                 Q.Cast(pred.CastPosition);
@@ -421,8 +422,9 @@
                     {
                         return;
                     }
-                    if (!R.IsInRange(target) && target.DistanceToPlayer() < WardManager.WardRange + R.Range - 50
-                        && Player.Mana >= 80 && !isDashing)
+                    if (MainMenu["Combo"]["StarKillWJ"] && !R.IsInRange(target)
+                        && target.DistanceToPlayer() < WardManager.WardRange + R.Range - 50 && Player.Mana >= 80
+                        && !isDashing)
                     {
                         Flee(target.ServerPosition, true);
                     }
@@ -1325,7 +1327,7 @@
                     var pred = Q.GetPrediction(target, false, -1, CollisionableObjects.YasuoWall);
                     if (pred.Hitchance >= Q.MinHitChance)
                     {
-                        var col = pred.GetCollision();
+                        var col = Q.GetCollision(target, new List<Vector3> { pred.UnitPosition, target.Position });
                         if ((col.Count == 0 || (MainMenu["Insec"]["QCol"] && Common.CastSmiteKillCollision(col)))
                             && Q.Cast(pred.CastPosition))
                         {

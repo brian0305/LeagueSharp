@@ -58,7 +58,7 @@
                     TriggerOnDetectSkillshot(
                         DetectionType.ProcessSpell,
                         spellData,
-                        Variables.TickCount - Game.Ping / 2,
+                        Variables.TickCount,
                         sender.Position.ToVector2(),
                         sender.Position.ToVector2(),
                         sender.Position.ToVector2(),
@@ -66,7 +66,7 @@
                 };
             GameObject.OnDelete += (sender, args) =>
                 {
-                    if (!sender.IsValid || sender.Team == Program.Player.Team)
+                    if (!sender.IsValid || (sender.Team == Program.Player.Team && !Config.TestOnAllies))
                     {
                         return;
                     }
@@ -128,7 +128,7 @@
                 return;
             }
             var unit = missile.SpellCaster as Obj_AI_Hero;
-            if (unit == null || !unit.IsValid || unit.Team == Program.Player.Team)
+            if (unit == null || !unit.IsValid || (unit.Team == Program.Player.Team && !Config.TestOnAllies))
             {
                 return;
             }
@@ -151,7 +151,7 @@
                 endPos = endPos
                          + Math.Min(spellData.ExtraRange, spellData.Range - endPos.Distance(unitPosition)) * direction;
             }
-            var castTime = Variables.TickCount - Game.Ping / 2 - (spellData.MissileDelayed ? 0 : spellData.Delay)
+            var castTime = Variables.TickCount - (spellData.MissileDelayed ? 0 : spellData.Delay)
                            - (int)(1000f * missilePosition.Distance(unitPosition) / spellData.MissileSpeed);
             TriggerOnDetectSkillshot(DetectionType.RecvPacket, spellData, castTime, unitPosition, endPos, endPos, unit);
         }
@@ -164,7 +164,7 @@
                 return;
             }
             var unit = missile.SpellCaster as Obj_AI_Hero;
-            if (unit == null || !unit.IsValid || unit.Team == Program.Player.Team)
+            if (unit == null || !unit.IsValid || (unit.Team == Program.Player.Team && !Config.TestOnAllies))
             {
                 return;
             }
@@ -195,7 +195,7 @@
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
             var unit = sender as Obj_AI_Hero;
-            if (unit == null || !unit.IsValid || unit.Team == Program.Player.Team)
+            if (unit == null || !unit.IsValid || (unit.Team == Program.Player.Team && !Config.TestOnAllies))
             {
                 return;
             }
@@ -230,7 +230,7 @@
                     TriggerOnDetectSkillshot(
                         DetectionType.ProcessSpell,
                         spellData,
-                        Variables.TickCount - Game.Ping / 2,
+                        Variables.TickCount,
                         start,
                         end,
                         end,
@@ -242,8 +242,7 @@
                 return;
             }
             var endPos = args.End.ToVector2();
-            if (spellData.SpellName == "LucianQ" && args.Target != null
-                && args.Target.NetworkId == Program.Player.NetworkId)
+            if (spellData.SpellName == "LucianQ" && args.Target.IsMe)
             {
                 return;
             }
@@ -260,7 +259,7 @@
             TriggerOnDetectSkillshot(
                 DetectionType.ProcessSpell,
                 spellData,
-                Variables.TickCount - Game.Ping / 2,
+                Variables.TickCount,
                 startPos,
                 endPos,
                 args.End.ToVector2(),

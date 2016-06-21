@@ -36,7 +36,7 @@
 
         internal static Obj_AI_Hero Player;
 
-        internal static Spell Q, Q2, Q3, W, W2, E, E2, R, R2;
+        internal static Spell Q, Q2, Q3, W, W2, E, E2, R, R2, R3;
 
         private static readonly Dictionary<string, Func<object>> Plugins = new Dictionary<string, Func<object>>
                                                                                {
@@ -49,7 +49,7 @@
 
         private static readonly Dictionary<string, int> Skins = new Dictionary<string, int>
                                                                     {
-                                                                        { "DrMundo", 8 }, { "Kennen", 6 },
+                                                                        { "DrMundo", 9 }, { "Kennen", 6 },
                                                                         { "LeeSin", 10 }, { "Yasuo", 3 }, { "Zed", 3 }
                                                                     };
 

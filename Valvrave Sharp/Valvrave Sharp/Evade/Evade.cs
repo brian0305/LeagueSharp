@@ -142,7 +142,8 @@
                                 i.Enable && Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active
                                     ? Color.White
                                     : Color.Red,
-                                Color.LimeGreen));
+                                Color.LimeGreen,
+                                2));
                     }
                 };
         }

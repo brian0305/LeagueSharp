@@ -343,26 +343,27 @@ namespace Valvrave_Sharp.Evade
             Spells.Add(
                 new SpellData
                     {
-                        ChampionName = "Cassiopeia", SpellName = "CassiopeiaNoxiousBlast", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotCircle, Delay = 750, Range = 750, Radius = 150,
-                        MissileSpeed = int.MaxValue, AddHitbox = true, DangerValue = 2,
-                        MissileSpellName = "CassiopeiaNoxiousBlast"
+                        ChampionName = "Cassiopeia", SpellName = "CassiopeiaQ", Slot = SpellSlot.Q,
+                        Type = SkillShotType.SkillshotCircle, Delay = 750, Range = 850, Radius = 150,
+                        MissileSpeed = int.MaxValue, AddHitbox = true, DangerValue = 2, MissileSpellName = "CassiopeiaQ"
                     });
+
             Spells.Add(
                 new SpellData
                     {
                         ChampionName = "Cassiopeia", SpellName = "CassiopeiaMiasma", Slot = SpellSlot.W,
-                        Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 850, Radius = 220, MissileSpeed = 2500,
+                        Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 900, Radius = 220, MissileSpeed = 2500,
                         AddHitbox = true, DangerValue = 2, MissileSpellName = "CassiopeiaMiasma",
                         CollisionObjects = CollisionableObjects.YasuoWall
                     });
+
             Spells.Add(
                 new SpellData
                     {
-                        ChampionName = "Cassiopeia", SpellName = "CassiopeiaPetrifyingGaze", Slot = SpellSlot.R,
+                        ChampionName = "Cassiopeia", SpellName = "CassiopeiaR", Slot = SpellSlot.R,
                         Type = SkillShotType.SkillshotCone, Delay = 600, Range = 825, Radius = 80,
                         MissileSpeed = int.MaxValue, FixedRange = true, DangerValue = 5, IsDangerous = true,
-                        MissileSpellName = "CassiopeiaPetrifyingGaze"
+                        MissileSpellName = "CassiopeiaR"
                     });
 
             #endregion Cassiopeia
@@ -376,6 +377,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotCircle, Delay = 1200, Range = 950, Radius = 250,
                         MissileSpeed = int.MaxValue, AddHitbox = true, DangerValue = 3, MissileSpellName = "Rupture"
                     });
+
             Spells.Add(
                 new SpellData
                     {
@@ -997,6 +999,7 @@ namespace Valvrave_Sharp.Evade
                         CollisionObjects =
                             CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall
                     });
+
             Spells.Add(
                 new SpellData
                     {
@@ -1038,6 +1041,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 450, Radius = 270,
                         MissileSpeed = int.MaxValue, AddHitbox = true, DangerValue = 2, MissileSpellName = "RiftWalk"
                     });
+
             Spells.Add(
                 new SpellData
                     {
@@ -1219,6 +1223,7 @@ namespace Valvrave_Sharp.Evade
                         MissileSpeed = 2200, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "lissandraqshards", CollisionObjects = CollisionableObjects.YasuoWall
                     });
+
             Spells.Add(
                 new SpellData
                     {
@@ -1226,6 +1231,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Radius = 450, MissileSpeed = int.MaxValue,
                         FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true
                     });
+
             Spells.Add(
                 new SpellData
                     {
@@ -1243,7 +1249,7 @@ namespace Valvrave_Sharp.Evade
                 new SpellData
                     {
                         ChampionName = "Lucian", SpellName = "LucianQ", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotLine, Delay = 350, Range = 1150, Radius = 60,
+                        Type = SkillShotType.SkillshotLine, Delay = 350, Range = 900, Radius = 60,
                         MissileSpeed = int.MaxValue, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "LucianQ"
                     });
@@ -1252,7 +1258,7 @@ namespace Valvrave_Sharp.Evade
                 new SpellData
                     {
                         ChampionName = "Lucian", SpellName = "LucianW", Slot = SpellSlot.W,
-                        Type = SkillShotType.SkillshotMissileLine, Delay = 350, Range = 1000, Radius = 55,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 350, Range = 900, Radius = 55,
                         MissileSpeed = 1650, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "lucianwmissile",
                         CollisionObjects =
@@ -1576,6 +1582,7 @@ namespace Valvrave_Sharp.Evade
                         Type = SkillShotType.SkillshotCircle, Delay = 250, Radius = 280, MissileSpeed = int.MaxValue,
                         FixedRange = true, AddHitbox = true, DangerValue = 2, IsDangerous = true
                     });
+
             Spells.Add(
                 new SpellData
                     {
@@ -1638,6 +1645,7 @@ namespace Valvrave_Sharp.Evade
                         AddHitbox = true, DangerValue = 3, IsDangerous = true, ExtraRange = 200,
                         CollisionObjects = CollisionableObjects.Heroes | CollisionableObjects.Minions
                     });
+
             Spells.Add(
                 new SpellData
                     {
@@ -1844,6 +1852,30 @@ namespace Valvrave_Sharp.Evade
 
             #endregion Tahm Kench
 
+            #region Taliyah
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "Taliyah", SpellName = "TaliyahQ", Slot = SpellSlot.Q,
+                        Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 1000, Radius = 100,
+                        MissileSpeed = 3600, FixedRange = true, AddHitbox = true, DangerValue = 2,
+                        MissileSpellName = "TaliyahQMis",
+                        CollisionObjects =
+                            CollisionableObjects.YasuoWall | CollisionableObjects.Minions | CollisionableObjects.Heroes
+                    });
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampionName = "Taliyah", SpellName = "TaliyahW", Slot = SpellSlot.W,
+                        Type = SkillShotType.SkillshotCircle, Delay = 600, Range = 900, Radius = 200,
+                        MissileSpeed = int.MaxValue, AddHitbox = true, DangerValue = 2, IsDangerous = true,
+                        MissileSpellName = "TaliyahW"
+                    });
+
+            #endregion Taliyah
+
             #region Talon
 
             Spells.Add(
@@ -2020,7 +2052,7 @@ namespace Valvrave_Sharp.Evade
                     {
                         ChampionName = "Veigar", SpellName = "VeigarBalefulStrike", Slot = SpellSlot.Q,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 950, Radius = 70,
-                        MissileSpeed = 2000, FixedRange = true, AddHitbox = true, DangerValue = 2,
+                        MissileSpeed = 2200, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "VeigarBalefulStrikeMis", CollisionObjects = CollisionableObjects.YasuoWall
                     });
 
@@ -2290,8 +2322,9 @@ namespace Valvrave_Sharp.Evade
                 new SpellData
                     {
                         ChampionName = "Zilean", SpellName = "ZileanQ", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotCircle, Delay = 300, Range = 900, Radius = 210, MissileSpeed = 2000,
-                        AddHitbox = true, DangerValue = 2, MissileSpellName = "ZileanQMissile"
+                        Type = SkillShotType.SkillshotCircle, Delay = 250 + 450, ExtraDuration = 400, Range = 900,
+                        Radius = 140, MissileSpeed = int.MaxValue, AddHitbox = true, DangerValue = 2,
+                        MissileSpellName = "ZileanQMissile"
                     });
 
             #endregion Zilean

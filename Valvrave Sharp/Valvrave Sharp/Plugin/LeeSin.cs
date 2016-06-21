@@ -45,19 +45,22 @@
 
         private static Obj_AI_Base objQ;
 
+        private static Vector3 posBubbaKush;
+
         #endregion
 
         #region Constructors and Destructors
 
         public LeeSin()
         {
-            Q = new Spell(SpellSlot.Q, 1100).SetSkillshot(0.25f, 60, 1800, true, SkillshotType.SkillshotLine);
+            Q = new Spell(SpellSlot.Q, 1095).SetSkillshot(0.25f, 60, 1800, true, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, 1300);
             W = new Spell(SpellSlot.W, 700);
             E = new Spell(SpellSlot.E, 425).SetTargetted(0.25f, float.MaxValue);
             E2 = new Spell(E.Slot, 570);
             R = new Spell(SpellSlot.R, 375);
-            R2 = new Spell(R.Slot).SetSkillshot(0.325f, 0, 950, false, SkillshotType.SkillshotLine);
+            R2 = new Spell(R.Slot, RKickRange).SetSkillshot(0.325f, 0, 950, false, SkillshotType.SkillshotLine);
+            R3 = new Spell(R.Slot, R.Range).SetSkillshot(R2.Delay, 0, R2.Speed, false, R2.Type);
             Q.DamageType = Q2.DamageType = W.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
             Q.MinHitChance = HitChance.VeryHigh;
@@ -75,13 +78,17 @@
             {
                 comboMenu.Bool("Ignite", "Use Ignite");
                 comboMenu.Bool("Item", "Use Item");
-                comboMenu.Bool("W", "Use W", false);
-                comboMenu.Bool("E", "Use E");
                 comboMenu.Separator("Q Settings");
                 comboMenu.Bool("Q", "Use Q");
                 comboMenu.Bool("Q2", "Also Q2");
                 comboMenu.Bool("Q2Obj", "Q2 Even Miss", false);
                 comboMenu.Bool("QCol", "Smite Collision");
+                comboMenu.Separator("W Settings");
+                comboMenu.Bool("W", "Use W", false);
+                comboMenu.Bool("W2", "Also W2", false);
+                comboMenu.Separator("E Settings");
+                comboMenu.Bool("E", "Use E");
+                comboMenu.Bool("E2", "Also E2");
                 comboMenu.Separator("Star Combo Settings");
                 comboMenu.KeyBind("Star", "Star Combo", Keys.X);
                 comboMenu.Bool("StarKill", "Auto Star Combo If Killable", false);
@@ -101,9 +108,11 @@
             }
             var ksMenu = MainMenu.Add(new Menu("KillSteal", "Kill Steal"));
             {
-                ksMenu.Bool("Q", "Use Q");
                 ksMenu.Bool("E", "Use E");
                 ksMenu.Bool("R", "Use R");
+                ksMenu.Separator("Q Settings");
+                ksMenu.Bool("Q", "Use Q");
+                ksMenu.Bool("Q2", "Also Q2");
                 if (GameObjects.EnemyHeroes.Any())
                 {
                     ksMenu.Separator("Extra R Settings");
@@ -121,6 +130,7 @@
             }
             MainMenu.KeyBind("FleeW", "Use W To Flee", Keys.C);
             MainMenu.KeyBind("RFlash", "R-Flash To Mouse", Keys.Z);
+            MainMenu.KeyBind("RAdv", "Bubba Kush (R-Flash)", Keys.Y);
 
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
@@ -211,14 +221,10 @@
             {
                 return;
             }
-            var multiR = GetMultiR(Player.ServerPosition);
-            if (multiR.Item2 == null)
+            var multiR = GetMultiR();
+            if (multiR.Item1 != null && (multiR.Item2 == -1 || multiR.Item2 >= MainMenu["KnockUp"]["RAutoCountA"] + 1))
             {
-                return;
-            }
-            if (multiR.Item1 == -1 || multiR.Item1 >= MainMenu["KnockUp"]["RAutoCountA"] + 1)
-            {
-                R.CastOnUnit(multiR.Item2);
+                R.CastOnUnit(multiR.Item1);
             }
         }
 
@@ -276,7 +282,7 @@
                     E.Cast();
                 }
             }
-            else
+            else if (MainMenu["Combo"]["E2"])
             {
                 var target = GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(E2.Range) && HaveE(i)).ToList();
                 if (target.Count == 0)
@@ -343,6 +349,10 @@
             {
                 pos = Game.CursorPos;
             }
+            else if (MainMenu["RAdv"].GetValue<MenuKeyBind>().Active)
+            {
+                pos = posBubbaKush;
+            }
             else if (MainMenu["Insec"]["Insec"].GetValue<MenuKeyBind>().Active
                      && Variables.TickCount - Insec.LastRFlashTime < 5000)
             {
@@ -368,6 +378,10 @@
                 minion = minions.FirstOrDefault(i => i.InAutoAttackRange());
             }
             if (hero == null && minion == null)
+            {
+                return;
+            }
+            if (hero != null && !IsWOne && !MainMenu["Combo"]["W2"])
             {
                 return;
             }
@@ -520,16 +534,72 @@
             }
         }
 
-        private static Tuple<int, Obj_AI_Hero> GetMultiR(Vector3 from)
+        private static Tuple<Obj_AI_Hero, Vector3, Vector3> GetBubbaKush()
         {
             var bestHit = 0;
             Obj_AI_Hero bestTarget = null;
-            foreach (var targetKick in
+            Vector3 bestPos = new Vector3(), startPos = new Vector3();
+            var targetKicks =
                 GameObjects.EnemyHeroes.Where(
                     i =>
-                    i.IsValidTarget(R.Range, true, from) && i.Health + i.PhysicalShield > R.GetDamage(i)
+                    i.IsValidTarget(R.Range) && i.Health + i.PhysicalShield > R.GetDamage(i)
                     && !i.HasBuffOfType(BuffType.SpellShield) && !i.HasBuffOfType(BuffType.SpellImmunity))
-                    .OrderByDescending(i => i.BonusHealth))
+                    .OrderByDescending(i => i.BonusHealth)
+                    .ToList();
+            foreach (var targetKick in targetKicks)
+            {
+                var posTarget = targetKick.ServerPosition;
+                R3.Width = targetKick.BoundingRadius;
+                R3.Range = RKickRange + R3.Width / 2;
+                R3.UpdateSourcePosition(posTarget, posTarget);
+                var targetHits =
+                    GameObjects.EnemyHeroes.Where(
+                        i => i.IsValidTarget(R3.Range + R3.Width / 2, true, R3.From) && !i.Compare(targetKick)).ToList();
+                if (targetHits.Count == 0)
+                {
+                    continue;
+                }
+                var cHit = 1;
+                var pos = new Vector3();
+                foreach (var targetHit in targetHits)
+                {
+                    var pred = R3.GetPrediction(targetHit);
+                    if (pred.Hitchance < HitChance.High)
+                    {
+                        continue;
+                    }
+                    cHit++;
+                    pos = pred.CastPosition;
+                    var dmgR = GetRColDmg(targetKick, targetHit);
+                    if (targetHit.Health + targetHit.PhysicalShield <= dmgR
+                        && !Invulnerable.Check(targetHit, R.DamageType, true, dmgR))
+                    {
+                        return new Tuple<Obj_AI_Hero, Vector3, Vector3>(targetKick, pos, posTarget);
+                    }
+                }
+                if (bestHit == 0 || bestHit < cHit)
+                {
+                    bestHit = cHit;
+                    bestTarget = targetKick;
+                    bestPos = pos;
+                    startPos = posTarget;
+                }
+            }
+            return new Tuple<Obj_AI_Hero, Vector3, Vector3>(bestTarget, bestPos, startPos);
+        }
+
+        private static Tuple<Obj_AI_Hero, int> GetMultiR()
+        {
+            var bestHit = 0;
+            Obj_AI_Hero bestTarget = null;
+            var targetKicks =
+                GameObjects.EnemyHeroes.Where(
+                    i =>
+                    i.IsValidTarget(R.Range) && i.Health + i.PhysicalShield > R.GetDamage(i)
+                    && !i.HasBuffOfType(BuffType.SpellShield) && !i.HasBuffOfType(BuffType.SpellImmunity))
+                    .OrderByDescending(i => i.BonusHealth)
+                    .ToList();
+            foreach (var targetKick in targetKicks)
             {
                 var posTarget = targetKick.ServerPosition;
                 R2.Width = targetKick.BoundingRadius;
@@ -537,31 +607,29 @@
                 R2.UpdateSourcePosition(posTarget, posTarget);
                 var targetHits =
                     GameObjects.EnemyHeroes.Where(
-                        i => i.IsValidTarget(R2.Range, true, R2.From) && !i.Compare(targetKick)).ToList();
+                        i => i.IsValidTarget(R2.Range + R2.Width / 2, true, R2.From) && !i.Compare(targetKick)).ToList();
                 if (targetHits.Count == 0)
                 {
                     continue;
                 }
                 var cHit = 1;
-                foreach (var targetHit in from target in targetHits
-                                          let posPred = R2.GetPredPosition(target)
-                                          let project = posPred.ProjectOn(R2.From, R2.From.Extend(@from, -R2.Range))
-                                          where
-                                              project.IsOnSegment
-                                              && project.SegmentPoint.Distance(posPred)
-                                              <= R2.Width + target.BoundingRadius / 2
-                                          select target)
+                foreach (var targetHit in targetHits)
                 {
+                    var pred = R2.GetPrediction(targetHit);
+                    if (pred.Hitchance < HitChance.High)
+                    {
+                        continue;
+                    }
+                    cHit++;
                     if (MainMenu["KnockUp"]["RAutoKill"])
                     {
                         var dmgR = GetRColDmg(targetKick, targetHit);
                         if (targetHit.Health + targetHit.PhysicalShield <= dmgR
                             && !Invulnerable.Check(targetHit, R.DamageType, true, dmgR))
                         {
-                            return new Tuple<int, Obj_AI_Hero>(-1, targetKick);
+                            return new Tuple<Obj_AI_Hero, int>(targetKick, -1);
                         }
                     }
-                    cHit++;
                 }
                 if (bestHit == 0 || bestHit < cHit)
                 {
@@ -569,7 +637,7 @@
                     bestTarget = targetKick;
                 }
             }
-            return new Tuple<int, Obj_AI_Hero>(bestHit, bestTarget);
+            return new Tuple<Obj_AI_Hero, int>(bestTarget, bestHit);
         }
 
         private static double GetQ2Dmg(Obj_AI_Base target, double subHp)
@@ -604,14 +672,17 @@
 
         private static void KillSteal()
         {
-            if (MainMenu["KillSteal"]["Q"] && Q.IsReady())
+            var ksQ1 = MainMenu["KillSteal"]["Q"];
+            var ksQ2 = MainMenu["KillSteal"]["Q2"];
+            if (ksQ1 && Q.IsReady())
             {
                 if (IsQOne)
                 {
                     var target = Q.GetTarget(Q.Width / 2);
                     if (target != null
                         && (target.Health + target.PhysicalShield <= Q.GetDamage(target)
-                            || (target.Health + target.PhysicalShield
+                            || (ksQ2
+                                && target.Health + target.PhysicalShield
                                 <= GetQ2Dmg(target, Q.GetDamage(target)) + Player.GetAutoAttackDamage(target)
                                 && Player.Mana - Q.Instance.ManaCost >= 30))
                         && Q.Casting(
@@ -623,7 +694,7 @@
                         return;
                     }
                 }
-                else if (!IsDashing)
+                else if (ksQ2 && !IsDashing)
                 {
                     var target = objQ as Obj_AI_Hero;
                     if (target != null
@@ -654,7 +725,7 @@
                     {
                         R.CastOnUnit(targetR);
                     }
-                    else if (MainMenu["KillSteal"]["Q"] && Q.IsReady() && !IsQOne)
+                    else if (ksQ1 && ksQ2 && Q.IsReady() && !IsQOne)
                     {
                         var targetQ2R =
                             targetList.FirstOrDefault(
@@ -818,7 +889,8 @@
                 if (MainMenu["Draw"]["KnockUp"])
                 {
                     var menu = MainMenu["KnockUp"]["RAuto"].GetValue<MenuKeyBind>();
-                    var text = $"Auto KnockUp: {(menu.Active ? "On" : "Off")} [{menu.Key}]";
+                    var text =
+                        $"Auto KnockUp: {(menu.Active ? "On" : "Off")} <{MainMenu["KnockUp"]["RAutoCountA"].GetValue<MenuSlider>().Value}> [{menu.Key}]";
                     var pos = Drawing.WorldToScreen(Player.Position);
                     Drawing.DrawText(
                         pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
@@ -866,6 +938,19 @@
                             if (target != null && R.CastOnUnit(target))
                             {
                                 Variables.TargetSelector.SetTarget(target);
+                            }
+                        }
+                    }
+                    else if (MainMenu["RAdv"].GetValue<MenuKeyBind>().Active)
+                    {
+                        Variables.Orbwalker.Move(Game.CursorPos);
+                        if (R.IsReady() && Flash.IsReady())
+                        {
+                            var bubbaKush = GetBubbaKush();
+                            if (bubbaKush.Item1 != null && bubbaKush.Item2.IsValid() && R.CastOnUnit(bubbaKush.Item1))
+                            {
+                                posBubbaKush = bubbaKush.Item2;
+                                Variables.TargetSelector.SetTarget(bubbaKush.Item1);
                             }
                         }
                     }
@@ -971,7 +1056,7 @@
         {
             #region Constants
 
-            private const int DistWard = 200, DistFlash = 130;
+            private const int DistWard = 230, DistFlash = 130;
 
             #endregion
 
@@ -1343,7 +1428,7 @@
                             .Where(
                                 i =>
                                 !i.Compare(target) && i.IsValidTarget(Q.Range)
-                                && Q.GetHealthPrediction(i) > Q.GetDamage(i) && i.Distance(target) < minDist - 50)
+                                && Q.GetHealthPrediction(i) > Q.GetDamage(i) && i.Distance(target) < minDist - 100)
                             .OrderBy(i => i.Distance(target))
                             .ThenByDescending(i => i.Health)
                             .ToList();
@@ -1354,7 +1439,7 @@
                     nearObj.ForEach(i => Q.Casting(i));
                 }
                 else if (target.DistanceToPlayer() > minDist
-                         && (HaveQ(target) || (objQ.IsValidTarget(Q2.Range) && target.Distance(objQ) < minDist - 50))
+                         && (HaveQ(target) || (objQ.IsValidTarget(Q2.Range) && target.Distance(objQ) < minDist - 100))
                          && ((WardManager.CanWardJump && Player.Mana >= 80)
                              || (MainMenu["Insec"]["Flash"] && Flash.IsReady())) && Q2.Cast())
                 {

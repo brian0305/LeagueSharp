@@ -39,7 +39,7 @@
         {
             Q = new Spell(SpellSlot.Q, 1050).SetSkillshot(0.19f, 50, 1700, true, SkillshotType.SkillshotLine);
             W = new Spell(SpellSlot.W, 800).SetTargetted(0.25f, float.MaxValue);
-            E = new Spell(SpellSlot.E);
+            E = new Spell(SpellSlot.E, 0);
             R = new Spell(SpellSlot.R, 550).SetTargetted(0.25f, float.MaxValue);
             Q.DamageType = W.DamageType = R.DamageType = DamageType.Magical;
             Q.MinHitChance = HitChance.VeryHigh;

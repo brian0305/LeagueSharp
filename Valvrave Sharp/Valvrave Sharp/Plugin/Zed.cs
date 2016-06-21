@@ -51,7 +51,7 @@
             Q = new Spell(SpellSlot.Q, 925).SetSkillshot(0.25f, 50, 1700, true, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
             Q3 = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
-            W = new Spell(SpellSlot.W, 700).SetSkillshot(0, 60, 1750, false, SkillshotType.SkillshotLine);
+            W = new Spell(SpellSlot.W, 700).SetSkillshot(0, 0, 1750, false, SkillshotType.SkillshotLine);
             E = new Spell(SpellSlot.E, 290).SetTargetted(0.005f, float.MaxValue);
             R = new Spell(SpellSlot.R, 625);
             Q.DamageType = W.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
@@ -442,27 +442,37 @@
 
         private static void CastW(Obj_AI_Hero target, SpellSlot slot, bool isRCombo = false)
         {
-            if (slot == SpellSlot.Unknown || Variables.TickCount - lastW <= 300)
+            if (slot == SpellSlot.Unknown || Variables.TickCount - lastW <= 100 || IsCastingW)
             {
                 return;
             }
+            switch (slot)
+            {
+                case SpellSlot.Q:
+                    W.Width = Q.Width + 30;
+                    W.Delay = 0;
+                    break;
+                case SpellSlot.E:
+                    W.Width = E.Width / 2;
+                    W.Delay = E.Delay;
+                    break;
+            }
             var posCast = W.GetPrediction(target).UnitPosition;
-            var posStart = W.From;
             if (isRCombo)
             {
                 var posEnd = rShadow.ServerPosition;
                 if (posCast.Distance(posEnd) > Q.Range - 50)
                 {
-                    posEnd = posStart;
+                    posEnd = Player.ServerPosition;
                 }
                 switch (MainMenu["Combo"]["WAdv"].GetValue<MenuList>().Index)
                 {
                     case 1:
-                        posCast = posStart + (posCast - posEnd).Normalized() * 500;
+                        posCast = Player.ServerPosition + (posCast - posEnd).Normalized() * 500;
                         break;
                     case 2:
-                        var subPos1 = posStart + (posCast - posEnd).Normalized().Perpendicular() * 500;
-                        var subPos2 = posStart + (posEnd - posCast).Normalized().Perpendicular() * 500;
+                        var subPos1 = Player.ServerPosition + (posCast - posEnd).Normalized().Perpendicular() * 500;
+                        var subPos2 = Player.ServerPosition + (posEnd - posCast).Normalized().Perpendicular() * 500;
                         if (!subPos1.IsWall() && subPos2.IsWall())
                         {
                             posCast = subPos1;
@@ -483,9 +493,13 @@
                         break;
                 }
             }
-            else if (posCast.Distance(posStart) < E.Range * 2 - target.BoundingRadius)
+            else if (posCast.DistanceToPlayer() < E.Range * 2 - target.BoundingRadius)
             {
-                posCast = posStart.Extend(posCast, 500);
+                posCast = Player.ServerPosition.Extend(posCast, 500);
+            }
+            else if (posCast.DistanceToPlayer() > 550 && posCast.DistanceToPlayer() < 750)
+            {
+                posCast = Player.ServerPosition.Extend(posCast, 600);
             }
             if (W.Cast(posCast))
             {

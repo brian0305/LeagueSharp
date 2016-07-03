@@ -850,7 +850,7 @@
                 {
                     var menu = MainMenu["KnockUp"]["R"].GetValue<MenuKeyBind>();
                     var text =
-                        $"Auto KnockUp: {(menu.Active ? "On" : "Off")} <{MainMenu["KnockUp"]["RCountA"].GetValue<MenuSlider>().Value}> [{menu.Key}]";
+                        $"Auto Knock Up: {(menu.Active ? "On" : "Off")} <{MainMenu["KnockUp"]["RCountA"].GetValue<MenuSlider>().Value}> [{menu.Key}]";
                     var pos = Drawing.WorldToScreen(Player.Position);
                     Drawing.DrawText(
                         pos.X - (float)Drawing.GetTextExtent(text).Width / 2,

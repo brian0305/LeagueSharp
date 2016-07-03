@@ -182,8 +182,8 @@
                         return;
                     }
                     var tur = args.Target as Obj_AI_Turret;
-                    if (tur == null) return;
-                    if (Q.GetTarget(50) != null || Common.ListMinions().Count(i => i.IsValidTarget(Q.Range + 50)) > 0)
+                    if (tur == null || Q.GetTarget(50) != null
+                        || Common.ListMinions().Count(i => i.IsValidTarget(Q.Range + 50)) > 0)
                     {
                         return;
                     }

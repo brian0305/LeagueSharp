@@ -3,7 +3,7 @@
     #region
 
     using System;
-    using System.Collections.Generic;
+    using System.Drawing;
     using System.Linq;
     using System.Windows.Forms;
 
@@ -14,11 +14,8 @@
     using LeagueSharp.SDK.UI;
     using LeagueSharp.SDK.Utils;
 
-    using SharpDX;
-
     using Valvrave_Sharp.Core;
 
-    using Color = System.Drawing.Color;
     using Menu = LeagueSharp.SDK.UI.Menu;
 
     #endregion
@@ -151,16 +148,7 @@
                 var target = Q.GetTarget(Q.Width / 2);
                 if (target != null)
                 {
-                    var pred = Q.GetPrediction(target, false, -1, CollisionableObjects.YasuoWall);
-                    if (pred.Hitchance >= Q.MinHitChance)
-                    {
-                        var col = Q.GetCollision(target, new List<Vector3> { pred.UnitPosition, target.Position });
-                        if ((col.Count == 0 || (MainMenu["Combo"]["QCol"] && Common.CastSmiteKillCollision(col)))
-                            && Q.Cast(pred.CastPosition))
-                        {
-                            return;
-                        }
-                    }
+                    Q.CastSpellSmite(target, MainMenu["Combo"]["QCol"]);
                 }
             }
             if (E.IsReady() && !Player.Spellbook.IsAutoAttacking && !Variables.Orbwalker.CanAttack()

@@ -202,7 +202,7 @@
                 }
             }
             var subTarget = W.GetTarget();
-            if (subTarget != null && MainMenu["Combo"]["Ignite"] && Ignite.IsReady() && subTarget.HealthPercent < 30
+            if (subTarget != null && MainMenu["Combo"]["Ignite"] && Common.CanIgnite && subTarget.HealthPercent < 30
                 && subTarget.DistanceToPlayer() <= IgniteRange)
             {
                 Player.Spellbook.CastSpell(Ignite, subTarget);

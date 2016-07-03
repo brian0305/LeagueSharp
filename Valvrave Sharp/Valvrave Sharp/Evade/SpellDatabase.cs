@@ -675,7 +675,7 @@ namespace Valvrave_Sharp.Evade
                 new SpellData
                     {
                         ChampionName = "Gnar", SpellName = "GnarQReturn", Slot = SpellSlot.Q,
-                        Type = SkillShotType.SkillshotMissileLine, Range = 2500, Radius = 75, MissileSpeed = 60,
+                        Type = SkillShotType.SkillshotMissileLine, Range = 3000, Radius = 75, MissileSpeed = 60,
                         MissileAccel = 800, MissileMaxSpeed = 2600, MissileMinSpeed = 60, FixedRange = true,
                         AddHitbox = true, DangerValue = 2, CanBeRemoved = true, ForceRemove = true,
                         MissileSpellName = "GnarQMissileReturn", DisabledByDefault = true,
@@ -1862,7 +1862,8 @@ namespace Valvrave_Sharp.Evade
                         MissileSpeed = 3600, FixedRange = true, AddHitbox = true, DangerValue = 2,
                         MissileSpellName = "TaliyahQMis",
                         CollisionObjects =
-                            CollisionableObjects.YasuoWall | CollisionableObjects.Minions | CollisionableObjects.Heroes
+                            CollisionableObjects.YasuoWall | CollisionableObjects.Minions | CollisionableObjects.Heroes,
+                        DisabledByDefault = true
                     });
 
             Spells.Add(

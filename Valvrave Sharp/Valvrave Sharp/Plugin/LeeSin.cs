@@ -67,12 +67,17 @@
 
             WardManager.Init();
             Insec.Init();
-            var kuMenu = MainMenu.Add(new Menu("KnockUp", "Knock Up"));
+            var kuMenu = MainMenu.Add(new Menu("KnockUp", "Auto Knock Up"));
             {
-                kuMenu.Separator("Auto Knock Up Settings");
-                kuMenu.KeyBind("RAuto", "Use R", Keys.L, KeyBindType.Toggle);
-                kuMenu.Bool("RAutoKill", "If Kill Enemy Behind");
-                kuMenu.Slider("RAutoCountA", "Or Hit Enemy Behind >=", 1, 1, 4);
+                kuMenu.KeyBind("R", "Keybind", Keys.L, KeyBindType.Toggle);
+                kuMenu.Bool("RKill", "If Kill Enemy Behind");
+                kuMenu.Slider("RCountA", "Or Hit Enemy Behind >=", 1, 1, 4);
+            }
+            var bkMenu = MainMenu.Add(new Menu("BubbaKush", "Bubba Kush"));
+            {
+                bkMenu.KeyBind("R", "Keybind (R-Flash)", Keys.Y);
+                bkMenu.Bool("RKill", "Priority To Kill Enemy Behind");
+                bkMenu.Slider("RCountA", "Or Hit Enemy Behind >=", 1, 1, 4);
             }
             var comboMenu = MainMenu.Add(new Menu("Combo", "Combo"));
             {
@@ -130,7 +135,6 @@
             }
             MainMenu.KeyBind("FleeW", "Use W To Flee", Keys.C);
             MainMenu.KeyBind("RFlash", "R-Flash To Mouse", Keys.Z);
-            MainMenu.KeyBind("RAdv", "Bubba Kush (R-Flash)", Keys.Y);
 
             Game.OnUpdate += OnUpdate;
             Drawing.OnDraw += OnDraw;
@@ -154,7 +158,7 @@
                         {
                             objQ = sender;
                         }
-                        else if (args.Buff.Name == "blindmonkrroot" && Flash.IsReady())
+                        else if (args.Buff.Name == "blindmonkrroot" && Common.CanFlash)
                         {
                             CastRFlash(sender);
                         }
@@ -217,14 +221,28 @@
 
         private static void AutoKnockUp()
         {
-            if (!R.IsReady() || !MainMenu["KnockUp"]["RAuto"].GetValue<MenuKeyBind>().Active)
+            if (!R.IsReady())
             {
                 return;
             }
-            var multiR = GetMultiR();
-            if (multiR.Item1 != null && (multiR.Item2 == -1 || multiR.Item2 >= MainMenu["KnockUp"]["RAutoCountA"] + 1))
+            var multi = GetMultiHit(MainMenu["KnockUp"]["RKill"], MainMenu["KnockUp"]["RCountA"]);
+            if (multi.Item1 != null && multi.Item2 != 0)
             {
-                R.CastOnUnit(multiR.Item1);
+                R.CastOnUnit(multi.Item1);
+            }
+        }
+
+        private static void BubbaKush()
+        {
+            if (!R.IsReady() || !Common.CanFlash)
+            {
+                return;
+            }
+            var multi = GetMultiHit(MainMenu["BubbaKush"]["RKill"], MainMenu["BubbaKush"]["RCountA"]);
+            if (multi.Item1 != null && multi.Item2 != 0 && R.CastOnUnit(multi.Item1))
+            {
+                posBubbaKush = multi.Item4;
+                Variables.TargetSelector.SetTarget(multi.Item1);
             }
         }
 
@@ -248,7 +266,7 @@
 
         private static void CastE(List<Obj_AI_Minion> minions = null)
         {
-            if (!E.IsReady() || isDashing || Variables.TickCount - lastW <= 150 || Variables.TickCount - lastW2 <= 100)
+            if (!E.IsReady() || isDashing || Variables.TickCount - lastW <= 200 || Variables.TickCount - lastW2 <= 150)
             {
                 return;
             }
@@ -322,20 +340,6 @@
             }
         }
 
-        private static void CastQSmite(Obj_AI_Hero target)
-        {
-            var pred = Q.GetPrediction(target, false, -1, CollisionableObjects.YasuoWall);
-            if (pred.Hitchance < Q.MinHitChance)
-            {
-                return;
-            }
-            var col = Q.GetCollision(target, new List<Vector3> { pred.UnitPosition, target.Position });
-            if (col.Count == 0 || (MainMenu["Combo"]["QCol"] && Common.CastSmiteKillCollision(col)))
-            {
-                Q.Cast(pred.CastPosition);
-            }
-        }
-
         private static void CastRFlash(Obj_AI_Base target)
         {
             var targetSelect = Variables.TargetSelector.GetSelectedTarget();
@@ -349,11 +353,11 @@
             {
                 pos = Game.CursorPos;
             }
-            else if (MainMenu["RAdv"].GetValue<MenuKeyBind>().Active)
+            else if (MainMenu["BubbaKush"]["R"].GetValue<MenuKeyBind>().Active)
             {
                 pos = posBubbaKush;
             }
-            else if (MainMenu["Insec"]["Insec"].GetValue<MenuKeyBind>().Active
+            else if (MainMenu["Insec"]["R"].GetValue<MenuKeyBind>().Active
                      && Variables.TickCount - Insec.LastRFlashTime < 5000)
             {
                 pos = Insec.GetPositionKickTo((Obj_AI_Hero)target);
@@ -367,7 +371,7 @@
 
         private static void CastW(List<Obj_AI_Minion> minions = null)
         {
-            if (!W.IsReady() || Variables.TickCount - lastW <= 300 || isDashing || Variables.TickCount - lastE2 <= 100)
+            if (!W.IsReady() || Variables.TickCount - lastW <= 300 || isDashing || Variables.TickCount - lastE2 <= 200)
             {
                 return;
             }
@@ -451,7 +455,7 @@
                     var target = Q.GetTarget(Q.Width / 2);
                     if (target != null)
                     {
-                        CastQSmite(target);
+                        Q.CastSpellSmite(target, MainMenu["Combo"]["QCol"]);
                     }
                 }
                 else if (MainMenu["Combo"]["Q2"] && !IsDashing && objQ.IsValidTarget(Q2.Range))
@@ -496,7 +500,7 @@
             {
                 UseItem(subTarget);
             }
-            if (subTarget != null && MainMenu["Combo"]["Ignite"] && Ignite.IsReady() && subTarget.HealthPercent < 30
+            if (subTarget != null && MainMenu["Combo"]["Ignite"] && Common.CanIgnite && subTarget.HealthPercent < 30
                 && subTarget.DistanceToPlayer() <= IgniteRange)
             {
                 Player.Spellbook.CastSpell(Ignite, subTarget);
@@ -534,71 +538,20 @@
             }
         }
 
-        private static Tuple<Obj_AI_Hero, Vector3, Vector3> GetBubbaKush()
+        private static Tuple<Obj_AI_Hero, int, Vector3, Vector3> GetMultiHit(
+            bool checkKill,
+            int minHit,
+            bool useJump = false)
         {
             var bestHit = 0;
             Obj_AI_Hero bestTarget = null;
-            Vector3 bestPos = new Vector3(), startPos = new Vector3();
+            Vector3 posBefore = new Vector3(), posAfter = new Vector3();
             var targetKicks =
                 GameObjects.EnemyHeroes.Where(
                     i =>
-                    i.IsValidTarget(R.Range) && i.Health + i.PhysicalShield > R.GetDamage(i)
-                    && !i.HasBuffOfType(BuffType.SpellShield) && !i.HasBuffOfType(BuffType.SpellImmunity))
-                    .OrderByDescending(i => i.BonusHealth)
-                    .ToList();
-            foreach (var targetKick in targetKicks)
-            {
-                var posTarget = targetKick.ServerPosition;
-                R3.Width = targetKick.BoundingRadius;
-                R3.Range = RKickRange + R3.Width / 2;
-                R3.UpdateSourcePosition(posTarget, posTarget);
-                var targetHits =
-                    GameObjects.EnemyHeroes.Where(
-                        i => i.IsValidTarget(R3.Range + R3.Width / 2, true, R3.From) && !i.Compare(targetKick)).ToList();
-                if (targetHits.Count == 0)
-                {
-                    continue;
-                }
-                var cHit = 1;
-                var pos = new Vector3();
-                foreach (var targetHit in targetHits)
-                {
-                    var pred = R3.GetPrediction(targetHit);
-                    if (pred.Hitchance < HitChance.High)
-                    {
-                        continue;
-                    }
-                    cHit++;
-                    pos = pred.CastPosition;
-                    var dmgR = GetRColDmg(targetKick, targetHit);
-                    if (targetHit.Health + targetHit.PhysicalShield <= dmgR
-                        && !Invulnerable.Check(targetHit, R.DamageType, true, dmgR))
-                    {
-                        return new Tuple<Obj_AI_Hero, Vector3, Vector3>(targetKick, pos, posTarget);
-                    }
-                }
-                if (bestHit == 0 || bestHit < cHit)
-                {
-                    bestHit = cHit;
-                    bestTarget = targetKick;
-                    bestPos = pos;
-                    startPos = posTarget;
-                }
-            }
-            return new Tuple<Obj_AI_Hero, Vector3, Vector3>(bestTarget, bestPos, startPos);
-        }
-
-        private static Tuple<Obj_AI_Hero, int> GetMultiR()
-        {
-            var bestHit = 0;
-            Obj_AI_Hero bestTarget = null;
-            var targetKicks =
-                GameObjects.EnemyHeroes.Where(
-                    i =>
-                    i.IsValidTarget(R.Range) && i.Health + i.PhysicalShield > R.GetDamage(i)
-                    && !i.HasBuffOfType(BuffType.SpellShield) && !i.HasBuffOfType(BuffType.SpellImmunity))
-                    .OrderByDescending(i => i.BonusHealth)
-                    .ToList();
+                    i.IsValidTarget(R.Range + (useJump ? WardManager.WardRange : 0))
+                    && i.Health + i.PhysicalShield > R.GetDamage(i) && !i.HasBuffOfType(BuffType.SpellShield)
+                    && !i.HasBuffOfType(BuffType.SpellImmunity)).OrderByDescending(i => i.BonusHealth).ToList();
             foreach (var targetKick in targetKicks)
             {
                 var posTarget = targetKick.ServerPosition;
@@ -607,37 +560,46 @@
                 R2.UpdateSourcePosition(posTarget, posTarget);
                 var targetHits =
                     GameObjects.EnemyHeroes.Where(
-                        i => i.IsValidTarget(R2.Range + R2.Width / 2, true, R2.From) && !i.Compare(targetKick)).ToList();
+                        i => i.IsValidTarget(R2.Range + R2.Width / 2, true, R2.From) && !i.Compare(targetKick))
+                        .OrderByDescending(i => new Priority().GetDefaultPriority(i))
+                        .Select(i => R2.GetPrediction(i))
+                        .Where(i => i.Hitchance >= HitChance.High)
+                        .ToList();
                 if (targetHits.Count == 0)
                 {
                     continue;
                 }
-                var cHit = 1;
-                foreach (var targetHit in targetHits)
+                if (checkKill)
                 {
-                    var pred = R2.GetPrediction(targetHit);
-                    if (pred.Hitchance < HitChance.High)
+                    foreach (var pred in targetHits)
                     {
-                        continue;
-                    }
-                    cHit++;
-                    if (MainMenu["KnockUp"]["RAutoKill"])
-                    {
+                        var targetHit = pred.Input.Unit as Obj_AI_Hero;
+                        if (targetHit == null) continue;
                         var dmgR = GetRColDmg(targetKick, targetHit);
                         if (targetHit.Health + targetHit.PhysicalShield <= dmgR
                             && !Invulnerable.Check(targetHit, R.DamageType, true, dmgR))
                         {
-                            return new Tuple<Obj_AI_Hero, int>(targetKick, -1);
+                            return new Tuple<Obj_AI_Hero, int, Vector3, Vector3>(
+                                targetKick,
+                                -1,
+                                posTarget,
+                                pred.CastPosition);
                         }
                     }
                 }
-                if (bestHit == 0 || bestHit < cHit)
+                if (targetHits.Count > bestHit)
                 {
-                    bestHit = cHit;
                     bestTarget = targetKick;
+                    bestHit = targetHits.Count;
+                    posBefore = posTarget;
+                    posAfter = targetHits.Last().CastPosition;
                 }
             }
-            return new Tuple<Obj_AI_Hero, int>(bestTarget, bestHit);
+            return new Tuple<Obj_AI_Hero, int, Vector3, Vector3>(
+                bestTarget,
+                bestHit >= minHit ? 1 : 0,
+                posBefore,
+                posAfter);
         }
 
         private static double GetQ2Dmg(Obj_AI_Base target, double subHp)
@@ -672,16 +634,14 @@
 
         private static void KillSteal()
         {
-            var ksQ1 = MainMenu["KillSteal"]["Q"];
-            var ksQ2 = MainMenu["KillSteal"]["Q2"];
-            if (ksQ1 && Q.IsReady())
+            if (MainMenu["KillSteal"]["Q"] && Q.IsReady())
             {
                 if (IsQOne)
                 {
                     var target = Q.GetTarget(Q.Width / 2);
                     if (target != null
                         && (target.Health + target.PhysicalShield <= Q.GetDamage(target)
-                            || (ksQ2
+                            || (MainMenu["KillSteal"]["Q2"]
                                 && target.Health + target.PhysicalShield
                                 <= GetQ2Dmg(target, Q.GetDamage(target)) + Player.GetAutoAttackDamage(target)
                                 && Player.Mana - Q.Instance.ManaCost >= 30))
@@ -694,7 +654,7 @@
                         return;
                     }
                 }
-                else if (ksQ2 && !IsDashing)
+                else if (MainMenu["KillSteal"]["Q2"] && !IsDashing)
                 {
                     var target = objQ as Obj_AI_Hero;
                     if (target != null
@@ -725,7 +685,7 @@
                     {
                         R.CastOnUnit(targetR);
                     }
-                    else if (ksQ1 && ksQ2 && Q.IsReady() && !IsQOne)
+                    else if (MainMenu["KillSteal"]["Q"] && MainMenu["KillSteal"]["Q2"] && Q.IsReady() && !IsQOne)
                     {
                         var targetQ2R =
                             targetList.FirstOrDefault(
@@ -888,9 +848,9 @@
                 }
                 if (MainMenu["Draw"]["KnockUp"])
                 {
-                    var menu = MainMenu["KnockUp"]["RAuto"].GetValue<MenuKeyBind>();
+                    var menu = MainMenu["KnockUp"]["R"].GetValue<MenuKeyBind>();
                     var text =
-                        $"Auto KnockUp: {(menu.Active ? "On" : "Off")} <{MainMenu["KnockUp"]["RAutoCountA"].GetValue<MenuSlider>().Value}> [{menu.Key}]";
+                        $"Auto KnockUp: {(menu.Active ? "On" : "Off")} <{MainMenu["KnockUp"]["RCountA"].GetValue<MenuSlider>().Value}> [{menu.Key}]";
                     var pos = Drawing.WorldToScreen(Player.Position);
                     Drawing.DrawText(
                         pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
@@ -908,7 +868,7 @@
                 return;
             }
             KillSteal();
-            Variables.Orbwalker.SetAttackState(!MainMenu["Insec"]["Insec"].GetValue<MenuKeyBind>().Active);
+            Variables.Orbwalker.SetAttackState(!MainMenu["Insec"]["R"].GetValue<MenuKeyBind>().Active);
             switch (Variables.Orbwalker.GetActiveMode())
             {
                 case OrbwalkingMode.Combo:
@@ -929,7 +889,7 @@
                     else if (MainMenu["RFlash"].GetValue<MenuKeyBind>().Active)
                     {
                         Variables.Orbwalker.Move(Game.CursorPos);
-                        if (R.IsReady() && Flash.IsReady())
+                        if (R.IsReady() && Common.CanFlash)
                         {
                             var target =
                                 Variables.TargetSelector.GetTargets(R.Range, R.DamageType)
@@ -941,30 +901,23 @@
                             }
                         }
                     }
-                    else if (MainMenu["RAdv"].GetValue<MenuKeyBind>().Active)
+                    else if (MainMenu["BubbaKush"]["R"].GetValue<MenuKeyBind>().Active)
                     {
                         Variables.Orbwalker.Move(Game.CursorPos);
-                        if (R.IsReady() && Flash.IsReady())
-                        {
-                            var bubbaKush = GetBubbaKush();
-                            if (bubbaKush.Item1 != null && bubbaKush.Item2.IsValid() && R.CastOnUnit(bubbaKush.Item1))
-                            {
-                                posBubbaKush = bubbaKush.Item2;
-                                Variables.TargetSelector.SetTarget(bubbaKush.Item1);
-                            }
-                        }
+                        BubbaKush();
                     }
                     else if (MainMenu["Combo"]["Star"].GetValue<MenuKeyBind>().Active)
                     {
                         StarCombo();
                     }
-                    else if (MainMenu["Insec"]["Insec"].GetValue<MenuKeyBind>().Active)
+                    else if (MainMenu["Insec"]["R"].GetValue<MenuKeyBind>().Active)
                     {
                         Insec.Start(Insec.GetTarget);
                     }
                     break;
             }
-            if (!MainMenu["Insec"]["Insec"].GetValue<MenuKeyBind>().Active)
+            if (MainMenu["KnockUp"]["R"].GetValue<MenuKeyBind>().Active
+                && !MainMenu["Insec"]["R"].GetValue<MenuKeyBind>().Active)
             {
                 AutoKnockUp();
             }
@@ -990,7 +943,7 @@
             {
                 if (IsQOne)
                 {
-                    CastQSmite(target);
+                    Q.CastSpellSmite(target, false);
                 }
                 else if (!IsDashing && HaveQ(target)
                          && (target.Health + target.PhysicalShield
@@ -1103,13 +1056,13 @@
 
             private static bool CanInsec
                 =>
-                    (WardManager.CanWardJump || (MainMenu["Insec"]["Flash"] && Flash.IsReady()) || IsRecent)
+                    (WardManager.CanWardJump || (MainMenu["Insec"]["Flash"] && Common.CanFlash) || IsRecent)
                     && R.IsReady();
 
             private static bool CanWardFlash
                 =>
                     MainMenu["Insec"]["Flash"] && MainMenu["Insec"]["FlashJump"] && WardManager.CanWardJump
-                    && Flash.IsReady();
+                    && Common.CanFlash;
 
             private static bool IsRecent
                 => IsRecentWardJump || (MainMenu["Insec"]["Flash"] && Variables.TickCount - lastFlashRTime < 5000);
@@ -1176,6 +1129,7 @@
             {
                 var insecMenu = MainMenu.Add(new Menu("Insec", "Insec"));
                 {
+                    insecMenu.KeyBind("R", "Keybind", Keys.T);
                     insecMenu.Bool("TargetSelect", "Only Insec Target Selected", false);
                     insecMenu.List("Mode", "Mode", new[] { "Tower/Hero/Current", "Mouse Position", "Current Position" });
                     insecMenu.Separator("Draw Settings");
@@ -1189,8 +1143,6 @@
                     insecMenu.Bool("Q", "Use Q");
                     insecMenu.Bool("QCol", "Smite Collision");
                     insecMenu.Bool("QObj", "Use Q On Near Object");
-                    insecMenu.Separator("Keybinds");
-                    insecMenu.KeyBind("Insec", "Insec", Keys.T);
                 }
 
                 Game.OnUpdate += args =>
@@ -1245,7 +1197,7 @@
                     };
                 Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                     {
-                        if (!sender.IsMe || !MainMenu["Insec"]["Insec"].GetValue<MenuKeyBind>().Active
+                        if (!sender.IsMe || !MainMenu["Insec"]["R"].GetValue<MenuKeyBind>().Active
                             || !lastFlashPos.IsValid() || args.SData.Name != "SummonerFlash"
                             || !MainMenu["Insec"]["Flash"] || Variables.TickCount - lastFlashRTime > 1250
                             || args.End.Distance(lastFlashPos) > 150)
@@ -1409,16 +1361,7 @@
                 var minDist = CanWardFlash ? RangeWardFlash : RangeNormal;
                 if (IsQOne)
                 {
-                    var pred = Q.GetPrediction(target, false, -1, CollisionableObjects.YasuoWall);
-                    if (pred.Hitchance >= Q.MinHitChance)
-                    {
-                        var col = Q.GetCollision(target, new List<Vector3> { pred.UnitPosition, target.Position });
-                        if ((col.Count == 0 || (MainMenu["Insec"]["QCol"] && Common.CastSmiteKillCollision(col)))
-                            && Q.Cast(pred.CastPosition))
-                        {
-                            return;
-                        }
-                    }
+                    Q.CastSpellSmite(target, MainMenu["Insec"]["QCol"]);
                     if (!MainMenu["Insec"]["QObj"])
                     {
                         return;
@@ -1441,7 +1384,7 @@
                 else if (target.DistanceToPlayer() > minDist
                          && (HaveQ(target) || (objQ.IsValidTarget(Q2.Range) && target.Distance(objQ) < minDist - 100))
                          && ((WardManager.CanWardJump && Player.Mana >= 80)
-                             || (MainMenu["Insec"]["Flash"] && Flash.IsReady())) && Q2.Cast())
+                             || (MainMenu["Insec"]["Flash"] && Common.CanFlash)) && Q2.Cast())
                 {
                     isDashing = true;
                     Variables.TargetSelector.SetTarget(target);
@@ -1478,15 +1421,15 @@
 
             private static Tuple<Vector3, bool> GapCheck(Obj_AI_Hero target, bool useFlash = false)
             {
-                if (!useFlash ? !WardManager.CanWardJump : !MainMenu["Insec"]["Flash"] || !Flash.IsReady())
+                if (!useFlash ? !WardManager.CanWardJump : !MainMenu["Insec"]["Flash"] || !Common.CanFlash)
                 {
                     return new Tuple<Vector3, bool>(new Vector3(), false);
                 }
                 var posEnd = GetPositionKickTo(target);
-                var posTarget = target.ServerPosition;
                 var posPlayer = Player.ServerPosition;
                 if (!useFlash)
                 {
+                    var posTarget = target.ServerPosition; //Todo: add prediction
                     var posBehind = posTarget.Extend(posEnd, -DistWard);
                     if (posPlayer.Distance(posBehind) < WardManager.WardRange
                         && posTarget.Distance(posBehind) < posEnd.Distance(posBehind))
@@ -1496,6 +1439,7 @@
                 }
                 else
                 {
+                    var posTarget = target.ServerPosition;
                     var flashMode = MainMenu["Insec"]["FlashMode"].GetValue<MenuList>().Index;
                     if (flashMode != 1 && posPlayer.Distance(posTarget) < R.Range)
                     {

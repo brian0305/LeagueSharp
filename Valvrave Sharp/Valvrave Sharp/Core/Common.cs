@@ -13,13 +13,17 @@ namespace Valvrave_Sharp.Core
 
     using SharpDX;
 
-    using Collision = LeagueSharp.SDK.Collision;
-
     #endregion
 
     internal static class Common
     {
         #region Properties
+
+        internal static bool CanFlash => Program.Flash != SpellSlot.Unknown && Program.Flash.IsReady();
+
+        internal static bool CanIgnite => Program.Ignite != SpellSlot.Unknown && Program.Ignite.IsReady();
+
+        internal static bool CanSmite => Program.Smite != SpellSlot.Unknown && Program.Smite.IsReady();
 
         private static int GetSmiteDmg
             =>
@@ -89,32 +93,25 @@ namespace Valvrave_Sharp.Core
             return spell.Casting(spell.GetTarget(spell.Width / 2), aoe, collisionable);
         }
 
-        internal static bool CastSmiteKillCollision(List<Obj_AI_Base> col)
+        internal static void CastSpellSmite(this Spell spell, Obj_AI_Hero target, bool smiteCol)
         {
-            if (col.Count > 1 || !Program.Smite.IsReady())
+            var pred1 = spell.GetPrediction(target, false, -1, CollisionableObjects.YasuoWall);
+            if (pred1.Hitchance < spell.MinHitChance)
             {
-                return false;
+                return;
             }
-            var obj = col.First();
-            return obj.Health <= GetSmiteDmg && obj.DistanceToPlayer() < Program.SmiteRange
-                   && Program.Player.Spellbook.CastSpell(Program.Smite, obj);
-        }
-
-        internal static List<Obj_AI_Base> GetCollision(
-            this Spell spell,
-            Obj_AI_Base target,
-            List<Vector3> to,
-            CollisionableObjects collisionable = CollisionableObjects.Minions)
-        {
-            var col = Collision.GetCollision(
-                to,
-                new PredictionInput
-                    {
-                        Delay = spell.Delay, Radius = spell.Width, Speed = spell.Speed, From = spell.From,
-                        Range = spell.Range, Type = spell.Type, CollisionObjects = collisionable
-                    });
-            col.RemoveAll(i => i.Compare(target));
-            return col;
+            var pred2 = spell.GetPrediction(target, false, -1, CollisionableObjects.Minions);
+            if (pred2.Hitchance == HitChance.Collision)
+            {
+                if (smiteCol && CastSmiteKillCollision(pred2.CollisionObjects))
+                {
+                    spell.Cast(pred1.CastPosition);
+                }
+            }
+            else if (pred2.Hitchance >= spell.MinHitChance)
+            {
+                spell.Cast(pred2.CastPosition);
+            }
         }
 
         internal static Vector3 GetPredPosition(this Spell spell, Obj_AI_Base unit, bool useRange = false)
@@ -147,6 +144,17 @@ namespace Valvrave_Sharp.Core
             list.AddRange(GameObjects.Jungle);
             list.AddRange(GameObjects.EnemyMinions.Where(i => i.IsMinion() || i.IsPet(includeClones)));
             return list;
+        }
+
+        private static bool CastSmiteKillCollision(List<Obj_AI_Base> col)
+        {
+            if (col.Count > 1 || !CanSmite)
+            {
+                return false;
+            }
+            var obj = col.First();
+            return obj.Health <= GetSmiteDmg && obj.DistanceToPlayer() < Program.SmiteRange
+                   && Program.Player.Spellbook.CastSpell(Program.Smite, obj);
         }
 
         #endregion

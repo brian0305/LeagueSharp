@@ -2151,9 +2151,9 @@ namespace Valvrave_Sharp.Evade
             Spells.Add(
                 new SpellData
                     {
-                        ChampionName = "Vladimir", SpellName = "VladimirHemoplague", Slot = SpellSlot.R,
-                        Type = SkillShotType.SkillshotCircle, Delay = 389, Range = 700, Radius = 375,
-                        MissileSpeed = int.MaxValue, DangerValue = 3, MissileSpellName = "VladimirHemoplague"
+                        ChampionName = "Vladimir", SpellName = "VladimirR", Slot = SpellSlot.R,
+                        Type = SkillShotType.SkillshotCircle, Delay = 250, Range = 700, Radius = 375,
+                        MissileSpeed = int.MaxValue, DangerValue = 3, MissileSpellName = "VladimirR"
                     });
 
             #endregion Vladimir

@@ -680,7 +680,7 @@
                 }
                 if (canCast)
                 {
-                    CastW(target, MainMenu["Hybrid"]["WEQ"] ? SpellSlot.E : CanW(target));
+                    CastW(target, MainMenu["Hybrid"]["WEQ"].GetValue<MenuKeyBind>().Active ? SpellSlot.E : CanW(target));
                     return;
                 }
             }

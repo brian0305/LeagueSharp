@@ -23,8 +23,6 @@
 
         private static bool haveQ, haveW;
 
-        private static int lastQ;
-
         #endregion
 
         #region Constructors and Destructors
@@ -34,16 +32,25 @@
             Q = new Spell(SpellSlot.Q, 600).SetTargetted(0.25f, float.MaxValue);
             W = new Spell(SpellSlot.W, 350);
             E =
-                new Spell(SpellSlot.E, 600).SetSkillshot(0, 1, 1, false, SkillshotType.SkillshotLine)
+                new Spell(SpellSlot.E, 600).SetSkillshot(0, 40, 4000, false, SkillshotType.SkillshotLine)
                     .SetCharged("VladimirE", "VladimirE", 600, 600, 1.5f);
             R = new Spell(SpellSlot.R, 700).SetSkillshot(
-                0.25f,
+                0.005f,
                 375,
                 float.MaxValue,
                 false,
                 SkillshotType.SkillshotCircle);
             Q.DamageType = W.DamageType = E.DamageType = R.DamageType = DamageType.Magical;
 
+            var lhMenu = MainMenu.Add(new Menu("LastHit", "Last Hit"));
+            {
+                lhMenu.Bool("Q", "Use Q");
+            }
+            var ksMenu = MainMenu.Add(new Menu("KillSteal", "Kill Steal"));
+            {
+                ksMenu.Bool("Q", "Use Q");
+                ksMenu.Bool("E", "Use E");
+            }
             var drawMenu = MainMenu.Add(new Menu("Draw", "Draw"));
             {
                 drawMenu.Bool("Q", "Q Range", false);
@@ -62,15 +69,12 @@
                     {
                         case "VladimirQFrenzy":
                             haveQ = true;
-                            Game.PrintChat("Q: T");
                             break;
                         case "VladimirSanguinePool":
                             haveW = true;
-                            Game.PrintChat("W: T");
                             break;
                         case "VladimirE":
                             buffE = args.Buff;
-                            Game.PrintChat("E: T");
                             break;
                     }
                 };
@@ -84,44 +88,22 @@
                     {
                         case "VladimirQFrenzy":
                             haveQ = false;
-                            Game.PrintChat("Q: F");
                             break;
                         case "VladimirSanguinePool":
                             haveW = false;
-                            Game.PrintChat("W: F");
                             break;
                         case "VladimirE":
                             buffE = null;
-                            Game.PrintChat("E: F");
                             break;
-                    }
-                };
-            Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
-                {
-                    if (sender.IsMe && args.Slot == SpellSlot.Q)
-                    {
-                        lastQ = Variables.TickCount;
-                        Game.PrintChat("Q");
-                    }
-                };
-            Obj_AI_Base.OnDoCast += (sender, args) =>
-                {
-                    if (sender.IsMe && args.Slot == SpellSlot.Q)
-                    {
-                        Game.PrintChat("Q: {0}", Variables.TickCount - lastQ);
                     }
                 };
             GameObjectNotifier<MissileClient>.OnCreate += (sender, client) =>
                 {
-                    if (!client.SpellCaster.IsMe)
+                    if (buffE == null || !client.SpellCaster.IsMe || client.SData.Name != "VladimirEMissile")
                     {
                         return;
                     }
-                    Game.PrintChat(
-                        "{0} - {1} | {2}",
-                        client.SData.Name,
-                        client.SData.LineWidth,
-                        client.SData.MissileSpeed);
+                    buffE = null;
                 };
         }
 

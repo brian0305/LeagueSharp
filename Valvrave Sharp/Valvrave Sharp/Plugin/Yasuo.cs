@@ -63,7 +63,7 @@
             Q2 = new Spell(Q.Slot, 1100).SetSkillshot(Q2Delay, 90, 1200, true, Q.Type);
             Q3 = new Spell(Q.Slot, 250).SetTargetted(0.025f, float.MaxValue);
             W = new Spell(SpellSlot.W, 400).SetTargetted(0.25f, float.MaxValue);
-            E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1100);
+            E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1400);
             E2 = new Spell(E.Slot, E.Range).SetTargetted(Q3.Delay, E.Speed);
             R = new Spell(SpellSlot.R, 1200);
             Q.DamageType = Q2.DamageType = R.DamageType = DamageType.Physical;
@@ -173,7 +173,7 @@
                     }
                     Q.Delay = GetQDelay(false);
                     Q2.Delay = GetQDelay(true);
-                    E.Speed = E2.Speed = 1100 + (Player.MoveSpeed - 345);
+                    E.Speed = E2.Speed = 1400 + (Player.MoveSpeed - 345);
                 };
             Variables.Orbwalker.OnAction += (sender, args) =>
                 {
@@ -670,7 +670,7 @@
 
         private static double GetEDmg(Obj_AI_Base target)
         {
-            return E.GetDamage(target) + E.GetDamage(target, DamageStage.Buff) - 10;
+            return E.GetDamage(target) + E.GetDamage(target, DamageStage.Buff);
         }
 
         private static Vector3 GetPosAfterDash(Obj_AI_Base target)

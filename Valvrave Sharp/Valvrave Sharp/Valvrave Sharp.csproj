@@ -90,6 +90,7 @@
     <Compile Include="Plugin\DrMundo.cs" />
     <Compile Include="Plugin\Kennen.cs" />
     <Compile Include="Plugin\LeeSin.cs" />
+    <Compile Include="Plugin\Vladimir.cs" />
     <Compile Include="Plugin\Yasuo.cs" />
     <Compile Include="Plugin\Zed.cs" />
     <Compile Include="Program.cs" />

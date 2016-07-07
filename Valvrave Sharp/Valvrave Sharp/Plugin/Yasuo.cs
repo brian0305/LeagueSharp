@@ -149,6 +149,7 @@
                 drawMenu.Bool("StackQ", "Auto Stack Q Status");
             }
             MainMenu.KeyBind("StackQ", "Auto Stack Q", Keys.Z, KeyBindType.Toggle);
+            MainMenu.KeyBind("EQ3Flash", "Use E-Q3-Flash", Keys.XButton2);
 
             Evade.Evading += Evading;
             Evade.TryEvading += TryEvading;
@@ -324,6 +325,41 @@
             else
             {
                 CastQ3();
+            }
+        }
+
+        private static void BeyBlade()
+        {
+            if (!Common.CanFlash)
+            {
+                return;
+            }
+            if (Q.IsReady() && haveQ3 && IsDashing && CanCastQCir)
+            {
+                var hits =
+                    GameObjects.EnemyHeroes.Count(
+                        i => i.IsValidTarget() && Q3.GetPredPosition(i).Distance(posDash) < Q3.Range + FlashRange);
+                if (hits > 0 && Q3.Cast(posDash))
+                {
+                    //DelayAction.Add();
+                }
+            }
+            if (!E.IsReady() || IsDashing)
+            {
+                return;
+            }
+            var obj =
+                Common.ListEnemies(true)
+                    .Where(i => i.IsValidTarget(E.Range) && !HaveE(i))
+                    .MaxOrDefault(
+                        i =>
+                        GameObjects.EnemyHeroes.Count(
+                            a =>
+                            !a.Compare(i) && a.IsValidTarget()
+                            && Q3.GetPredPosition(a).Distance(GetPosAfterDash(i)) < Q3.Range + FlashRange - 50));
+            if (obj != null && E.CastOnUnit(obj))
+            {
+                lastE = Variables.TickCount;
             }
         }
 
@@ -1058,6 +1094,11 @@
                     {
                         Variables.Orbwalker.Move(Game.CursorPos);
                         Flee();
+                    }
+                    else if (MainMenu["EQ3Flash"].GetValue<MenuKeyBind>().Active)
+                    {
+                        Variables.Orbwalker.Move(Game.CursorPos);
+                        //BeyBlade();
                     }
                     break;
             }

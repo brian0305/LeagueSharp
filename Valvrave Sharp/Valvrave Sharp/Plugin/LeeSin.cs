@@ -303,7 +303,8 @@
 
         private static void CastE(List<Obj_AI_Minion> minions = null)
         {
-            if (!E.IsReady() || isDashing || Variables.TickCount - lastW <= 250 || Variables.TickCount - lastW2 <= 150)
+            if (!E.IsReady() || isDashing || IsDashing || Variables.TickCount - lastW <= 250
+                || Variables.TickCount - lastW2 <= 150)
             {
                 return;
             }
@@ -408,7 +409,8 @@
 
         private static void CastW(List<Obj_AI_Minion> minions = null)
         {
-            if (!W.IsReady() || Variables.TickCount - lastW <= 300 || isDashing || Variables.TickCount - lastE2 <= 250)
+            if (!W.IsReady() || Variables.TickCount - lastW <= 300 || isDashing || IsDashing
+                || Variables.TickCount - lastE2 <= 250)
             {
                 return;
             }
@@ -490,6 +492,16 @@
                 if (IsQOne)
                 {
                     var target = Q.GetTarget(Q.Width / 2);
+                    if (!R.IsReady() && Variables.TickCount - lastR < 5000)
+                    {
+                        var targetR =
+                            Variables.TargetSelector.GetTargets(Q.Range, Q.DamageType)
+                                .FirstOrDefault(i => i.HasBuff("BlindMonkDragonsRage"));
+                        if (targetR != null)
+                        {
+                            target = targetR;
+                        }
+                    }
                     if (target != null)
                     {
                         Q.CastSpellSmite(target, MainMenu["Combo"]["QCol"]);

@@ -38,20 +38,16 @@
 
         internal static Spell Q, Q2, Q3, W, W2, E, E2, R, R2, R3;
 
-        private static readonly Dictionary<string, Func<object>> Plugins = new Dictionary<string, Func<object>>
-                                                                               {
-                                                                                   { "DrMundo", () => new DrMundo() },
-                                                                                   { "Kennen", () => new Kennen() },
-                                                                                   { "LeeSin", () => new LeeSin() },
-                                                                                   { "Yasuo", () => new Yasuo() },
-                                                                                   { "Zed", () => new Zed() }
-                                                                               };
-
-        private static readonly Dictionary<string, int> Skins = new Dictionary<string, int>
-                                                                    {
-                                                                        { "DrMundo", 9 }, { "Kennen", 6 },
-                                                                        { "LeeSin", 10 }, { "Yasuo", 3 }, { "Zed", 3 }
-                                                                    };
+        private static readonly Dictionary<string, Tuple<Func<object>, int>> Plugins =
+            new Dictionary<string, Tuple<Func<object>, int>>
+                {
+                    { "DrMundo", new Tuple<Func<object>, int>(() => new DrMundo(), 9) },
+                    { "Kennen", new Tuple<Func<object>, int>(() => new Kennen(), 6) },
+                    { "LeeSin", new Tuple<Func<object>, int>(() => new LeeSin(), 10) },
+                    //{ "Vladimir", new Tuple<Func<object>, int>(() => new Vladimir(), 7) },
+                    { "Yasuo", new Tuple<Func<object>, int>(() => new Yasuo(), 3) },
+                    { "Zed", new Tuple<Func<object>, int>(() => new Zed(), 3) }
+                };
 
         private static bool isSkinReset = true;
 
@@ -109,11 +105,11 @@
             {
                 var skinMenu = MainMenu.Add(new Menu("Skin", "Skin Changer"));
                 {
-                    skinMenu.Slider("Index", "Skin", 0, 0, Skins[Player.ChampionName]).ValueChanged +=
+                    skinMenu.Slider("Index", "Skin", 0, 0, Plugins[Player.ChampionName].Item2).ValueChanged +=
                         (sender, args) => { isSkinReset = true; };
                     skinMenu.Bool("Own", "Keep Your Own Skin");
                 }
-                Plugins[Player.ChampionName].Invoke();
+                Plugins[Player.ChampionName].Item1.Invoke();
 
                 Game.OnUpdate += args =>
                     {

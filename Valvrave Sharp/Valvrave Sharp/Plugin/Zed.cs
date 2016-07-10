@@ -74,7 +74,7 @@
                 comboMenu.List("RMode", "Mode", new[] { "Always", "Wait Q/E" });
                 comboMenu.Slider(
                     "RStopRange",
-                    "Prevent Q/W/E If R Ready And Distance <=",
+                    "Prevent Q/W/E If R Ready And Distance <",
                     (int)(R.Range + 200),
                     (int)R.Range,
                     (int)(R.Range + W.Range));
@@ -530,7 +530,7 @@
                 {
                     Player.Spellbook.CastSpell(Ignite, target);
                 }
-                var canCast = !useR || (RState == 0 && target.DistanceToPlayer() > MainMenu["Combo"]["RStopRange"])
+                var canCast = !useR || (RState == 0 && target.DistanceToPlayer() >= MainMenu["Combo"]["RStopRange"])
                               || RState == -1;
                 if (WState == 0)
                 {

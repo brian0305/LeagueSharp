@@ -44,7 +44,7 @@
                     { "DrMundo", new Tuple<Func<object>, int>(() => new DrMundo(), 9) },
                     { "Kennen", new Tuple<Func<object>, int>(() => new Kennen(), 6) },
                     { "LeeSin", new Tuple<Func<object>, int>(() => new LeeSin(), 10) },
-                    //{ "Vladimir", new Tuple<Func<object>, int>(() => new Vladimir(), 7) },
+                    { "Vladimir", new Tuple<Func<object>, int>(() => new Vladimir(), 7) },
                     { "Yasuo", new Tuple<Func<object>, int>(() => new Yasuo(), 3) },
                     { "Zed", new Tuple<Func<object>, int>(() => new Zed(), 3) }
                 };

@@ -52,7 +52,7 @@
                 comboMenu.Separator("R Settings");
                 comboMenu.Bool("R", "Use R");
                 comboMenu.Slider("RHpU", "If Enemies Hp < (%) And Hit >= 2", 60);
-                comboMenu.Slider("RCountA", "Or Count >=", 2, 1, 5);
+                comboMenu.Slider("RCountA", "Or Count >=", 3, 1, 5);
                 comboMenu.Separator("Zhonya Settings For R Combo");
                 comboMenu.Bool("Zhonya", "Use Zhonya");
                 comboMenu.Slider("ZhonyaHpU", "If Hp < (%)", 20);
@@ -151,7 +151,7 @@
                 if (R.IsReady())
                 {
                     var target =
-                        Variables.TargetSelector.GetTargets(R.Range, R.DamageType)
+                        Variables.TargetSelector.GetTargets(R.Range + 50, R.DamageType)
                             .Where(i => R.CanHitCircle(i))
                             .ToList();
                     if (target.Count > 0

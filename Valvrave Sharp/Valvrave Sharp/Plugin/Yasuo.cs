@@ -31,7 +31,7 @@
     {
         #region Constants
 
-        private const float QDelay = 0.38f, Q2Delay = 0.35f, QDelays = 0.19f, Q2Delays = 0.29f;
+        private const float QDelay = 0.38f, Q2Delay = 0.35f, QDelays = 0.19f, Q2Delays = 0.3f;
 
         private const int RWidth = 400;
 
@@ -47,7 +47,7 @@
 
         private static int lastE;
 
-        private static Vector2 posDash;
+        private static Vector3 posDash;
 
         private static MissileClient wallLeft, wallRight;
 
@@ -61,7 +61,7 @@
         {
             Q = new Spell(SpellSlot.Q, 505).SetSkillshot(QDelay, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, 1100).SetSkillshot(Q2Delay, 90, 1200, true, Q.Type);
-            Q3 = new Spell(Q.Slot, 250).SetTargetted(0.025f, float.MaxValue);
+            Q3 = new Spell(Q.Slot, 250).SetSkillshot(0.025f, 250, float.MaxValue, false, SkillshotType.SkillshotCircle);
             W = new Spell(SpellSlot.W, 400).SetTargetted(0.25f, float.MaxValue);
             E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1400);
             E2 = new Spell(E.Slot, E.Range).SetTargetted(Q3.Delay, E.Speed);
@@ -162,14 +162,14 @@
                         if (isDash)
                         {
                             isDash = false;
-                            posDash = new Vector2();
+                            posDash = new Vector3();
                         }
                         return;
                     }
                     if (isDash && !Player.IsDashing())
                     {
                         isDash = false;
-                        DelayAction.Add(50, () => posDash = new Vector2());
+                        DelayAction.Add(50, () => posDash = new Vector3());
                     }
                     Q.Delay = GetQDelay(false);
                     Q2.Delay = GetQDelay(true);
@@ -177,21 +177,34 @@
                 };
             Variables.Orbwalker.OnAction += (sender, args) =>
                 {
-                    if (!Q.IsReady() || haveQ3 || args.Type != OrbwalkingType.AfterAttack
-                        || Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.LaneClear)
+                    if (!Q.IsReady() || haveQ3)
                     {
                         return;
                     }
-                    var tur = args.Target as Obj_AI_Turret;
-                    if (tur == null || Q.GetTarget(50) != null
-                        || Common.ListMinions().Count(i => i.IsValidTarget(Q.Range + 50)) > 0)
+                    var mode = Variables.Orbwalker.GetActiveMode();
+                    switch (args.Type)
                     {
-                        return;
-                    }
-                    if ((Items.HasItem((int)ItemId.Sheen) && Items.CanUseItem((int)ItemId.Sheen))
-                        || (Items.HasItem((int)ItemId.Trinity_Force) && Items.CanUseItem((int)ItemId.Trinity_Force)))
-                    {
-                        Q.Cast(Game.CursorPos);
+                        case OrbwalkingType.BeforeAttack:
+                            var hero = args.Target as Obj_AI_Hero;
+                            if (hero != null && (mode == OrbwalkingMode.Combo || mode == OrbwalkingMode.Hybrid))
+                            {
+                                args.Process = !Q.IsInRange(hero);
+                            }
+                            break;
+                        case OrbwalkingType.AfterAttack:
+                            var tur = args.Target as Obj_AI_Turret;
+                            if (tur == null || mode != OrbwalkingMode.LaneClear || Q.GetTarget(50) != null
+                                || Common.ListMinions().Count(i => i.IsValidTarget(Q.Range + 50)) > 0)
+                            {
+                                return;
+                            }
+                            if ((Items.HasItem((int)ItemId.Sheen) && Items.CanUseItem((int)ItemId.Sheen))
+                                || (Items.HasItem((int)ItemId.Trinity_Force)
+                                    && Items.CanUseItem((int)ItemId.Trinity_Force)))
+                            {
+                                Q.Cast(Game.CursorPos);
+                            }
+                            break;
                     }
                 };
             Events.OnDash += (sender, args) =>
@@ -201,7 +214,7 @@
                         return;
                     }
                     isDash = true;
-                    posDash = args.EndPos;
+                    posDash = args.EndPos.ToVector3();
                 };
             Obj_AI_Base.OnBuffAdd += (sender, args) =>
                 {
@@ -291,21 +304,23 @@
         private static List<Obj_AI_Base> GetQCirObj
             =>
                 Common.ListEnemies(true)
-                    .Where(i => i.IsValidTarget() && Q3.GetPredPosition(i).Distance(posDash) < Q3.Range)
+                    .Where(i => i.IsValidTarget() && Q3.WillHit(Q3.GetPredPosition(i), posDash))
                     .ToList();
 
         private static List<Obj_AI_Base> GetQCirTarget
             =>
-                Variables.TargetSelector.GetTargets(Q3.Range, Q.DamageType, true, posDash.ToVector3())
-                    .Where(i => Q3.GetPredPosition(i).Distance(posDash) < Q3.Range)
+                Variables.TargetSelector.GetTargets(Q3.Width + 20, Q.DamageType, true, posDash)
+                    .Where(i => Q3.WillHit(Q3.GetPredPosition(i), posDash))
                     .Cast<Obj_AI_Base>()
                     .ToList();
 
         private static List<Obj_AI_Hero> GetRTarget
-            => GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(R.Range) && HaveR(i)).ToList();
+            => Variables.TargetSelector.GetTargets(R.Range, R.DamageType).Where(HaveR).ToList();
 
         private static bool IsDashing
             => (lastE > 0 && Variables.TickCount - lastE <= 100) || Player.IsDashing() || posDash.IsValid();
+
+        private static Spell SpellQ => !haveQ3 ? Q : Q2;
 
         #endregion
 
@@ -338,7 +353,7 @@
             {
                 var hits =
                     GameObjects.EnemyHeroes.Count(
-                        i => i.IsValidTarget() && Q3.GetPredPosition(i).Distance(posDash) < Q3.Range + FlashRange);
+                        i => i.IsValidTarget() && Q3.GetPredPosition(i).Distance(posDash) < Q3.Width + FlashRange);
                 if (hits > 0 && Q3.Cast(posDash))
                 {
                     //DelayAction.Add();
@@ -356,7 +371,7 @@
                         GameObjects.EnemyHeroes.Count(
                             a =>
                             !a.Compare(i) && a.IsValidTarget()
-                            && Q3.GetPredPosition(a).Distance(GetPosAfterDash(i)) < Q3.Range + FlashRange - 50));
+                            && Q3.GetPredPosition(a).Distance(GetPosAfterDash(i)) < Q3.Width + FlashRange - 50));
             if (obj != null && E.CastOnUnit(obj))
             {
                 lastE = Variables.TickCount;
@@ -370,12 +385,7 @@
                 return true;
             }
             var buff = target.Buffs.FirstOrDefault(i => i.IsValid && i.Type == BuffType.Knockup);
-            if (buff == null)
-            {
-                return false;
-            }
-            var dur = buff.EndTime - buff.StartTime;
-            return buff.EndTime - Game.Time <= (dur <= 0.75 ? 0.3 : 0.235) * dur;
+            return buff != null && Game.Time - buff.StartTime >= 0.95f * (buff.EndTime - buff.StartTime);
         }
 
         private static bool CanDash(
@@ -394,7 +404,7 @@
             }
             var posAfterE = GetPosAfterDash(target);
             return (underTower || !posAfterE.IsUnderEnemyTurret())
-                   && posAfterE.Distance(pos) < (inQCir ? Q3.Range : pos.DistanceToPlayer())
+                   && (inQCir ? Q3.WillHit(pos, posAfterE) : posAfterE.Distance(pos) < pos.DistanceToPlayer())
                    && Evade.IsSafePoint(posAfterE.ToVector2());
         }
 
@@ -442,12 +452,16 @@
                                            i => i.IsValidTarget(RWidth, true, enemy.ServerPosition) && HaveR(i))
                                        .ToList()
                                    where
-                                       (nearEnemy.Count > 1 && enemy.Health + enemy.PhysicalShield <= R.GetDamage(enemy))
+                                       (nearEnemy.Count > 1
+                                        && nearEnemy.Any(
+                                            i => i.Health + i.PhysicalShield <= R.GetDamage(i) + GetQDmg(i)))
                                        || nearEnemy.Sum(i => i.HealthPercent) / nearEnemy.Count
-                                       <= MainMenu["Combo"]["RHpU"] || nearEnemy.Count >= MainMenu["Combo"]["RCountA"]
+                                       < MainMenu["Combo"]["RHpU"] || nearEnemy.Count >= MainMenu["Combo"]["RCountA"]
                                    orderby nearEnemy.Count descending
                                    select enemy).ToList();
-                    if (MainMenu["Combo"]["RDelay"])
+                    if (MainMenu["Combo"]["RDelay"]
+                        && (Player.HealthPercent > 20
+                            || GameObjects.EnemyHeroes.Count(i => i.IsValidTarget(600) && !HaveR(i)) == 0))
                     {
                         targets = targets.Where(CanCastDelayR).ToList();
                     }
@@ -466,11 +480,11 @@
                 var target = Variables.TargetSelector.GetTarget(E.Range, DamageType.Physical);
                 if (target != null && Math.Abs(target.GetProjectileSpeed() - float.MaxValue) > float.Epsilon
                     && (target.HealthPercent > Player.HealthPercent
-                            ? Player.CountAllyHeroesInRange(Q.Range) < target.CountEnemyHeroesInRange(Q.Range)
-                            : Player.HealthPercent < 30))
+                            ? Player.CountAllyHeroesInRange(500) < target.CountEnemyHeroesInRange(700)
+                            : Player.HealthPercent <= 30))
                 {
                     var posPred = W.GetPredPosition(target, true);
-                    if (posPred.DistanceToPlayer() > 100 && posPred.DistanceToPlayer() < 375 && W.Cast(posPred))
+                    if (posPred.DistanceToPlayer() > 100 && posPred.DistanceToPlayer() < 330 && W.Cast(posPred))
                     {
                         return;
                     }
@@ -504,12 +518,12 @@
                 if (MainMenu["Combo"]["EMode"].GetValue<MenuList>().Index == 0)
                 {
                     var listDashObj = GetDashObj(underTower);
-                    var target = E.GetTarget(Q3.Range);
+                    var target = E.GetTarget(Q3.Width);
                     if (target != null && haveQ3 && Q.IsReady(50))
                     {
                         var nearObj = GetBestObj(listDashObj, target, true);
                         if (nearObj != null
-                            && (GetPosAfterDash(nearObj).CountEnemyHeroesInRange(Q3.Range) > 1
+                            && (GetPosAfterDash(nearObj).CountEnemyHeroesInRange(Q3.Width) > 1
                                 || Player.CountEnemyHeroesInRange(Q.Range + E.Range / 2) == 1) && E.CastOnUnit(nearObj))
                         {
                             lastE = Variables.TickCount;
@@ -802,7 +816,7 @@
                 }
                 else
                 {
-                    var target = !haveQ3 ? Q.GetTarget(Q.Width / 2) : Q2.GetTarget(Q2.Width / 2);
+                    var target = SpellQ.GetTarget(SpellQ.Width / 2);
                     if (target != null && target.Health + target.PhysicalShield <= GetQDmg(target))
                     {
                         if (!haveQ3)
@@ -835,12 +849,12 @@
                     }
                     else if (MainMenu["KillSteal"]["Q"] && Q.IsReady(50))
                     {
-                        target = targets.Where(i => i.Distance(GetPosAfterDash(i)) < Q3.Range).FirstOrDefault(
-                            i =>
-                                {
-                                    var dmgE = GetEDmg(i) - i.MagicalShield;
-                                    return i.Health - (dmgE > 0 ? dmgE : 0) + i.PhysicalShield <= GetQDmg(i);
-                                });
+                        target =
+                            targets.Where(i => i.Distance(GetPosAfterDash(i)) < Q3.Width)
+                                .FirstOrDefault(
+                                    i =>
+                                    i.Health - Math.Max(GetEDmg(i) - i.MagicalShield, 0) + i.PhysicalShield
+                                    <= GetQDmg(i));
                         if (target != null && E.CastOnUnit(target))
                         {
                             lastE = Variables.TickCount;
@@ -859,8 +873,7 @@
                             i =>
                             MainMenu["KillSteal"]["RCast" + i.ChampionName]
                             && (i.Health + i.PhysicalShield <= R.GetDamage(i)
-                                || (Q.IsReady(1000) && i.Health + i.PhysicalShield <= R.GetDamage(i) + GetQDmg(i)))
-                            && !Invulnerable.Check(i, R.DamageType))
+                                || (Q.IsReady(1000) && i.Health + i.PhysicalShield <= R.GetDamage(i) + GetQDmg(i))))
                             .MaxOrDefault(i => new Priority().GetDefaultPriority(i));
                     if (target != null)
                     {
@@ -893,7 +906,7 @@
                         foreach (var mob in minions)
                         {
                             if ((E2.CanLastHit(mob, GetQDmg(mob), GetEDmg(mob)) || mob.Team == GameObjectTeam.Neutral)
-                                && mob.Distance(GetPosAfterDash(mob)) < Q3.Range)
+                                && mob.Distance(GetPosAfterDash(mob)) < Q3.Width)
                             {
                                 sub.Add(mob);
                             }
@@ -903,7 +916,7 @@
                             }
                             var nearMinion =
                                 Common.ListMinions()
-                                    .Where(i => i.IsValidTarget(Q3.Range, true, GetPosAfterDash(mob)))
+                                    .Where(i => i.IsValidTarget(Q3.Width, true, GetPosAfterDash(mob)))
                                     .ToList();
                             if (nearMinion.Count > 2 || nearMinion.Count(i => mob.Health <= GetQDmg(mob)) > 1)
                             {
@@ -1026,7 +1039,7 @@
             {
                 Render.Circle.DrawCircle(
                     Player.Position,
-                    (IsDashing ? Q3 : (!haveQ3 ? Q : Q2)).Range,
+                    IsDashing ? Q3.Width : SpellQ.Range,
                     Q.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
             if (MainMenu["Draw"]["E"] && E.Level > 0)

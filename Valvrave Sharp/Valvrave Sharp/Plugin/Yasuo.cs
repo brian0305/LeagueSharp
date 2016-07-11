@@ -61,9 +61,9 @@
         {
             Q = new Spell(SpellSlot.Q, 505).SetSkillshot(QDelay, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, 1100).SetSkillshot(Q2Delay, 90, 1200, true, Q.Type);
-            Q3 = new Spell(Q.Slot, 250).SetSkillshot(0.025f, 250, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            Q3 = new Spell(Q.Slot, 250).SetSkillshot(0.01f, 250, float.MaxValue, false, SkillshotType.SkillshotCircle);
             W = new Spell(SpellSlot.W, 400).SetTargetted(0.25f, float.MaxValue);
-            E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1400);
+            E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1200);
             E2 = new Spell(E.Slot, E.Range).SetTargetted(Q3.Delay, E.Speed);
             R = new Spell(SpellSlot.R, 1200);
             Q.DamageType = Q2.DamageType = R.DamageType = DamageType.Physical;
@@ -169,31 +169,31 @@
                     if (isDash && !Player.IsDashing())
                     {
                         isDash = false;
-                        DelayAction.Add(50, () => posDash = new Vector3());
+                        DelayAction.Add(
+                            50,
+                            () =>
+                                {
+                                    if (!isDash)
+                                    {
+                                        posDash = new Vector3();
+                                    }
+                                });
                     }
                     Q.Delay = GetQDelay(false);
                     Q2.Delay = GetQDelay(true);
-                    E.Speed = E2.Speed = 1400 + (Player.MoveSpeed - 345);
+                    E.Speed = E2.Speed = 1200 + (Player.MoveSpeed - 345);
                 };
             Variables.Orbwalker.OnAction += (sender, args) =>
                 {
-                    if (!Q.IsReady() || haveQ3)
-                    {
-                        return;
-                    }
-                    var mode = Variables.Orbwalker.GetActiveMode();
                     switch (args.Type)
                     {
-                        case OrbwalkingType.BeforeAttack:
-                            var hero = args.Target as Obj_AI_Hero;
-                            if (hero != null && (mode == OrbwalkingMode.Combo || mode == OrbwalkingMode.Hybrid))
-                            {
-                                args.Process = !Q.IsInRange(hero);
-                            }
-                            break;
                         case OrbwalkingType.AfterAttack:
-                            var tur = args.Target as Obj_AI_Turret;
-                            if (tur == null || mode != OrbwalkingMode.LaneClear || Q.GetTarget(50) != null
+                            if (Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.LaneClear
+                                || !(args.Target is Obj_AI_Turret) || !Q.IsReady() || haveQ3)
+                            {
+                                return;
+                            }
+                            if (Q.GetTarget(50) != null
                                 || Common.ListMinions().Count(i => i.IsValidTarget(Q.Range + 50)) > 0)
                             {
                                 return;
@@ -204,6 +204,9 @@
                             {
                                 Q.Cast(Game.CursorPos);
                             }
+                            break;
+                        case OrbwalkingType.BeforeAttack:
+                            args.Process = !IsDashing;
                             break;
                     }
                 };
@@ -317,8 +320,7 @@
         private static List<Obj_AI_Hero> GetRTarget
             => Variables.TargetSelector.GetTargets(R.Range, R.DamageType).Where(HaveR).ToList();
 
-        private static bool IsDashing
-            => (lastE > 0 && Variables.TickCount - lastE <= 100) || Player.IsDashing() || posDash.IsValid();
+        private static bool IsDashing => Variables.TickCount - lastE <= 70 || Player.IsDashing() || posDash.IsValid();
 
         private static Spell SpellQ => !haveQ3 ? Q : Q2;
 
@@ -384,8 +386,8 @@
             {
                 return true;
             }
-            var buff = target.Buffs.FirstOrDefault(i => i.IsValid && i.Type == BuffType.Knockup);
-            return buff != null && Game.Time - buff.StartTime >= 0.95f * (buff.EndTime - buff.StartTime);
+            var buff = target.Buffs.FirstOrDefault(i => i.Type == BuffType.Knockup);
+            return buff != null && Game.Time - buff.StartTime >= 0.9 * (buff.EndTime - buff.StartTime);
         }
 
         private static bool CanDash(
@@ -436,7 +438,7 @@
                 return false;
             }
             var target = obj.FirstOrDefault();
-            return target != null && Q3.Cast(!haveQ3 ? Q.GetPredPosition(target) : Q2.GetPredPosition(target));
+            return target != null && Q3.Cast(SpellQ.GetPredPosition(target, true));
         }
 
         private static void Combo()
@@ -460,7 +462,7 @@
                                    orderby nearEnemy.Count descending
                                    select enemy).ToList();
                     if (MainMenu["Combo"]["RDelay"]
-                        && (Player.HealthPercent > 20
+                        && (Player.HealthPercent >= 20
                             || GameObjects.EnemyHeroes.Count(i => i.IsValidTarget(600) && !HaveR(i)) == 0))
                     {
                         targets = targets.Where(CanCastDelayR).ToList();
@@ -684,7 +686,7 @@
 
         private static double GetEDmg(Obj_AI_Base target)
         {
-            return E.GetDamage(target) + E.GetDamage(target, DamageStage.Buff);
+            return E.GetDamage(target) + E.GetDamage(target, DamageStage.Buff) - 3;
         }
 
         private static Vector3 GetPosAfterDash(Obj_AI_Base target)

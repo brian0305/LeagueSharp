@@ -139,9 +139,10 @@
                             break;
                     }
                 };
-            GameObjectNotifier<MissileClient>.OnCreate += (sender, client) =>
+            GameObjectNotifier<MissileClient>.OnCreate += (sender, args) =>
                 {
-                    if (!client.SpellCaster.IsMe || client.SData.Name != "VladimirEMissile" || !haveE)
+                    var spellCaster = args.SpellCaster as Obj_AI_Hero;
+                    if (spellCaster == null || !spellCaster.IsMe || args.SData.Name != "VladimirEMissile" || !haveE)
                     {
                         return;
                     }

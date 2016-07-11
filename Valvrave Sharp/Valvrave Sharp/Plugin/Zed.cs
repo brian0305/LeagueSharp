@@ -205,17 +205,18 @@
                         rShadow = null;
                     }
                 };
-            GameObjectNotifier<MissileClient>.OnCreate += (sender, client) =>
+            GameObjectNotifier<MissileClient>.OnCreate += (sender, args) =>
                 {
-                    if (!client.SpellCaster.IsMe || client.SData.Name != "ZedWMissile")
+                    var spellCaster = args.SpellCaster as Obj_AI_Hero;
+                    if (spellCaster == null || !spellCaster.IsMe || args.SData.Name != "ZedWMissile")
                     {
                         return;
                     }
-                    wMissile = client;
+                    wMissile = args;
                 };
-            GameObjectNotifier<MissileClient>.OnDelete += (sender, client) =>
+            GameObjectNotifier<MissileClient>.OnDelete += (sender, args) =>
                 {
-                    if (!client.Compare(wMissile))
+                    if (!args.Compare(wMissile))
                     {
                         return;
                     }
@@ -429,20 +430,18 @@
                 CollisionableObjects.Heroes | CollisionableObjects.Minions);
             if (pred2.Hitchance == HitChance.Collision)
             {
-                var subDmg = Q.GetDamage(target, DamageStage.SecondForm);
                 switch (target.Type)
                 {
                     case GameObjectType.obj_AI_Hero:
-                        return target.Health + target.PhysicalShield <= subDmg && Q.Cast(pred1.CastPosition);
+                        return target.Health + target.PhysicalShield <= Q.GetDamage(target, DamageStage.SecondForm)
+                               && Q.Cast(pred1.CastPosition);
                     case GameObjectType.obj_AI_Minion:
-                        return spell.CanLastHit(target, subDmg) && Q.Cast(pred1.CastPosition);
+                        return Q.CanLastHit(target, Q.GetDamage(target, DamageStage.SecondForm))
+                               && Q.Cast(pred1.CastPosition);
                 }
+                return false;
             }
-            else if (pred2.Hitchance >= Q.MinHitChance)
-            {
-                return Q.Cast(pred2.CastPosition);
-            }
-            return false;
+            return pred2.Hitchance >= Q.MinHitChance && Q.Cast(pred2.CastPosition);
         }
 
         private static void CastW(Obj_AI_Hero target, SpellSlot slot, bool isRCombo = false)

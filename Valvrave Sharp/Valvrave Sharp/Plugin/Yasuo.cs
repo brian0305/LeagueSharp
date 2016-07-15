@@ -31,7 +31,7 @@
     {
         #region Constants
 
-        private const float QDelay = 0.38f, Q2Delay = 0.35f, QDelays = 0.19f, Q2Delays = 0.3f;
+        private const float QDelay = 0.38f, Q2Delay = 0.35f, QDelays = 0.2f, Q2Delays = 0.3f;
 
         private const int RWidth = 400;
 
@@ -61,7 +61,7 @@
         {
             Q = new Spell(SpellSlot.Q, 505).SetSkillshot(QDelay, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, 1100).SetSkillshot(Q2Delay, 90, 1200, true, Q.Type);
-            Q3 = new Spell(Q.Slot, 250).SetSkillshot(0.01f, 250, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            Q3 = new Spell(Q.Slot, 225).SetSkillshot(0.005f, 225, float.MaxValue, false, SkillshotType.SkillshotCircle);
             W = new Spell(SpellSlot.W, 400).SetTargetted(0.25f, float.MaxValue);
             E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1200);
             E2 = new Spell(E.Slot, E.Range).SetTargetted(Q3.Delay, E.Speed);
@@ -170,7 +170,7 @@
                     {
                         isDash = false;
                         DelayAction.Add(
-                            50,
+                            70,
                             () =>
                                 {
                                     if (!isDash)
@@ -185,29 +185,20 @@
                 };
             Variables.Orbwalker.OnAction += (sender, args) =>
                 {
-                    switch (args.Type)
+                    if (args.Type != OrbwalkingType.AfterAttack
+                        || Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.LaneClear
+                        || !(args.Target is Obj_AI_Turret) || !Q.IsReady() || haveQ3)
                     {
-                        case OrbwalkingType.AfterAttack:
-                            if (Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.LaneClear
-                                || !(args.Target is Obj_AI_Turret) || !Q.IsReady() || haveQ3)
-                            {
-                                return;
-                            }
-                            if (Q.GetTarget(50) != null
-                                || Common.ListMinions().Count(i => i.IsValidTarget(Q.Range + 50)) > 0)
-                            {
-                                return;
-                            }
-                            if ((Items.HasItem((int)ItemId.Sheen) && Items.CanUseItem((int)ItemId.Sheen))
-                                || (Items.HasItem((int)ItemId.Trinity_Force)
-                                    && Items.CanUseItem((int)ItemId.Trinity_Force)))
-                            {
-                                Q.Cast(Game.CursorPos);
-                            }
-                            break;
-                        case OrbwalkingType.BeforeAttack:
-                            args.Process = !IsDashing;
-                            break;
+                        return;
+                    }
+                    if (Q.GetTarget(50) != null || Common.ListMinions().Count(i => i.IsValidTarget(Q.Range + 50)) > 0)
+                    {
+                        return;
+                    }
+                    if ((Items.HasItem((int)ItemId.Sheen) && Items.CanUseItem((int)ItemId.Sheen))
+                        || (Items.HasItem((int)ItemId.Trinity_Force) && Items.CanUseItem((int)ItemId.Trinity_Force)))
+                    {
+                        Q.Cast(Game.CursorPos);
                     }
                 };
             Events.OnDash += (sender, args) =>
@@ -235,12 +226,8 @@
                             break;
                         case "yasuoeqcombosoundmiss":
                         case "YasuoEQComboSoundHit":
-                            DelayAction.Add(
-                                70,
-                                () =>
-                                Player.IssueOrder(
-                                    GameObjectOrder.AttackTo,
-                                    Player.ServerPosition.Extend(Game.CursorPos, Player.BoundingRadius)));
+                            Variables.Orbwalker.SetAttackState(false);
+                            DelayAction.Add(220, () => Variables.Orbwalker.SetAttackState(true));
                             break;
                     }
                 };
@@ -312,12 +299,41 @@
 
         private static List<Obj_AI_Base> GetQCirTarget
             =>
-                Variables.TargetSelector.GetTargets(Q3.Width + 20, Q.DamageType, true, posDash)
+                Variables.TargetSelector.GetTargets(Q3.Width, Q.DamageType, true, posDash)
                     .Where(i => Q3.WillHit(Q3.GetPredPosition(i), posDash))
                     .Cast<Obj_AI_Base>()
                     .ToList();
 
-        private static List<Obj_AI_Hero> GetRTarget
+        private static Obj_AI_Hero GetRTarget
+        {
+            get
+            {
+                var result = new Tuple<Obj_AI_Hero, List<Obj_AI_Hero>>(null, new List<Obj_AI_Hero>());
+                foreach (var target in GetRTargets)
+                {
+                    var nears =
+                        GameObjects.EnemyHeroes.Where(
+                            i => !i.Compare(target) && i.IsValidTarget(RWidth, true, target.ServerPosition) && HaveR(i))
+                            .ToList();
+                    nears.Add(target);
+                    if (nears.Count > result.Item2.Count
+                        && ((nears.Count > 1
+                             && nears.Any(i => i.Health + i.PhysicalShield <= R.GetDamage(i) + GetQDmg(i)))
+                            || nears.Sum(i => i.HealthPercent) / nears.Count < MainMenu["Combo"]["RHpU"]
+                            || nears.Count >= MainMenu["Combo"]["RCountA"]))
+                    {
+                        result = new Tuple<Obj_AI_Hero, List<Obj_AI_Hero>>(target, nears);
+                    }
+                }
+                return MainMenu["Combo"]["RDelay"]
+                       && (Player.HealthPercent >= 20
+                           || GameObjects.EnemyHeroes.Count(i => i.IsValidTarget(600) && !HaveR(i)) == 0)
+                           ? (result.Item2.Any(CanCastDelayR) ? result.Item1 : null)
+                           : result.Item1;
+            }
+        }
+
+        private static List<Obj_AI_Hero> GetRTargets
             => Variables.TargetSelector.GetTargets(R.Range, R.DamageType).Where(HaveR).ToList();
 
         private static bool IsDashing => Variables.TickCount - lastE <= 70 || Player.IsDashing() || posDash.IsValid();
@@ -445,36 +461,10 @@
         {
             if (MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Active && R.IsReady())
             {
-                var targetR = GetRTarget;
-                if (targetR.Count > 0)
+                var target = GetRTarget;
+                if (target != null && R.CastOnUnit(target))
                 {
-                    var targets = (from enemy in targetR
-                                   let nearEnemy =
-                                       GameObjects.EnemyHeroes.Where(
-                                           i => i.IsValidTarget(RWidth, true, enemy.ServerPosition) && HaveR(i))
-                                       .ToList()
-                                   where
-                                       (nearEnemy.Count > 1
-                                        && nearEnemy.Any(
-                                            i => i.Health + i.PhysicalShield <= R.GetDamage(i) + GetQDmg(i)))
-                                       || nearEnemy.Sum(i => i.HealthPercent) / nearEnemy.Count
-                                       < MainMenu["Combo"]["RHpU"] || nearEnemy.Count >= MainMenu["Combo"]["RCountA"]
-                                   orderby nearEnemy.Count descending
-                                   select enemy).ToList();
-                    if (MainMenu["Combo"]["RDelay"]
-                        && (Player.HealthPercent >= 20
-                            || GameObjects.EnemyHeroes.Count(i => i.IsValidTarget(600) && !HaveR(i)) == 0))
-                    {
-                        targets = targets.Where(CanCastDelayR).ToList();
-                    }
-                    if (targets.Count > 0)
-                    {
-                        var target = targets.MaxOrDefault(i => new Priority().GetDefaultPriority(i));
-                        if (target != null && R.CastOnUnit(target))
-                        {
-                            return;
-                        }
-                    }
+                    return;
                 }
             }
             if (MainMenu["Combo"]["W"] && W.IsReady())
@@ -837,6 +827,16 @@
             }
             if (MainMenu["KillSteal"]["E"] && E.IsReady())
             {
+                /*var canQ = MainMenu["KillSteal"]["Q"] && Q.IsReady(50);
+                var tar =
+                    Variables.TargetSelector.GetTargets(E.Range, E.DamageType)
+                        .FirstOrDefault(
+                            i =>
+                            !HaveE(i)
+                            && (canQ && i.Distance(GetPosAfterDash(i)) < Q3.Width
+                                    ? i.Health - Math.Max(GetEDmg(i) - i.MagicalShield, 0) + i.PhysicalShield
+                                      <= GetQDmg(i)
+                                    : i.Health + i.MagicalShield <= GetEDmg(i)));*/
                 var targets = Variables.TargetSelector.GetTargets(E.Range, E.DamageType).Where(i => !HaveE(i)).ToList();
                 if (targets.Count > 0)
                 {
@@ -867,20 +867,15 @@
             }
             if (MainMenu["KillSteal"]["R"] && R.IsReady())
             {
-                var targets = GetRTarget;
-                if (targets.Count > 0)
+                var target =
+                    GetRTargets.Where(
+                        i =>
+                        MainMenu["KillSteal"]["RCast" + i.ChampionName]
+                        && i.Health + i.PhysicalShield <= R.GetDamage(i) + (Q.IsReady(1000) ? GetQDmg(i) : 0))
+                        .MaxOrDefault(i => new Priority().GetDefaultPriority(i));
+                if (target != null)
                 {
-                    var target =
-                        targets.Where(
-                            i =>
-                            MainMenu["KillSteal"]["RCast" + i.ChampionName]
-                            && (i.Health + i.PhysicalShield <= R.GetDamage(i)
-                                || (Q.IsReady(1000) && i.Health + i.PhysicalShield <= R.GetDamage(i) + GetQDmg(i))))
-                            .MaxOrDefault(i => new Priority().GetDefaultPriority(i));
-                    if (target != null)
-                    {
-                        R.CastOnUnit(target);
-                    }
+                    R.CastOnUnit(target);
                 }
             }
         }
@@ -1055,7 +1050,7 @@
                     Render.Circle.DrawCircle(
                         Player.Position,
                         R.Range,
-                        GetRTarget.Count > 0 ? Color.LimeGreen : Color.IndianRed);
+                        GetRTargets.Count > 0 ? Color.LimeGreen : Color.IndianRed);
                 }
                 if (MainMenu["Draw"]["UseR"])
                 {

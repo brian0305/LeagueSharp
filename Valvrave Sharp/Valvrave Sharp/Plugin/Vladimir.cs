@@ -29,7 +29,7 @@
 
         private static BuffInstance buffE;
 
-        private static bool haveQ, haveW, haveE;
+        private static bool haveQ, haveQEmp, haveW, haveE;
 
         private static int lastE;
 
@@ -66,6 +66,11 @@
                 hybridMenu.Separator("Q: Always On");
                 hybridMenu.Bool("QLastHit", "Last Hit (Stack < 2)");
                 hybridMenu.Bool("E", "Use E", false);
+            }
+            var lcMenu = MainMenu.Add(new Menu("LaneClear", "Lane Clear"));
+            {
+                lcMenu.Separator("Q: Always On");
+                lcMenu.Bool("E", "Use E");
             }
             var lhMenu = MainMenu.Add(new Menu("LastHit", "Last Hit"));
             {
@@ -109,12 +114,13 @@
                     switch (args.Buff.DisplayName)
                     {
                         case "VladimirQFrenzy":
-                            haveQ = true;
+                            haveQEmp = true;
                             break;
                         case "VladimirSanguinePool":
                             haveW = true;
                             break;
                         case "VladimirE":
+                            haveE = true;
                             buffE = args.Buff;
                             break;
                     }
@@ -128,14 +134,14 @@
                     switch (args.Buff.DisplayName)
                     {
                         case "VladimirQFrenzy":
-                            haveQ = false;
+                            haveQEmp = false;
                             break;
                         case "VladimirSanguinePool":
                             haveW = false;
                             break;
                         case "VladimirE":
-                            buffE = null;
                             haveE = false;
+                            buffE = null;
                             break;
                     }
                 };
@@ -151,11 +157,46 @@
                 };
             Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                 {
-                    if (!sender.IsMe || args.SData.Name != "VladimirE" || haveE)
+                    if (!sender.IsMe)
                     {
                         return;
                     }
-                    haveE = true;
+                    switch (args.SData.Name)
+                    {
+                        case "VladimirQ":
+                            haveQ = true;
+                            break;
+                        case "VladimirE":
+                            if (buffE == null && !haveE)
+                            {
+                                haveE = true;
+                            }
+                            break;
+                    }
+                };
+            Spellbook.OnUpdateChargedSpell += (sender, args) =>
+                {
+                    if (!sender.Owner.IsMe || Variables.TickCount - lastE >= 3000 || !args.ReleaseCast)
+                    {
+                        return;
+                    }
+                    args.Process = false;
+                };
+            Spellbook.OnCastSpell += (sender, args) =>
+                {
+                    if (args.Slot != E.Slot || Variables.TickCount - lastE <= 500 || IsChargeE)
+                    {
+                        return;
+                    }
+                    ERelease();
+                };
+            Obj_AI_Base.OnDoCast += (sender, args) =>
+                {
+                    if (!sender.IsMe || args.Slot != Q.Slot || !haveQ)
+                    {
+                        return;
+                    }
+                    haveQ = false;
                 };
         }
 
@@ -163,26 +204,24 @@
 
         #region Properties
 
-        private static bool CanE => E.IsReady() || haveE;
-
-        private static bool EChargeMax => haveE && buffE != null && Game.Time - buffE.StartTime >= 1;
+        private static bool CanCastE => E.IsReady() || haveE;
 
         private static List<Tuple<Obj_AI_Hero, Vector3>> GetETarget
             =>
                 Variables.TargetSelector.GetTargets(E.Range + 20, E.DamageType)
                     .Select(i => new Tuple<Obj_AI_Hero, Vector3>(i, E.GetPredPosition(i)))
-                    .Where(i => CanEHit(i.Item2))
+                    .Where(i => CanHitE(i.Item2))
                     .ToList();
 
-        private static bool IsChargeE => Variables.TickCount - lastE <= 100 || haveE;
+        private static bool IsChargeE => buffE != null || haveE || Variables.TickCount - lastE <= 100;
 
-        private static bool IsEmpQ => Player.Mana >= (haveQ ? 0.25f : 1.85f);
+        private static bool IsEmpQ => Player.Mana >= (haveQEmp ? 0.2f : 1.9f);
 
         #endregion
 
         #region Methods
 
-        private static bool CanEHit(Vector3 pos)
+        private static bool CanHitE(Vector3 pos)
         {
             for (var i = 0; i < 360; i += 18)
             {
@@ -194,6 +233,11 @@
                 }
             }
             return false;
+        }
+
+        private static bool CanReleaseE(double time)
+        {
+            return haveE && buffE != null && Game.Time - buffE.StartTime >= time - 0.02;
         }
 
         private static void Combo()
@@ -237,22 +281,20 @@
                     }
                 }
             }
-            if (MainMenu["Combo"]["E"] && CanE)
+            if (MainMenu["Combo"]["E"] && CanCastE)
             {
                 var canE = GetETarget.Count > 0;
                 if (E.IsReady())
                 {
-                    if (canE && ECharge())
-                    {
-                        return;
-                    }
+                    ECharge(canE);
                 }
-                else if (EChargeMax && (canE || Player.CountAllyHeroesInRange(900) == 0) && ERelease())
+                else if (CanReleaseE(1) && (canE || Player.CountAllyHeroesInRange(900) == 0))
                 {
-                    return;
+                    ERelease();
                 }
             }
-            if ((IsEmpQ || !IsChargeE) && Q.CastOnBestTarget().IsCasted())
+            if ((!IsChargeE || (IsEmpQ && (CanReleaseE(0.7) || Player.HealthPercent <= 15)))
+                && Q.CastOnBestTarget().IsCasted())
             {
                 return;
             }
@@ -264,19 +306,24 @@
             }
         }
 
-        private static bool ECharge()
+        private static void ECharge(bool canCast)
         {
-            if (IsChargeE || !Player.Spellbook.CastSpell(E.Slot))
+            if (!canCast || haveQ || IsChargeE || Variables.TickCount - lastE <= 400 + Game.Ping)
             {
-                return false;
+                return;
             }
+            Player.Spellbook.CastSpell(E.Slot, Player.Position);
             lastE = Variables.TickCount;
-            return true;
         }
 
-        private static bool ERelease()
+        private static void ERelease()
         {
-            return Player.Spellbook.UpdateChargedSpell(E.Slot, Player.Position, true, false);
+            if (haveQ)
+            {
+                return;
+            }
+            Player.Spellbook.UpdateChargedSpell(E.Slot, Player.Position, true, false);
+            Player.Spellbook.CastSpell(E.Slot, Player.Position, false);
         }
 
         private static float GetEDmg(Obj_AI_Base target)
@@ -286,27 +333,24 @@
                        ? (Game.Time - buffE.StartTime >= 1
                               ? maxDmg
                               : minDmg + (Game.Time - buffE.StartTime) * (maxDmg - minDmg))
-                       : minDmg;
+                       : (target.DistanceToPlayer() < 200 ? maxDmg : minDmg);
         }
 
         private static void Hybrid()
         {
-            if (MainMenu["Hybrid"]["E"] && CanE)
+            if (MainMenu["Hybrid"]["E"] && CanCastE)
             {
                 var canE = GetETarget.Count > 0;
                 if (E.IsReady())
                 {
-                    if (canE && ECharge())
-                    {
-                        return;
-                    }
+                    ECharge(canE);
                 }
-                else if (EChargeMax && (canE || Player.CountAllyHeroesInRange(750) == 0) && ERelease())
+                else if (CanReleaseE(1) && (canE || Player.CountAllyHeroesInRange(750) == 0))
                 {
-                    return;
+                    ERelease();
                 }
             }
-            if ((IsEmpQ || !IsChargeE) && Q.CastOnBestTarget().IsCasted())
+            if ((!IsChargeE || IsEmpQ) && Q.CastOnBestTarget().IsCasted())
             {
                 return;
             }
@@ -339,19 +383,58 @@
                     return;
                 }
             }
-            if (MainMenu["KillSteal"]["E"] && CanE
+            if (MainMenu["KillSteal"]["E"] && CanCastE
                 && GetETarget.Any(i => i.Item1.Health + i.Item1.MagicalShield <= GetEDmg(i.Item1)))
             {
                 if (E.IsReady())
                 {
-                    if (ECharge())
-                    {
-                        DelayAction.Add(10, () => ERelease());
-                    }
+                    ECharge(true);
                 }
                 else if (IsChargeE)
                 {
                     ERelease();
+                }
+            }
+        }
+
+        private static void LaneClear()
+        {
+            if (MainMenu["LaneClear"]["E"] && CanCastE)
+            {
+                var canE =
+                    Common.ListMinions()
+                        .Where(
+                            i =>
+                            i.IsValidTarget(E.Range)
+                            && !Q.CanLastHit(i, Q.GetDamage(i, !IsEmpQ ? DamageStage.Default : DamageStage.Empowered)))
+                        .ToList()
+                        .Count > 0;
+                if (E.IsReady())
+                {
+                    ECharge(canE);
+                }
+                else if (CanReleaseE(1) && (canE || Common.ListMinions().Count(i => i.IsValidTarget(750)) == 0))
+                {
+                    ERelease();
+                }
+            }
+            if ((!IsChargeE || (IsEmpQ && (CanReleaseE(1) || Player.HealthPercent <= 10))) && Q.IsReady())
+            {
+                var minions =
+                    Common.ListMinions()
+                        .Where(i => i.IsValidTarget(Q.Range))
+                        .OrderByDescending(i => i.MaxHealth)
+                        .ToList();
+                if (minions.Count > 0)
+                {
+                    var minion =
+                        minions.FirstOrDefault(
+                            i => Q.CanLastHit(i, Q.GetDamage(i, !IsEmpQ ? DamageStage.Default : DamageStage.Empowered)))
+                        ?? minions.FirstOrDefault();
+                    if (minion != null)
+                    {
+                        Q.CastOnUnit(minion);
+                    }
                 }
             }
         }
@@ -410,6 +493,9 @@
                     break;
                 case OrbwalkingMode.Hybrid:
                     Hybrid();
+                    break;
+                case OrbwalkingMode.LaneClear:
+                    LaneClear();
                     break;
                 case OrbwalkingMode.LastHit:
                     LastHit();

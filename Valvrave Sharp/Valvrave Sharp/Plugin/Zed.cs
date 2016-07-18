@@ -127,6 +127,7 @@
             Evade.Evading += Evading;
             Evade.TryEvading += TryEvading;
             Game.OnUpdate += OnUpdate;
+            Drawing.OnEndScene += OnEndScene;
             Drawing.OnDraw += OnDraw;
             Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                 {
@@ -262,7 +263,7 @@
                 {
                     extraRange += Q.Width / 2;
                 }
-                if (Variables.Orbwalker.GetActiveMode() == OrbwalkingMode.Combo
+                if (Variables.Orbwalker.ActiveMode == OrbwalkingMode.Combo
                     && MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Active && RState == 0)
                 {
                     var targetR =
@@ -782,50 +783,16 @@
             {
                 return;
             }
-            if (MainMenu["Draw"]["Q"] && Q.Level > 0)
+            if (MainMenu["Draw"]["UseR"] && R.Level > 0)
             {
-                Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.LimeGreen : Color.IndianRed);
-            }
-            if (MainMenu["Draw"]["W"] && W.Level > 0)
-            {
-                Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.LimeGreen : Color.IndianRed);
-            }
-            if (MainMenu["Draw"]["E"] && E.Level > 0)
-            {
-                Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.LimeGreen : Color.IndianRed);
-            }
-            if (R.Level > 0)
-            {
-                var rMenu = MainMenu["Combo"]["R"].GetValue<MenuKeyBind>();
-                if (RState == 0)
-                {
-                    if (MainMenu["Draw"]["R"])
-                    {
-                        Render.Circle.DrawCircle(Player.Position, R.Range, Color.LimeGreen);
-                    }
-                    if (MainMenu["Draw"]["RStop"] && rMenu.Active)
-                    {
-                        Render.Circle.DrawCircle(Player.Position, MainMenu["Combo"]["RStopRange"], Color.Orange);
-                    }
-                }
-                if (MainMenu["Draw"]["UseR"])
-                {
-                    var pos = Drawing.WorldToScreen(Player.Position);
-                    var text = $"Use R In Combo: {(rMenu.Active ? "On" : "Off")} [{rMenu.Key}]";
-                    Drawing.DrawText(
-                        pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
-                        pos.Y + 20,
-                        rMenu.Active ? Color.White : Color.Gray,
-                        text);
-                }
-            }
-            if (MainMenu["Draw"]["Target"])
-            {
-                var target = GetTarget;
-                if (target != null)
-                {
-                    Render.Circle.DrawCircle(target.Position, target.BoundingRadius * 1.5f, Color.Aqua);
-                }
+                var menu = MainMenu["Combo"]["R"].GetValue<MenuKeyBind>();
+                var pos = Drawing.WorldToScreen(Player.Position);
+                var text = $"Use R In Combo: {(menu.Active ? "On" : "Off")} [{menu.Key}]";
+                Drawing.DrawText(
+                    pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
+                    pos.Y + 20,
+                    menu.Active ? Color.White : Color.Gray,
+                    text);
             }
             if (MainMenu["Draw"]["DMark"] && rShadow.IsValid())
             {
@@ -849,6 +816,45 @@
             }
         }
 
+        private static void OnEndScene(EventArgs args)
+        {
+            if (Player.IsDead)
+            {
+                return;
+            }
+            if (MainMenu["Draw"]["Q"] && Q.Level > 0)
+            {
+                Render.Circle.DrawCircle(Player.Position, Q.Range, Q.IsReady() ? Color.LimeGreen : Color.IndianRed);
+            }
+            if (MainMenu["Draw"]["W"] && W.Level > 0)
+            {
+                Render.Circle.DrawCircle(Player.Position, W.Range, W.IsReady() ? Color.LimeGreen : Color.IndianRed);
+            }
+            if (MainMenu["Draw"]["E"] && E.Level > 0)
+            {
+                Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.LimeGreen : Color.IndianRed);
+            }
+            if (R.Level > 0 && RState == 0)
+            {
+                if (MainMenu["Draw"]["R"])
+                {
+                    Render.Circle.DrawCircle(Player.Position, R.Range, Color.LimeGreen);
+                }
+                if (MainMenu["Draw"]["RStop"] && MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Active)
+                {
+                    Render.Circle.DrawCircle(Player.Position, MainMenu["Combo"]["RStopRange"], Color.Orange);
+                }
+            }
+            if (MainMenu["Draw"]["Target"])
+            {
+                var target = GetTarget;
+                if (target != null)
+                {
+                    Render.Circle.DrawCircle(target.Position, target.BoundingRadius * 1.5f, Color.Aqua);
+                }
+            }
+        }
+
         private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || MenuGUI.IsShopOpen || Player.IsRecalling())
@@ -856,7 +862,7 @@
                 return;
             }
             KillSteal();
-            switch (Variables.Orbwalker.GetActiveMode())
+            switch (Variables.Orbwalker.ActiveMode)
             {
                 case OrbwalkingMode.Combo:
                     Combo();
@@ -882,13 +888,13 @@
                     }
                     break;
             }
-            if (Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.Combo)
+            if (Variables.Orbwalker.ActiveMode != OrbwalkingMode.Combo)
             {
                 if (MainMenu["Hybrid"]["AutoE"])
                 {
                     CastE();
                 }
-                if (Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.Hybrid)
+                if (Variables.Orbwalker.ActiveMode != OrbwalkingMode.Hybrid)
                 {
                     AutoQ();
                 }

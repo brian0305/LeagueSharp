@@ -90,14 +90,14 @@
             MainMenu.KeyBind("FleeW", "Use W To Flee", Keys.C);
 
             Game.OnUpdate += OnUpdate;
-            Drawing.OnDraw += OnDraw;
+            Drawing.OnEndScene += OnEndScene;
             Variables.Orbwalker.OnAction += (sender, args) =>
                 {
                     if (!Q.IsReady() || args.Type != OrbwalkingType.BeforeAttack)
                     {
                         return;
                     }
-                    var mode = Variables.Orbwalker.GetActiveMode();
+                    var mode = Variables.Orbwalker.ActiveMode;
                     var hero = args.Target as Obj_AI_Hero;
                     if (hero == null || (mode != OrbwalkingMode.Combo && mode != OrbwalkingMode.Hybrid))
                     {
@@ -458,7 +458,7 @@
             Q.CastOnUnit(minion);
         }
 
-        private static void OnDraw(EventArgs args)
+        private static void OnEndScene(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -485,8 +485,8 @@
                 return;
             }
             KillSteal();
-            Variables.Orbwalker.SetAttackState(!(haveW || IsChargeE));
-            switch (Variables.Orbwalker.GetActiveMode())
+            Variables.Orbwalker.AttackState = !(haveW || IsChargeE);
+            switch (Variables.Orbwalker.ActiveMode)
             {
                 case OrbwalkingMode.Combo:
                     Combo();

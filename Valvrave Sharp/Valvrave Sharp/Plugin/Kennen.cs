@@ -85,7 +85,7 @@
             MainMenu.KeyBind("FleeE", "Use E To Flee", Keys.C);
 
             Game.OnUpdate += OnUpdate;
-            Drawing.OnDraw += OnDraw;
+            Drawing.OnEndScene += OnEndScene;
             Obj_AI_Base.OnBuffAdd += (sender, args) =>
                 {
                     if (!sender.IsMe)
@@ -96,6 +96,7 @@
                     {
                         case "KennenLightningRush":
                             haveE = true;
+                            Variables.Orbwalker.AttackState = false;
                             break;
                         case "KennenShurikenStorm":
                             haveR = true;
@@ -112,6 +113,7 @@
                     {
                         case "KennenLightningRush":
                             haveE = false;
+                            Variables.Orbwalker.AttackState = true;
                             break;
                         case "KennenShurikenStorm":
                             haveR = false;
@@ -273,7 +275,7 @@
                     CollisionableObjects.Heroes | CollisionableObjects.Minions | CollisionableObjects.YasuoWall));
         }
 
-        private static void OnDraw(EventArgs args)
+        private static void OnEndScene(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -300,8 +302,7 @@
                 return;
             }
             KillSteal();
-            Variables.Orbwalker.SetAttackState(!haveE);
-            switch (Variables.Orbwalker.GetActiveMode())
+            switch (Variables.Orbwalker.ActiveMode)
             {
                 case OrbwalkingMode.Combo:
                     Combo();
@@ -323,8 +324,8 @@
                     }
                     break;
             }
-            if (Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.Combo
-                && Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.Hybrid)
+            if (Variables.Orbwalker.ActiveMode != OrbwalkingMode.Combo
+                && Variables.Orbwalker.ActiveMode != OrbwalkingMode.Hybrid)
             {
                 AutoQ();
             }

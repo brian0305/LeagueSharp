@@ -139,6 +139,7 @@
             MainMenu.KeyBind("RFlash", "R-Flash To Mouse", Keys.Z);
 
             Game.OnUpdate += OnUpdate;
+            Drawing.OnEndScene += OnEndScene;
             Drawing.OnDraw += OnDraw;
             Obj_AI_Base.OnBuffAdd += (sender, args) =>
                 {
@@ -892,6 +893,26 @@
             {
                 return;
             }
+            if (MainMenu["Draw"]["KnockUp"] && R.Level > 0)
+            {
+                var menu = MainMenu["KnockUp"]["R"].GetValue<MenuKeyBind>();
+                var text =
+                    $"Auto Knock Up: {(menu.Active ? "On" : "Off")} <{MainMenu["KnockUp"]["RCountA"].GetValue<MenuSlider>().Value}> [{menu.Key}]";
+                var pos = Drawing.WorldToScreen(Player.Position);
+                Drawing.DrawText(
+                    pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
+                    pos.Y + 20,
+                    menu.Active ? Color.White : Color.Gray,
+                    text);
+            }
+        }
+
+        private static void OnEndScene(EventArgs args)
+        {
+            if (Player.IsDead)
+            {
+                return;
+            }
             if (MainMenu["Draw"]["Q"] && Q.Level > 0)
             {
                 Render.Circle.DrawCircle(
@@ -910,24 +931,9 @@
                     (IsEOne ? E : E2).Range,
                     E.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
-            if (R.Level > 0)
+            if (MainMenu["Draw"]["R"] && R.Level > 0)
             {
-                if (MainMenu["Draw"]["R"])
-                {
-                    Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.LimeGreen : Color.IndianRed);
-                }
-                if (MainMenu["Draw"]["KnockUp"])
-                {
-                    var menu = MainMenu["KnockUp"]["R"].GetValue<MenuKeyBind>();
-                    var text =
-                        $"Auto Knock Up: {(menu.Active ? "On" : "Off")} <{MainMenu["KnockUp"]["RCountA"].GetValue<MenuSlider>().Value}> [{menu.Key}]";
-                    var pos = Drawing.WorldToScreen(Player.Position);
-                    Drawing.DrawText(
-                        pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
-                        pos.Y + 20,
-                        menu.Active ? Color.White : Color.Gray,
-                        text);
-                }
+                Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
         }
 
@@ -938,8 +944,7 @@
                 return;
             }
             KillSteal();
-            Variables.Orbwalker.SetAttackState(!MainMenu["Insec"]["R"].GetValue<MenuKeyBind>().Active);
-            switch (Variables.Orbwalker.GetActiveMode())
+            switch (Variables.Orbwalker.ActiveMode)
             {
                 case OrbwalkingMode.Combo:
                     Combo();
@@ -1197,7 +1202,15 @@
             {
                 var insecMenu = MainMenu.Add(new Menu("Insec", "Insec"));
                 {
-                    insecMenu.KeyBind("R", "Keybind", Keys.T);
+                    insecMenu.KeyBind("R", "Keybind", Keys.T).ValueChanged += (sender, args) =>
+                        {
+                            var keybind = sender as MenuKeyBind;
+                            if (keybind != null)
+                            {
+                                Variables.Orbwalker.AttackState = !keybind.Active;
+                                Game.PrintChat("Insec");
+                            }
+                        };
                     insecMenu.Bool("TargetSelect", "Only Insec Target Selected", false);
                     insecMenu.List("Mode", "Mode", new[] { "Tower/Hero/Current", "Mouse Position", "Current Position" });
                     insecMenu.Separator("Draw Settings");
@@ -1292,7 +1305,7 @@
             internal static void Start()
             {
                 var target = GetTarget;
-                if (Variables.Orbwalker.CanMove() && Variables.TickCount - lastMoveTime > 250)
+                if (Variables.Orbwalker.CanMove && Variables.TickCount - lastMoveTime > 250)
                 {
                     var posMove = Game.CursorPos;
                     if (target != null && lastMoveTime > 0 && CanInsec)
@@ -1397,7 +1410,7 @@
 
             private static void GapByFlashR(Obj_AI_Hero target, Vector3 posBehind)
             {
-                if (Variables.Orbwalker.CanMove())
+                if (Variables.Orbwalker.CanMove)
                 {
                     lastMoveTime = Variables.TickCount;
                 }
@@ -1465,7 +1478,7 @@
 
             private static void GapByWardJump(Obj_AI_Hero target, Vector3 posBehind)
             {
-                if (Variables.Orbwalker.CanMove())
+                if (Variables.Orbwalker.CanMove)
                 {
                     lastMoveTime = Variables.TickCount;
                     Variables.Orbwalker.Move(

@@ -75,12 +75,12 @@
             }
 
             Game.OnUpdate += OnUpdate;
-            Drawing.OnDraw += OnDraw;
+            Drawing.OnEndScene += OnEndScene;
             Variables.Orbwalker.OnAction += OnAction;
             AttackableUnit.OnDamage += (sender, args) =>
                 {
                     if (args.TargetNetworkId != Player.NetworkId
-                        || Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.Combo || !R.IsReady())
+                        || Variables.Orbwalker.ActiveMode != OrbwalkingMode.Combo || !R.IsReady())
                     {
                         return;
                     }
@@ -151,8 +151,8 @@
                     Q.CastSpellSmite(target, MainMenu["Combo"]["QCol"]);
                 }
             }
-            if (E.IsReady() && !Player.Spellbook.IsAutoAttacking && !Variables.Orbwalker.CanAttack()
-                && Variables.Orbwalker.CanMove())
+            if (E.IsReady() && !Player.Spellbook.IsAutoAttacking && !Variables.Orbwalker.CanAttack
+                && Variables.Orbwalker.CanMove)
             {
                 var target = GetETarget;
                 if (target != null
@@ -247,17 +247,17 @@
             {
                 return;
             }
-            if (Variables.Orbwalker.GetActiveMode() == OrbwalkingMode.Combo)
+            if (Variables.Orbwalker.ActiveMode == OrbwalkingMode.Combo)
             {
                 E.Cast();
             }
-            else if (Variables.Orbwalker.GetActiveMode() == OrbwalkingMode.Hybrid && MainMenu["Hybrid"]["E"])
+            else if (Variables.Orbwalker.ActiveMode == OrbwalkingMode.Hybrid && MainMenu["Hybrid"]["E"])
             {
                 E.Cast();
             }
         }
 
-        private static void OnDraw(EventArgs args)
+        private static void OnEndScene(EventArgs args)
         {
             if (Player.IsDead)
             {
@@ -280,7 +280,7 @@
                 return;
             }
             KillSteal();
-            switch (Variables.Orbwalker.GetActiveMode())
+            switch (Variables.Orbwalker.ActiveMode)
             {
                 case OrbwalkingMode.Combo:
                     Combo();
@@ -292,8 +292,8 @@
                     LastHit();
                     break;
             }
-            if (Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.Combo
-                && Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.Hybrid)
+            if (Variables.Orbwalker.ActiveMode != OrbwalkingMode.Combo
+                && Variables.Orbwalker.ActiveMode != OrbwalkingMode.Hybrid)
             {
                 AutoQ();
             }

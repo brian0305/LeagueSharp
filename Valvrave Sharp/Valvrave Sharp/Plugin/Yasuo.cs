@@ -31,7 +31,7 @@
     {
         #region Constants
 
-        private const float QDelay = 0.38f, Q2Delay = 0.35f, QDelays = 0.2f, Q2Delays = 0.3f;
+        private const float QDelay = 0.38f, Q2Delay = 0.35f, QDelays = 0.215f, Q2Delays = 0.315f;
 
         private const int RWidth = 400;
 
@@ -61,7 +61,7 @@
         {
             Q = new Spell(SpellSlot.Q, 505).SetSkillshot(QDelay, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, 1100).SetSkillshot(Q2Delay, 90, 1200, true, Q.Type);
-            Q3 = new Spell(Q.Slot, 225).SetSkillshot(0.005f, 225, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            Q3 = new Spell(Q.Slot, 240).SetSkillshot(0.001f, 240, float.MaxValue, false, SkillshotType.SkillshotCircle);
             W = new Spell(SpellSlot.W, 400).SetTargetted(0.25f, float.MaxValue);
             E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1200);
             E2 = new Spell(E.Slot, E.Range).SetTargetted(Q3.Delay, E.Speed);
@@ -154,6 +154,7 @@
             Evade.Evading += Evading;
             Evade.TryEvading += TryEvading;
             Game.OnUpdate += OnUpdate;
+            Drawing.OnEndScene += OnEndScene;
             Drawing.OnDraw += OnDraw;
             Game.OnUpdate += args =>
                 {
@@ -170,7 +171,7 @@
                     {
                         isDash = false;
                         DelayAction.Add(
-                            70,
+                            50,
                             () =>
                                 {
                                     if (!isDash)
@@ -186,8 +187,8 @@
             Variables.Orbwalker.OnAction += (sender, args) =>
                 {
                     if (args.Type != OrbwalkingType.AfterAttack
-                        || Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.LaneClear
-                        || !(args.Target is Obj_AI_Turret) || !Q.IsReady() || haveQ3)
+                        || Variables.Orbwalker.ActiveMode != OrbwalkingMode.LaneClear || !(args.Target is Obj_AI_Turret)
+                        || !Q.IsReady() || haveQ3)
                     {
                         return;
                     }
@@ -226,8 +227,8 @@
                             break;
                         case "yasuoeqcombosoundmiss":
                         case "YasuoEQComboSoundHit":
-                            Variables.Orbwalker.SetAttackState(false);
-                            DelayAction.Add(220, () => Variables.Orbwalker.SetAttackState(true));
+                            Variables.Orbwalker.AttackState = false;
+                            DelayAction.Add(150, () => Variables.Orbwalker.AttackState = true);
                             break;
                     }
                 };
@@ -403,7 +404,7 @@
                 return true;
             }
             var buff = target.Buffs.FirstOrDefault(i => i.Type == BuffType.Knockup);
-            return buff != null && Game.Time - buff.StartTime >= 0.9 * (buff.EndTime - buff.StartTime);
+            return buff != null && Game.Time - buff.StartTime >= 0.85 * (buff.EndTime - buff.StartTime);
         }
 
         private static bool CanDash(
@@ -1032,37 +1033,16 @@
             {
                 return;
             }
-            if (MainMenu["Draw"]["Q"] && Q.Level > 0)
+            if (MainMenu["Draw"]["UseR"] && R.Level > 0)
             {
-                Render.Circle.DrawCircle(
-                    Player.Position,
-                    IsDashing ? Q3.Width : SpellQ.Range,
-                    Q.IsReady() ? Color.LimeGreen : Color.IndianRed);
-            }
-            if (MainMenu["Draw"]["E"] && E.Level > 0)
-            {
-                Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.LimeGreen : Color.IndianRed);
-            }
-            if (R.Level > 0)
-            {
-                if (MainMenu["Draw"]["R"] && R.IsReady())
-                {
-                    Render.Circle.DrawCircle(
-                        Player.Position,
-                        R.Range,
-                        GetRTargets.Count > 0 ? Color.LimeGreen : Color.IndianRed);
-                }
-                if (MainMenu["Draw"]["UseR"])
-                {
-                    var menuR = MainMenu["Combo"]["R"].GetValue<MenuKeyBind>();
-                    var pos = Drawing.WorldToScreen(Player.Position);
-                    var text = $"Use R In Combo: {(menuR.Active ? "On" : "Off")} [{menuR.Key}]";
-                    Drawing.DrawText(
-                        pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
-                        pos.Y + 40,
-                        menuR.Active ? Color.White : Color.Gray,
-                        text);
-                }
+                var menu = MainMenu["Combo"]["R"].GetValue<MenuKeyBind>();
+                var pos = Drawing.WorldToScreen(Player.Position);
+                var text = $"Use R In Combo: {(menu.Active ? "On" : "Off")} [{menu.Key}]";
+                Drawing.DrawText(
+                    pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
+                    pos.Y + 40,
+                    menu.Active ? Color.White : Color.Gray,
+                    text);
             }
             if (MainMenu["Draw"]["StackQ"] && Q.Level > 0)
             {
@@ -1078,6 +1058,32 @@
             }
         }
 
+        private static void OnEndScene(EventArgs args)
+        {
+            if (Player.IsDead)
+            {
+                return;
+            }
+            if (MainMenu["Draw"]["Q"] && Q.Level > 0)
+            {
+                Render.Circle.DrawCircle(
+                    Player.Position,
+                    IsDashing ? Q3.Width : SpellQ.Range,
+                    Q.IsReady() ? Color.LimeGreen : Color.IndianRed);
+            }
+            if (MainMenu["Draw"]["E"] && E.Level > 0)
+            {
+                Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.LimeGreen : Color.IndianRed);
+            }
+            if (MainMenu["Draw"]["R"] && R.Level > 0 && R.IsReady())
+            {
+                Render.Circle.DrawCircle(
+                    Player.Position,
+                    R.Range,
+                    GetRTargets.Count > 0 ? Color.LimeGreen : Color.IndianRed);
+            }
+        }
+
         private static void OnUpdate(EventArgs args)
         {
             if (Player.IsDead || MenuGUI.IsChatOpen || MenuGUI.IsShopOpen || Player.IsRecalling())
@@ -1085,7 +1091,7 @@
                 return;
             }
             KillSteal();
-            switch (Variables.Orbwalker.GetActiveMode())
+            switch (Variables.Orbwalker.ActiveMode)
             {
                 case OrbwalkingMode.Combo:
                     Combo();
@@ -1112,8 +1118,8 @@
                     }
                     break;
             }
-            if (Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.Combo
-                && Variables.Orbwalker.GetActiveMode() != OrbwalkingMode.Hybrid)
+            if (Variables.Orbwalker.ActiveMode != OrbwalkingMode.Combo
+                && Variables.Orbwalker.ActiveMode != OrbwalkingMode.Hybrid)
             {
                 AutoQ();
             }

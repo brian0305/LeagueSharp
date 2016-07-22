@@ -31,7 +31,7 @@
 
         private static bool haveQ, haveQEmp, haveW, haveE;
 
-        private static int lastE;
+        private static int lastECharge;
 
         #endregion
 
@@ -176,7 +176,7 @@
                 };
             Spellbook.OnUpdateChargedSpell += (sender, args) =>
                 {
-                    if (!sender.Owner.IsMe || Variables.TickCount - lastE >= 3000 || !args.ReleaseCast)
+                    if (!sender.Owner.IsMe || Variables.TickCount - lastECharge >= 3000 || !args.ReleaseCast)
                     {
                         return;
                     }
@@ -184,7 +184,7 @@
                 };
             Spellbook.OnCastSpell += (sender, args) =>
                 {
-                    if (args.Slot != E.Slot || Variables.TickCount - lastE <= 500 || IsChargeE)
+                    if (args.Slot != E.Slot || Variables.TickCount - lastECharge <= 500 || IsChargeE)
                     {
                         return;
                     }
@@ -213,7 +213,7 @@
                     .Where(i => CanHitE(i.Item2))
                     .ToList();
 
-        private static bool IsChargeE => buffE != null || haveE || Variables.TickCount - lastE <= 100;
+        private static bool IsChargeE => buffE != null || haveE || Variables.TickCount - lastECharge <= 100;
 
         private static bool IsEmpQ => Player.Mana >= (haveQEmp ? 0.2f : 1.9f);
 
@@ -308,12 +308,12 @@
 
         private static void ECharge(bool canCast)
         {
-            if (!canCast || haveQ || IsChargeE || Variables.TickCount - lastE <= 400 + Game.Ping)
+            if (!canCast || haveQ || IsChargeE || Variables.TickCount - lastECharge <= 400 + Game.Ping)
             {
                 return;
             }
             Player.Spellbook.CastSpell(E.Slot, Player.Position);
-            lastE = Variables.TickCount;
+            lastECharge = Variables.TickCount;
         }
 
         private static void ERelease()
@@ -480,12 +480,12 @@
 
         private static void OnUpdate(EventArgs args)
         {
+            Variables.Orbwalker.AttackState = !haveW;
             if (Player.IsDead || MenuGUI.IsChatOpen || MenuGUI.IsShopOpen || Player.IsRecalling())
             {
                 return;
             }
             KillSteal();
-            Variables.Orbwalker.AttackState = !(haveW || IsChargeE);
             switch (Variables.Orbwalker.ActiveMode)
             {
                 case OrbwalkingMode.Combo:

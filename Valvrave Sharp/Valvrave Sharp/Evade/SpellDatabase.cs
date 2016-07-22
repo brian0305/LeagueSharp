@@ -940,7 +940,8 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Jhin", SpellName = "JhinRShot", Slot = SpellSlot.R,
                         Type = SkillShotType.SkillshotMissileLine, Delay = 250, Range = 3500, Radius = 80,
                         MissileSpeed = 5000, FixedRange = true, AddHitbox = true, DangerValue = 3, IsDangerous = true,
-                        MissileSpellName = "JhinRShotMis", CanBeRemoved = true,
+                        MissileSpellName = "JhinRShotMis", ExtraMissileNames = new[] { "JhinRShotMis4" },
+                        CanBeRemoved = true,
                         CollisionObjects = CollisionableObjects.Heroes | CollisionableObjects.YasuoWall
                     });
 

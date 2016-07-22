@@ -200,11 +200,35 @@
                     {
                         return;
                     }
-                    if (args.Slot == SpellSlot.R)
+                    switch (args.Slot)
                     {
-                        lastR = Variables.TickCount;
+                        case SpellSlot.Q:
+                            if (!args.SData.Name.ToLower().Contains("one"))
+                            {
+                                isDashing = true;
+                            }
+                            break;
+                        case SpellSlot.W:
+                            if (args.SData.Name.ToLower().Contains("one"))
+                            {
+                                lastW = Variables.TickCount;
+                            }
+                            else
+                            {
+                                lastW2 = Variables.TickCount;
+                            }
+                            break;
+                        case SpellSlot.E:
+                            if (!args.SData.Name.ToLower().Contains("one"))
+                            {
+                                lastE2 = Variables.TickCount;
+                            }
+                            break;
+                        case SpellSlot.R:
+                            lastR = Variables.TickCount;
+                            break;
                     }
-                    else if (args.SData.Name == "SummonerFlash" && posBubbaKushFlash.IsValid())
+                    if (args.SData.Name == "SummonerFlash" && posBubbaKushFlash.IsValid())
                     {
                         posBubbaKushFlash = new Vector3();
                     }
@@ -215,7 +239,7 @@
 
         #region Properties
 
-        private static bool IsDashing => (lastW > 0 && Variables.TickCount - lastW <= 100) || Player.IsDashing();
+        private static bool IsDashing => Variables.TickCount - lastW <= 100 || Player.IsDashing();
 
         private static bool IsEOne => E.Instance.SData.Name.ToLower().Contains("one");
 
@@ -309,8 +333,8 @@
 
         private static void CastE(List<Obj_AI_Minion> minions = null)
         {
-            if (!E.IsReady() || isDashing || IsDashing || Variables.TickCount - lastW <= 250
-                || Variables.TickCount - lastW2 <= 150)
+            if (!E.IsReady() || isDashing || IsDashing || Variables.TickCount - lastW <= 200
+                || Variables.TickCount - lastW2 <= 250 || Player.Spellbook.IsCastingSpell)
             {
                 return;
             }
@@ -351,11 +375,10 @@
                 {
                     return;
                 }
-                if ((cPassive == 0 || target.Count > 2
-                     || target.Any(i => CanE2(i) || i.DistanceToPlayer() > i.GetRealAutoAttackRange() + 50))
-                    && E2.Cast())
+                if (cPassive == 0 || target.Count > 2
+                    || target.Any(i => CanE2(i) || i.DistanceToPlayer() > i.GetRealAutoAttackRange() + 50))
                 {
-                    lastE2 = Variables.TickCount;
+                    E2.Cast();
                 }
             }
         }
@@ -377,9 +400,9 @@
             else
             {
                 var minion = minions.Where(i => i.IsValidTarget(E2.Range) && HaveE(i)).ToList();
-                if (minion.Count > 0 && (cPassive == 0 || minion.Any(CanE2)) && E2.Cast())
+                if (minion.Count > 0 && (cPassive == 0 || minion.Any(CanE2)))
                 {
-                    lastE2 = Variables.TickCount;
+                    E2.Cast();
                 }
             }
         }
@@ -416,7 +439,7 @@
         private static void CastW(List<Obj_AI_Minion> minions = null)
         {
             if (!W.IsReady() || Variables.TickCount - lastW <= 300 || isDashing || IsDashing
-                || Variables.TickCount - lastE2 <= 250)
+                || Variables.TickCount - lastE2 <= 250 || Player.Spellbook.IsCastingSpell)
             {
                 return;
             }
@@ -434,38 +457,16 @@
             {
                 return;
             }
-            if (hero != null && Player.HealthPercent < hero.HealthPercent && Player.HealthPercent < 30)
+            if (hero != null && Player.HealthPercent < hero.HealthPercent && Player.HealthPercent < 30 && W.Cast())
             {
-                if (IsWOne)
-                {
-                    if (W.Cast())
-                    {
-                        lastW = Variables.TickCount;
-                        return;
-                    }
-                }
-                else if (W.Cast())
-                {
-                    lastW2 = Variables.TickCount;
-                    return;
-                }
+                return;
             }
             if (Player.HealthPercent < (minions == null ? 8 : 5) || (!IsWOne && Variables.TickCount - lastW > 2600)
                 || cPassive == 0
                 || (minion != null && minion.Team == GameObjectTeam.Neutral
                     && minion.GetJungleType() != JungleType.Small && Player.HealthPercent < 40 && IsWOne))
             {
-                if (IsWOne)
-                {
-                    if (W.Cast())
-                    {
-                        lastW = Variables.TickCount;
-                    }
-                }
-                else if (W.Cast())
-                {
-                    lastW2 = Variables.TickCount;
-                }
+                W.Cast();
             }
         }
 
@@ -526,7 +527,6 @@
                                  && target.DistanceToPlayer() > target.GetRealAutoAttackRange() + 100) || cPassive == 0)
                             && Q2.Cast())
                         {
-                            isDashing = true;
                             return;
                         }
                     }
@@ -536,7 +536,6 @@
                         if (targetQ2 != null && objQ.Distance(targetQ2) < targetQ2.DistanceToPlayer()
                             && !targetQ2.InAutoAttackRange() && Q2.Cast())
                         {
-                            isDashing = true;
                             return;
                         }
                     }
@@ -582,10 +581,7 @@
                     .MinOrDefault(i => i.Distance(posJump));
             if (objJump != null)
             {
-                if (W.CastOnUnit(objJump))
-                {
-                    lastW = Variables.TickCount;
-                }
+                W.CastOnUnit(objJump);
             }
             else
             {
@@ -732,7 +728,6 @@
                         && target.Health + target.PhysicalShield
                         <= Q.GetDamage(target, DamageStage.SecondCast) + Player.GetAutoAttackDamage(target) && Q2.Cast())
                     {
-                        isDashing = true;
                         return;
                     }
                 }
@@ -855,10 +850,9 @@
                     var q2Minion = objQ;
                     if (q2Minion.IsValidTarget(Q2.Range)
                         && (CanQ2(q2Minion) || q2Minion.Health <= Q.GetDamage(q2Minion, DamageStage.SecondCast)
-                            || q2Minion.DistanceToPlayer() > q2Minion.GetRealAutoAttackRange() + 100 || cPassive == 0)
-                        && Q2.Cast())
+                            || q2Minion.DistanceToPlayer() > q2Minion.GetRealAutoAttackRange() + 100 || cPassive == 0))
                     {
-                        isDashing = true;
+                        Q2.Cast();
                     }
                 }
             }
@@ -1026,7 +1020,6 @@
                              <= Q.GetDamage(target, DamageStage.SecondCast) + Player.GetAutoAttackDamage(target)
                              || (!R.IsReady() && IsRecentR && CanR(target))) && Q2.Cast())
                 {
-                    isDashing = true;
                     return;
                 }
             }
@@ -1123,9 +1116,10 @@
                     }
                     else
                     {
-                        var extraRange = CanWardFlash
-                                             ? GetRange(null, true)
-                                             : (WardManager.CanWardJump ? WardManager.WardRange : FlashRange);
+                        var extraRange = 100
+                                         + (CanWardFlash
+                                                ? GetRange(null, true)
+                                                : (WardManager.CanWardJump ? WardManager.WardRange : FlashRange));
                         if (MainMenu["Insec"]["Q"] && Q.IsReady() && IsQOne)
                         {
                             target = Q.GetTarget(extraRange);
@@ -1208,7 +1202,6 @@
                             if (keybind != null)
                             {
                                 Variables.Orbwalker.AttackState = !keybind.Active;
-                                Game.PrintChat("Insec");
                             }
                         };
                     insecMenu.Bool("TargetSelect", "Only Insec Target Selected", false);
@@ -1460,7 +1453,6 @@
                          && ((WardManager.CanWardJump && Player.Mana >= 80)
                              || (MainMenu["Insec"]["Flash"] && Common.CanFlash)) && Q2.Cast())
                 {
-                    isDashing = true;
                     Variables.TargetSelector.SetTarget(target);
                 }
             }
@@ -1546,7 +1538,7 @@
                 return !isWardFlash
                            ? (WardManager.CanWardJump ? WardManager.WardRange : FlashRange) - GetDistance(target)
                            : WardManager.WardRange + R.Range
-                             - ((target ?? Player).BoundingRadius + 30
+                             - ((target ?? Player).BoundingRadius - 30
                                 + (MainMenu["Insec"]["FlashMode"].GetValue<MenuList>().Index == 1 ? 50 : 0));
             }
 
@@ -1665,9 +1657,9 @@
                     GameObjects.AllyWards.Where(
                         i => i.IsValidTarget(W.Range, false) && i.IsWard() && i.Distance(pos) < 100)
                         .MinOrDefault(i => i.Distance(pos));
-                if (wardObj != null && W.CastOnUnit(wardObj))
+                if (wardObj != null)
                 {
-                    lastW = Variables.TickCount;
+                    W.CastOnUnit(wardObj);
                 }
             }
 

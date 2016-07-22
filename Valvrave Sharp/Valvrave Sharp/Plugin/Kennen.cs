@@ -96,7 +96,6 @@
                     {
                         case "KennenLightningRush":
                             haveE = true;
-                            Variables.Orbwalker.AttackState = false;
                             break;
                         case "KennenShurikenStorm":
                             haveR = true;
@@ -113,7 +112,6 @@
                     {
                         case "KennenLightningRush":
                             haveE = false;
-                            Variables.Orbwalker.AttackState = true;
                             break;
                         case "KennenShurikenStorm":
                             haveR = false;
@@ -297,6 +295,7 @@
 
         private static void OnUpdate(EventArgs args)
         {
+            Variables.Orbwalker.AttackState = !haveE;
             if (Player.IsDead || MenuGUI.IsChatOpen || MenuGUI.IsShopOpen || Player.IsRecalling())
             {
                 return;

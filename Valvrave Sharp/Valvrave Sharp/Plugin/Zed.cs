@@ -139,6 +139,7 @@
                     {
                         rCasted = false;
                         wCasted = true;
+                        lastW = Variables.TickCount;
                     }
                     else if (args.Slot == SpellSlot.R && args.SData.Name == "ZedR")
                     {
@@ -506,10 +507,7 @@
             {
                 posCast = Player.ServerPosition.Extend(posCast, 600);
             }
-            if (W.Cast(posCast))
-            {
-                lastW = Variables.TickCount;
-            }
+            W.Cast(posCast);
         }
 
         private static void Combo()
@@ -557,7 +555,6 @@
                              && W.Cast(
                                  target.ServerPosition.Extend(Player.ServerPosition, -target.GetRealAutoAttackRange())))
                     {
-                        lastW = Variables.TickCount;
                         return;
                     }
                 }

@@ -316,7 +316,8 @@
             get
             {
                 var result = new Tuple<Obj_AI_Hero, List<Obj_AI_Hero>>(null, new List<Obj_AI_Hero>());
-                foreach (var target in GetRTargets)
+                var targets = Variables.TargetSelector.GetTargets(R.Range, R.DamageType).Where(HaveR);
+                foreach (var target in targets)
                 {
                     var nears =
                         GameObjects.EnemyHeroes.Where(
@@ -339,9 +340,6 @@
                            : result.Item1;
             }
         }
-
-        private static List<Obj_AI_Hero> GetRTargets
-            => Variables.TargetSelector.GetTargets(R.Range, R.DamageType).Where(HaveR).ToList();
 
         private static bool IsDashing => Variables.TickCount - lastE <= 100 || Player.IsDashing() || posDash.IsValid();
 
@@ -410,7 +408,7 @@
                 return true;
             }
             var buff = target.Buffs.FirstOrDefault(i => i.Type == BuffType.Knockup);
-            return buff != null && Game.Time - buff.StartTime >= 0.85 * (buff.EndTime - buff.StartTime);
+            return buff != null && Game.Time - buff.StartTime >= 0.88 * (buff.EndTime - buff.StartTime);
         }
 
         private static bool CanDash(
@@ -456,10 +454,6 @@
 
         private static bool CastQCir(List<Obj_AI_Base> obj)
         {
-            if (obj.Count == 0)
-            {
-                return false;
-            }
             var target = obj.FirstOrDefault();
             return target != null && Q3.Cast(SpellQ.GetPredPosition(target, true));
         }
@@ -512,71 +506,10 @@
             }
             if (MainMenu["Combo"]["EGap"] && E.IsReady())
             {
-                var underTower = MainMenu["Combo"]["ETower"];
-                if (MainMenu["Combo"]["EMode"].GetValue<MenuList>().Index == 0)
+                var target = GetBestDashObj(MainMenu["Combo"]["ETower"]);
+                if (target != null && E.CastOnUnit(target))
                 {
-                    var listDashObj = GetDashObj(underTower);
-                    var target = E.GetTarget(Q3.Width);
-                    if (target != null && haveQ3 && Q.IsReady(50))
-                    {
-                        var nearObj = GetBestObj(listDashObj, target, true);
-                        if (nearObj != null
-                            && (GetPosAfterDash(nearObj).CountEnemyHeroesInRange(Q3.Width) > 1
-                                || Player.CountEnemyHeroesInRange(Q.Range + E.Range / 2) == 1) && E.CastOnUnit(nearObj))
-                        {
-                            return;
-                        }
-                    }
-                    target = E.GetTarget();
-                    if (target != null
-                        && ((cDash > 0 && CanDash(target, false, underTower))
-                            || (haveQ3 && Q.IsReady(50) && CanDash(target, true, underTower))) && E.CastOnUnit(target))
-                    {
-                        return;
-                    }
-                    target = Q.GetTarget(100) ?? Q2.GetTarget();
-                    if (target != null && (!Player.Spellbook.IsAutoAttacking || Player.HealthPercent < 40))
-                    {
-                        var nearObj = GetBestObj(listDashObj, target);
-                        var canDash = cDash == 0 && nearObj != null && !HaveE(target);
-                        if (Q.IsReady(50))
-                        {
-                            var nearObjQ3 = GetBestObj(listDashObj, target, true);
-                            if (nearObjQ3 != null)
-                            {
-                                nearObj = nearObjQ3;
-                                canDash = true;
-                            }
-                        }
-                        if (!canDash && target.DistanceToPlayer() > target.GetRealAutoAttackRange() * 0.7)
-                        {
-                            canDash = true;
-                        }
-                        if (canDash)
-                        {
-                            if (nearObj == null && E.IsInRange(target) && CanDash(target, false, underTower))
-                            {
-                                nearObj = target;
-                            }
-                            if (nearObj != null && E.CastOnUnit(nearObj))
-                            {
-                                return;
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    var target = Variables.Orbwalker.GetTarget();
-                    if (target == null || Player.Distance(target) > target.GetRealAutoAttackRange() * 0.7
-                        || Player.Distance(Game.CursorPos) > E.Range * 1.5)
-                    {
-                        var obj = GetBestObjToMouse(underTower);
-                        if (obj != null && E.CastOnUnit(obj))
-                        {
-                            return;
-                        }
-                    }
+                    return;
                 }
             }
             if (Q.IsReady())
@@ -596,7 +529,8 @@
                         }
                     }
                 }
-                else if (!haveQ3 ? Q.CastingBestTarget(true).IsCasted() : CastQ3())
+                else if ((!MainMenu["Combo"]["EGap"] || GetBestDashObj(MainMenu["Combo"]["ETower"]) == null)
+                         && (!haveQ3 ? Q.CastingBestTarget(true).IsCasted() : CastQ3()))
                 {
                     return;
                 }
@@ -641,39 +575,98 @@
             {
                 return;
             }
-            var obj = GetBestObjToMouse();
+            var obj = GetBestDashObjToMouse(true);
             if (obj != null)
             {
                 E.CastOnUnit(obj);
             }
         }
 
-        private static Obj_AI_Base GetBestObj(List<Obj_AI_Base> obj, Obj_AI_Hero target, bool inQCir = false)
+        private static Obj_AI_Base GetBestDashObj(bool underTower)
         {
-            obj.RemoveAll(i => i.Compare(target));
-            if (obj.Count == 0)
+            if (MainMenu["Combo"]["EMode"].GetValue<MenuList>().Index == 0)
             {
-                return null;
+                var target = E.GetTarget(Q3.Width);
+                if (target != null && haveQ3 && Q.IsReady(50))
+                {
+                    var nearObj = GetBestDashObjToUnit(target, underTower, true);
+                    if (nearObj != null
+                        && (GetPosAfterDash(nearObj).CountEnemyHeroesInRange(Q3.Width) > 1
+                            || Player.CountEnemyHeroesInRange(Q.Range + E.Range / 2) == 1))
+                    {
+                        return nearObj;
+                    }
+                }
+                target = E.GetTarget();
+                if (target != null
+                    && ((cDash > 0 && CanDash(target, false, underTower))
+                        || (haveQ3 && Q.IsReady(50) && CanDash(target, true, underTower))))
+                {
+                    return target;
+                }
+                target = Q.GetTarget(100) ?? Q2.GetTarget();
+                if (target != null && (!Player.Spellbook.IsAutoAttacking || Player.HealthPercent < 40))
+                {
+                    var nearObj = GetBestDashObjToUnit(target, underTower, false);
+                    var canDash = cDash == 0 && nearObj != null && !HaveE(target);
+                    if (Q.IsReady(50))
+                    {
+                        var nearObjQ3 = GetBestDashObjToUnit(target, underTower, true);
+                        if (nearObjQ3 != null)
+                        {
+                            nearObj = nearObjQ3;
+                            canDash = true;
+                        }
+                    }
+                    if (!canDash && target.DistanceToPlayer() > target.GetRealAutoAttackRange() * 0.7)
+                    {
+                        canDash = true;
+                    }
+                    if (canDash)
+                    {
+                        if (nearObj == null && target.IsValidTarget(E.Range) && CanDash(target, false, underTower))
+                        {
+                            nearObj = target;
+                        }
+                        if (nearObj != null)
+                        {
+                            return nearObj;
+                        }
+                    }
+                }
             }
-            var pos = E.GetPredPosition(target, true);
-            return obj.Where(i => CanDash(i, inQCir, true, pos)).MinOrDefault(i => GetPosAfterDash(i).Distance(pos));
+            else
+            {
+                var target = Variables.Orbwalker.GetTarget();
+                if (target == null || Player.Distance(target) > target.GetRealAutoAttackRange() * 0.7
+                    || Player.Distance(Game.CursorPos) > E.Range * 1.5)
+                {
+                    var obj = GetBestDashObjToMouse(underTower);
+                    if (obj != null)
+                    {
+                        return obj;
+                    }
+                }
+            }
+            return null;
         }
 
-        private static Obj_AI_Base GetBestObjToMouse(bool underTower = true)
+        private static Obj_AI_Base GetBestDashObjToMouse(bool underTower)
         {
             var pos = Game.CursorPos;
             return
-                GetDashObj(underTower)
-                    .Where(i => CanDash(i, false, true, pos))
+                Common.ListEnemies()
+                    .Where(i => i.IsValidTarget(E.Range) && CanDash(i, false, underTower, pos))
                     .MinOrDefault(i => GetPosAfterDash(i).Distance(pos));
         }
 
-        private static List<Obj_AI_Base> GetDashObj(bool underTower = false)
+        private static Obj_AI_Base GetBestDashObjToUnit(Obj_AI_Hero target, bool underTower, bool inQCir)
         {
+            var pos = E.GetPredPosition(target, true);
             return
                 Common.ListEnemies()
-                    .Where(i => i.IsValidTarget(E.Range) && (underTower || !GetPosAfterDash(i).IsUnderEnemyTurret()))
-                    .ToList();
+                    .Where(i => i.IsValidTarget(E.Range) && !i.Compare(target) && CanDash(i, inQCir, underTower, pos))
+                    .MinOrDefault(i => GetPosAfterDash(i).Distance(pos));
         }
 
         private static double GetEDmg(Obj_AI_Base target)
@@ -769,7 +762,7 @@
 
         private static bool IsInRangeQ(Obj_AI_Minion minion)
         {
-            return minion.IsValidTarget(Math.Max(465 + minion.BoundingRadius / 3, 475));
+            return minion.IsValidTarget(Math.Min(465 + minion.BoundingRadius / 3, 480));
         }
 
         private static bool IsThroughWall(Vector3 from, Vector3 to)
@@ -847,10 +840,11 @@
             if (MainMenu["KillSteal"]["R"] && R.IsReady())
             {
                 var target =
-                    GetRTargets.Where(
-                        i =>
-                        MainMenu["KillSteal"]["RCast" + i.ChampionName]
-                        && i.Health + i.PhysicalShield <= R.GetDamage(i) + (Q.IsReady(1000) ? GetQDmg(i) : 0))
+                    Variables.TargetSelector.GetTargets(R.Range, R.DamageType)
+                        .Where(
+                            i =>
+                            HaveR(i) && MainMenu["KillSteal"]["RCast" + i.ChampionName]
+                            && i.Health + i.PhysicalShield <= R.GetDamage(i) + (Q.IsReady(1000) ? GetQDmg(i) : 0))
                         .MaxOrDefault(i => new Priority().GetDefaultPriority(i));
                 if (target != null)
                 {
@@ -1052,12 +1046,9 @@
             {
                 Render.Circle.DrawCircle(Player.Position, E.Range, E.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
-            if (MainMenu["Draw"]["R"] && R.Level > 0 && R.IsReady())
+            if (MainMenu["Draw"]["R"] && R.Level > 0)
             {
-                Render.Circle.DrawCircle(
-                    Player.Position,
-                    R.Range,
-                    GetRTargets.Count > 0 ? Color.LimeGreen : Color.IndianRed);
+                Render.Circle.DrawCircle(Player.Position, R.Range, R.IsReady() ? Color.LimeGreen : Color.IndianRed);
             }
         }
 

@@ -221,13 +221,12 @@
 
         #region Methods
 
-        private static bool CanHitE(Vector3 pos)
+        private static bool CanHitE(Vector3 point)
         {
             for (var i = 0; i < 360; i += 18)
             {
-                if (E.WillHit(
-                    pos,
-                    E.From + E.Range * new Vector2(1, 0).ToVector3().Rotated((float)(Math.PI * i / 180.0))))
+                var pos = E.From.ToVector2() + E.Range * new Vector2(1, 0).Rotated((float)(Math.PI * i / 180.0));
+                if (E.WillHit(point, pos.ToVector3()))
                 {
                     return true;
                 }

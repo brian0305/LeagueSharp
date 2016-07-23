@@ -61,7 +61,7 @@
         {
             Q = new Spell(SpellSlot.Q, 505).SetSkillshot(QDelay, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, 1100).SetSkillshot(Q2Delay, 90, 1200, true, Q.Type);
-            Q3 = new Spell(Q.Slot, 240).SetSkillshot(0.001f, 240, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            Q3 = new Spell(Q.Slot, 220).SetSkillshot(0.001f, 220, float.MaxValue, false, SkillshotType.SkillshotCircle);
             W = new Spell(SpellSlot.W, 400).SetTargetted(0.25f, float.MaxValue);
             E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1200);
             E2 = new Spell(E.Slot, E.Range).SetTargetted(Q3.Delay, E.Speed);
@@ -334,7 +334,7 @@
                     }
                 }
                 return MainMenu["Combo"]["RDelay"]
-                       && (Player.HealthPercent >= 20
+                       && (Player.HealthPercent >= 15
                            || GameObjects.EnemyHeroes.Count(i => i.IsValidTarget(600) && !HaveR(i)) == 0)
                            ? (result.Item2.Any(CanCastDelayR) ? result.Item1 : null)
                            : result.Item1;
@@ -368,21 +368,32 @@
 
         private static void BeyBlade()
         {
-            if (!Common.CanFlash)
+            if (!Common.CanFlash || !Q.IsReady() || !haveQ3)
             {
                 return;
             }
-            if (Q.IsReady() && haveQ3 && IsDashing && CanCastQCir)
+            if (IsDashing && CanCastQCir)
             {
-                var hits =
-                    GameObjects.EnemyHeroes.Count(
-                        i => i.IsValidTarget() && Q3.GetPredPosition(i).Distance(posDash) < Q3.Width + FlashRange);
-                if (hits > 0 && Q3.Cast(posDash))
+                var bestHit = 0;
+                var bestPos = new Vector3();
+                for (var i = 0; i < 360; i += 10)
                 {
-                    //DelayAction.Add();
+                    var pos =
+                        (posDash.ToVector2() + FlashRange * new Vector2(1, 0).Rotated((float)(Math.PI * i / 180.0)))
+                            .ToVector3();
+                    var hits = GameObjects.EnemyHeroes.Count(a => a.IsValidTarget(Q3.Width, true, pos));
+                    if (hits > bestHit)
+                    {
+                        bestHit = hits;
+                        bestPos = pos;
+                    }
+                }
+                if (bestPos.IsValid() && Q3.Cast(Player.Position))
+                {
+                    Player.Spellbook.CastSpell(Flash, bestPos);
                 }
             }
-            if (!E.IsReady() || IsDashing)
+            if (!E.IsReady())
             {
                 return;
             }
@@ -393,8 +404,7 @@
                         i =>
                         GameObjects.EnemyHeroes.Count(
                             a =>
-                            !a.Compare(i) && a.IsValidTarget()
-                            && Q3.GetPredPosition(a).Distance(GetPosAfterDash(i)) < Q3.Width + FlashRange - 50));
+                            !a.Compare(i) && a.IsValidTarget(Q3.Width / 2 + FlashRange - 50, true, GetPosAfterDash(i))));
             if (obj != null)
             {
                 E.CastOnUnit(obj);
@@ -529,7 +539,8 @@
                         }
                     }
                 }
-                else if ((!MainMenu["Combo"]["EGap"] || GetBestDashObj(MainMenu["Combo"]["ETower"]) == null)
+                else if ((!MainMenu["Combo"]["EGap"] || E.Level == 0
+                          || GetBestDashObj(MainMenu["Combo"]["ETower"]) == null)
                          && (!haveQ3 ? Q.CastingBestTarget(true).IsCasted() : CastQ3()))
                 {
                     return;
@@ -828,7 +839,7 @@
                         .FirstOrDefault(
                             i =>
                             !HaveE(i)
-                            && (canQ && i.Distance(GetPosAfterDash(i)) < Q3.Width
+                            && (canQ && Q3.WillHit(Q3.GetPredPosition(i), GetPosAfterDash(i))
                                     ? i.Health - Math.Max(GetEDmg(i) - i.MagicalShield, 0) + i.PhysicalShield
                                       <= GetQDmg(i)
                                     : i.Health + i.MagicalShield <= GetEDmg(i)));
@@ -1082,7 +1093,7 @@
                     else if (MainMenu["EQ3Flash"].GetValue<MenuKeyBind>().Active)
                     {
                         Variables.Orbwalker.Move(Game.CursorPos);
-                        //BeyBlade();
+                        BeyBlade();
                     }
                     break;
             }

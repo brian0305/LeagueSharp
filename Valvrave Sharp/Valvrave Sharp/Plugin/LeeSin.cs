@@ -61,7 +61,7 @@
             E = new Spell(SpellSlot.E, 425).SetTargetted(0.25f, float.MaxValue);
             E2 = new Spell(E.Slot, 570);
             R = new Spell(SpellSlot.R, 375).SetTargetted(0.25f, float.MaxValue);
-            R2 = new Spell(R.Slot, RKickRange).SetSkillshot(R.Delay, 0, 900, false, SkillshotType.SkillshotLine);
+            R2 = new Spell(R.Slot, RKickRange).SetSkillshot(R.Delay, 0, 1000, false, SkillshotType.SkillshotLine);
             Q.DamageType = Q2.DamageType = W.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
             Q.MinHitChance = R2.MinHitChance = HitChance.VeryHigh;
@@ -611,7 +611,7 @@
                 R2.Width = targetKick.BoundingRadius;
                 var targetHits =
                     GameObjects.EnemyHeroes.Where(
-                        i => !i.Compare(targetKick) && i.IsValidTarget(R2.Range + R2.Width / 2, true, R2.From))
+                        i => i.IsValidTarget(R2.Range + R2.Width / 2, true, R2.From) && !i.Compare(targetKick))
                         .OrderByDescending(i => new Priority().GetDefaultPriority(i))
                         .ToList();
                 var posEnd = new Vector3();
@@ -1436,7 +1436,7 @@
                         Common.ListEnemies(true)
                             .Where(
                                 i =>
-                                !i.Compare(target) && i.IsValidTarget(Q.Range)
+                                i.IsValidTarget(Q.Range) && !i.Compare(target)
                                 && Q.GetHealthPrediction(i) > Q.GetDamage(i)
                                 && i.Distance(target) < target.DistanceToPlayer() && i.Distance(target) < minDist - 80)
                             .OrderBy(i => i.Distance(target))

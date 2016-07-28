@@ -258,7 +258,7 @@
                         var hits =
                             GameObjects.EnemyHeroes.Where(
                                 i =>
-                                !i.Compare(target) && i.IsValidTarget()
+                                i.IsValidTarget() && !i.Compare(target)
                                 && R.WillHit(R.GetPredPosition(i), pred.CastPosition)).ToList();
                         hits.Add(target);
                         if (hits.Count <= hit)

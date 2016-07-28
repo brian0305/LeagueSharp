@@ -448,7 +448,7 @@
 
         private static void CastW(Obj_AI_Hero target, SpellSlot slot, bool isRCombo = false)
         {
-            if (slot == SpellSlot.Unknown || Variables.TickCount - lastW <= 300 || wMissile != null)
+            if (slot == SpellSlot.Unknown || Variables.TickCount - lastW <= 500 || wMissile != null)
             {
                 return;
             }

@@ -7,7 +7,6 @@
     using System.Linq;
 
     using LeagueSharp;
-    using LeagueSharp.Data.Enumerations;
     using LeagueSharp.SDK;
     using LeagueSharp.SDK.UI;
     using LeagueSharp.SDK.Utils;
@@ -22,25 +21,11 @@
     {
         #region Static Fields
 
+        internal static readonly Random Rand = new Random(Variables.TickCount);
+
         internal static List<Skillshot> DetectedSkillshots = new List<Skillshot>();
 
-        internal static int LastWardJumpAttempt = 0;
-
-        #endregion
-
-        #region Delegates
-
-        internal delegate void EvadingH(Obj_AI_Base sender);
-
-        internal delegate void TryEvadingH(List<Skillshot> skillshot, Vector2 to);
-
-        #endregion
-
-        #region Events
-
-        internal static event EvadingH Evading;
-
-        internal static event TryEvadingH TryEvading;
+        internal static int LastWardJumpAttempt;
 
         #endregion
 
@@ -59,109 +44,20 @@
             Config.CreateMenu(Program.MainMenu);
             Collision.Init();
             SkillshotDetector.Init();
-            Game.OnUpdate += args =>
-                {
-                    DetectedSkillshots.RemoveAll(i => !i.IsActive);
-                    DetectedSkillshots.ForEach(i => i.OnUpdate());
-                    if (!Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active)
-                    {
-                        return;
-                    }
-                    if (Program.Player.IsDead)
-                    {
-                        return;
-                    }
-                    if (Program.Player.IsCastingInterruptableSpell(true))
-                    {
-                        return;
-                    }
-                    if (Program.Player.HasBuffOfType(BuffType.SpellShield)
-                        || Program.Player.HasBuffOfType(BuffType.SpellImmunity))
-                    {
-                        return;
-                    }
-                    Evading?.Invoke(Program.Player);
-                    var currentPath = Program.Player.GetWaypoints();
-                    var safePoint = IsSafePoints(PlayerPosition);
-                    var safePath = IsSafePath(currentPath, 100);
-                    if (!safePath.IsSafe && !safePoint.IsSafe)
-                    {
-                        TryEvading?.Invoke(safePoint.SkillshotList, Game.CursorPos.ToVector2());
-                    }
-                };
+            Game.OnUpdate += OnUpdate;
+            Drawing.OnDraw += OnDraw;
             SkillshotDetector.OnDetectSkillshot += OnDetectSkillshot;
-            SkillshotDetector.OnDeleteSkillshot += (skillshot, missile) =>
-                {
-                    if (skillshot.SpellData.SpellName == "VelkozQ")
-                    {
-                        var spellData = SpellDatabase.GetByName("VelkozQSplit");
-                        var direction = skillshot.Direction.Perpendicular();
-                        if (DetectedSkillshots.Count(i => i.SpellData.SpellName == "VelkozQSplit") == 0)
-                        {
-                            for (var i = -1; i <= 1; i = i + 2)
-                            {
-                                DetectedSkillshots.Add(
-                                    new Skillshot(
-                                        DetectionType.RecvPacket,
-                                        spellData,
-                                        Variables.TickCount,
-                                        missile.Position.ToVector2(),
-                                        missile.Position.ToVector2() + i * direction * spellData.Range,
-                                        skillshot.Unit));
-                            }
-                        }
-                    }
-                };
-            Drawing.OnDraw += args =>
-                {
-                    if (Program.Player.IsDead)
-                    {
-                        return;
-                    }
-                    if (Program.MainMenu["Evade"]["Draw"]["Status"])
-                    {
-                        var active = Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active;
-                        var text =
-                            $"Evade Skillshot: {(active ? (Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active ? "Dangerous" : "On") : "Off")}";
-                        var pos = Drawing.WorldToScreen(Program.Player.Position);
-                        Drawing.DrawText(
-                            pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
-                            pos.Y + 60,
-                            active
-                                ? (Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active
-                                       ? Color.Yellow
-                                       : Color.White)
-                                : Color.Gray,
-                            text);
-                    }
-                    if (Program.MainMenu["Evade"]["Draw"]["Skillshot"])
-                    {
-                        DetectedSkillshots.ForEach(
-                            i =>
-                            i.Draw(
-                                i.Enable && Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active
-                                    ? Color.White
-                                    : Color.Red,
-                                Color.LimeGreen,
-                                2));
-                    }
-                };
+            SkillshotDetector.OnDeleteSkillshot += OnDeleteSkillshot;
         }
 
-        internal static bool IsAboutToHit(Obj_AI_Base unit, int time)
-        {
-            return SkillshotAboutToHit(unit, time).Count > 0;
-        }
-
-        internal static SafePathResult IsSafePath(List<Vector2> path, int timeOffset, int speed = -1, int delay = 0)
+        internal static SafePathResult IsSafePath(List<Vector2> path, int time, int speed = -1, int delay = 0)
         {
             var isSafe = true;
             var intersections = new List<FoundIntersection>();
-            var intersection = new FoundIntersection();
             foreach (var sResult in
                 from skillshot in DetectedSkillshots
                 where skillshot.Enable
-                select skillshot.IsSafePath(path, timeOffset, speed, delay))
+                select skillshot.IsSafePath(path, time, speed, delay))
             {
                 isSafe = isSafe && sResult.IsSafe;
                 if (sResult.Intersection.Valid)
@@ -171,40 +67,229 @@
             }
             if (isSafe)
             {
-                return new SafePathResult(true, intersection);
+                return new SafePathResult(true, new FoundIntersection());
             }
-            var intersetion = intersections.MinOrDefault(i => i.Distance);
-            return new SafePathResult(false, intersetion.Valid ? intersetion : intersection);
+            var intersection = intersections.MinOrDefault(i => i.Distance);
+            return new SafePathResult(false, intersection.Valid ? intersection : new FoundIntersection());
         }
 
-        internal static bool IsSafePoint(Vector2 point)
-        {
-            return IsSafePoints(point).IsSafe;
-        }
-
-        internal static bool IsSafeToBlink(Vector2 point, int timeOffset, int delay)
-        {
-            return DetectedSkillshots.Where(i => i.Enable).All(i => i.IsSafeToBlink(point, timeOffset, delay));
-        }
-
-        internal static List<Skillshot> SkillshotAboutToHit(Obj_AI_Base unit, int time, bool onlyWindWall = false)
-        {
-            time += 150;
-            return
-                DetectedSkillshots.Where(
-                    i =>
-                    i.Enable && i.IsAboutToHit(time, unit)
-                    && (!onlyWindWall || i.SpellData.CollisionObjects.HasFlag(CollisionableObjects.YasuoWall)))
-                    .OrderBy(i => i.DangerLevel)
-                    .ToList();
-        }
-
-        private static IsSafeResult IsSafePoints(Vector2 point)
+        internal static IsSafeResult IsSafePoint(Vector2 point)
         {
             var result = new IsSafeResult { SkillshotList = new List<Skillshot>() };
             DetectedSkillshots.Where(i => i.Enable && !i.IsSafe(point)).ForEach(i => result.SkillshotList.Add(i));
             result.IsSafe = result.SkillshotList.Count == 0;
+            if (!result.IsSafe)
+            {
+                result.SkillshotList = result.SkillshotList.OrderByDescending(i => i.DangerLevel).ToList();
+            }
             return result;
+        }
+
+        internal static bool IsSafeToBlink(Vector2 point, int time, int delay)
+        {
+            return DetectedSkillshots.Where(i => i.Enable).All(i => i.IsSafeToBlink(point, time, delay));
+        }
+
+        private static void Evading(List<Skillshot> skillshots)
+        {
+            foreach (var skillshot in skillshots)
+            {
+                foreach (var spell in
+                    EvadeSpellDatabase.Spells.Where(
+                        i => i.Enable && i.IsReady && i.DangerLevel <= skillshot.DangerLevel))
+                {
+                    if (spell.IsSpellShield)
+                    {
+                        if (skillshot.IsAboutToHit(Program.Player, spell.Delay))
+                        {
+                            Program.Player.Spellbook.CastSpell(spell.Slot, Program.Player);
+                        }
+                        return;
+                    }
+                    if (spell.IsDash)
+                    {
+                        if (spell.IsTargetted)
+                        {
+                            var target = spell.GetEvadeTarget();
+                            if (target != null)
+                            {
+                                Program.Player.Spellbook.CastSpell(spell.Slot, target);
+                                return;
+                            }
+                            if (Variables.TickCount - LastWardJumpAttempt < 250)
+                            {
+                                return;
+                            }
+                            if (spell.ValidTargets.Contains(SpellValidTargets.AllyWards)
+                                && Program.MainMenu["Evade"]["Spells"][spell.Name]["WardJump"])
+                            {
+                                var ward = Items.GetWardSlot();
+                                if (ward != null)
+                                {
+                                    var point = spell.GetEvadePoint(600);
+                                    if (point.IsValid())
+                                    {
+                                        Program.Player.Spellbook.CastSpell(ward.SpellSlot, point);
+                                        LastWardJumpAttempt = Variables.TickCount;
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var point = spell.GetEvadePoint();
+                            if (point.IsValid())
+                            {
+                                if (!spell.Invert)
+                                {
+                                    if (spell.RequirePreMove)
+                                    {
+                                        Program.Player.IssueOrder(GameObjectOrder.MoveTo, point, false);
+                                        DelayAction.Add(
+                                            Game.Ping / 2 + 100,
+                                            () => Program.Player.Spellbook.CastSpell(spell.Slot, point));
+                                    }
+                                    else
+                                    {
+                                        Program.Player.Spellbook.CastSpell(spell.Slot, point);
+                                    }
+                                }
+                                else
+                                {
+                                    Program.Player.Spellbook.CastSpell(
+                                        spell.Slot,
+                                        (PlayerPosition - (point.ToVector2() - PlayerPosition)).ToVector3());
+                                }
+                                return;
+                            }
+                        }
+                    }
+                    if (spell.IsBlink)
+                    {
+                        if (spell.IsTargetted)
+                        {
+                            var target = spell.GetEvadeTarget();
+                            if (target != null)
+                            {
+                                if (skillshot.IsAboutToHit(Program.Player, spell.Delay))
+                                {
+                                    if (spell.SelfCast)
+                                    {
+                                        Program.Player.Spellbook.CastSpell(spell.Slot);
+                                    }
+                                    else
+                                    {
+                                        Program.Player.Spellbook.CastSpell(spell.Slot, target);
+                                    }
+                                }
+                                return;
+                            }
+                            if (Variables.TickCount - LastWardJumpAttempt < 250)
+                            {
+                                return;
+                            }
+                            if (spell.ValidTargets.Contains(SpellValidTargets.AllyWards)
+                                && Program.MainMenu["Evade"]["Spells"][spell.Name]["WardJump"])
+                            {
+                                var ward = Items.GetWardSlot();
+                                if (ward != null)
+                                {
+                                    var point = spell.GetEvadePoint(600);
+                                    if (point.IsValid())
+                                    {
+                                        Program.Player.Spellbook.CastSpell(ward.SpellSlot, point);
+                                        LastWardJumpAttempt = Variables.TickCount;
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var point = spell.GetEvadePoint();
+                            if (point.IsValid())
+                            {
+                                if (skillshot.IsAboutToHit(Program.Player, spell.Delay))
+                                {
+                                    Program.Player.Spellbook.CastSpell(spell.Slot, point);
+                                }
+                                return;
+                            }
+                        }
+                    }
+                    if (spell.IsInvulnerability)
+                    {
+                        if (spell.IsTargetted)
+                        {
+                            var target = spell.GetEvadeTarget(true, 0, true);
+                            if (target != null)
+                            {
+                                if (skillshot.IsAboutToHit(Program.Player, spell.Delay))
+                                {
+                                    Program.Player.Spellbook.CastSpell(spell.Slot, target);
+                                }
+                                return;
+                            }
+                        }
+                        else
+                        {
+                            if (skillshot.IsAboutToHit(Program.Player, spell.Delay))
+                            {
+                                if (spell.SelfCast)
+                                {
+                                    Program.Player.Spellbook.CastSpell(spell.Slot);
+                                }
+                                else
+                                {
+                                    Program.Player.Spellbook.CastSpell(spell.Slot, Program.Player.ServerPosition);
+                                }
+                            }
+                            return;
+                        }
+                    }
+                    if (spell.IsShield)
+                    {
+                        if (skillshot.IsAboutToHit(Program.Player, spell.Delay, spell.IsYasuoWall))
+                        {
+                            if (spell.RequireMissilePos)
+                            {
+                                Program.Player.Spellbook.CastSpell(
+                                    spell.Slot,
+                                    PlayerPosition.Extend(skillshot.Start, 100).ToVector3());
+                            }
+                            else
+                            {
+                                Program.Player.Spellbook.CastSpell(spell.Slot, Program.Player);
+                            }
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+
+        private static void OnDeleteSkillshot(Skillshot skillshot, MissileClient missile)
+        {
+            if (skillshot.SpellData.SpellName == "VelkozQ")
+            {
+                var spellData = SpellDatabase.GetByName("VelkozQSplit");
+                var direction = skillshot.Direction.Perpendicular();
+                if (DetectedSkillshots.Count(i => i.SpellData.SpellName == "VelkozQSplit") == 0)
+                {
+                    for (var i = -1; i <= 1; i = i + 2)
+                    {
+                        DetectedSkillshots.Add(
+                            new Skillshot(
+                                DetectionType.RecvPacket,
+                                spellData,
+                                Variables.TickCount,
+                                missile.Position.ToVector2(),
+                                missile.Position.ToVector2() + i * direction * spellData.Range,
+                                skillshot.Unit));
+                    }
+                }
+            }
         }
 
         private static void OnDetectSkillshot(Skillshot skillshot)
@@ -512,9 +597,98 @@
             DetectedSkillshots.Add(skillshot);
         }
 
+        private static void OnDraw(EventArgs args)
+        {
+            if (Program.Player.IsDead)
+            {
+                return;
+            }
+            if (Program.MainMenu["Evade"]["Draw"]["Status"])
+            {
+                var active = Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active;
+                var text =
+                    $"Evade Skillshot: {(active ? (Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active ? "Dangerous" : "On") : "Off")}";
+                var pos = Drawing.WorldToScreen(Program.Player.Position);
+                Drawing.DrawText(
+                    pos.X - (float)Drawing.GetTextExtent(text).Width / 2,
+                    pos.Y + 60,
+                    active
+                        ? (Program.MainMenu["Evade"]["OnlyDangerous"].GetValue<MenuKeyBind>().Active
+                               ? Color.Yellow
+                               : Color.White)
+                        : Color.Gray,
+                    text);
+            }
+            if (Program.MainMenu["Evade"]["Draw"]["Skillshot"])
+            {
+                DetectedSkillshots.ForEach(
+                    i =>
+                    i.Draw(
+                        i.Enable && Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active
+                            ? Color.White
+                            : Color.Red,
+                        Color.LimeGreen,
+                        2));
+            }
+        }
+
+        private static void OnUpdate(EventArgs args)
+        {
+            DetectedSkillshots.RemoveAll(i => !i.IsActive);
+            DetectedSkillshots.ForEach(i => i.OnUpdate());
+            if (Program.Player.IsDead || Program.Player.IsCastingInterruptableSpell(true)
+                || !Program.MainMenu["Evade"]["Enabled"].GetValue<MenuKeyBind>().Active)
+            {
+                return;
+            }
+            foreach (var ally in
+                GameObjects.AllyHeroes.Where(
+                    i =>
+                    !i.IsMe && i.IsValidTarget(1000, false) && Program.MainMenu["Evade"]["ShieldAlly"][i.ChampionName]))
+            {
+                var allySafePoint = IsSafePoint(ally.ServerPosition.ToVector2());
+                if (allySafePoint.IsSafe)
+                {
+                    continue;
+                }
+                foreach (var skillshot in allySafePoint.SkillshotList)
+                {
+                    foreach (var spell in
+                        EvadeSpellDatabase.Spells.Where(
+                            i =>
+                            i.Enable && i.IsReady && i.DangerLevel <= skillshot.DangerLevel && i.IsShield
+                            && i.CanShieldAllies && ally.Distance(PlayerPosition) < i.Range
+                            && skillshot.IsAboutToHit(ally, i.Delay, i.IsYasuoWall)))
+                    {
+                        if (spell.RequireMissilePos)
+                        {
+                            Program.Player.Spellbook.CastSpell(
+                                spell.Slot,
+                                PlayerPosition.Extend(skillshot.Start, 100).ToVector3());
+                        }
+                        else
+                        {
+                            Program.Player.Spellbook.CastSpell(spell.Slot, ally);
+                        }
+                    }
+                }
+            }
+            if (Program.Player.HasBuffOfType(BuffType.SpellShield)
+                || Program.Player.HasBuffOfType(BuffType.SpellImmunity))
+            {
+                return;
+            }
+            var safePoint = IsSafePoint(PlayerPosition);
+            var safePath = IsSafePath(Program.Player.GetWaypoints(), 100);
+            if (!safePath.IsSafe && !safePoint.IsSafe)
+            {
+                Evading(safePoint.SkillshotList);
+            }
+        }
+
         #endregion
 
-        private struct IsSafeResult
+        internal struct IsSafeResult
         {
             #region Fields
 

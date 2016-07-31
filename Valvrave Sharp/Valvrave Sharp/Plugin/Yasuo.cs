@@ -23,7 +23,6 @@
 
     using Color = System.Drawing.Color;
     using Menu = LeagueSharp.SDK.UI.Menu;
-    using Skillshot = Valvrave_Sharp.Evade.Skillshot;
 
     #endregion
 
@@ -153,8 +152,6 @@
             MainMenu.KeyBind("StackQ", "Auto Stack Q", Keys.Z, KeyBindType.Toggle);
             MainMenu.KeyBind("EQ3Flash", "Use E-Q3-Flash", Keys.XButton2);
 
-            Evade.Evading += Evading;
-            Evade.TryEvading += TryEvading;
             Game.OnUpdate += OnUpdate;
             Drawing.OnEndScene += OnEndScene;
             Drawing.OnDraw += OnDraw;
@@ -411,7 +408,7 @@
             }
             var buff = target.Buffs.FirstOrDefault(i => i.Type == BuffType.Knockup);
             return buff != null
-                   && Game.Time - buff.StartTime >= (!isAirBlade ? 0.885 : 0.835) * (buff.EndTime - buff.StartTime);
+                   && Game.Time - buff.StartTime >= (!isAirBlade ? 0.89 : 0.85) * (buff.EndTime - buff.StartTime);
         }
 
         private static bool CanDash(
@@ -434,7 +431,7 @@
                    && (inQCir
                            ? Q3.WillHit(pos, posAfterE)
                            : posAfterE.Distance(pos) < (!isAirBlade ? pos.DistanceToPlayer() : R.Range))
-                   && Evade.IsSafePoint(posAfterE.ToVector2());
+                   && Evade.IsSafePoint(posAfterE.ToVector2()).IsSafe;
         }
 
         private static bool CastQ3()
@@ -470,7 +467,7 @@
             {
                 var target = Variables.TargetSelector.GetTarget(E.Range, DamageType.Physical);
                 if (target != null && Math.Abs(target.GetProjectileSpeed() - float.MaxValue) > float.Epsilon
-                    && !HaveE(target) && Evade.IsSafePoint(GetPosAfterDash(target).ToVector2()))
+                    && !HaveE(target) && Evade.IsSafePoint(GetPosAfterDash(target).ToVector2()).IsSafe)
                 {
                     var listPos =
                         Common.ListEnemies()
@@ -554,24 +551,6 @@
                 && subTarget.DistanceToPlayer() <= IgniteRange)
             {
                 Player.Spellbook.CastSpell(Ignite, subTarget);
-            }
-        }
-
-        private static void Evading(Obj_AI_Base sender)
-        {
-            var yasuoW = EvadeSpellDatabase.Spells.FirstOrDefault(i => i.Enable && i.IsReady && i.Slot == SpellSlot.W);
-            if (yasuoW == null)
-            {
-                return;
-            }
-            var skillshot =
-                Evade.SkillshotAboutToHit(
-                    sender,
-                    yasuoW.Delay - MainMenu["Evade"]["Spells"][yasuoW.Name]["WDelay"],
-                    true).OrderByDescending(i => i.DangerLevel).FirstOrDefault(i => i.DangerLevel >= yasuoW.DangerLevel);
-            if (skillshot != null)
-            {
-                W.Cast(sender.ServerPosition.Extend(skillshot.Start, 100));
             }
         }
 
@@ -917,7 +896,7 @@
                             i =>
                             i.IsValidTarget(E.Range) && !HaveE(i)
                             && (MainMenu["LaneClear"]["ETower"] || !GetPosAfterDash(i).IsUnderEnemyTurret())
-                            && Evade.IsSafePoint(GetPosAfterDash(i).ToVector2()))
+                            && Evade.IsSafePoint(GetPosAfterDash(i).ToVector2()).IsSafe)
                         .OrderByDescending(i => i.MaxHealth)
                         .ToList();
                 if (minions.Count > 0)
@@ -1042,7 +1021,7 @@
                     GameObjects.EnemyMinions.Where(
                         i =>
                         (i.IsMinion() || i.IsPet(false)) && i.IsValidTarget(E.Range) && !HaveE(i)
-                        && E.CanLastHit(i, GetEDmg(i)) && Evade.IsSafePoint(GetPosAfterDash(i).ToVector2())
+                        && E.CanLastHit(i, GetEDmg(i)) && Evade.IsSafePoint(GetPosAfterDash(i).ToVector2()).IsSafe
                         && (MainMenu["LastHit"]["ETower"] || !GetPosAfterDash(i).IsUnderEnemyTurret()))
                         .MaxOrDefault(i => i.MaxHealth);
                 if (minion != null)
@@ -1177,28 +1156,6 @@
             Q.Casting(minion);
         }
 
-        private static void TryEvading(List<Skillshot> hitBy, Vector2 to)
-        {
-            var dangerLevel = hitBy.Select(i => i.DangerLevel).Concat(new[] { 0 }).Max();
-            var yasuoE =
-                EvadeSpellDatabase.Spells.FirstOrDefault(
-                    i => i.Enable && dangerLevel >= i.DangerLevel && i.IsReady && i.Slot == SpellSlot.E);
-            if (yasuoE == null)
-            {
-                return;
-            }
-            yasuoE.Speed = (int)E.Speed;
-            var target =
-                yasuoE.GetEvadeTargets(false, true)
-                    .OrderBy(i => GetPosAfterDash(i).CountEnemyHeroesInRange(400))
-                    .ThenBy(i => GetPosAfterDash(i).Distance(to))
-                    .FirstOrDefault();
-            if (target != null)
-            {
-                E.CastOnUnit(target);
-            }
-        }
-
         private static void UseItem(Obj_AI_Hero target)
         {
             if (target != null && (target.HealthPercent < 40 || Player.HealthPercent < 50))
@@ -1287,29 +1244,57 @@
                     }
                 }
                 Game.OnUpdate += OnUpdateTarget;
-                GameObject.OnCreate += ObjSpellMissileOnCreate;
-                GameObject.OnDelete += ObjSpellMissileOnDelete;
+                GameObjectNotifier<MissileClient>.OnCreate += EvadeTargetOnCreate;
+                GameObjectNotifier<MissileClient>.OnDelete += EvadeTargetOnDelete;
+            }
+
+            private static void EvadeTargetOnCreate(object sender, MissileClient missile)
+            {
+                var caster = missile.SpellCaster as Obj_AI_Hero;
+                if (caster == null || !caster.IsValid || caster.Team == Player.Team || !missile.Target.IsMe)
+                {
+                    return;
+                }
+                var spellData =
+                    Spells.FirstOrDefault(
+                        i =>
+                        i.SpellNames.Contains(missile.SData.Name.ToLower())
+                        && MainMenu["EvadeTarget"][i.ChampionName.ToLowerInvariant()][i.MissileName]);
+                if (spellData == null && AutoAttack.IsAutoAttack(missile.SData.Name)
+                    && (!missile.SData.Name.ToLower().Contains("crit")
+                            ? MainMenu["EvadeTarget"]["AA"]["B"]
+                              && Player.HealthPercent < MainMenu["EvadeTarget"]["AA"]["BHpU"]
+                            : MainMenu["EvadeTarget"]["AA"]["C"]
+                              && Player.HealthPercent < MainMenu["EvadeTarget"]["AA"]["CHpU"]))
+                {
+                    spellData = new SpellData
+                                    { ChampionName = caster.ChampionName, SpellNames = new[] { missile.SData.Name } };
+                }
+                if (spellData == null)
+                {
+                    return;
+                }
+                DetectedTargets.Add(new Targets { Start = caster.ServerPosition, Obj = missile });
+            }
+
+            private static void EvadeTargetOnDelete(object sender, MissileClient missile)
+            {
+                var caster = missile.SpellCaster as Obj_AI_Hero;
+                if (caster == null || !caster.IsValid || caster.Team == Player.Team)
+                {
+                    return;
+                }
+                DetectedTargets.RemoveAll(i => i.Obj.Compare(missile));
             }
 
             private static void LoadSpellData()
             {
-                Spells.Add(
-                    new SpellData
-                        { ChampionName = "Ahri", SpellNames = new[] { "ahrifoxfiremissiletwo" }, Slot = SpellSlot.W });
-                Spells.Add(
-                    new SpellData
-                        { ChampionName = "Ahri", SpellNames = new[] { "ahritumblemissile" }, Slot = SpellSlot.R });
                 Spells.Add(
                     new SpellData { ChampionName = "Akali", SpellNames = new[] { "akalimota" }, Slot = SpellSlot.Q });
                 Spells.Add(
                     new SpellData { ChampionName = "Anivia", SpellNames = new[] { "frostbite" }, Slot = SpellSlot.E });
                 Spells.Add(
                     new SpellData { ChampionName = "Annie", SpellNames = new[] { "disintegrate" }, Slot = SpellSlot.Q });
-                Spells.Add(
-                    new SpellData
-                        {
-                            ChampionName = "Brand", SpellNames = new[] { "brandconflagrationmissile" }, Slot = SpellSlot.E
-                        });
                 Spells.Add(
                     new SpellData
                         {
@@ -1327,11 +1312,6 @@
                         { ChampionName = "Cassiopeia", SpellNames = new[] { "cassiopeiatwinfang" }, Slot = SpellSlot.E });
                 Spells.Add(
                     new SpellData { ChampionName = "Elise", SpellNames = new[] { "elisehumanq" }, Slot = SpellSlot.Q });
-                Spells.Add(
-                    new SpellData
-                        {
-                            ChampionName = "Ezreal", SpellNames = new[] { "ezrealarcaneshiftmissile" }, Slot = SpellSlot.E
-                        });
                 Spells.Add(
                     new SpellData
                         {
@@ -1410,12 +1390,6 @@
                         { ChampionName = "TwistedFate", SpellNames = new[] { "redcardattack" }, Slot = SpellSlot.W });
                 Spells.Add(
                     new SpellData
-                        {
-                            ChampionName = "Urgot", SpellNames = new[] { "urgotheatseekinghomemissile" },
-                            Slot = SpellSlot.Q
-                        });
-                Spells.Add(
-                    new SpellData
                         { ChampionName = "Vayne", SpellNames = new[] { "vaynecondemnmissile" }, Slot = SpellSlot.E });
                 Spells.Add(
                     new SpellData
@@ -1423,55 +1397,6 @@
                 Spells.Add(
                     new SpellData
                         { ChampionName = "Viktor", SpellNames = new[] { "viktorpowertransfer" }, Slot = SpellSlot.Q });
-            }
-
-            private static void ObjSpellMissileOnCreate(GameObject sender, EventArgs args)
-            {
-                var missile = sender as MissileClient;
-                if (missile == null || !missile.IsValid)
-                {
-                    return;
-                }
-                var caster = missile.SpellCaster as Obj_AI_Hero;
-                if (caster == null || !caster.IsValid || caster.Team == Player.Team || !missile.Target.IsMe)
-                {
-                    return;
-                }
-                var spellData =
-                    Spells.FirstOrDefault(
-                        i =>
-                        i.SpellNames.Contains(missile.SData.Name.ToLower())
-                        && MainMenu["EvadeTarget"][i.ChampionName.ToLowerInvariant()][i.MissileName]);
-                if (spellData == null && AutoAttack.IsAutoAttack(missile.SData.Name)
-                    && (!missile.SData.Name.ToLower().Contains("crit")
-                            ? MainMenu["EvadeTarget"]["AA"]["B"]
-                              && Player.HealthPercent < MainMenu["EvadeTarget"]["AA"]["BHpU"]
-                            : MainMenu["EvadeTarget"]["AA"]["C"]
-                              && Player.HealthPercent < MainMenu["EvadeTarget"]["AA"]["CHpU"]))
-                {
-                    spellData = new SpellData
-                                    { ChampionName = caster.ChampionName, SpellNames = new[] { missile.SData.Name } };
-                }
-                if (spellData == null)
-                {
-                    return;
-                }
-                DetectedTargets.Add(new Targets { Start = caster.ServerPosition, Obj = missile });
-            }
-
-            private static void ObjSpellMissileOnDelete(GameObject sender, EventArgs args)
-            {
-                var missile = sender as MissileClient;
-                if (missile == null || !missile.IsValid)
-                {
-                    return;
-                }
-                var caster = missile.SpellCaster as Obj_AI_Hero;
-                if (caster == null || !caster.IsValid || caster.Team == Player.Team)
-                {
-                    return;
-                }
-                DetectedTargets.RemoveAll(i => i.Obj.Compare(missile));
             }
 
             private static void OnUpdateTarget(EventArgs args)
@@ -1488,9 +1413,13 @@
                 {
                     return;
                 }
-                DetectedTargets.Where(i => W.IsInRange(i.Obj, 450))
-                    .OrderBy(i => i.Obj.Distance(Player))
-                    .ForEach(i => W.Cast(Player.ServerPosition.Extend(i.Start, 100)));
+                foreach (var missile in DetectedTargets.OrderBy(i => i.Obj.Distance(Player)))
+                {
+                    if (Player.Distance(missile.Obj) < 450)
+                    {
+                        W.Cast(Player.ServerPosition.Extend(missile.Start, 100));
+                    }
+                }
             }
 
             #endregion

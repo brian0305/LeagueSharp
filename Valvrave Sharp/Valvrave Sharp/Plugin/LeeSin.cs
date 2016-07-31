@@ -64,7 +64,7 @@
             R2 = new Spell(R.Slot, RKickRange).SetSkillshot(R.Delay, 0, 1000, false, SkillshotType.SkillshotLine);
             Q.DamageType = Q2.DamageType = W.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
-            Q.MinHitChance = R2.MinHitChance = HitChance.VeryHigh;
+            Q.MinHitChance = HitChance.VeryHigh;
 
             WardManager.Init();
             Insec.Init();
@@ -272,12 +272,14 @@
             {
                 return;
             }
-            var multi = GetMultiHit(MainMenu["BubbaKush"]["RKill"], MainMenu["BubbaKush"]["RCountA"], 0);
+            var isKill = MainMenu["BubbaKush"]["RKill"].GetValue<MenuBool>().Value;
+            var minHit = MainMenu["BubbaKush"]["RCountA"].GetValue<MenuSlider>().Value;
+            var multi = GetMultiHit(isKill, minHit, 0);
             if (multi.Item1 != null && multi.Item2 != 0 && !multi.Item3.IsValid() && R.CastOnUnit(multi.Item1))
             {
                 return;
             }
-            if (Variables.TickCount - lastBubbaKush <= 1500)
+            if (Variables.TickCount - lastBubbaKush <= 1000)
             {
                 if (posBubbaKushJump.IsValid() && posBubbaKushJump.DistanceToPlayer() < 100)
                 {
@@ -292,24 +294,27 @@
             posBubbaKushFlash = posBubbaKushJump = new Vector3();
             Variables.TargetSelector.SetTarget(null);
             var mode = MainMenu["BubbaKush"]["RMode"].GetValue<MenuList>().Index;
-            var multiW = WardManager.CanWardJump && mode != 0
-                             ? GetMultiHit(MainMenu["BubbaKush"]["RKill"], MainMenu["BubbaKush"]["RCountA"], 2)
-                             : new Tuple<Obj_AI_Hero, int, Vector3>(null, 0, new Vector3());
-            var multiF = Common.CanFlash && mode != 1
-                             ? GetMultiHit(MainMenu["BubbaKush"]["RKill"], MainMenu["BubbaKush"]["RCountA"], 1)
-                             : new Tuple<Obj_AI_Hero, int, Vector3>(null, 0, new Vector3());
-            if (multiW.Item1 != null && multiW.Item2 != 0 && multiW.Item3.IsValid())
+            if (mode != 0 && WardManager.CanWardJump)
             {
-                posBubbaKushJump = multiW.Item3;
-                lastBubbaKush = Variables.TickCount;
-                Variables.TargetSelector.SetTarget(multiW.Item1);
-                WardManager.Place(posBubbaKushJump);
+                multi = GetMultiHit(isKill, minHit, 2);
+                if (multi.Item1 != null && multi.Item2 != 0 && multi.Item3.IsValid())
+                {
+                    posBubbaKushJump = multi.Item3;
+                    lastBubbaKush = Variables.TickCount;
+                    Variables.TargetSelector.SetTarget(multi.Item1);
+                    WardManager.Place(posBubbaKushJump);
+                    return;
+                }
             }
-            else if (multiF.Item1 != null && multiF.Item2 != 0 && multiF.Item3.IsValid() && R.CastOnUnit(multiF.Item1))
+            if (mode != 1 && Common.CanFlash)
             {
-                posBubbaKushFlash = multiF.Item3;
-                lastBubbaKush = Variables.TickCount;
-                Variables.TargetSelector.SetTarget(multiF.Item1);
+                multi = GetMultiHit(isKill, minHit, 1);
+                if (multi.Item1 != null && multi.Item2 != 0 && multi.Item3.IsValid() && R.CastOnUnit(multi.Item1))
+                {
+                    posBubbaKushFlash = multi.Item3;
+                    lastBubbaKush = Variables.TickCount;
+                    Variables.TargetSelector.SetTarget(multi.Item1);
+                }
             }
         }
 
@@ -422,6 +427,11 @@
             }
             else if (MainMenu["BubbaKush"]["R"].GetValue<MenuKeyBind>().Active && posBubbaKushFlash.IsValid())
             {
+                var multi = GetMultiHit(MainMenu["BubbaKush"]["RKill"], MainMenu["BubbaKush"]["RCountA"], 1);
+                if (multi.Item1 != null && multi.Item1.Compare(target) && multi.Item2 != 0 && multi.Item3.IsValid())
+                {
+                    posBubbaKushFlash = multi.Item3;
+                }
                 pos = posBubbaKushFlash;
             }
             else if (MainMenu["Insec"]["R"].GetValue<MenuKeyBind>().Active && Insec.IsRecentRFlash)
@@ -608,7 +618,7 @@
             {
                 var posTarget = mode == 1 ? targetKick.ServerPosition : R.GetPredPosition(targetKick, true);
                 R2.UpdateSourcePosition(posTarget, posTarget);
-                R2.Width = targetKick.BoundingRadius;
+                R2.Width = targetKick.BoundingRadius - 10;
                 var targetHits =
                     GameObjects.EnemyHeroes.Where(
                         i => i.IsValidTarget(R2.Range + R2.Width / 2, true, R2.From) && !i.Compare(targetKick))
@@ -618,7 +628,7 @@
                 if (mode == 0)
                 {
                     var pos = R2.From.Extend(Player.ServerPosition, -R2.Range);
-                    targetHits = targetHits.Where(i => R2.WillHit(i, pos, 0, R2.MinHitChance)).ToList();
+                    targetHits = targetHits.Where(i => R2.WillHit(i, pos)).ToList();
                     if (checkKill && targetHits.Any(i => i.Health + i.PhysicalShield <= GetRColDmg(targetKick, i)))
                     {
                         return new Tuple<Obj_AI_Hero, int, Vector3>(targetKick, -1, posEnd);
@@ -633,12 +643,11 @@
                         var list = new List<Obj_AI_Hero>();
                         var pred = R2.GetPrediction(targetHit);
                         var pos = new Vector3();
-                        if (pred.Hitchance >= R2.MinHitChance)
+                        if (pred.Hitchance >= HitChance.High)
                         {
                             list.Add(targetHit);
                             list.AddRange(
-                                targetHits.Where(
-                                    i => !i.Compare(targetHit) && R2.WillHit(i, pred.CastPosition, 0, R2.MinHitChance)));
+                                targetHits.Where(i => !i.Compare(targetHit) && R2.WillHit(i, pred.CastPosition)));
                             pos = mode == 1
                                       ? pred.CastPosition
                                       : pred.Input.From.Extend(pred.CastPosition, -Insec.GetDistance(targetKick));

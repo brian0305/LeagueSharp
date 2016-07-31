@@ -2,6 +2,7 @@ namespace Valvrave_Sharp.Evade
 {
     #region
 
+    using System;
     using System.Collections.Generic;
     using System.Linq;
 
@@ -19,13 +20,8 @@ namespace Valvrave_Sharp.Evade
     {
         #region Methods
 
-        internal static List<Vector2> GetEvadePoints(
-            int speed = -1,
-            int delay = 0,
-            bool isBlink = false,
-            bool onlyGood = false)
+        internal static Vector3 GetEvadePoint(this EvadeSpellData spellData, float overideRange = -1)
         {
-            speed = speed == -1 ? (int)Program.Player.MoveSpeed : speed;
             var goodCandidates = new List<Vector2>();
             var badCandidates = new List<Vector2>();
             var polygonList = new List<Geometry.Polygon>();
@@ -61,31 +57,40 @@ namespace Valvrave_Sharp.Evade
                     {
                         var candidate = originalCandidate + j * Config.DiagonalEvadePointsStep * direction;
                         var pathToPoint = Program.Player.GetPath(candidate.ToVector3()).ToList().ToVector2();
-                        if (!isBlink)
-                        {
-                            if (Evade.IsSafePath(pathToPoint, Config.EvadingFirstTimeOffset, speed, delay).IsSafe)
-                            {
-                                goodCandidates.Add(candidate);
-                            }
-                            if (Evade.IsSafePath(pathToPoint, Config.EvadingSecondTimeOffset, speed, delay).IsSafe
-                                && j == 0)
-                            {
-                                badCandidates.Add(candidate);
-                            }
-                        }
-                        else
+                        if (spellData.IsBlink)
                         {
                             if (Evade.IsSafeToBlink(
                                 pathToPoint[pathToPoint.Count - 1],
                                 Config.EvadingFirstTimeOffset,
-                                delay))
+                                spellData.Delay))
                             {
                                 goodCandidates.Add(candidate);
                             }
                             if (Evade.IsSafeToBlink(
                                 pathToPoint[pathToPoint.Count - 1],
                                 Config.EvadingSecondTimeOffset,
-                                delay))
+                                spellData.Delay))
+                            {
+                                badCandidates.Add(candidate);
+                            }
+                        }
+                        else
+                        {
+                            if (
+                                Evade.IsSafePath(
+                                    pathToPoint,
+                                    Config.EvadingFirstTimeOffset,
+                                    spellData.Speed,
+                                    spellData.Delay).IsSafe)
+                            {
+                                goodCandidates.Add(candidate);
+                            }
+                            if (
+                                Evade.IsSafePath(
+                                    pathToPoint,
+                                    Config.EvadingSecondTimeOffset,
+                                    spellData.Speed,
+                                    spellData.Delay).IsSafe && j == 0)
                             {
                                 badCandidates.Add(candidate);
                             }
@@ -106,17 +111,77 @@ namespace Valvrave_Sharp.Evade
                                         { badCandidates.MinOrDefault(i => Program.Player.DistanceSquared(i)) };
                 }
             }
-            return goodCandidates.Count > 0 ? goodCandidates : (onlyGood ? new List<Vector2>() : badCandidates);
+            var result = goodCandidates.Count > 0 ? goodCandidates : badCandidates;
+            result.RemoveAll(i => i.Distance(myPosition) > (overideRange > -1 ? overideRange : spellData.Range));
+            if (overideRange > -1 && spellData.IsTargetted)
+            {
+                for (var i = 0; i < result.Count; i++)
+                {
+                    var k = (int)(overideRange - result[i].Distance(myPosition));
+                    k -= Evade.Rand.Next(k);
+                    var posExtend = result[i] + k * (result[i] - myPosition).Normalized();
+                    if (Evade.IsSafePoint(posExtend).IsSafe)
+                    {
+                        result[i] = posExtend;
+                    }
+                }
+            }
+            else if (spellData.IsDash)
+            {
+                if (spellData.IsFixedRange)
+                {
+                    for (var i = 0; i < result.Count; i++)
+                    {
+                        result[i] = myPosition.Extend(result[i], spellData.Range);
+                    }
+                    for (var i = result.Count - 1; i > 0; i--)
+                    {
+                        if (!Evade.IsSafePoint(result[i]).IsSafe)
+                        {
+                            result.RemoveAt(i);
+                        }
+                    }
+                }
+                else
+                {
+                    for (var i = 0; i < result.Count; i++)
+                    {
+                        var k = (int)(spellData.Range - result[i].Distance(myPosition));
+                        k -= Math.Max(Evade.Rand.Next(k) - 100, 0);
+                        var posExtend = result[i] + k * (result[i] - myPosition).Normalized();
+                        if (Evade.IsSafePoint(posExtend).IsSafe)
+                        {
+                            result[i] = posExtend;
+                        }
+                    }
+                }
+            }
+            else if (spellData.IsBlink)
+            {
+                for (var i = 0; i < result.Count; i++)
+                {
+                    var k = (int)(spellData.Range - result[i].Distance(myPosition));
+                    k -= Evade.Rand.Next(k);
+                    var posExtend = result[i] + k * (result[i] - myPosition).Normalized();
+                    if (Evade.IsSafePoint(posExtend).IsSafe)
+                    {
+                        result[i] = posExtend;
+                    }
+                }
+            }
+            return result.Count > 0 ? result.MinOrDefault(i => i.Distance(Game.CursorPos)).ToVector3() : new Vector3();
         }
 
-        internal static List<Obj_AI_Base> GetEvadeTargets(
+        internal static Obj_AI_Base GetEvadeTarget(
             this EvadeSpellData spellData,
-            bool onlyGood = false,
+            bool isBlink = false,
+            int overideDelay = -1,
             bool dontCheckForSafety = false)
         {
-            var badTargets = new List<Obj_AI_Base>();
-            var goodTargets = new List<Obj_AI_Base>();
+            var badTargets = new List<Tuple<Obj_AI_Base, Vector2>>();
+            var goodTargets = new List<Tuple<Obj_AI_Base, Vector2>>();
             var allTargets = new List<Obj_AI_Base>();
+            var delay = overideDelay > -1 ? overideDelay : spellData.Delay;
             foreach (var targetType in spellData.ValidTargets)
             {
                 switch (targetType)
@@ -146,61 +211,61 @@ namespace Valvrave_Sharp.Evade
                     case SpellValidTargets.EnemyWards:
                         allTargets.AddRange(GameObjects.EnemyWards.Where(i => i.IsValidTarget(spellData.Range)));
                         break;
+                    case SpellValidTargets.AllyObjects:
+                        allTargets.AddRange(
+                            GameObjects.AllyMinions.Where(i => i.IsValid() && i.HasBuff(spellData.RequireBuff)));
+                        break;
                 }
             }
-            var underTower = Program.MainMenu["Evade"]["Spells"][spellData.Name]["ETower"];
+            var underTower = spellData.UnderTower
+                                 ? Program.MainMenu["Evade"]["Spells"][spellData.Name][spellData.Slot + "Tower"]
+                                 : true;
             foreach (var target in allTargets)
             {
                 if (spellData.CheckBuffName != "" && target.HasBuff(spellData.CheckBuffName))
                 {
                     continue;
                 }
-                var pos = spellData.FixedRange
+                var pos = spellData.IsFixedRange
                               ? Evade.PlayerPosition.Extend(target.ServerPosition, spellData.Range)
                               : target.ServerPosition.ToVector2();
-                if (!dontCheckForSafety && !Evade.IsSafePoint(pos))
+                if (!dontCheckForSafety && !Evade.IsSafePoint(pos).IsSafe)
                 {
                     continue;
                 }
-                if (spellData.UnderTower && pos.IsUnderEnemyTurret() && !underTower)
+                if (pos.IsUnderEnemyTurret() && !underTower)
                 {
                     continue;
                 }
-                if (spellData.IsBlink)
+                if (spellData.IsBlink || isBlink)
                 {
-                    if (Evade.IsSafeToBlink(pos, Config.EvadingFirstTimeOffset, spellData.Delay))
+                    if (Evade.IsSafeToBlink(pos, Config.EvadingFirstTimeOffset, delay))
                     {
-                        goodTargets.Add(target);
+                        goodTargets.Add(new Tuple<Obj_AI_Base, Vector2>(target, pos));
                     }
-                    if (Evade.IsSafeToBlink(pos, Config.EvadingSecondTimeOffset, spellData.Delay))
+                    if (Evade.IsSafeToBlink(pos, Config.EvadingSecondTimeOffset, delay))
                     {
-                        badTargets.Add(target);
+                        badTargets.Add(new Tuple<Obj_AI_Base, Vector2>(target, pos));
                     }
                 }
                 else if (spellData.IsDash)
                 {
                     var pathToTarget = new List<Vector2> { Evade.PlayerPosition, pos };
                     if (Variables.TickCount - Evade.LastWardJumpAttempt < 250
-                        || Evade.IsSafePath(
-                            pathToTarget,
-                            Config.EvadingFirstTimeOffset,
-                            spellData.Speed,
-                            spellData.Delay).IsSafe)
+                        || Evade.IsSafePath(pathToTarget, Config.EvadingFirstTimeOffset, spellData.Speed, delay).IsSafe)
                     {
-                        goodTargets.Add(target);
+                        goodTargets.Add(new Tuple<Obj_AI_Base, Vector2>(target, pos));
                     }
                     if (Variables.TickCount - Evade.LastWardJumpAttempt < 250
-                        || Evade.IsSafePath(
-                            pathToTarget,
-                            Config.EvadingSecondTimeOffset,
-                            spellData.Speed,
-                            spellData.Delay).IsSafe)
+                        || Evade.IsSafePath(pathToTarget, Config.EvadingSecondTimeOffset, spellData.Speed, delay).IsSafe)
                     {
-                        badTargets.Add(target);
+                        badTargets.Add(new Tuple<Obj_AI_Base, Vector2>(target, pos));
                     }
                 }
             }
-            return goodTargets.Count > 0 ? goodTargets : (onlyGood ? new List<Obj_AI_Base>() : badTargets);
+            var goodTarget = goodTargets.MinOrDefault(i => i.Item2.Distance(Game.CursorPos));
+            var badTarget = badTargets.MinOrDefault(i => i.Item2.Distance(Game.CursorPos));
+            return goodTarget != null ? goodTarget.Item1 : badTarget?.Item1;
         }
 
         #endregion

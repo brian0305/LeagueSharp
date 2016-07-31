@@ -17,6 +17,7 @@
     using SharpDX;
 
     using Valvrave_Sharp.Core;
+    using Valvrave_Sharp.Evade;
 
     using Color = System.Drawing.Color;
     using Menu = LeagueSharp.SDK.UI.Menu;
@@ -80,6 +81,11 @@
             {
                 ksMenu.Bool("Q", "Use Q");
                 ksMenu.Bool("E", "Use E");
+            }
+            if (GameObjects.EnemyHeroes.Any())
+            {
+                Evade.Init();
+                EvadeTarget.Init();
             }
             var drawMenu = MainMenu.Add(new Menu("Draw", "Draw"));
             {
@@ -513,5 +519,169 @@
         }
 
         #endregion
+
+        private static class EvadeTarget
+        {
+            #region Static Fields
+
+            private static readonly List<MissileClient> DetectedTargets = new List<MissileClient>();
+
+            private static readonly List<SpellData> Spells = new List<SpellData>();
+
+            #endregion
+
+            #region Methods
+
+            internal static void Init()
+            {
+                LoadSpellData();
+                var evadeMenu = MainMenu.Add(new Menu("EvadeTarget", "Evade Target"));
+                {
+                    evadeMenu.Bool("W", "Use W");
+                    foreach (var hero in
+                        GameObjects.EnemyHeroes.Where(
+                            i =>
+                            Spells.Any(
+                                a =>
+                                string.Equals(
+                                    a.ChampionName,
+                                    i.ChampionName,
+                                    StringComparison.InvariantCultureIgnoreCase))))
+                    {
+                        evadeMenu.Add(new Menu(hero.ChampionName.ToLowerInvariant(), "-> " + hero.ChampionName));
+                    }
+                    foreach (var spell in
+                        Spells.Where(
+                            i =>
+                            GameObjects.EnemyHeroes.Any(
+                                a =>
+                                string.Equals(
+                                    a.ChampionName,
+                                    i.ChampionName,
+                                    StringComparison.InvariantCultureIgnoreCase))))
+                    {
+                        ((Menu)evadeMenu[spell.ChampionName.ToLowerInvariant()]).Bool(
+                            spell.MissileName,
+                            spell.MissileName + " (" + spell.Slot + ")",
+                            false);
+                    }
+                }
+                Game.OnUpdate += OnUpdateTarget;
+                GameObjectNotifier<MissileClient>.OnCreate += EvadeTargetOnCreate;
+                GameObjectNotifier<MissileClient>.OnDelete += EvadeTargetOnDelete;
+            }
+
+            private static void EvadeTargetOnCreate(object sender, MissileClient missile)
+            {
+                var caster = missile.SpellCaster as Obj_AI_Hero;
+                if (caster == null || !caster.IsValid || caster.Team == Player.Team || !missile.Target.IsMe)
+                {
+                    return;
+                }
+                var spellData =
+                    Spells.FirstOrDefault(
+                        i =>
+                        i.SpellNames.Contains(missile.SData.Name.ToLower())
+                        && MainMenu["EvadeTarget"][i.ChampionName.ToLowerInvariant()][i.MissileName]);
+                if (spellData == null)
+                {
+                    return;
+                }
+                DetectedTargets.Add(missile);
+            }
+
+            private static void EvadeTargetOnDelete(object sender, MissileClient missile)
+            {
+                var caster = missile.SpellCaster as Obj_AI_Hero;
+                if (caster == null || !caster.IsValid || caster.Team == Player.Team)
+                {
+                    return;
+                }
+                DetectedTargets.RemoveAll(i => i.Compare(missile));
+            }
+
+            private static void LoadSpellData()
+            {
+                Spells.Add(
+                    new SpellData
+                        {
+                            ChampionName = "Brand", SpellNames = new[] { "brandwildfire", "brandwildfiremissile" },
+                            Slot = SpellSlot.R
+                        });
+                Spells.Add(
+                    new SpellData
+                        {
+                            ChampionName = "Caitlyn", SpellNames = new[] { "caitlynaceintheholemissile" },
+                            Slot = SpellSlot.R
+                        });
+                Spells.Add(
+                    new SpellData
+                        {
+                            ChampionName = "FiddleSticks",
+                            SpellNames = new[] { "fiddlesticksdarkwind", "fiddlesticksdarkwindmissile" },
+                            Slot = SpellSlot.E
+                        });
+                Spells.Add(new SpellData { ChampionName = "Lulu", SpellNames = new[] { "luluw" }, Slot = SpellSlot.W });
+                Spells.Add(
+                    new SpellData { ChampionName = "Shaco", SpellNames = new[] { "twoshivpoison" }, Slot = SpellSlot.E });
+                Spells.Add(
+                    new SpellData { ChampionName = "Syndra", SpellNames = new[] { "syndrar" }, Slot = SpellSlot.R });
+                Spells.Add(
+                    new SpellData { ChampionName = "Teemo", SpellNames = new[] { "blindingdart" }, Slot = SpellSlot.Q });
+                Spells.Add(
+                    new SpellData
+                        { ChampionName = "TwistedFate", SpellNames = new[] { "goldcardattack" }, Slot = SpellSlot.W });
+                Spells.Add(
+                    new SpellData
+                        { ChampionName = "Vayne", SpellNames = new[] { "vaynecondemnmissile" }, Slot = SpellSlot.E });
+                Spells.Add(
+                    new SpellData
+                        { ChampionName = "Veigar", SpellNames = new[] { "veigarprimordialburst" }, Slot = SpellSlot.R });
+            }
+
+            private static void OnUpdateTarget(EventArgs args)
+            {
+                if (Player.IsDead)
+                {
+                    return;
+                }
+                if (Player.HasBuffOfType(BuffType.SpellShield) || Player.HasBuffOfType(BuffType.SpellImmunity))
+                {
+                    return;
+                }
+                if (!MainMenu["EvadeTarget"]["W"] || !W.IsReady() || DetectedTargets.Count == 0)
+                {
+                    return;
+                }
+                foreach (var missile in DetectedTargets.OrderBy(i => i.Distance(Player)))
+                {
+                    if (Player.Distance(missile) < 150)
+                    {
+                        W.Cast();
+                    }
+                }
+            }
+
+            #endregion
+
+            private class SpellData
+            {
+                #region Fields
+
+                public string ChampionName;
+
+                public SpellSlot Slot;
+
+                public string[] SpellNames = { };
+
+                #endregion
+
+                #region Public Properties
+
+                public string MissileName => this.SpellNames.First();
+
+                #endregion
+            }
+        }
     }
 }

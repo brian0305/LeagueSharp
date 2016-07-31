@@ -60,10 +60,6 @@
                             {
                                 subMenu.Bool(spell.Slot + "Tower", "Under Tower", false);
                             }
-                            if (spell.ExtraDelay)
-                            {
-                                subMenu.Slider(spell.Slot + "Delay", "Extra Delay", 100, 0, 150);
-                            }
                             subMenu.Slider("DangerLevel", "If Danger Level >=", spell.DangerLevel, 1, 5);
                             if (spell.IsTargetted && spell.ValidTargets.Contains(SpellValidTargets.AllyWards))
                             {
@@ -107,6 +103,13 @@
                         }
                         subMenu.Bool("Draw", "Draw");
                         subMenu.Bool("Enabled", "Enabled", !spell.DisabledByDefault);
+                    }
+                }
+                var shieldMenu = evadeMenu.Add(new Menu("ShieldAlly", "Shield Ally"));
+                {
+                    foreach (var ally in GameObjects.AllyHeroes.Where(i => !i.IsMe))
+                    {
+                        shieldMenu.Bool(ally.ChampionName, "Shield " + ally.ChampionName, false);
                     }
                 }
                 var drawMenu = evadeMenu.Add(new Menu("Draw", "Draw"));

@@ -7,6 +7,7 @@
     using System.Linq;
 
     using LeagueSharp;
+    using LeagueSharp.Data.Enumerations;
     using LeagueSharp.SDK;
     using LeagueSharp.SDK.UI;
 
@@ -281,7 +282,6 @@
                     Drawing.WorldToScreen(
                         (position - this.SpellData.Radius * this.Direction.Perpendicular()).ToVector3());
                 Drawing.DrawLine(from[0], from[1], to[0], to[1], 2, missileColor);
-                //Render.Circle.DrawCircle(position.ToVector3(), this.SpellData.RawRadius, Color.Blue);
             }
         }
 
@@ -316,30 +316,16 @@
             return this.Start + this.Direction * t;
         }
 
-        internal bool IsAboutToHit(int time, Obj_AI_Base unit)
+        internal bool IsAboutToHit(Obj_AI_Base unit, int time, bool isYasuoWall = false)
         {
-            if (this.SpellData.Type == SkillShotType.SkillshotMissileLine)
-            {
-                var missilePos = this.GetMissilePosition(0);
-                var missilePosAfterT = this.GetMissilePosition(time);
-                var projection = unit.ServerPosition.ToVector2().ProjectOn(missilePos, missilePosAfterT);
-                return projection.IsOnSegment
-                       && projection.SegmentPoint.Distance(unit.ServerPosition) < this.SpellData.Radius;
-            }
-            if (!this.IsSafe(unit.ServerPosition.ToVector2()))
-            {
-                var timeToExplode = this.SpellData.ExtraDuration + this.SpellData.Delay
-                                    + (int)
-                                      (1000
-                                       * (Math.Abs(this.SpellData.MissileSpeed - int.MaxValue) > 0
-                                              ? this.Start.Distance(this.End) / this.SpellData.MissileSpeed
-                                              : 0)) - (Variables.TickCount - this.StartTick);
-                if (timeToExplode <= time)
-                {
-                    return true;
-                }
-            }
-            return false;
+            return this.IsAboutToHit(unit.ServerPosition.ToVector2(), time, isYasuoWall);
+        }
+
+        internal bool IsAboutToHit(Vector2 point, int time, bool isYasuoWall = false)
+        {
+            time += 150;
+            return this.IsAboutToHit(time, point)
+                   && (!isYasuoWall || this.SpellData.CollisionObjects.HasFlag(CollisionableObjects.YasuoWall));
         }
 
         internal bool IsSafe(Vector2 point)
@@ -347,10 +333,10 @@
             return this.Polygon.IsOutside(point);
         }
 
-        internal SafePathResult IsSafePath(List<Vector2> path, int timeOffset, int speed = -1, int delay = 0)
+        internal SafePathResult IsSafePath(List<Vector2> path, int time, int speed = -1, int delay = 0)
         {
             var distance = 0f;
-            timeOffset += Game.Ping / 2;
+            time += Game.Ping / 2;
             speed = speed == -1 ? (int)Program.Player.MoveSpeed : speed;
             var allIntersections = new List<FoundIntersection>();
             for (var i = 0; i <= path.Count - 2; i++)
@@ -400,8 +386,7 @@
                             enterIntersection.Point.ProjectOn(this.Start, this.End).SegmentPoint;
                         if (i == allIntersections.Count - 1)
                         {
-                            var missilePositionOnIntersection =
-                                this.GetMissilePosition(enterIntersection.Time - timeOffset);
+                            var missilePositionOnIntersection = this.GetMissilePosition(enterIntersection.Time - time);
                             return
                                 new SafePathResult(
                                     (this.End.Distance(missilePositionOnIntersection) + 50
@@ -412,8 +397,8 @@
                         var exitIntersection = allIntersections[i + 1];
                         var exitIntersectionProjection =
                             exitIntersection.Point.ProjectOn(this.Start, this.End).SegmentPoint;
-                        var missilePosOnEnter = this.GetMissilePosition(enterIntersection.Time - timeOffset);
-                        var missilePosOnExit = this.GetMissilePosition(exitIntersection.Time + timeOffset);
+                        var missilePosOnEnter = this.GetMissilePosition(enterIntersection.Time - time);
+                        var missilePosOnExit = this.GetMissilePosition(exitIntersection.Time + time);
                         if (missilePosOnEnter.Distance(this.End) + 50 > enterIntersectionProjection.Distance(this.End)
                             && missilePosOnExit.Distance(this.End) <= exitIntersectionProjection.Distance(this.End))
                         {
@@ -430,7 +415,7 @@
                 {
                     var exitIntersection = allIntersections[0];
                     var exitIntersectionProjection = exitIntersection.Point.ProjectOn(this.Start, this.End).SegmentPoint;
-                    var missilePosOnExit = this.GetMissilePosition(exitIntersection.Time + timeOffset);
+                    var missilePosOnExit = this.GetMissilePosition(exitIntersection.Time + time);
                     if (missilePosOnExit.Distance(this.End) <= exitIntersectionProjection.Distance(this.End))
                     {
                         return new SafePathResult(false, allIntersections[0]);
@@ -467,20 +452,20 @@
             {
                 return new SafePathResult(false, allIntersections[0]);
             }
-            var myPositionWhenExplodesWithOffset = path.PositionAfter(timeToExplode, speed, timeOffset);
+            var myPositionWhenExplodesWithOffset = path.PositionAfter(timeToExplode, speed, time);
             return new SafePathResult(this.IsSafe(myPositionWhenExplodesWithOffset), allIntersections[0]);
         }
 
-        internal bool IsSafeToBlink(Vector2 point, int timeOffset, int delay)
+        internal bool IsSafeToBlink(Vector2 point, int time, int delay)
         {
-            timeOffset /= 2;
+            time /= 2;
             if (this.IsSafe(point))
             {
                 return true;
             }
             if (this.SpellData.Type == SkillShotType.SkillshotMissileLine)
             {
-                var missilePositionAfterBlink = this.GetMissilePosition(delay + timeOffset);
+                var missilePositionAfterBlink = this.GetMissilePosition(delay + time);
                 var myPositionProjection = Evade.PlayerPosition.ProjectOn(this.Start, this.End);
                 return missilePositionAfterBlink.Distance(this.End)
                        >= myPositionProjection.SegmentPoint.Distance(this.End);
@@ -492,7 +477,7 @@
                                    * (Math.Abs(this.SpellData.MissileSpeed - int.MaxValue) > 0
                                           ? this.Start.Distance(this.End) / this.SpellData.MissileSpeed
                                           : 0)) - (Variables.TickCount - this.StartTick);
-            return timeToExplode > timeOffset + delay;
+            return timeToExplode > time + delay;
         }
 
         internal void OnUpdate()
@@ -563,6 +548,29 @@
             var t = Math.Max(0, Variables.TickCount + time - this.StartTick - this.SpellData.Delay);
             t = (int)Math.Max(0, Math.Min(this.End.Distance(this.Start), t * this.SpellData.MissileSpeed / 1000f));
             return this.Start + this.Direction * t;
+        }
+
+        private bool IsAboutToHit(int time, Vector2 point)
+        {
+            if (this.IsSafe(point))
+            {
+                return false;
+            }
+            if (this.SpellData.Type == SkillShotType.SkillshotMissileLine)
+            {
+                var missilePos = this.GetMissilePosition(0);
+                var missilePosAfterT = this.GetMissilePosition(time);
+                var project = point.ProjectOn(missilePos, missilePosAfterT);
+                return project.IsOnSegment && project.SegmentPoint.Distance(point) < this.SpellData.Radius;
+            }
+            var timeToExplode = (this.SpellData.DontAddExtraDuration ? 0 : this.SpellData.ExtraDuration)
+                                + this.SpellData.Delay
+                                + (int)
+                                  (1000
+                                   * (Math.Abs(this.SpellData.MissileSpeed - int.MaxValue) > 0
+                                          ? this.Start.Distance(this.End) / this.SpellData.MissileSpeed
+                                          : 0)) - (Variables.TickCount - this.StartTick);
+            return timeToExplode <= time;
         }
 
         private void UpdatePolygon()

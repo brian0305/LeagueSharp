@@ -18,7 +18,9 @@
 
         AllyChampions,
 
-        EnemyChampions
+        EnemyChampions,
+
+        AllyObjects
     }
 
     internal class EvadeSpellData
@@ -33,31 +35,31 @@
 
         internal int Delay;
 
-        internal bool ExtraDelay;
-
-        internal bool FixedRange;
-
         internal bool Invert;
 
         internal bool IsBlink;
 
         internal bool IsDash;
 
-        internal bool IsInvulnerability;
+        internal bool IsFixedRange;
 
-        internal bool IsMovementSpeedBuff;
+        internal bool IsInvulnerability;
 
         internal bool IsShield;
 
         internal bool IsSpellShield;
 
-        internal MoveSpeedAmount MoveSpeedTotalAmount;
+        internal bool IsYasuoWall;
 
         internal string Name;
 
         internal float Range;
 
-        internal bool RequiresPreMove;
+        internal string RequireBuff = "";
+
+        internal bool RequireMissilePos;
+
+        internal bool RequirePreMove;
 
         internal bool SelfCast;
 
@@ -70,12 +72,6 @@
         internal SpellValidTargets[] ValidTargets;
 
         private int dangerLevel;
-
-        #endregion
-
-        #region Delegates
-
-        internal delegate float MoveSpeedAmount();
 
         #endregion
 
@@ -122,7 +118,7 @@
             this.Name = name;
             this.Range = range;
             this.Slot = slot;
-            this.FixedRange = fixedRange;
+            this.IsFixedRange = fixedRange;
             this.Delay = delay;
             this.Speed = speed;
             this.DangerLevel = dangerLevel;
@@ -177,23 +173,6 @@
             this.DangerLevel = dangerLevel;
             this.IsSpellShield = isSpellShield;
             this.IsShield = !this.IsSpellShield;
-        }
-
-        #endregion
-    }
-
-    internal class MoveBuffData : EvadeSpellData
-    {
-        #region Constructors and Destructors
-
-        internal MoveBuffData(string name, SpellSlot slot, int delay, int dangerLevel, MoveSpeedAmount amount)
-        {
-            this.Name = name;
-            this.Slot = slot;
-            this.Delay = delay;
-            this.DangerLevel = dangerLevel;
-            this.MoveSpeedTotalAmount = amount;
-            this.IsMovementSpeedBuff = true;
         }
 
         #endregion

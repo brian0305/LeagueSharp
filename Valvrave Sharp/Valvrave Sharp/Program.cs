@@ -107,7 +107,19 @@
                 {
                     skinMenu.Slider("Index", "Skin", 0, 0, Plugins[Player.ChampionName].Item2).ValueChanged +=
                         (sender, args) => { isSkinReset = true; };
-                    skinMenu.Bool("Own", "Keep Your Own Skin");
+                    skinMenu.Bool("Own", "Keep Your Own Skin").ValueChanged += (sender, args) =>
+                        {
+                            var menuBool = sender as MenuBool;
+                            if (menuBool != null)
+                            {
+                                isSkinReset = false;
+                                Player.SetSkin(
+                                    Player.ChampionName,
+                                    menuBool.Value && Player.BaseSkinId > 0
+                                        ? Player.BaseSkinId
+                                        : MainMenu["Skin"]["Index"]);
+                            }
+                        };
                 }
                 Plugins[Player.ChampionName].Item1.Invoke();
 
@@ -123,7 +135,7 @@
                         else if (isSkinReset)
                         {
                             isSkinReset = false;
-                            if (!MainMenu["Skin"]["Own"] || Player.BaseSkinId == 0)
+                            if (Player.BaseSkinId == 0 || !MainMenu["Skin"]["Own"])
                             {
                                 Player.SetSkin(Player.ChampionName, MainMenu["Skin"]["Index"]);
                             }

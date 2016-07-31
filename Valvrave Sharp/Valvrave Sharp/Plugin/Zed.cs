@@ -22,7 +22,6 @@
 
     using Color = System.Drawing.Color;
     using Menu = LeagueSharp.SDK.UI.Menu;
-    using Skillshot = Valvrave_Sharp.Evade.Skillshot;
 
     #endregion
 
@@ -124,8 +123,6 @@
             }
             MainMenu.KeyBind("FleeW", "Use W To Flee", Keys.C);
 
-            Evade.Evading += Evading;
-            Evade.TryEvading += TryEvading;
             Game.OnUpdate += OnUpdate;
             Drawing.OnEndScene += OnEndScene;
             Drawing.OnDraw += OnDraw;
@@ -570,31 +567,6 @@
             }
         }
 
-        private static void Evading(Obj_AI_Base sender)
-        {
-            var skillshot = Evade.SkillshotAboutToHit(sender, 100).OrderByDescending(i => i.DangerLevel).ToList();
-            if (skillshot.Count == 0)
-            {
-                return;
-            }
-            var zedW2 = EvadeSpellDatabase.Spells.FirstOrDefault(i => i.Enable && i.IsReady && i.Slot == SpellSlot.W);
-            if (zedW2 != null && wShadow.IsValid() && !Evade.IsAboutToHit(wShadow, 30)
-                && (!wShadow.IsUnderEnemyTurret() || MainMenu["Evade"]["Spells"][zedW2.Name]["WTower"])
-                && skillshot.Any(i => i.DangerLevel >= zedW2.DangerLevel) && W.Cast())
-            {
-                return;
-            }
-            var zedR2 =
-                EvadeSpellDatabase.Spells.FirstOrDefault(
-                    i => i.Enable && i.IsReady && i.Slot == SpellSlot.R && i.CheckSpellName == "zedr2");
-            if (zedR2 != null && rShadow.IsValid() && !Evade.IsAboutToHit(rShadow, 30)
-                && (!rShadow.IsUnderEnemyTurret() || MainMenu["Evade"]["Spells"][zedR2.Name]["RTower"])
-                && skillshot.Any(i => i.DangerLevel >= zedR2.DangerLevel))
-            {
-                R.Cast();
-            }
-        }
-
         private static List<double> GetCombo(Obj_AI_Hero target, bool useQ, bool useW, bool useE)
         {
             var dmgTotal = 0d;
@@ -1011,25 +983,6 @@
             }
         }
 
-        private static void TryEvading(List<Skillshot> hitBy, Vector2 to)
-        {
-            var dangerLevel = hitBy.Select(i => i.DangerLevel).Concat(new[] { 0 }).Max();
-            var zedR1 =
-                EvadeSpellDatabase.Spells.FirstOrDefault(
-                    i =>
-                    i.Enable && dangerLevel >= i.DangerLevel && i.IsReady && i.Slot == SpellSlot.R
-                    && i.CheckSpellName == "zedr");
-            var target =
-                zedR1?.GetEvadeTargets(false, true)
-                    .OrderByDescending(i => new Priority().GetDefaultPriority((Obj_AI_Hero)i))
-                    .ThenBy(i => i.CountEnemyHeroesInRange(400))
-                    .FirstOrDefault();
-            if (target != null)
-            {
-                R.CastOnUnit(target);
-            }
-        }
-
         private static void UseItem(Obj_AI_Hero target)
         {
             if (target != null && (HaveR(target) || target.HealthPercent < 40 || Player.HealthPercent < 50))
@@ -1067,7 +1020,7 @@
         {
             #region Static Fields
 
-            private static readonly List<Targets> DetectedTargets = new List<Targets>();
+            private static readonly List<MissileClient> DetectedTargets = new List<MissileClient>();
 
             private static readonly List<SpellData> Spells = new List<SpellData>();
 
@@ -1110,8 +1063,37 @@
                     }
                 }
                 Game.OnUpdate += OnUpdateTarget;
-                GameObject.OnCreate += ObjSpellMissileOnCreate;
-                GameObject.OnDelete += ObjSpellMissileOnDelete;
+                GameObjectNotifier<MissileClient>.OnCreate += EvadeTargetOnCreate;
+                GameObjectNotifier<MissileClient>.OnDelete += EvadeTargetOnDelete;
+            }
+
+            private static void EvadeTargetOnCreate(object sender, MissileClient missile)
+            {
+                var caster = missile.SpellCaster as Obj_AI_Hero;
+                if (caster == null || !caster.IsValid || caster.Team == Player.Team || !missile.Target.IsMe)
+                {
+                    return;
+                }
+                var spellData =
+                    Spells.FirstOrDefault(
+                        i =>
+                        i.SpellNames.Contains(missile.SData.Name.ToLower())
+                        && MainMenu["EvadeTarget"][i.ChampionName.ToLowerInvariant()][i.MissileName]);
+                if (spellData == null)
+                {
+                    return;
+                }
+                DetectedTargets.Add(missile);
+            }
+
+            private static void EvadeTargetOnDelete(object sender, MissileClient missile)
+            {
+                var caster = missile.SpellCaster as Obj_AI_Hero;
+                if (caster == null || !caster.IsValid || caster.Team == Player.Team)
+                {
+                    return;
+                }
+                DetectedTargets.RemoveAll(i => i.Compare(missile));
             }
 
             private static void LoadSpellData()
@@ -1133,6 +1115,13 @@
                 Spells.Add(
                     new SpellData
                         {
+                            ChampionName = "FiddleSticks",
+                            SpellNames = new[] { "fiddlesticksdarkwind", "fiddlesticksdarkwindmissile" },
+                            Slot = SpellSlot.E
+                        });
+                Spells.Add(
+                    new SpellData
+                        {
                             ChampionName = "Leblanc", SpellNames = new[] { "leblancchaosorb", "leblancchaosorbm" },
                             Slot = SpellSlot.Q
                         });
@@ -1140,59 +1129,16 @@
                 Spells.Add(
                     new SpellData { ChampionName = "Syndra", SpellNames = new[] { "syndrar" }, Slot = SpellSlot.R });
                 Spells.Add(
-                    new SpellData
-                        { ChampionName = "TwistedFate", SpellNames = new[] { "bluecardattack" }, Slot = SpellSlot.W });
+                    new SpellData { ChampionName = "Teemo", SpellNames = new[] { "blindingdart" }, Slot = SpellSlot.Q });
                 Spells.Add(
                     new SpellData
                         { ChampionName = "TwistedFate", SpellNames = new[] { "goldcardattack" }, Slot = SpellSlot.W });
-                Spells.Add(
-                    new SpellData
-                        { ChampionName = "TwistedFate", SpellNames = new[] { "redcardattack" }, Slot = SpellSlot.W });
                 Spells.Add(
                     new SpellData
                         { ChampionName = "Vayne", SpellNames = new[] { "vaynecondemnmissile" }, Slot = SpellSlot.E });
                 Spells.Add(
                     new SpellData
                         { ChampionName = "Veigar", SpellNames = new[] { "veigarprimordialburst" }, Slot = SpellSlot.R });
-            }
-
-            private static void ObjSpellMissileOnCreate(GameObject sender, EventArgs args)
-            {
-                var missile = sender as MissileClient;
-                if (missile == null || !missile.IsValid)
-                {
-                    return;
-                }
-                var caster = missile.SpellCaster as Obj_AI_Hero;
-                if (caster == null || !caster.IsValid || caster.Team == Player.Team || !missile.Target.IsMe)
-                {
-                    return;
-                }
-                var spellData =
-                    Spells.FirstOrDefault(
-                        i =>
-                        i.SpellNames.Contains(missile.SData.Name.ToLower())
-                        && MainMenu["EvadeTarget"][i.ChampionName.ToLowerInvariant()][i.MissileName]);
-                if (spellData == null)
-                {
-                    return;
-                }
-                DetectedTargets.Add(new Targets { Obj = missile });
-            }
-
-            private static void ObjSpellMissileOnDelete(GameObject sender, EventArgs args)
-            {
-                var missile = sender as MissileClient;
-                if (missile == null || !missile.IsValid)
-                {
-                    return;
-                }
-                var caster = missile.SpellCaster as Obj_AI_Hero;
-                if (caster == null || !caster.IsValid || caster.Team == Player.Team)
-                {
-                    return;
-                }
-                DetectedTargets.RemoveAll(i => i.Obj.NetworkId == missile.NetworkId);
             }
 
             private static void OnUpdateTarget(EventArgs args)
@@ -1205,16 +1151,21 @@
                 {
                     return;
                 }
-                if (!MainMenu["EvadeTarget"]["R"] || RState != 0)
+                if (!MainMenu["EvadeTarget"]["R"] || RState != 0 || DetectedTargets.Count == 0)
                 {
                     return;
                 }
-                if (DetectedTargets.Any(i => Player.Distance(i.Obj) < 500))
+                foreach (var missile in DetectedTargets.OrderBy(i => i.Distance(Player)))
                 {
-                    var target = R.GetTarget();
-                    if (target != null)
+                    if (Player.Distance(missile) < 250)
                     {
-                        R.CastOnUnit(target);
+                        var target =
+                            GameObjects.EnemyHeroes.Where(i => i.IsValidTarget(R.Range))
+                                .MaxOrDefault(i => new Priority().GetDefaultPriority(i));
+                        if (target != null)
+                        {
+                            R.CastOnUnit(target);
+                        }
                     }
                 }
             }
@@ -1236,15 +1187,6 @@
                 #region Public Properties
 
                 public string MissileName => this.SpellNames.First();
-
-                #endregion
-            }
-
-            private class Targets
-            {
-                #region Fields
-
-                public MissileClient Obj;
 
                 #endregion
             }

@@ -43,12 +43,7 @@
             Q = new Spell(SpellSlot.Q, 600).SetTargetted(0.25f, float.MaxValue);
             W = new Spell(SpellSlot.W, 350);
             E = new Spell(SpellSlot.E, 630).SetSkillshot(0, 40, 4000, false, SkillshotType.SkillshotLine);
-            R = new Spell(SpellSlot.R, 700).SetSkillshot(
-                0.001f,
-                375,
-                float.MaxValue,
-                false,
-                SkillshotType.SkillshotCircle);
+            R = new Spell(SpellSlot.R, 700).SetSkillshot(0, 375, float.MaxValue, false, SkillshotType.SkillshotCircle);
             Q.DamageType = W.DamageType = E.DamageType = R.DamageType = DamageType.Magical;
             R.MinHitChance = HitChance.VeryHigh;
 
@@ -99,17 +94,14 @@
             Drawing.OnEndScene += OnEndScene;
             Variables.Orbwalker.OnAction += (sender, args) =>
                 {
-                    if (!Q.IsReady() || args.Type != OrbwalkingType.BeforeAttack)
+                    if (args.Type != OrbwalkingType.BeforeAttack
+                        || (Variables.Orbwalker.ActiveMode != OrbwalkingMode.Combo
+                            && Variables.Orbwalker.ActiveMode != OrbwalkingMode.Hybrid) || !(args.Target is Obj_AI_Hero)
+                        || !Q.IsReady(100))
                     {
                         return;
                     }
-                    var mode = Variables.Orbwalker.ActiveMode;
-                    var hero = args.Target as Obj_AI_Hero;
-                    if (hero == null || (mode != OrbwalkingMode.Combo && mode != OrbwalkingMode.Hybrid))
-                    {
-                        return;
-                    }
-                    args.Process = !Q.IsInRange(hero);
+                    args.Process = false;
                 };
             Obj_AI_Base.OnBuffAdd += (sender, args) =>
                 {
@@ -232,7 +224,7 @@
             for (var i = 0; i < 360; i += 18)
             {
                 var pos = E.From.ToVector2() + E.Range * new Vector2(1, 0).Rotated((float)(Math.PI * i / 180.0));
-                if (E.WillHit(point, pos.ToVector3()))
+                if (E.WillHit(point, pos.ToVector3(), 10))
                 {
                     return true;
                 }
@@ -313,7 +305,8 @@
 
         private static void ECharge(bool canCast)
         {
-            if (!canCast || haveQ || IsChargeE || Variables.TickCount - lastECharge <= 400 + Game.Ping)
+            if (!canCast || haveQ || Variables.TickCount - Q.LastCastAttemptT < 500 || IsChargeE
+                || Variables.TickCount - lastECharge <= 400 + Game.Ping)
             {
                 return;
             }

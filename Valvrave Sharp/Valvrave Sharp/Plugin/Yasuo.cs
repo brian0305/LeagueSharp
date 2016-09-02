@@ -40,9 +40,9 @@
 
         private static int cDash;
 
-        private static bool haveQ3, haveR;
+        private static bool haveQ3;
 
-        private static bool isDash, isBlockQ;
+        private static bool isDash;
 
         private static int lastE;
 
@@ -60,16 +60,14 @@
         {
             Q = new Spell(SpellSlot.Q, 505).SetSkillshot(QDelay, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, 1100).SetSkillshot(Q2Delay, 90, 1200, true, Q.Type);
-            Q3 = new Spell(Q.Slot, 220).SetSkillshot(0.001f, 220, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            Q3 = new Spell(Q.Slot, 220).SetSkillshot(0, 230, float.MaxValue, false, SkillshotType.SkillshotCircle);
             W = new Spell(SpellSlot.W, 400).SetTargetted(0.25f, float.MaxValue);
             E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1200);
-            E2 = new Spell(E.Slot, E.Range).SetTargetted(Q3.Delay, E.Speed);
+            E2 = new Spell(E.Slot, E.Range).SetTargetted(0, E.Speed);
             R = new Spell(SpellSlot.R, 1200);
             Q.DamageType = Q2.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
             Q.MinHitChance = Q2.MinHitChance = HitChance.VeryHigh;
-            Q.CastCondition += () => !isBlockQ;
-            Q3.CastCondition += () => !isBlockQ;
             E.CastCondition += () => !posDash.IsValid();
 
             var comboMenu = MainMenu.Add(new Menu("Combo", "Combo"));
@@ -235,9 +233,6 @@
                         case "YasuoDashScalar":
                             cDash = 1;
                             break;
-                        case "YasuoRArmorPen":
-                            haveR = isBlockQ = true;
-                            break;
                     }
                 };
             Obj_AI_Base.OnBuffRemove += (sender, args) =>
@@ -263,19 +258,6 @@
                         return;
                     }
                     cDash = 2;
-                };
-            Obj_AI_Base.OnDoCast += (sender, args) =>
-                {
-                    if (!sender.IsMe)
-                    {
-                        return;
-                    }
-                    if (haveR && args.SData.Name == "TempYasuoRMissile")
-                    {
-                        haveR = false;
-                        DelayAction.Add(40, Variables.Orbwalker.ResetSwingTimer);
-                        DelayAction.Add(70, () => isBlockQ = false);
-                    }
                 };
             GameObjectNotifier<MissileClient>.OnCreate += (sender, args) =>
                 {
@@ -368,7 +350,7 @@
                     var pos =
                         (Player.ServerPosition.ToVector2()
                          + FlashRange * new Vector2(1, 0).Rotated((float)(Math.PI * i / 180.0))).ToVector3();
-                    var hits = GameObjects.EnemyHeroes.Count(a => a.IsValidTarget(Q3.Width, true, pos));
+                    var hits = Variables.TargetSelector.GetTargets(Q3.Width, Q.DamageType, true, pos).Count;
                     if (hits > bestHit)
                     {
                         bestHit = hits;
@@ -389,11 +371,11 @@
                     .Where(i => i.IsValidTarget(E.Range) && !HaveE(i))
                     .MaxOrDefault(
                         i =>
-                        GameObjects.EnemyHeroes.Count(
-                            a =>
-                            a.IsValidTarget() && !a.Compare(i)
-                            && (a.Distance(i) < Q3.Width + FlashRange - 50
-                                || a.Distance(GetPosAfterDash(i)) < Q3.Width + FlashRange - 50)));
+                        Variables.TargetSelector.GetTargets(
+                            Q3.Width + FlashRange - 50,
+                            Q.DamageType,
+                            true,
+                            GetPosAfterDash(i)).Count(a => !a.Compare(i)));
             if (obj != null)
             {
                 E.CastOnUnit(obj);

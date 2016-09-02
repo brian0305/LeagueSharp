@@ -45,8 +45,8 @@
                     { "Kennen", new Tuple<Func<object>, int>(() => new Kennen(), 6) },
                     { "LeeSin", new Tuple<Func<object>, int>(() => new LeeSin(), 10) },
                     { "Vladimir", new Tuple<Func<object>, int>(() => new Vladimir(), 7) },
-                    { "Yasuo", new Tuple<Func<object>, int>(() => new Yasuo(), 3) },
-                    { "Zed", new Tuple<Func<object>, int>(() => new Zed(), 3) }
+                    { "Yasuo", new Tuple<Func<object>, int>(() => new Yasuo(), 8) },
+                    { "Zed", new Tuple<Func<object>, int>(() => new Zed(), 9) }
                 };
 
         private static bool isSkinReset = true;

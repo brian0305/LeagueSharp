@@ -98,7 +98,7 @@
                 comboMenu.Bool("E2", "Also E2");
                 comboMenu.Separator("Star Combo Settings");
                 comboMenu.KeyBind("Star", "Star Combo", Keys.X);
-                comboMenu.Bool("StarKill", "Auto Star Combo If Killable", false);
+                comboMenu.Bool("StarKill", "Auto Star Combo If Killable");
                 comboMenu.Bool("StarKillWJ", "-> Ward Jump In Auto Star Combo", false);
             }
             var lcMenu = MainMenu.Add(new Menu("LaneClear", "Lane Clear"));
@@ -107,7 +107,7 @@
                 lcMenu.Bool("E", "Use E");
                 lcMenu.Separator("Q Settings");
                 lcMenu.Bool("Q", "Use Q");
-                lcMenu.Bool("QBig", "Only Q Big Mob In Jungle");
+                lcMenu.Bool("QBig", "Only Q Big Mob In Jungle", false);
             }
             var lhMenu = MainMenu.Add(new Menu("LastHit", "Last Hit"));
             {

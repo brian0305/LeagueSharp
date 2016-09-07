@@ -31,6 +31,8 @@
 
         private static GameObject deathMark;
 
+        private static bool isWaitAttackAfterR;
+
         private static int lastW;
 
         private static bool wCasted, rCasted;
@@ -126,6 +128,14 @@
             Game.OnUpdate += OnUpdate;
             Drawing.OnEndScene += OnEndScene;
             Drawing.OnDraw += OnDraw;
+            Variables.Orbwalker.OnAction += (sender, args) =>
+                {
+                    if (!isWaitAttackAfterR || args.Type != OrbwalkingType.AfterAttack)
+                    {
+                        return;
+                    }
+                    isWaitAttackAfterR = false;
+                };
             Obj_AI_Base.OnProcessSpellCast += (sender, args) =>
                 {
                     if (!sender.IsMe)
@@ -159,7 +169,7 @@
                     else if (rCasted)
                     {
                         rShadowT = Variables.TickCount;
-                        rShadow = minion;
+                        RShadow = minion;
                         wCasted = rCasted = false;
                     }
                 };
@@ -180,10 +190,10 @@
                             }
                             break;
                         case "zedrshadowbuff":
-                            if (!rShadow.Compare(shadow))
+                            if (!RShadow.Compare(shadow))
                             {
                                 rShadowT = Variables.TickCount;
-                                rShadow = shadow;
+                                RShadow = shadow;
                             }
                             break;
                     }
@@ -199,9 +209,9 @@
                     {
                         wShadow = null;
                     }
-                    else if (shadow.Compare(rShadow))
+                    else if (shadow.Compare(RShadow))
                     {
-                        rShadow = null;
+                        RShadow = null;
                     }
                 };
             GameObjectNotifier<MissileClient>.OnCreate += (sender, args) =>
@@ -212,6 +222,7 @@
                         return;
                     }
                     wMissile = args;
+                    lastW = Variables.TickCount;
                 };
             GameObjectNotifier<MissileClient>.OnDelete += (sender, args) =>
                 {
@@ -300,7 +311,7 @@
             get
             {
                 var validW = wShadow.IsValid();
-                var validR = rShadow.IsValid();
+                var validR = RShadow.IsValid();
                 var posW = validW ? wShadow.ServerPosition : new Vector3();
                 if (!posW.IsValid() && wMissile != null)
                 {
@@ -308,15 +319,31 @@
                     posW = wMissile.EndPosition;
                 }
                 return validW && validR
-                           ? Math.Max(rShadow.DistanceToPlayer(), posW.DistanceToPlayer())
+                           ? Math.Max(RShadow.DistanceToPlayer(), posW.DistanceToPlayer())
                            : (WState == 0 && Variables.TickCount - lastW > 150
-                                  ? (validR ? Math.Max(rShadow.DistanceToPlayer(), W.Range) : W.Range)
-                                  : (validW ? posW.DistanceToPlayer() : (validR ? rShadow.DistanceToPlayer() : 0)));
+                                  ? (validR ? Math.Max(RShadow.DistanceToPlayer(), W.Range) : W.Range)
+                                  : (validW ? posW.DistanceToPlayer() : (validR ? RShadow.DistanceToPlayer() : 0)));
+            }
+        }
+
+        private static Obj_AI_Minion RShadow
+        {
+            get
+            {
+                return rShadow;
+            }
+            set
+            {
+                rShadow = value;
+                if (rShadow != null)
+                {
+                    isWaitAttackAfterR = true;
+                }
             }
         }
 
         private static bool RShadowCanQ
-            => rShadow.IsValid() && Variables.TickCount - rShadowT <= 7500 - Q.Delay * 1000 + 50;
+            => RShadow.IsValid() && Variables.TickCount - rShadowT <= 7500 - Q.Delay * 1000 + 50;
 
         private static int RState => R.IsReady() ? (IsROne ? 0 : 1) : (IsROne ? -1 : 2);
 
@@ -405,7 +432,7 @@
                 }
                 else if (RShadowCanQ)
                 {
-                    Q2.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
+                    Q2.UpdateSourcePosition(RShadow.ServerPosition, RShadow.ServerPosition);
                     predShadow = Q2.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
                     if (predShadow.Hitchance >= Q.MinHitChance)
                     {
@@ -445,7 +472,7 @@
 
         private static void CastW(Obj_AI_Hero target, SpellSlot slot, bool isRCombo = false)
         {
-            if (slot == SpellSlot.Unknown || Variables.TickCount - lastW <= 500 || wMissile != null)
+            if (slot == SpellSlot.Unknown || wMissile != null || Variables.TickCount - lastW <= 500)
             {
                 return;
             }
@@ -463,7 +490,7 @@
             var posCast = W.GetPrediction(target).UnitPosition;
             if (isRCombo)
             {
-                var posEnd = rShadow.ServerPosition;
+                var posEnd = RShadow.ServerPosition;
                 if (posCast.Distance(posEnd) > Q.Range - 50)
                 {
                     posEnd = Player.ServerPosition;
@@ -510,7 +537,7 @@
         private static void Combo()
         {
             var target = GetTarget;
-            if (target != null)
+            if (target != null && (!isWaitAttackAfterR || !target.InAutoAttackRange()))
             {
                 Swap(target);
                 var useR = MainMenu["Combo"]["R"].GetValue<MenuKeyBind>().Active
@@ -532,14 +559,14 @@
                     var slot = CanW(target);
                     if (slot != SpellSlot.Unknown)
                     {
-                        if (MainMenu["Combo"]["WAdv"].GetValue<MenuList>().Index > 0 && rShadow.IsValid() && useR
+                        if (MainMenu["Combo"]["WAdv"].GetValue<MenuList>().Index > 0 && RShadow.IsValid() && useR
                             && HaveR(target) && !IsKillByMark(target))
                         {
                             CastW(target, slot, true);
                             return;
                         }
                         if (MainMenu["Combo"]["WNormal"]
-                            && ((RState < 1 && canCast) || (rShadow.IsValid() && useR && !HaveR(target))))
+                            && ((RState < 1 && canCast) || (RShadow.IsValid() && useR && !HaveR(target))))
                         {
                             CastW(target, slot);
                             return;
@@ -555,7 +582,7 @@
                         return;
                     }
                 }
-                if (canCast || rShadow.IsValid())
+                if (canCast || RShadow.IsValid())
                 {
                     CastE();
                     CastQ(target);
@@ -673,7 +700,7 @@
         {
             var pos = E.GetPredPosition(target);
             return pos.DistanceToPlayer() < E.Range || (wShadow.IsValid() && wShadow.Distance(pos) < E.Range)
-                   || (rShadow.IsValid() && rShadow.Distance(pos) < E.Range)
+                   || (RShadow.IsValid() && RShadow.Distance(pos) < E.Range)
                    || (IsCastingW && wMissile.EndPosition.Distance(pos) < E.Range);
         }
 
@@ -716,7 +743,7 @@
                         }
                         if (RShadowCanQ)
                         {
-                            Q3.UpdateSourcePosition(rShadow.ServerPosition, rShadow.ServerPosition);
+                            Q3.UpdateSourcePosition(RShadow.ServerPosition, RShadow.ServerPosition);
                             CastQKill(Q3, target);
                         }
                     }
@@ -763,7 +790,7 @@
                     menu.Active ? Color.White : Color.Gray,
                     text);
             }
-            if (MainMenu["Draw"]["DMark"] && rShadow.IsValid())
+            if (MainMenu["Draw"]["DMark"] && RShadow.IsValid())
             {
                 var target = GameObjects.EnemyHeroes.FirstOrDefault(i => i.IsValidTarget() && IsKillByMark(i));
                 if (target != null)
@@ -778,9 +805,9 @@
                 var pos = Drawing.WorldToScreen(wShadow.Position);
                 Drawing.DrawText(pos.X - (float)Drawing.GetTextExtent("W").Width / 2, pos.Y, Color.BlueViolet, "W");
             }
-            if (MainMenu["Draw"]["RPos"] && rShadow.IsValid())
+            if (MainMenu["Draw"]["RPos"] && RShadow.IsValid())
             {
-                var pos = Drawing.WorldToScreen(rShadow.Position);
+                var pos = Drawing.WorldToScreen(RShadow.Position);
                 Drawing.DrawText(pos.X - (float)Drawing.GetTextExtent("R").Width / 2, pos.Y, Color.BlueViolet, "R");
             }
         }
@@ -826,7 +853,8 @@
 
         private static void OnUpdate(EventArgs args)
         {
-            if (Player.IsDead || MenuGUI.IsChatOpen || MenuGUI.IsShopOpen || Player.IsRecalling())
+            if (Player.IsDead || MenuGUI.IsChatOpen || MenuGUI.IsShopOpen || Player.IsRecalling()
+                || !Player.IsHPBarRendered)
             {
                 return;
             }
@@ -890,7 +918,7 @@
             else if (MainMenu["Combo"]["SwapGap"].GetValue<MenuList>().Index > 0 && !E.IsInRange(target) && !markCanKill)
             {
                 var wDist = WState == 1 && wShadow.IsValid() ? wShadow.Distance(target) : float.MaxValue;
-                var rDist = RState == 1 && rShadow.IsValid() ? rShadow.Distance(target) : float.MaxValue;
+                var rDist = RState == 1 && RShadow.IsValid() ? RShadow.Distance(target) : float.MaxValue;
                 var minDist = Math.Min(wDist, rDist);
                 if (minDist.Equals(float.MaxValue) || target.DistanceToPlayer() <= minDist)
                 {
@@ -967,7 +995,7 @@
         private static void SwapCountEnemy()
         {
             var wCount = WState == 1 && wShadow.IsValid() ? wShadow.CountEnemyHeroesInRange(400) : int.MaxValue;
-            var rCount = RState == 1 && rShadow.IsValid() ? rShadow.CountEnemyHeroesInRange(400) : int.MaxValue;
+            var rCount = RState == 1 && RShadow.IsValid() ? RShadow.CountEnemyHeroesInRange(400) : int.MaxValue;
             var minCount = Math.Min(rCount, wCount);
             if (minCount == int.MaxValue || Player.CountEnemyHeroesInRange(400) <= minCount)
             {

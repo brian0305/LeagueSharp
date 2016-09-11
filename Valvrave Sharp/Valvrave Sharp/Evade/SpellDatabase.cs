@@ -1944,7 +1944,7 @@ namespace Valvrave_Sharp.Evade
                         ChampionName = "Taric", SpellName = "TaricE", Slot = SpellSlot.E,
                         Type = SkillShotType.SkillshotLine, Delay = 1000, Range = 575, Radius = 140,
                         MissileSpeed = int.MaxValue, FixedRange = true, AddHitbox = true, DangerValue = 3,
-                        IsDangerous = true, MissileSpellName = "TaricE", CollisionObjects = CollisionableObjects.YasuoWall
+                        IsDangerous = true, MissileSpellName = "TaricE"
                     });
 
             #endregion Taric

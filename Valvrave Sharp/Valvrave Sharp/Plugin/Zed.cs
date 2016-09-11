@@ -53,7 +53,7 @@
             Q2 = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
             Q3 = new Spell(Q.Slot, Q.Range).SetSkillshot(Q.Delay, Q.Width, Q.Speed, true, Q.Type);
             W = new Spell(SpellSlot.W, 700).SetSkillshot(0, 0, 1750, false, SkillshotType.SkillshotLine);
-            E = new Spell(SpellSlot.E, 290).SetTargetted(0, float.MaxValue);
+            E = new Spell(SpellSlot.E, 290).SetSkillshot(0, 290, float.MaxValue, false, SkillshotType.SkillshotCircle);
             R = new Spell(SpellSlot.R, 625);
             Q.DamageType = W.DamageType = E.DamageType = R.DamageType = DamageType.Physical;
             Q.MinHitChance = HitChance.VeryHigh;
@@ -95,6 +95,16 @@
                 hybridMenu.Slider("AutoQMpA", "If Mp >=", 100, 0, 200);
                 hybridMenu.Separator("Auto E Settings (Champ/Shadow)");
                 hybridMenu.Bool("AutoE", "Auto", false);
+            }
+            var lcMenu = MainMenu.Add(new Menu("LaneClear", "Lane Clear"));
+            {
+                lcMenu.Bool("W", "Use W", false);
+                lcMenu.Separator("Q Settings");
+                lcMenu.Bool("Q", "Use Q");
+                lcMenu.Slider("QCountA", "If Hit >=", 2, 1, 5);
+                lcMenu.Separator("E Settings");
+                lcMenu.Bool("E", "Use E");
+                lcMenu.Slider("ECountA", "If Hit >=", 2, 1, 5);
             }
             var lhMenu = MainMenu.Add(new Menu("LastHit", "Last Hit"));
             {
@@ -402,13 +412,13 @@
             }
         }
 
-        private static void CastQ(Obj_AI_Hero target)
+        private static void CastQ(Obj_AI_Base target, bool isLaneClear = false)
         {
             if (!Q.IsReady())
             {
                 return;
             }
-            var pred = Q.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
+            var pred = Q.GetPrediction(target, !isLaneClear, -1, CollisionableObjects.YasuoWall);
             if (pred.Hitchance >= Q.MinHitChance)
             {
                 Q.Cast(pred.CastPosition);
@@ -419,25 +429,21 @@
                 if (WShadowCanQ)
                 {
                     Q2.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
-                    predShadow = Q2.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
+                    predShadow = Q2.GetPrediction(target, !isLaneClear, -1, CollisionableObjects.YasuoWall);
                 }
                 else if (IsCastingW)
                 {
                     Q2.UpdateSourcePosition(wMissile.EndPosition, wMissile.EndPosition);
-                    predShadow = Q2.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
+                    predShadow = Q2.GetPrediction(target, !isLaneClear, -1, CollisionableObjects.YasuoWall);
+                }
+                if ((predShadow == null || predShadow.Hitchance < Q.MinHitChance) && RShadowCanQ)
+                {
+                    Q2.UpdateSourcePosition(RShadow.ServerPosition, RShadow.ServerPosition);
+                    predShadow = Q2.GetPrediction(target, !isLaneClear, -1, CollisionableObjects.YasuoWall);
                 }
                 if (predShadow != null && predShadow.Hitchance >= Q.MinHitChance)
                 {
                     Q.Cast(predShadow.CastPosition);
-                }
-                else if (RShadowCanQ)
-                {
-                    Q2.UpdateSourcePosition(RShadow.ServerPosition, RShadow.ServerPosition);
-                    predShadow = Q2.GetPrediction(target, true, -1, CollisionableObjects.YasuoWall);
-                    if (predShadow.Hitchance >= Q.MinHitChance)
-                    {
-                        Q.Cast(predShadow.CastPosition);
-                    }
                 }
             }
         }
@@ -454,37 +460,28 @@
                 false,
                 -1,
                 CollisionableObjects.Heroes | CollisionableObjects.Minions);
-            if (pred2.Hitchance == HitChance.Collision)
-            {
-                switch (target.Type)
-                {
-                    case GameObjectType.obj_AI_Hero:
-                        return target.Health + target.PhysicalShield <= Q.GetDamage(target, DamageStage.SecondForm)
-                               && Q.Cast(pred1.CastPosition);
-                    case GameObjectType.obj_AI_Minion:
-                        return Q.CanLastHit(target, Q.GetDamage(target, DamageStage.SecondForm))
-                               && Q.Cast(pred1.CastPosition);
-                }
-                return false;
-            }
-            return pred2.Hitchance >= Q.MinHitChance && Q.Cast(pred2.CastPosition);
+            return pred2.Hitchance == HitChance.Collision
+                       ? ((target.Type == GameObjectType.obj_AI_Hero
+                           && target.Health + target.PhysicalShield <= Q.GetDamage(target, DamageStage.SecondForm))
+                          || (target.Type == GameObjectType.obj_AI_Minion
+                              && Q.CanLastHit(target, Q.GetDamage(target, DamageStage.SecondForm))))
+                         && Q.Cast(pred1.CastPosition)
+                       : pred2.Hitchance >= Q.MinHitChance && Q.Cast(pred2.CastPosition);
         }
 
         private static void CastW(Obj_AI_Hero target, SpellSlot slot, bool isRCombo = false)
         {
-            if (slot == SpellSlot.Unknown || wMissile != null || Variables.TickCount - lastW <= 500)
+            if (WState != 0 || slot == SpellSlot.Unknown || wMissile != null || Variables.TickCount - lastW <= 500)
             {
                 return;
             }
             switch (slot)
             {
                 case SpellSlot.Q:
-                    W.Width = Q.Width + 30;
-                    W.Delay = 0;
+                    W.Width = Q.Width * 2;
                     break;
                 case SpellSlot.E:
-                    W.Width = E.Width / 2;
-                    W.Delay = E.Delay;
+                    W.Width = E.Width;
                     break;
             }
             var posCast = W.GetPrediction(target).UnitPosition;
@@ -532,6 +529,52 @@
                 posCast = Player.ServerPosition.Extend(posCast, 600);
             }
             W.Cast(posCast);
+        }
+
+        private static void CastWLaneClear()
+        {
+            if (WState != 0 || wMissile != null || Variables.TickCount - lastW <= 500)
+            {
+                return;
+            }
+            var minionW =
+                Common.ListMinions()
+                    .Where(i => i.IsValidTarget(E.Range + W.Range))
+                    .MaxOrDefault(
+                        i =>
+                        Common.ListMinions()
+                            .Count(
+                                a =>
+                                a.IsValidTarget(
+                                    E.Range,
+                                    true,
+                                    Player.ServerPosition.Extend(i.ServerPosition, E.Range * 1.5f))));
+            if (minionW == null)
+            {
+                return;
+            }
+            var posW = Player.ServerPosition.Extend(minionW.ServerPosition, E.Range * 1.5f);
+            var canW = MainMenu["LaneClear"]["E"] && E.IsReady()
+                       && Player.Mana >= W.Instance.ManaCost + E.Instance.ManaCost
+                       && Common.ListMinions().Count(i => i.IsValidTarget(E.Range, true, posW))
+                       >= MainMenu["LaneClear"]["ECountA"];
+            if (!canW && MainMenu["LaneClear"]["Q"] && Q.IsReady()
+                && Player.Mana >= W.Instance.ManaCost + Q.Instance.ManaCost
+                && Common.ListMinions()
+                       .Where(i => i.IsValidTarget(Q.Range, true, posW))
+                       .Select(
+                           i =>
+                           Q.GetCollision(posW.ToVector2(), new List<Vector2> { i.ServerPosition.ToVector2() }, W.Delay))
+                       .Select(i => i.Count)
+                       .Concat(new[] { 0 })
+                       .Max() >= MainMenu["LaneClear"]["QCountA"])
+            {
+                canW = true;
+            }
+            if (canW)
+            {
+                W.Cast(posW);
+            }
         }
 
         private static void Combo()
@@ -696,7 +739,7 @@
             CastQ(target);
         }
 
-        private static bool IsInRangeE(Obj_AI_Hero target)
+        private static bool IsInRangeE(Obj_AI_Base target)
         {
             var pos = E.GetPredPosition(target);
             return pos.DistanceToPlayer() < E.Range || (wShadow.IsValid() && wShadow.Distance(pos) < E.Range)
@@ -752,6 +795,78 @@
             if (MainMenu["KillSteal"]["E"] && E.IsReady())
             {
                 CastE(true);
+            }
+        }
+
+        private static void LaneClear()
+        {
+            if (MainMenu["LaneClear"]["W"])
+            {
+                CastWLaneClear();
+            }
+            if (wMissile != null)
+            {
+                return;
+            }
+            if (MainMenu["LaneClear"]["E"] && E.IsReady())
+            {
+                var minions =
+                    Common.ListMinions().Where(i => i.IsValidTarget(E.Range + RangeTarget) && IsInRangeE(i)).ToList();
+                if ((minions.Count >= MainMenu["LaneClear"]["ECountA"]
+                     || minions.Any(
+                         i =>
+                         i.Team == GameObjectTeam.Neutral
+                             ? i.GetJungleType() == JungleType.Large || i.GetJungleType() == JungleType.Legendary
+                             : i.GetMinionType().HasFlag(MinionTypes.Super)
+                               || i.GetMinionType().HasFlag(MinionTypes.Siege))) && E.Cast())
+                {
+                    return;
+                }
+            }
+            if (MainMenu["LaneClear"]["Q"] && Q.IsReady())
+            {
+                var minions = Common.ListMinions().Where(i => i.IsValidTarget(Q.Range + RangeTarget)).ToList();
+                if (minions.Count == 0)
+                {
+                    return;
+                }
+                var minHit = MainMenu["LaneClear"]["QCountA"].GetValue<MenuSlider>().Value;
+                var pos = Q.GetLineFarmLocation(minions);
+                if (pos.MinionsHit >= minHit)
+                {
+                    Q.Cast(pos.Position);
+                }
+                else
+                {
+                    var posShadow = new FarmLocation();
+                    if (WShadowCanQ)
+                    {
+                        Q2.UpdateSourcePosition(wShadow.ServerPosition, wShadow.ServerPosition);
+                        posShadow = Q2.GetLineFarmLocation(minions);
+                    }
+                    if ((!posShadow.Position.IsValid() || posShadow.MinionsHit < minHit) && RShadowCanQ)
+                    {
+                        Q2.UpdateSourcePosition(RShadow.ServerPosition, RShadow.ServerPosition);
+                        posShadow = Q2.GetLineFarmLocation(minions);
+                    }
+                    if (posShadow.Position.IsValid() && posShadow.MinionsHit >= minHit)
+                    {
+                        Q.Cast(posShadow.Position);
+                    }
+                    else
+                    {
+                        foreach (var target in
+                            minions.Where(
+                                i =>
+                                i.Team == GameObjectTeam.Neutral
+                                    ? i.GetJungleType() == JungleType.Large || i.GetJungleType() == JungleType.Legendary
+                                    : i.GetMinionType().HasFlag(MinionTypes.Super)
+                                      || i.GetMinionType().HasFlag(MinionTypes.Siege)))
+                        {
+                            CastQ(target, true);
+                        }
+                    }
+                }
             }
         }
 
@@ -866,6 +981,9 @@
                     break;
                 case OrbwalkingMode.Hybrid:
                     Hybrid();
+                    break;
+                case OrbwalkingMode.LaneClear:
+                    LaneClear();
                     break;
                 case OrbwalkingMode.LastHit:
                     LastHit();

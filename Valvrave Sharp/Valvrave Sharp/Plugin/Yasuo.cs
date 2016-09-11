@@ -30,7 +30,7 @@
     {
         #region Constants
 
-        private const float QDelay = 0.39f, Q2Delay = 0.35f, QDelays = 0.22f, Q2Delays = 0.315f;
+        private const float QDelay = 0.39f, Q2Delay = 0.35f, QDelays = 0.225f, Q2Delays = 0.315f;
 
         private const int RWidth = 400;
 
@@ -60,10 +60,9 @@
         {
             Q = new Spell(SpellSlot.Q, 505).SetSkillshot(QDelay, 20, float.MaxValue, false, SkillshotType.SkillshotLine);
             Q2 = new Spell(Q.Slot, 1100).SetSkillshot(Q2Delay, 90, 1200, true, Q.Type);
-            Q3 = new Spell(Q.Slot, 230).SetSkillshot(0, 230, float.MaxValue, false, SkillshotType.SkillshotCircle);
+            Q3 = new Spell(Q.Slot, 220).SetSkillshot(0, 220, float.MaxValue, false, SkillshotType.SkillshotCircle);
             W = new Spell(SpellSlot.W, 400).SetTargetted(0.25f, float.MaxValue);
             E = new Spell(SpellSlot.E, 475).SetTargetted(0, 1200);
-            E2 = new Spell(E.Slot, E.Range).SetTargetted(0, E.Speed);
             R = new Spell(SpellSlot.R, 1200);
             Q.DamageType = Q2.DamageType = R.DamageType = DamageType.Physical;
             E.DamageType = DamageType.Magical;
@@ -168,7 +167,7 @@
                     {
                         isDash = false;
                         DelayAction.Add(
-                            50,
+                            30,
                             () =>
                                 {
                                     if (!isDash)
@@ -179,7 +178,7 @@
                     }
                     Q.Delay = GetQDelay(false);
                     Q2.Delay = GetQDelay(true);
-                    E.Speed = E2.Speed = 1200 + (Player.MoveSpeed - 345);
+                    E.Speed = 1200 + (Player.MoveSpeed - 345);
                 };
             Variables.Orbwalker.OnAction += (sender, args) =>
                 {
@@ -295,7 +294,8 @@
 
         private static bool CanCastCombo
             =>
-                (Variables.Orbwalker.GetTarget() == null || !Variables.Orbwalker.CanAttack)
+                !Player.Spellbook.IsAutoAttacking && !Player.Spellbook.IsCastingSpell
+                && (Variables.Orbwalker.GetTarget() == null || !Variables.Orbwalker.CanAttack)
                 && Variables.Orbwalker.CanMove;
 
         private static bool CanCastQCir => posDash.IsValid() && posDash.DistanceToPlayer() < 150;
@@ -355,7 +355,9 @@
                     var pos =
                         (Player.ServerPosition.ToVector2()
                          + FlashRange * new Vector2(1, 0).Rotated((float)(Math.PI * i / 180.0))).ToVector3();
-                    var hits = Variables.TargetSelector.GetTargets(Q3.Width, Q.DamageType, true, pos).Count;
+                    var hits =
+                        Variables.TargetSelector.GetTargets(Q3.Width, Q.DamageType, true, pos)
+                            .Count(a => Q3.WillHit(Q3.GetPredPosition(a), pos));
                     if (hits > bestHit)
                     {
                         bestHit = hits;
@@ -364,7 +366,7 @@
                 }
                 if (bestPos.IsValid() && Q3.Cast(bestPos))
                 {
-                    DelayAction.Add(5, () => Player.Spellbook.CastSpell(Flash, bestPos));
+                    DelayAction.Add(10, () => Player.Spellbook.CastSpell(Flash, bestPos));
                 }
             }
             if (!E.IsReady())
@@ -416,8 +418,8 @@
                            ? Q3.WillHit(pos, posAfterE)
                            : (isAirBlade
                                   ? posAfterE.Distance(pos) < R.Range
-                                  : pos.ProjectOn(Player.ServerPosition, posAfterE).IsOnSegment
-                                    || posAfterE.Distance(pos) < pos.DistanceToPlayer()))
+                                  : posAfterE.Distance(pos) <= pos.DistanceToPlayer()
+                                    || pos.ProjectOn(Player.ServerPosition, posAfterE).IsOnSegment))
                    && Evade.IsSafePoint(posAfterE.ToVector2()).IsSafe;
         }
 
@@ -455,7 +457,7 @@
                 var target = Variables.TargetSelector.GetTarget(E.Range, DamageType.Physical);
                 if (target != null && Math.Abs(target.GetProjectileSpeed() - float.MaxValue) > float.Epsilon
                     && (target.HealthPercent > Player.HealthPercent
-                            ? Player.CountAllyHeroesInRange(500) < target.CountEnemyHeroesInRange(700)
+                            ? Player.CountAllyHeroesInRange(500) <= target.CountEnemyHeroesInRange(700)
                             : Player.HealthPercent <= 30))
                 {
                     var posPred = W.GetPredPosition(target, true);
@@ -499,7 +501,7 @@
                     var target = GetRTarget(true);
                     if (target != null && Q3.Cast(target.ServerPosition))
                     {
-                        DelayAction.Add(5, () => R.CastOnUnit(target));
+                        DelayAction.Add(10, () => R.CastOnUnit(target));
                     }
                 }
                 if (IsDashing)
@@ -517,7 +519,7 @@
                         }
                     }
                 }
-                else if (targetE == null && CanCastCombo && (!haveQ3 ? Q.CastingBestTarget(true).IsCasted() : CastQ3()))
+                else if (targetE == null && (!haveQ3 ? Q.CastingBestTarget(true).IsCasted() : CastQ3()))
                 {
                     return;
                 }
@@ -566,10 +568,9 @@
                 var target = GetRTarget(true);
                 if (target != null)
                 {
-                    return E.IsInRange(target) && CanDash(target, true, underTower, new Vector3(), true)
-                           && !HaveE(target)
+                    return E.IsInRange(target) && CanDash(target, true, underTower) && !HaveE(target)
                                ? target
-                               : (GetBestDashObjToUnit(target, true, underTower, true)
+                               : (GetBestDashObjToUnit(target, true, underTower)
                                   ?? GetBestDashObjToUnit(target, false, underTower, true));
                 }
             }
@@ -592,35 +593,39 @@
                 }
                 target = E.GetTarget();
                 if (target != null
-                    && ((cDash > 0 && CanDash(target, false, underTower) && Player.IsFacing(target))
+                    && ((cDash == 2 && CanDash(target, false, underTower))
                         || (haveQ3 && Q.IsReady(50) && CanDash(target, true, underTower))) && !HaveE(target))
                 {
                     return target;
                 }
-                target = Q.GetTarget(100) ?? Q2.GetTarget();
-                if (target != null && (!Player.Spellbook.IsAutoAttacking || Player.HealthPercent < 40))
+                target = Q.GetTarget(100) ?? Q2.GetTarget(100);
+                if (target != null)
                 {
                     var nearObj = GetBestDashObjToUnit(target, false, underTower);
-                    var canDash = cDash == 0 && nearObj != null
-                                  && target.Distance(GetPosAfterDash(nearObj)) < E.Range + 100 && !HaveE(target);
-                    if (Q.IsReady(50))
+                    var canDash = cDash < 2 && nearObj != null
+                                  && target.DistanceToPlayer() > target.GetRealAutoAttackRange() * 0.4
+                                  && target.Distance(GetPosAfterDash(nearObj)) < E.Range && !HaveE(target);
+                    if (!canDash && Q.IsReady(50))
                     {
-                        var nearObjQ3 = GetBestDashObjToUnit(target, true, underTower);
-                        if (nearObjQ3 != null)
+                        var nearObjQCir = GetBestDashObjToUnit(target, true, underTower);
+                        if (nearObjQCir != null && GetPosAfterDash(nearObjQCir).CountEnemyHeroesInRange(Q3.Width) > 1)
                         {
-                            nearObj = nearObjQ3;
+                            nearObj = nearObjQCir;
                             canDash = true;
                         }
                     }
-                    if (!canDash && target.DistanceToPlayer() > target.GetRealAutoAttackRange() * 0.7
-                        && (nearObj == null || Player.IsFacing(nearObj)))
+                    if (!canDash
+                        && (nearObj == null
+                            || (Player.IsFacing(nearObj)
+                                && (target.DistanceToPlayer() > target.GetRealAutoAttackRange() * 0.5
+                                    || Player.CountAllyHeroesInRange(500) <= target.CountEnemyHeroesInRange(500)))))
                     {
                         canDash = true;
                     }
                     if (canDash)
                     {
                         if (nearObj == null && E.IsInRange(target) && CanDash(target, false, underTower)
-                            && !HaveE(target))
+                            && Player.IsFacing(target) && !HaveE(target))
                         {
                             nearObj = target;
                         }
@@ -634,8 +639,8 @@
             else
             {
                 var target = Variables.Orbwalker.GetTarget();
-                if (target == null || Player.Distance(target) > target.GetRealAutoAttackRange() * 0.7
-                    || Player.Distance(Game.CursorPos) > E.Range * 1.5)
+                if (target == null || Player.Distance(target) > target.GetRealAutoAttackRange() * 0.6
+                    || Game.CursorPos.DistanceToPlayer() > 275)
                 {
                     var obj = GetBestDashObjToMouse(underTower);
                     if (obj != null)
@@ -653,7 +658,7 @@
             return
                 Common.ListEnemies()
                     .Where(i => i.IsValidTarget(E.Range) && CanDash(i, false, underTower, pos) && Player.IsFacing(i))
-                    .OrderBy(i => GetPosAfterDash(i).Distance(pos))
+                    .OrderBy(i => i.DistanceToPlayer())
                     .FirstOrDefault(i => !HaveE(i));
         }
 
@@ -670,7 +675,7 @@
                         i =>
                         i.IsValidTarget(E.Range) && !i.Compare(target)
                         && CanDash(i, inQCir, underTower, pos, isAirBlade))
-                    .OrderBy(i => GetPosAfterDash(i).Distance(pos))
+                    .OrderBy(i => i.DistanceToPlayer())
                     .FirstOrDefault(i => !HaveE(i));
         }
 
@@ -681,7 +686,7 @@
 
         private static Vector3 GetPosAfterDash(Obj_AI_Base target)
         {
-            return Player.ServerPosition.Extend(target.ServerPosition, E.Range);
+            return Player.ServerPosition.Extend(E.GetPredPosition(target), E.Range);
         }
 
         private static float GetQDelay(bool isQ3)
@@ -904,7 +909,7 @@
                         var sub = new List<Obj_AI_Minion>();
                         foreach (var mob in minions)
                         {
-                            if ((E2.CanLastHit(mob, GetQDmg(mob), GetEDmg(mob)) || mob.Team == GameObjectTeam.Neutral)
+                            if ((E.CanLastHit(mob, GetQDmg(mob), GetEDmg(mob)) || mob.Team == GameObjectTeam.Neutral)
                                 && mob.Distance(GetPosAfterDash(mob)) < Q3.Width)
                             {
                                 sub.Add(mob);

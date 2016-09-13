@@ -243,7 +243,12 @@
 
         private static void OnAction(object sender, OrbwalkingActionArgs args)
         {
-            if (!E.IsReady() || args.Type != OrbwalkingType.AfterAttack || !(args.Target is Obj_AI_Hero))
+            if (!E.IsReady() || args.Type != OrbwalkingType.AfterAttack)
+            {
+                return;
+            }
+            var target = args.Target as Obj_AI_Hero;
+            if (target == null || !target.IsValid)
             {
                 return;
             }

@@ -30,7 +30,7 @@
     {
         #region Constants
 
-        private const float QDelay = 0.39f, Q2Delay = 0.35f, QDelays = 0.225f, Q2Delays = 0.315f;
+        private const float QDelay = 0.4f, Q2Delay = 0.35f, QDelays = 0.25f, Q2Delays = 0.33f;
 
         private const int RWidth = 400;
 
@@ -159,7 +159,7 @@
                         if (isDash)
                         {
                             isDash = false;
-                            posDash = new Vector3();
+                            posDash = Vector3.Zero;
                         }
                         return;
                     }
@@ -172,7 +172,7 @@
                                 {
                                     if (!isDash)
                                     {
-                                        posDash = new Vector3();
+                                        posDash = Vector3.Zero;
                                     }
                                 });
                     }
@@ -183,8 +183,12 @@
             Variables.Orbwalker.OnAction += (sender, args) =>
                 {
                     if (args.Type != OrbwalkingType.AfterAttack
-                        || Variables.Orbwalker.ActiveMode != OrbwalkingMode.LaneClear || !(args.Target is Obj_AI_Turret)
-                        || !Q.IsReady() || haveQ3)
+                        || Variables.Orbwalker.ActiveMode != OrbwalkingMode.LaneClear || !Q.IsReady() || haveQ3)
+                    {
+                        return;
+                    }
+                    var target = args.Target as Obj_AI_Turret;
+                    if (target == null || !target.IsValid)
                     {
                         return;
                     }
@@ -294,11 +298,11 @@
 
         private static bool CanCastCombo
             =>
-                !Player.Spellbook.IsAutoAttacking && !Player.Spellbook.IsCastingSpell
+                !Player.Spellbook.IsAutoAttacking
                 && (Variables.Orbwalker.GetTarget() == null || !Variables.Orbwalker.CanAttack)
                 && Variables.Orbwalker.CanMove;
 
-        private static bool CanCastQCir => posDash.IsValid() && posDash.DistanceToPlayer() < 150;
+        private static bool CanCastQCir => posDash.IsValid() && posDash.Distance(Player.Position) < 150;
 
         private static List<Obj_AI_Base> GetQCirObj
             =>
@@ -349,11 +353,11 @@
             if (Player.IsDashing())
             {
                 var bestHit = 0;
-                var bestPos = new Vector3();
+                var bestPos = Vector3.Zero;
                 for (var i = 0; i < 360; i += 10)
                 {
                     var pos =
-                        (Player.ServerPosition.ToVector2()
+                        (Player.Position.ToVector2()
                          + FlashRange * new Vector2(1, 0).Rotated((float)(Math.PI * i / 180.0))).ToVector3();
                     var hits =
                         Variables.TargetSelector.GetTargets(Q3.Width, Q.DamageType, true, pos)
@@ -406,7 +410,8 @@
             bool inQCir = false,
             bool underTower = true,
             Vector3 pos = new Vector3(),
-            bool isAirBlade = false)
+            bool isAirBlade = false,
+            bool checkSafe = true)
         {
             if (!pos.IsValid())
             {
@@ -416,11 +421,9 @@
             return (underTower || !posAfterE.IsUnderEnemyTurret())
                    && (inQCir
                            ? Q3.WillHit(pos, posAfterE)
-                           : (isAirBlade
-                                  ? posAfterE.Distance(pos) < R.Range
-                                  : posAfterE.Distance(pos) <= pos.DistanceToPlayer()
-                                    || pos.ProjectOn(Player.ServerPosition, posAfterE).IsOnSegment))
-                   && Evade.IsSafePoint(posAfterE.ToVector2()).IsSafe;
+                           : posAfterE.Distance(pos)
+                             < (isAirBlade ? R.Range : 0.95 * pos.DistanceToPlayer() - Player.BoundingRadius))
+                   && (!checkSafe || Evade.IsSafePoint(posAfterE.ToVector2()).IsSafe);
         }
 
         private static bool CastQ3()
@@ -430,7 +433,7 @@
             {
                 return false;
             }
-            var posCast = new Vector3();
+            var posCast = Vector3.Zero;
             foreach (var pred in
                 targets.Select(i => Q2.GetPrediction(i, true, -1, CollisionableObjects.YasuoWall))
                     .Where(
@@ -568,7 +571,8 @@
                 var target = GetRTarget(true);
                 if (target != null)
                 {
-                    return E.IsInRange(target) && CanDash(target, true, underTower) && !HaveE(target)
+                    return E.IsInRange(target) && CanDash(target, true, underTower, Vector3.Zero, false, false)
+                           && !HaveE(target)
                                ? target
                                : (GetBestDashObjToUnit(target, true, underTower)
                                   ?? GetBestDashObjToUnit(target, false, underTower, true));
@@ -594,7 +598,8 @@
                 target = E.GetTarget();
                 if (target != null
                     && ((cDash == 2 && CanDash(target, false, underTower))
-                        || (haveQ3 && Q.IsReady(50) && CanDash(target, true, underTower))) && !HaveE(target))
+                        || (haveQ3 && Q.IsReady(50) && CanDash(target, true, underTower, Vector3.Zero, false, false)))
+                    && !HaveE(target))
                 {
                     return target;
                 }
@@ -615,10 +620,8 @@
                         }
                     }
                     if (!canDash
-                        && (nearObj == null
-                            || (Player.IsFacing(nearObj)
-                                && (target.DistanceToPlayer() > target.GetRealAutoAttackRange() * 0.5
-                                    || Player.CountAllyHeroesInRange(500) <= target.CountEnemyHeroesInRange(500)))))
+                        && (nearObj == null || target.DistanceToPlayer() > target.GetRealAutoAttackRange() * 0.6
+                            || Player.CountAllyHeroesInRange(500) <= target.CountEnemyHeroesInRange(500)))
                     {
                         canDash = true;
                     }
@@ -640,7 +643,7 @@
             {
                 var target = Variables.Orbwalker.GetTarget();
                 if (target == null || Player.Distance(target) > target.GetRealAutoAttackRange() * 0.6
-                    || Game.CursorPos.DistanceToPlayer() > 275)
+                    || Game.CursorPos.DistanceToPlayer() > 250)
                 {
                     var obj = GetBestDashObjToMouse(underTower);
                     if (obj != null)
@@ -657,8 +660,8 @@
             var pos = Game.CursorPos;
             return
                 Common.ListEnemies()
-                    .Where(i => i.IsValidTarget(E.Range) && CanDash(i, false, underTower, pos) && Player.IsFacing(i))
-                    .OrderBy(i => i.DistanceToPlayer())
+                    .Where(i => i.IsValidTarget(E.Range) && CanDash(i, false, underTower, pos, false, false))
+                    .OrderBy(i => GetPosAfterDash(i).Distance(pos))
                     .FirstOrDefault(i => !HaveE(i));
         }
 
@@ -675,7 +678,7 @@
                         i =>
                         i.IsValidTarget(E.Range) && !i.Compare(target)
                         && CanDash(i, inQCir, underTower, pos, isAirBlade))
-                    .OrderBy(i => i.DistanceToPlayer())
+                    .OrderBy(i => GetPosAfterDash(i).Distance(pos))
                     .FirstOrDefault(i => !HaveE(i));
         }
 
@@ -686,7 +689,9 @@
 
         private static Vector3 GetPosAfterDash(Obj_AI_Base target)
         {
-            return Player.ServerPosition.Extend(E.GetPredPosition(target), E.Range);
+            var from = Player.ServerPosition.ToVector2();
+            var to = E.GetPredPosition(target, true).ToVector2();
+            return from.Extend(to, from.Distance(to) < 410 ? E.Range : from.Distance(to) + 65).ToVector3();
         }
 
         private static float GetQDelay(bool isQ3)

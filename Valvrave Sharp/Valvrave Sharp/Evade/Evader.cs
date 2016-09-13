@@ -169,7 +169,7 @@ namespace Valvrave_Sharp.Evade
                     }
                 }
             }
-            return result.Count > 0 ? result.MinOrDefault(i => i.Distance(Game.CursorPos)).ToVector3() : new Vector3();
+            return result.Count > 0 ? result.MinOrDefault(i => i.Distance(Game.CursorPos)).ToVector3() : Vector3.Zero;
         }
 
         internal static Obj_AI_Base GetEvadeTarget(

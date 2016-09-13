@@ -210,7 +210,7 @@
             {
                 return;
             }
-            var startPos = new Vector2();
+            var startPos = Vector2.Zero;
             if (spellData.FromObject != "")
             {
                 GameObjects.EnemyMinions.Where(i => i.CharData.BaseSkinName == spellData.FromObject)

@@ -230,7 +230,7 @@
                     }
                     if (args.SData.Name == "SummonerFlash" && posBubbaKushFlash.IsValid())
                     {
-                        posBubbaKushFlash = new Vector3();
+                        posBubbaKushFlash = Vector3.Zero;
                     }
                 };
         }
@@ -284,46 +284,46 @@
             }
             var isKill = MainMenu["BubbaKush"]["RKill"].GetValue<MenuBool>().Value;
             var minHit = MainMenu["BubbaKush"]["RCountA"].GetValue<MenuSlider>().Value;
-            var multi = new Dictionary<string, Tuple<Obj_AI_Hero, int, Vector3>>
-                            {
-                                { "N", GetMultiHit(isKill, minHit, 0) },
-                                {
-                                    "F",
-                                    MainMenu["BubbaKush"]["RMode"].GetValue<MenuList>().Index != 1 && Common.CanFlash
-                                        ? GetMultiHit(isKill, minHit, 1)
-                                        : new Tuple<Obj_AI_Hero, int, Vector3>(null, 0, new Vector3())
-                                },
-                                {
-                                    "W",
-                                    MainMenu["BubbaKush"]["RMode"].GetValue<MenuList>().Index > 0 && WardManager.CanWardJump
-                                        ? GetMultiHit(isKill, minHit, 2)
-                                        : new Tuple<Obj_AI_Hero, int, Vector3>(null, 0, new Vector3())
-                                }
-                            };
-            foreach (var mul in
-                multi.Where(i => i.Value.Item1 != null && i.Value.Item2 > 0 && i.Value.Item3.IsValid())
+            foreach (var multi in
+                new Dictionary<string, Tuple<Obj_AI_Hero, int, Vector3>>
+                    {
+                        { "N", GetMultiHit(isKill, minHit, 0) },
+                        {
+                            "F",
+                            MainMenu["BubbaKush"]["RMode"].GetValue<MenuList>().Index != 1 && Common.CanFlash
+                                ? GetMultiHit(isKill, minHit, 1)
+                                : new Tuple<Obj_AI_Hero, int, Vector3>(null, 0, Vector3.Zero)
+                        },
+                        {
+                            "W",
+                            MainMenu["BubbaKush"]["RMode"].GetValue<MenuList>().Index > 0 && WardManager.CanWardJump
+                                ? GetMultiHit(isKill, minHit, 2)
+                                : new Tuple<Obj_AI_Hero, int, Vector3>(null, 0, Vector3.Zero)
+                        }
+                    }.Where(
+                        i => i.Value.Item1 != null && i.Value.Item2 > 0 && i.Value.Item3.IsValid())
                     .OrderByDescending(i => i.Value.Item2))
             {
-                if (mul.Key == "N")
+                if (multi.Key == "N")
                 {
-                    R.CastOnUnit(mul.Value.Item1);
+                    R.CastOnUnit(multi.Value.Item1);
                     return;
                 }
-                posBubbaKushFlash = posBubbaKushJump = new Vector3();
+                posBubbaKushFlash = posBubbaKushJump = Vector3.Zero;
                 Variables.TargetSelector.SetTarget(null);
-                if (mul.Key == "W" && WardManager.CanWardJump)
+                if (multi.Key == "W" && WardManager.CanWardJump)
                 {
-                    posBubbaKushJump = mul.Value.Item3;
+                    posBubbaKushJump = multi.Value.Item3;
                     lastBubbaKush = Variables.TickCount;
-                    Variables.TargetSelector.SetTarget(mul.Value.Item1);
+                    Variables.TargetSelector.SetTarget(multi.Value.Item1);
                     WardManager.Place(posBubbaKushJump);
                     return;
                 }
-                if (mul.Key == "F" && Common.CanFlash && R.CastOnUnit(mul.Value.Item1))
+                if (multi.Key == "F" && Common.CanFlash && R.CastOnUnit(multi.Value.Item1))
                 {
-                    posBubbaKushFlash = mul.Value.Item3;
+                    posBubbaKushFlash = multi.Value.Item3;
                     lastBubbaKush = Variables.TickCount;
-                    Variables.TargetSelector.SetTarget(mul.Value.Item1);
+                    Variables.TargetSelector.SetTarget(multi.Value.Item1);
                 }
             }
         }
@@ -430,7 +430,7 @@
             {
                 return;
             }
-            var pos = new Vector3();
+            var pos = Vector3.Zero;
             if (MainMenu["RFlash"].GetValue<MenuKeyBind>().Active)
             {
                 pos = Game.CursorPos;
@@ -613,7 +613,7 @@
         {
             var bestHit = 0;
             Obj_AI_Hero bestTarget = null;
-            var bestPos = new Vector3();
+            var bestPos = Vector3.Zero;
             var targetKicks =
                 Variables.TargetSelector.GetTargets(R.Range + (mode == 2 ? 500 : 0), R.DamageType)
                     .Where(
@@ -634,7 +634,7 @@
                         i => i.IsValidTarget(R2.Range + R2.Width / 2, true, R2.From) && !i.Compare(targetKick))
                         .OrderByDescending(i => new Priority().GetDefaultPriority(i))
                         .ToList();
-                var posEnd = new Vector3();
+                var posEnd = Vector3.Zero;
                 if (mode == 0)
                 {
                     posEnd = R2.From.Extend(Player.ServerPosition, -R2.Range);
@@ -652,7 +652,7 @@
                     {
                         var list = new List<Obj_AI_Hero>();
                         var pred = R2.GetPrediction(targetHit);
-                        var pos = new Vector3();
+                        var pos = Vector3.Zero;
                         if (pred.Hitchance >= HitChance.High)
                         {
                             pos = R2.From.Extend(pred.UnitPosition, R2.Range);
@@ -1393,7 +1393,7 @@
 
             private static void CleanData()
             {
-                lastEndPos = lastFlashPos = new Vector3();
+                lastEndPos = lastFlashPos = Vector3.Zero;
                 lastInsecTime = 0;
                 IsWardFlash = false;
                 Variables.TargetSelector.SetTarget(null);
@@ -1507,7 +1507,7 @@
             {
                 if (!useFlash ? !WardManager.CanWardJump : !MainMenu["Insec"]["Flash"] || !Common.CanFlash)
                 {
-                    return new Tuple<Vector3, bool>(new Vector3(), false);
+                    return new Tuple<Vector3, bool>(Vector3.Zero, false);
                 }
                 var posEnd = GetPositionKickTo(target);
                 var posPlayer = Player.ServerPosition;
@@ -1526,7 +1526,7 @@
                     var flashMode = MainMenu["Insec"]["FlashMode"].GetValue<MenuList>().Index;
                     if (flashMode != 1 && posTarget.Distance(posPlayer) < R.Range)
                     {
-                        return new Tuple<Vector3, bool>(new Vector3(), true);
+                        return new Tuple<Vector3, bool>(Vector3.Zero, true);
                     }
                     if (flashMode != 0)
                     {
@@ -1541,7 +1541,7 @@
                         }
                     }
                 }
-                return new Tuple<Vector3, bool>(new Vector3(), false);
+                return new Tuple<Vector3, bool>(Vector3.Zero, false);
             }
 
             private static Vector3 GetPositionAfterKick(Obj_AI_Hero target)
@@ -1601,7 +1601,7 @@
                     {
                         if (lastPlacePos.IsValid() && Variables.TickCount - lastPlaceTime > 1500)
                         {
-                            lastPlacePos = new Vector3();
+                            lastPlacePos = Vector3.Zero;
                         }
                         if (Player.IsDead)
                         {
@@ -1629,7 +1629,7 @@
                             Insec.LastJumpTme = Variables.TickCount;
                         }
                         Insec.IsWardFlash = false;
-                        lastPlacePos = new Vector3();
+                        lastPlacePos = Vector3.Zero;
                     };
                 GameObjectNotifier<Obj_AI_Minion>.OnCreate += (sender, minion) =>
                     {

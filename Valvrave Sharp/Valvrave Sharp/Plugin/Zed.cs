@@ -322,7 +322,7 @@
             {
                 var validW = wShadow.IsValid();
                 var validR = RShadow.IsValid();
-                var posW = validW ? wShadow.ServerPosition : new Vector3();
+                var posW = validW ? wShadow.ServerPosition : Vector3.Zero;
                 if (!posW.IsValid() && wMissile != null)
                 {
                     validW = true;

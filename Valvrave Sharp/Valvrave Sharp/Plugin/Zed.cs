@@ -135,6 +135,7 @@
             }
             MainMenu.KeyBind("FleeW", "Use W To Flee", Keys.C);
 
+            Variables.Orbwalker.OnAction += OnAction;
             Game.OnUpdate += OnUpdate;
             Drawing.OnEndScene += OnEndScene;
             Drawing.OnDraw += OnDraw;
@@ -475,16 +476,7 @@
             {
                 return;
             }
-            switch (slot)
-            {
-                case SpellSlot.Q:
-                    W.Width = Q.Width * 2;
-                    break;
-                case SpellSlot.E:
-                    W.Width = E.Width;
-                    break;
-            }
-            var posCast = W.GetPrediction(target).UnitPosition;
+            var posCast = W.GetPredPosition(target, true);
             if (isRCombo)
             {
                 var posEnd = RShadow.ServerPosition;
@@ -628,7 +620,10 @@
                 if (canCast || RShadow.IsValid())
                 {
                     CastE();
-                    CastQ(target);
+                    if (Common.CantAttack)
+                    {
+                        CastQ(target);
+                    }
                 }
             }
             if (MainMenu["Combo"]["Item"])
@@ -654,7 +649,7 @@
                         DamageType.Physical,
                         Math.Max(target.MaxHealth * 0.1, 100));
                 }
-                if (Tiamat.IsReady || Hydra.IsReady)
+                if (Tiamat.IsReady || Ravenous.IsReady)
                 {
                     dmgTotal += Player.CalculateDamage(target, DamageType.Physical, Player.TotalAttackDamage);
                 }
@@ -886,6 +881,16 @@
                 return;
             }
             minions.ForEach(i => CastQKill(Q, i));
+        }
+
+        private static void OnAction(object sender, OrbwalkingActionArgs args)
+        {
+            if (args.Type != OrbwalkingType.AfterAttack || Variables.Orbwalker.ActiveMode != OrbwalkingMode.Combo
+                || !MainMenu["Combo"]["Item"])
+            {
+                return;
+            }
+            Common.CastTiamatHydra();
         }
 
         private static void OnDraw(EventArgs args)
@@ -1146,17 +1151,9 @@
             {
                 Youmuu.Cast();
             }
-            if (Tiamat.IsReady && Player.CountEnemyHeroesInRange(Tiamat.Range) > 0)
+            if (Common.CantAttack)
             {
-                Tiamat.Cast();
-            }
-            if (Hydra.IsReady && Player.CountEnemyHeroesInRange(Hydra.Range) > 0)
-            {
-                Hydra.Cast();
-            }
-            if (Titanic.IsReady && !Player.Spellbook.IsAutoAttacking && Variables.Orbwalker.GetTarget() != null)
-            {
-                Titanic.Cast();
+                Common.CastTiamatHydra();
             }
         }
 

@@ -52,16 +52,16 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="LeagueSharp">
-      <HintPath>D:\Project\50izA3amT\References\LeagueSharp.dll</HintPath>
+      <HintPath>D:\Project\66ODfcoUK\References\LeagueSharp.dll</HintPath>
     </Reference>
     <Reference Include="LeagueSharp.Data">
-      <HintPath>D:\Project\50izA3amT\References\LeagueSharp.Data.dll</HintPath>
+      <HintPath>D:\Project\66ODfcoUK\References\LeagueSharp.Data.dll</HintPath>
     </Reference>
     <Reference Include="LeagueSharp.SDKEx">
-      <HintPath>D:\Project\PlaySharp\References\LeagueSharp.SDKEx.dll</HintPath>
+      <HintPath>D:\Project\66ODfcoUK\References\LeagueSharp.SDKEx.dll</HintPath>
     </Reference>
     <Reference Include="SharpDX">
-      <HintPath>D:\Project\50izA3amT\References\SharpDX.dll</HintPath>
+      <HintPath>D:\Project\66ODfcoUK\References\SharpDX.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

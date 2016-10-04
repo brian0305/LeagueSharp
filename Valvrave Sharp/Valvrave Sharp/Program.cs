@@ -28,7 +28,7 @@
 
         #region Static Fields
 
-        internal static Items.Item Bilgewater, BotRuinedKing, Youmuu, Tiamat, Hydra, Titanic;
+        internal static Items.Item Bilgewater, BotRuinedKing, Youmuu, Tiamat, Ravenous, Titanic;
 
         internal static SpellSlot Flash = SpellSlot.Unknown, Ignite = SpellSlot.Unknown, Smite = SpellSlot.Unknown;
 
@@ -46,7 +46,7 @@
                     { "LeeSin", new Tuple<Func<object>, int>(() => new LeeSin(), 10) },
                     { "Vladimir", new Tuple<Func<object>, int>(() => new Vladimir(), 7) },
                     { "Yasuo", new Tuple<Func<object>, int>(() => new Yasuo(), 8) },
-                    { "Zed", new Tuple<Func<object>, int>(() => new Zed(), 9) }
+                    { "Zed", new Tuple<Func<object>, int>(() => new Zed(), 10) }
                 };
 
         private static bool isSkinReset = true;
@@ -92,7 +92,7 @@
             BotRuinedKing = new Items.Item(ItemId.Blade_of_the_Ruined_King, 550);
             Youmuu = new Items.Item(ItemId.Youmuus_Ghostblade, 0);
             Tiamat = new Items.Item(ItemId.Tiamat_Melee_Only, 400);
-            Hydra = new Items.Item(ItemId.Ravenous_Hydra_Melee_Only, 400);
+            Ravenous = new Items.Item(ItemId.Ravenous_Hydra_Melee_Only, 400);
             Titanic = new Items.Item(3748, 0);
         }
 

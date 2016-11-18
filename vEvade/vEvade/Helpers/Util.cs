@@ -19,7 +19,7 @@ namespace vEvade.Helpers
     {
         #region Static Fields
 
-        public static readonly Random Random = new Random();
+        public static readonly Random Random = new Random(Utils.GameTimeTickCount);
 
         #endregion
 

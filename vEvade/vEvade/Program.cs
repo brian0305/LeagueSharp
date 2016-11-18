@@ -8,11 +8,11 @@
 
     #endregion
 
-    internal class Program
+    public class Program
     {
         #region Methods
 
-        private static void Main(string[] args)
+        private static void Main()
         {
             CustomEvents.Game.OnGameLoad += Evade.OnGameLoad;
         }

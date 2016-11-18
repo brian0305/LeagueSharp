@@ -2,7 +2,6 @@ namespace vEvade.Spells
 {
     #region
 
-    using System;
     using System.Collections.Generic;
 
     using LeagueSharp;

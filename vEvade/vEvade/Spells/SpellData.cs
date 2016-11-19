@@ -17,6 +17,8 @@
 
         public bool AddHitbox = true;
 
+        public int BehindStart;
+
         public bool CanBeRemoved = true;
 
         public CollisionableObjects[] CollisionObjects = { };
@@ -48,6 +50,8 @@
         public bool HasEndExplosion;
 
         public bool HasStartExplosion;
+
+        public int InfrontStart;
 
         public bool Invert;
 

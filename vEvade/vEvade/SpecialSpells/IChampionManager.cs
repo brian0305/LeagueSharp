@@ -121,6 +121,7 @@
             var endPos = args.End;
             var dir = (endPos - startPos).To2D().Normalized();
             var newData = (SpellData)data.Clone();
+            var startTick = Utils.GameTimeTickCount;
 
             switch (data.MenuName)
             {
@@ -149,8 +150,12 @@
                 SpellDetector.AddSpell(
                     sender,
                     startPos,
-                    startPos + data.Range * dir.Rotated(data.MultipleAngle * i).To3D(),
-                    data);
+                    startPos + data.Range / 2f * dir.Rotated(data.MultipleAngle * i).To3D(),
+                    data,
+                    null,
+                    SpellType.None,
+                    true,
+                    startTick);
             }
 
             spellArgs.NoProcess = true;

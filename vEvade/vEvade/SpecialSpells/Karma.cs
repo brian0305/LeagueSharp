@@ -51,7 +51,7 @@
                 Evade.SpellsDetected.Values.FirstOrDefault(
                     i =>
                     i.Data.MenuName == "KarmaQ" && i.Unit.NetworkId == sender.NetworkId
-                    && dir.AngleBetween(i.Direction) < 5 && i.Start.Distance(missile.StartPosition) < 100);
+                    && dir.AngleBetween(i.Direction) < 3 && i.Start.Distance(missile.StartPosition) < 100);
 
             if (spell != null)
             {

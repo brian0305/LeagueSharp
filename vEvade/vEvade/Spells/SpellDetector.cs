@@ -36,6 +36,11 @@
             GameObject.OnCreate += OnCreateMissile;
             GameObject.OnDelete += OnDeleteMissile;
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
+
+            if (Configs.Debug)
+            {
+                Obj_AI_Base.OnNewPath += OnNewPath;
+            }
         }
 
         #endregion
@@ -76,7 +81,12 @@
             bool checkExplosion = true,
             int startT = 0)
         {
-            if (Evade.PlayerPosition.Distance(spellStart) > (data.Range + 1000) * 1.5)
+            if (missile != null && !sender.IsVisible && !Configs.Menu.Item("DodgeFoW").GetValue<bool>())
+            {
+                return;
+            }
+
+            if (Evade.PlayerPosition.Distance(spellStart) > (data.Range + data.Radius + 1000) * 1.5)
             {
                 return;
             }
@@ -115,32 +125,46 @@
 
             var startPos = spellStart.To2D();
             var endPos = spellEnd.To2D();
-            var dir = (endPos - startPos).Normalized();
             var startTime = startT > 0 ? startT : Utils.GameTimeTickCount;
             var endTime = data.Delay;
+
+            if (missile == null)
+            {
+                if (data.BehindStart > 0)
+                {
+                    startPos = startPos.Extend(endPos, -data.BehindStart);
+                }
+
+                if (data.InfrontStart > 0)
+                {
+                    startPos = startPos.Extend(endPos, data.InfrontStart);
+                }
+            }
+            else if (!data.MissileDelayed && data.Delay > 0)
+            {
+                startTime -= data.Delay;
+            }
 
             if (data.Type == SpellType.Cone || data.Type == SpellType.MissileCone || data.FixedRange
                 || (data.Range > 0 && endPos.Distance(startPos) > data.Range))
             {
-                endPos = startPos + dir * data.Range;
+                endPos = startPos.Extend(endPos, data.Range);
             }
 
             if (missile == null)
             {
                 if (data.Invert)
                 {
-                    endPos = startPos + (startPos - endPos).Normalized() * startPos.Distance(endPos);
+                    endPos = startPos.Extend(endPos, -startPos.Distance(endPos));
+                    //endPos = startPos + (startPos - endPos).Normalized() * startPos.Distance(endPos);
                 }
 
                 if (data.Perpendicular)
                 {
-                    startPos = spellEnd.To2D() - dir.Perpendicular() * data.RadiusEx;
-                    endPos = spellEnd.To2D() + dir.Perpendicular() * data.RadiusEx;
+                    var dirPerpendicular = (endPos - startPos).Normalized().Perpendicular();
+                    startPos = spellEnd.To2D() - dirPerpendicular * data.RadiusEx;
+                    endPos = spellEnd.To2D() + dirPerpendicular * data.RadiusEx;
                 }
-            }
-            else if (!data.MissileDelayed)
-            {
-                startTime -= data.Delay;
             }
 
             switch (type)
@@ -169,7 +193,7 @@
                             }
                             else if (data.UseEndPosition)
                             {
-                                endPos = spellEnd.To2D();
+                                //endPos = spellEnd.To2D();
                                 endTime = data.Delay + (int)(startPos.Distance(endPos) / data.MissileSpeed * 1000);
                             }
                         }
@@ -185,9 +209,47 @@
                     break;
             }
 
-            var spell = new SpellInstance(data, startTime, endTime + data.DelayEx, startPos, endPos, sender, type)
-                            { SpellId = spellIdCount++, MissileObject = missile };
-            Evade.SpellsDetected.Add(spell.SpellId, spell);
+            var dir = (endPos - startPos).Normalized();
+            var alreadyAdded = false;
+
+            if (missile == null ? !data.DontCheckForDuplicates : !data.MissileOnly)
+            {
+                foreach (var spell in
+                    Evade.SpellsDetected.Values.Where(
+                        i =>
+                        i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId
+                        && dir.AngleBetween(i.Direction) < 3 && i.Start.Distance(startPos) < 100))
+                {
+                    if (missile == null)
+                    {
+                        alreadyAdded = spell.MissileObject != null;
+                    }
+                    else if (spell.MissileObject == null)
+                    {
+                        spell.MissileObject = missile;
+                        alreadyAdded = true;
+
+                        if (Configs.Debug)
+                        {
+                            Console.WriteLine($"=> U: {spell.SpellId}");
+                        }
+                    }
+                }
+            }
+
+            if (alreadyAdded)
+            {
+                return;
+            }
+
+            var newSpell = new SpellInstance(data, startTime, endTime + data.DelayEx, startPos, endPos, sender, type)
+                               { SpellId = spellIdCount++, MissileObject = missile };
+            Evade.SpellsDetected.Add(newSpell.SpellId, newSpell);
+
+            if (Configs.Debug)
+            {
+                Console.WriteLine($"=> A: {newSpell.SpellId}");
+            }
         }
 
         #endregion
@@ -215,16 +277,8 @@
         {
             if (Configs.Debug && caster.IsMe)
             {
-                Game.PrintChat(
-                    "{0}: {1} | {2} | {3} | {4} | {5} | {6} | {7}",
-                    name,
-                    missile.SData.CastRange,
-                    Utils.GameTimeTickCount - lastCast,
-                    missile.SData.LineWidth,
-                    missile.SData.MissileSpeed,
-                    missile.SData.MissileAccel,
-                    missile.SData.MissileMinSpeed,
-                    missile.SData.MissileMaxSpeed);
+                Console.WriteLine(
+                    $"{name}: {missile.SData.CastRange} | {Utils.GameTimeTickCount - lastCast} | {missile.SData.LineWidth} | {missile.SData.MissileSpeed} | {missile.SData.MissileAccel} | {missile.SData.MissileMinSpeed} | {missile.SData.MissileMaxSpeed}");
             }
 
             SpellData data;
@@ -247,7 +301,9 @@
                 data = spellArgs.NewData;
             }
 
-            var startPos = missile.StartPosition;
+            AddSpell(caster, missile.StartPosition, missile.EndPosition, data, missile);
+
+            /*var startPos = missile.StartPosition;
             var endPos = missile.EndPosition;
 
             if (data.MissileOnly)
@@ -275,7 +331,7 @@
 
                 if (Configs.Debug)
                 {
-                    Game.PrintChat("=> U: " + spell.SpellId);
+                    Console.WriteLine("=> U: " + spell.SpellId);
                 }
             }
 
@@ -290,9 +346,9 @@
 
                 if (Configs.Debug)
                 {
-                    Game.PrintChat("=> A2");
+                    Console.WriteLine("=> A2");
                 }
-            }
+            }*/
         }
 
         private static void OnCreateToggle(GameObject sender, EventArgs args)
@@ -309,12 +365,8 @@
         {
             if (Configs.Debug && Evade.PlayerPosition.Distance(toggle.Position) < 500)
             {
-                Game.PrintChat(
-                    "{0}: {1} - {2} | {3}",
-                    toggle.Name,
-                    toggle.Team,
-                    ObjectManager.Player.Team,
-                    Utils.GameTimeTickCount);
+                Console.WriteLine(
+                    $"{toggle.Name}: {toggle.Team} - {ObjectManager.Player.Team} | {Utils.GameTimeTickCount}");
             }
 
             foreach (var spell in
@@ -328,7 +380,7 @@
 
                 if (Configs.Debug)
                 {
-                    Game.PrintChat("=> T: " + spell.SpellId);
+                    Console.WriteLine($"=> T: {spell.SpellId}");
                 }
             }
         }
@@ -366,7 +418,7 @@
 
                 if (Configs.Debug)
                 {
-                    Game.PrintChat("=> D2: {0} | {1}", spell.SpellId, Utils.GameTimeTickCount);
+                    Console.WriteLine($"=> D2: {spell.SpellId} | {Utils.GameTimeTickCount}");
                 }
             }
         }
@@ -382,12 +434,8 @@
 
             if (Configs.Debug && Evade.PlayerPosition.Distance(toggle.Position) < 500)
             {
-                Game.PrintChat(
-                    "{0}: {1} - {2} | {3}",
-                    toggle.Name,
-                    toggle.Team,
-                    ObjectManager.Player.Team,
-                    Utils.GameTimeTickCount);
+                Console.WriteLine(
+                    $"{toggle.Name}: {toggle.Team} - {ObjectManager.Player.Team} | {Utils.GameTimeTickCount}");
             }
 
             foreach (var spell in
@@ -398,23 +446,27 @@
 
                 if (Configs.Debug)
                 {
-                    Game.PrintChat("=> D3: {0} | {1}", spell.SpellId, Utils.GameTimeTickCount);
+                    Console.WriteLine($"=> D3: {spell.SpellId} | {Utils.GameTimeTickCount}");
                 }
             }
+        }
+
+        private static void OnNewPath(Obj_AI_Base sender, GameObjectNewPathEventArgs args)
+        {
+            if (!args.IsDash || sender.IsMe)
+            {
+                return;
+            }
+
+            Console.WriteLine($"{Utils.GameTimeTickCount} Dash => Speed: {args.Speed}");
         }
 
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
             if (Configs.Debug && sender.IsMe)
             {
-                Game.PrintChat(
-                    "{0} ({1}): {2} | {3} | {4} | {5}",
-                    args.SData.Name,
-                    args.Slot,
-                    Utils.GameTimeTickCount - lastCast,
-                    args.SData.CastRange,
-                    args.SData.CastRadius,
-                    args.SData.CastRadiusSecondary);
+                Console.WriteLine(
+                    $"{args.SData.Name} ({args.Slot}): {Utils.GameTimeTickCount - lastCast} | {args.SData.CastRange} | {args.SData.LineWidth} | {args.SData.MissileSpeed} | {args.SData.CastRadius} | {args.SData.CastRadiusSecondary}");
                 lastCast = Utils.GameTimeTickCount;
             }
 
@@ -455,7 +507,9 @@
                 data = spellArgs.NewData;
             }
 
-            var dir = (args.End - sender.ServerPosition).To2D().Normalized();
+            AddSpell(sender, sender.ServerPosition, args.End, data);
+
+            /*var dir = (args.End - sender.ServerPosition).To2D().Normalized();
             var alreadyAdded =
                 Evade.SpellsDetected.Values.Any(
                     i =>
@@ -470,9 +524,9 @@
 
                 if (Configs.Debug)
                 {
-                    Game.PrintChat("=> A1");
+                    Console.WriteLine("=> A1");
                 }
-            }
+            }*/
         }
 
         #endregion

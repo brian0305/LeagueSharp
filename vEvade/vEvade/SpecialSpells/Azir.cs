@@ -49,8 +49,7 @@
 
             var newData = (SpellData)data.Clone();
             newData.Radius = data.Radius * new[] { 4, 5, 6 }[((Obj_AI_Hero)sender).GetSpell(data.Slot).Level - 1];
-            SpellDetector.AddSpell(sender, sender.ServerPosition.Extend(args.End, -300), args.End, newData);
-            spellArgs.NoProcess = true;
+            //spellArgs.NewData = newData;
         }
 
         #endregion

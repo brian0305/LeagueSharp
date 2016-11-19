@@ -172,7 +172,7 @@ namespace vEvade.Core
 
                     if (Configs.Debug)
                     {
-                        Game.PrintChat("=> D1: {0} | {1}", spell.SpellId, Utils.GameTimeTickCount);
+                        Console.WriteLine($"=> D1: {spell.SpellId} | {Utils.GameTimeTickCount}");
                     }
                 }
             }
@@ -187,11 +187,8 @@ namespace vEvade.Core
 
             if (Configs.Debug)
             {
-                Game.PrintChat(
-                    "{0} Dash => Speed: {1}, Dist: {2}",
-                    Utils.GameTimeTickCount,
-                    args.Speed,
-                    args.EndPos.Distance(args.StartPos));
+                Console.WriteLine(
+                    $"{Utils.GameTimeTickCount} Dash => Speed: {args.Speed}, Dist: {args.EndPos.Distance(args.StartPos)}");
             }
 
             evadeToPos = args.EndPos;

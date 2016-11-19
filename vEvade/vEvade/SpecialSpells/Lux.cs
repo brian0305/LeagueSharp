@@ -65,7 +65,7 @@
                 !Evade.SpellsDetected.Values.Any(
                     i =>
                     i.Data.MenuName == spellData.MenuName && i.Unit.NetworkId == hero.NetworkId
-                    && dir.AngleBetween(i.Direction) < 5 && startPos.Distance(i.Start) < 100)
+                    && dir.AngleBetween(i.Direction) < 3 && startPos.Distance(i.Start) < 100)
                 && Configs.Menu.Item("DodgeFoW").GetValue<bool>())
             {
                 SpellDetector.AddSpell(hero, startPos.To3D(), endPos.To3D(), spellData);

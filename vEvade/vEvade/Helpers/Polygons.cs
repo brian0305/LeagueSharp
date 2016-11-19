@@ -109,11 +109,11 @@
 
             #region Public Methods and Operators
 
-            public Geometry.Polygon ToPolygon(int offset = 0, float overrideWidth = -1)
+            public Geometry.Polygon ToPolygon(int offset = 0, float overrideRadius = -1)
             {
                 var result = new Geometry.Polygon();
-                var outRadius = overrideWidth > 0
-                                    ? overrideWidth
+                var outRadius = overrideRadius > 0
+                                    ? overrideRadius
                                     : (offset + this.Radius) / (float)Math.Cos(2 * Math.PI / Segment);
                 const double Step = 2 * Math.PI / Segment;
                 var angle = (double)this.Radius;
@@ -213,20 +213,20 @@
 
             #region Public Methods and Operators
 
-            public Geometry.Polygon ToPolygon(int offset = 0, float overrideWidth = -1)
+            public Geometry.Polygon ToPolygon(int offset = 0, float overrideRadius = -1)
             {
                 var result = new Geometry.Polygon();
                 result.Add(
-                    this.Start + (overrideWidth > 0 ? overrideWidth : this.Radius + offset) * this.Perpendicular
+                    this.Start + (overrideRadius > 0 ? overrideRadius : this.Radius + offset) * this.Perpendicular
                     - offset * this.Direction);
                 result.Add(
-                    this.Start - (overrideWidth > 0 ? overrideWidth : this.Radius + offset) * this.Perpendicular
+                    this.Start - (overrideRadius > 0 ? overrideRadius : this.Radius + offset) * this.Perpendicular
                     - offset * this.Direction);
                 result.Add(
-                    this.End - (overrideWidth > 0 ? overrideWidth : this.Radius + offset) * this.Perpendicular
+                    this.End - (overrideRadius > 0 ? overrideRadius : this.Radius + offset) * this.Perpendicular
                     + offset * this.Direction);
                 result.Add(
-                    this.End + (overrideWidth > 0 ? overrideWidth : this.Radius + offset) * this.Perpendicular
+                    this.End + (overrideRadius > 0 ? overrideRadius : this.Radius + offset) * this.Perpendicular
                     + offset * this.Direction);
 
                 return result;

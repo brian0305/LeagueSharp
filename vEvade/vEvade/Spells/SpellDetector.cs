@@ -89,41 +89,9 @@
                 return;
             }
 
-            if (Evade.PlayerPosition.Distance(spellStart) > (data.Range + data.Radius + 1000) * 1.5)
+            if (Evade.PlayerPosition.Distance(spellStart) > (data.Range + data.Radius + 1000) * 1.5 && !Configs.Debug)
             {
                 return;
-            }
-
-            if (checkExplosion)
-            {
-                if (data.HasStartExplosion || data.HasEndExplosion)
-                {
-                    AddSpell(sender, spellStart, spellEnd, data, missile, data.Type, false);
-                    var newData = (SpellData)data.Clone();
-                    newData.CollisionObjects = null;
-
-                    if (data.HasEndExplosion && !newData.SpellName.EndsWith("_EndExp"))
-                    {
-                        newData.SpellName += "_EndExp";
-                    }
-
-                    AddSpell(sender, spellStart, spellEnd, newData, missile, SpellType.Circle, false);
-
-                    return;
-                }
-
-                if (data.UseEndPosition)
-                {
-                    AddSpell(sender, spellStart, spellEnd, data, missile, data.Type, false);
-                    AddSpell(sender, spellStart, spellEnd, data, missile, SpellType.Circle, false);
-
-                    return;
-                }
-            }
-
-            if (type == SpellType.None)
-            {
-                type = data.Type;
             }
 
             var startPos = spellStart.To2D();
@@ -148,7 +116,12 @@
                 startTime -= data.Delay;
             }
 
-            if (data.Type == SpellType.Cone || data.Type == SpellType.MissileCone || data.FixedRange
+            if (type == SpellType.None)
+            {
+                type = data.Type;
+            }
+
+            if (type == SpellType.Cone || type == SpellType.MissileCone || data.FixedRange
                 || (data.Range > 0 && endPos.Distance(startPos) > data.Range))
             {
                 endPos = startPos.Extend(endPos, data.Range);
@@ -159,7 +132,6 @@
                 if (data.Invert)
                 {
                     endPos = startPos.Extend(endPos, -startPos.Distance(endPos));
-                    //endPos = startPos + (startPos - endPos).Normalized() * startPos.Distance(endPos);
                 }
 
                 if (data.Perpendicular)
@@ -187,18 +159,10 @@
                     {
                         endTime += (int)(startPos.Distance(endPos) / data.MissileSpeed * 1000);
 
-                        if (data.Type == SpellType.MissileLine)
+                        if (data.Type == SpellType.MissileLine && data.HasStartExplosion)
                         {
-                            if (data.HasStartExplosion)
-                            {
-                                endPos = startPos;
-                                endTime = data.Delay;
-                            }
-                            else if (data.UseEndPosition)
-                            {
-                                //endPos = spellEnd.To2D();
-                                endTime = data.Delay + (int)(startPos.Distance(endPos) / data.MissileSpeed * 1000);
-                            }
+                            endPos = startPos;
+                            endTime = data.Delay;
                         }
                     }
                     else if (data.Range == 0 && data.Radius > 0)
@@ -243,6 +207,33 @@
             if (alreadyAdded)
             {
                 return;
+            }
+
+            if (checkExplosion)
+            {
+                if (data.HasStartExplosion || data.HasEndExplosion)
+                {
+                    //AddSpell(sender, spellStart, spellEnd, data, missile, data.Type, false);
+                    var newData = (SpellData)data.Clone();
+                    newData.CollisionObjects = null;
+
+                    if (data.HasEndExplosion && !newData.SpellName.EndsWith("_EndExp"))
+                    {
+                        newData.SpellName += "_EndExp";
+                    }
+
+                    AddSpell(sender, spellStart, spellEnd, newData, missile, SpellType.Circle, false, startT);
+
+                    //return;
+                }
+
+                if (data.UseEndPosition)
+                {
+                    //AddSpell(sender, spellStart, spellEnd, data, missile, data.Type, false);
+                    AddSpell(sender, spellStart, spellEnd, data, missile, SpellType.Circle, false, startT);
+
+                    //return;
+                }
             }
 
             var newSpell = new SpellInstance(data, startTime, endTime, startPos, endPos, sender, type)
@@ -452,7 +443,7 @@
                     i =>
                     i.MissileObject != null && i.MissileObject.NetworkId == missile.NetworkId && i.Data.CanBeRemoved))
             {
-                if (spell.Data.ToggleName == "")
+                if (spell.Data.ToggleName == "" || spell.Type != SpellType.Circle)
                 {
                     Utility.DelayAction.Add(1, () => Evade.SpellsDetected.Remove(spell.SpellId));
                 }

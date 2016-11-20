@@ -289,7 +289,7 @@
                 Render.Circle.DrawCircle(Evade.PlayerPosition.To3D(), this.Data.Range, Color.Red);
             }
 
-            if (this.Data.Type == SpellType.MissileLine && this.MissileObject != null && this.MissileObject.IsVisible)
+            if (this.Type == SpellType.MissileLine && this.MissileObject != null && this.MissileObject.IsVisible)
             {
                 var position = this.MissileObject.Position.To2D();
                 Util.DrawLine(
@@ -543,9 +543,25 @@
                 this.UpdatePolygon();
             }
 
-            if (this.Type == SpellType.Circle && this.Data.SpellName.EndsWith("_EndExp"))
+            if (this.Type == SpellType.Circle)
             {
-                this.Circle = new Polygons.Circle(this.GetMissilePosition(0), this.Radius);
+                if (this.Data.MenuName == "FizzR" && this.ToggleObject != null)
+                {
+                    if (this.ToggleObject.Name.Contains("small"))
+                    {
+                        this.Radius = 200;
+                    }
+                    else if (this.ToggleObject.Name.Contains("big"))
+                    {
+                        this.Radius = 450;
+                    }
+                    else
+                    {
+                        this.Radius = 320;
+                    }
+                }
+
+                this.Circle = new Polygons.Circle(this.CollisionEnd, this.Radius);
                 this.UpdatePolygon();
             }
 

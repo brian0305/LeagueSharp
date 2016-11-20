@@ -8,15 +8,13 @@
 
     using SharpDX;
 
-    using Color = System.Drawing.Color;
-
     #endregion
 
     public static class Polygons
     {
         #region Constants
 
-        private const int Segment = 28;
+        private const int Quality = 28;
 
         #endregion
 
@@ -56,25 +54,23 @@
                 var result = new Geometry.Polygon();
                 var innerRadius = -0.1562f * this.Distance + 687.31f;
                 var outerRadius = 0.35256f * this.Distance + 133f;
-                outerRadius = outerRadius / (float)Math.Cos(2 * Math.PI / Segment);
+                outerRadius = outerRadius / (float)Math.Cos(2 * Math.PI / Quality);
                 var innerCenter = Geometry.CircleCircleIntersection(this.Start, this.End, innerRadius, innerRadius)[0];
                 var outerCenter = Geometry.CircleCircleIntersection(this.Start, this.End, outerRadius, outerRadius)[0];
 
-                Render.Circle.DrawCircle(innerCenter.To3D(), this.Radius, Color.White);
-
                 var direction = (this.End - outerCenter).Normalized();
                 var step = -(float)(direction.AngleBetween((this.Start - outerCenter).Normalized()) * Math.PI / 180)
-                           / Segment;
+                           / Quality;
 
-                for (var i = 0; i < Segment; i++)
+                for (var i = 0; i < Quality; i++)
                 {
                     result.Add(outerCenter + (outerRadius + 15 + offset + this.Radius) * direction.Rotated(step * i));
                 }
 
                 direction = (this.Start - innerCenter).Normalized();
-                step = (float)(direction.AngleBetween((this.End - innerCenter).Normalized()) * Math.PI / 180) / Segment;
+                step = (float)(direction.AngleBetween((this.End - innerCenter).Normalized()) * Math.PI / 180) / Quality;
 
-                for (var i = 0; i < Segment; i++)
+                for (var i = 0; i < Quality; i++)
                 {
                     result.Add(
                         innerCenter
@@ -112,15 +108,12 @@
             public Geometry.Polygon ToPolygon(int offset = 0, float overrideRadius = -1)
             {
                 var result = new Geometry.Polygon();
-                var outRadius = overrideRadius > 0
-                                    ? overrideRadius
-                                    : (offset + this.Radius) / (float)Math.Cos(2 * Math.PI / Segment);
-                const double Step = 2 * Math.PI / Segment;
-                var angle = (double)this.Radius;
+                var outRadius = (overrideRadius > 0 ? overrideRadius : offset + this.Radius)
+                                / (float)Math.Cos(2 * Math.PI / Quality);
 
-                for (var i = 0; i <= Segment; i++)
+                for (var i = 1; i <= Quality; i++)
                 {
-                    angle += Step;
+                    var angle = i * 2 * Math.PI / Quality;
                     result.Add(
                         new Vector2(
                             this.Center.X + outRadius * (float)Math.Cos(angle),
@@ -165,12 +158,12 @@
             {
                 var result = new Geometry.Polygon();
                 result.Add(this.Center);
-                var outRadius = (this.Range + offset) / (float)Math.Cos(2 * Math.PI / Segment);
+                var outRadius = (this.Range + offset) / (float)Math.Cos(2 * Math.PI / Quality);
                 var side = this.Direction.Rotated(-this.Radius * 0.5f);
 
-                for (var i = 0; i <= Segment; i++)
+                for (var i = 0; i <= Quality; i++)
                 {
-                    var dir = side.Rotated(i * this.Radius / Segment).Normalized();
+                    var dir = side.Rotated(i * this.Radius / Quality).Normalized();
                     result.Add(new Vector2(this.Center.X + outRadius * dir.X, this.Center.Y + outRadius * dir.Y));
                 }
 
@@ -241,19 +234,19 @@
 
             public Vector2 Center;
 
-            public int Radius;
+            public int InnerRadius;
 
-            public int RingRadius;
+            public int OuterRadius;
 
             #endregion
 
             #region Constructors and Destructors
 
-            public Ring(Vector2 center, int radius, int ringRadius)
+            public Ring(Vector2 center, int innerRadius, int outerRadius)
             {
                 this.Center = center;
-                this.Radius = radius;
-                this.RingRadius = ringRadius;
+                this.InnerRadius = innerRadius;
+                this.OuterRadius = outerRadius;
             }
 
             #endregion
@@ -263,24 +256,24 @@
             public Geometry.Polygon ToPolygon(int offset = 0)
             {
                 var result = new Geometry.Polygon();
-                var outRadius = (offset + this.Radius + this.RingRadius) / (float)Math.Cos(2 * Math.PI / Segment);
-                var innerRadius = this.Radius - this.RingRadius - offset;
+                var outRadius = (offset + this.OuterRadius) / (float)Math.Cos(2 * Math.PI / Quality);
+                var innerRadius = (this.InnerRadius - offset) / (float)Math.Cos(2 * Math.PI / Quality);
 
-                for (var i = 0; i <= Segment; i++)
+                for (var i = 0; i <= Quality; i++)
                 {
-                    var angle = i * 2 * Math.PI / Segment;
+                    var angle = i * 2 * Math.PI / Quality;
                     result.Add(
                         new Vector2(
                             this.Center.X - outRadius * (float)Math.Cos(angle),
                             this.Center.Y - outRadius * (float)Math.Sin(angle)));
                 }
 
-                for (var i = 0; i <= Segment; i++)
+                for (var i = 0; i <= Quality; i++)
                 {
-                    var angle = i * 2 * Math.PI / Segment;
+                    var angle = i * 2 * Math.PI / Quality;
                     result.Add(
                         new Vector2(
-                            this.Center.X + innerRadius * (float)Math.Cos(angle),
+                            this.Center.X - innerRadius * (float)Math.Cos(angle),
                             this.Center.Y - innerRadius * (float)Math.Sin(angle)));
                 }
 

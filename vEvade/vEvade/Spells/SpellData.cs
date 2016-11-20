@@ -97,6 +97,8 @@
 
         public SpellType Type = SpellType.MissileLine;
 
+        public string TrapName = "";
+
         public bool UseEndPosition;
 
         #endregion
@@ -108,7 +110,10 @@
             get
             {
                 return this.RawRadius + Configs.SpellExtraRadius
-                       + (!this.AddHitbox ? 0 : (int)ObjectManager.Player.BoundingRadius);
+                       + (this.AddHitbox && this.Type != SpellType.Ring && this.Type != SpellType.Cone
+                          && this.Type != SpellType.MissileCone
+                              ? (int)ObjectManager.Player.BoundingRadius
+                              : 0);
             }
             set
             {

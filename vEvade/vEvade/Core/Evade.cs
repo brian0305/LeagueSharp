@@ -30,6 +30,8 @@ namespace vEvade.Core
 
         public static readonly Dictionary<string, SpellData> OnProcessSpells = new Dictionary<string, SpellData>();
 
+        public static readonly Dictionary<string, SpellData> OnTrapSpells = new Dictionary<string, SpellData>();
+
         public static int LastWardJumpTick;
 
         public static SpellList<int, SpellInstance> SpellsDetected = new SpellList<int, SpellInstance>();
@@ -160,8 +162,13 @@ namespace vEvade.Core
         {
             foreach (var spell in SpellsDetected.Values)
             {
-                if (spell.MissileObject == null && spell.ToggleObject == null
+                if (spell.MissileObject == null && spell.ToggleObject == null && spell.TrapObject == null
                     && HeroManager.AllHeroes.Any(i => i.IsValid() && i.IsDead && i.NetworkId == spell.Unit.NetworkId))
+                {
+                    Utility.DelayAction.Add(1, () => SpellsDetected.Remove(spell.SpellId));
+                }
+
+                if (spell.TrapObject != null && spell.TrapObject.IsDead)
                 {
                     Utility.DelayAction.Add(1, () => SpellsDetected.Remove(spell.SpellId));
                 }
@@ -172,7 +179,7 @@ namespace vEvade.Core
 
                     if (Configs.Debug)
                     {
-                        Console.WriteLine($"=> D1: {spell.SpellId} | {Utils.GameTimeTickCount}");
+                        Console.WriteLine($"=> D: {spell.SpellId} | {Utils.GameTimeTickCount}");
                     }
                 }
             }
@@ -414,9 +421,8 @@ namespace vEvade.Core
             }
 
             var newPath = ObjectManager.Player.GetPath(evadeToPos.To3D()).ToList().To2D();
-            var checkNewPath = IsSafePath(newPath, 100);
 
-            if (checkNewPath.IsSafe)
+            if (IsSafePath(newPath, 100).IsSafe)
             {
                 if (evadeToPos.Distance(PlayerPosition) > 75)
                 {

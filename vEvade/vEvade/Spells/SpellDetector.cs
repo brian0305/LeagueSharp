@@ -31,6 +31,8 @@
 
         static SpellDetector()
         {
+            GameObject.OnCreate += OnCreateTrap;
+            GameObject.OnDelete += OnDeleteTrap;
             GameObject.OnCreate += OnCreateToggle;
             GameObject.OnDelete += OnDeleteToggle;
             GameObject.OnCreate += OnCreateMissile;
@@ -39,7 +41,8 @@
 
             if (Configs.Debug)
             {
-                Obj_AI_Base.OnNewPath += OnNewPath;
+                Obj_AI_Base.OnNewPath += DebugOnNewPath;
+                GameObject.OnCreate += DebugOnCreate;
             }
         }
 
@@ -231,7 +234,7 @@
 
                         if (Configs.Debug)
                         {
-                            Console.WriteLine($"=> U: {spell.SpellId}");
+                            Console.WriteLine($"=> M: {spell.SpellId} | {Utils.GameTimeTickCount}");
                         }
                     }
                 }
@@ -242,19 +245,38 @@
                 return;
             }
 
-            var newSpell = new SpellInstance(data, startTime, endTime + data.DelayEx, startPos, endPos, sender, type)
+            var newSpell = new SpellInstance(data, startTime, endTime, startPos, endPos, sender, type)
                                { SpellId = spellIdCount++, MissileObject = missile };
             Evade.SpellsDetected.Add(newSpell.SpellId, newSpell);
 
             if (Configs.Debug)
             {
-                Console.WriteLine($"=> A: {newSpell.SpellId}");
+                Console.WriteLine($"=> A: {newSpell.SpellId} | {Utils.GameTimeTickCount}");
             }
         }
 
         #endregion
 
         #region Methods
+
+        private static void DebugOnCreate(GameObject sender, EventArgs args)
+        {
+            if (Evade.PlayerPosition.Distance(sender.Position) < 500)
+            {
+                Console.WriteLine(
+                    $"{sender.Name} [{sender.Type}]: {sender.Team} - {ObjectManager.Player.Team} | {Utils.GameTimeTickCount}");
+            }
+        }
+
+        private static void DebugOnNewPath(Obj_AI_Base sender, GameObjectNewPathEventArgs args)
+        {
+            if (!args.IsDash || sender.IsMe)
+            {
+                return;
+            }
+
+            Console.WriteLine($"{Utils.GameTimeTickCount} Dash => Speed: {args.Speed}");
+        }
 
         private static void OnCreateMissile(GameObject sender, EventArgs args)
         {
@@ -302,53 +324,6 @@
             }
 
             AddSpell(caster, missile.StartPosition, missile.EndPosition, data, missile);
-
-            /*var startPos = missile.StartPosition;
-            var endPos = missile.EndPosition;
-
-            if (data.MissileOnly)
-            {
-                if (caster.IsVisible || Configs.Menu.Item("DodgeFoW").GetValue<bool>())
-                {
-                    AddSpell(caster, startPos, endPos, data, missile);
-                }
-
-                return;
-            }
-
-            var alreadyAdded = false;
-            var dir = (endPos - startPos).To2D().Normalized();
-
-            foreach (var spell in
-                Evade.SpellsDetected.Values.Where(
-                    i =>
-                    i.MissileObject == null && (i.Data.MissileName == name || i.Data.ExtraMissileNames.Contains(name))
-                    && i.Unit.NetworkId == caster.NetworkId && dir.AngleBetween(i.Direction) < 5
-                    && i.Start.Distance(startPos) < 100))
-            {
-                spell.MissileObject = missile;
-                alreadyAdded = true;
-
-                if (Configs.Debug)
-                {
-                    Console.WriteLine("=> U: " + spell.SpellId);
-                }
-            }
-
-            if (alreadyAdded)
-            {
-                return;
-            }
-
-            if (caster.IsVisible || Configs.Menu.Item("DodgeFoW").GetValue<bool>())
-            {
-                AddSpell(caster, startPos, endPos, data, missile);
-
-                if (Configs.Debug)
-                {
-                    Console.WriteLine("=> A2");
-                }
-            }*/
         }
 
         private static void OnCreateToggle(GameObject sender, EventArgs args)
@@ -380,8 +355,86 @@
 
                 if (Configs.Debug)
                 {
-                    Console.WriteLine($"=> T: {spell.SpellId}");
+                    Console.WriteLine($"=> T: {spell.SpellId} | {Utils.GameTimeTickCount}");
                 }
+            }
+        }
+
+        private static void OnCreateTrap(GameObject sender, EventArgs args)
+        {
+            var trap = sender as Obj_AI_Minion;
+
+            if (trap == null || !trap.IsValid)
+            {
+                return;
+            }
+
+            if (trap.IsEnemy || Configs.Debug)
+            {
+                Utility.DelayAction.Add(0, () => OnCreateTrapDelay(trap, trap.CharData.BaseSkinName));
+            }
+        }
+
+        private static void OnCreateTrapDelay(Obj_AI_Minion trap, string name)
+        {
+            if (Configs.Debug && Evade.PlayerPosition.Distance(trap) < 500)
+            {
+                Console.WriteLine(
+                    $"{name}: {trap.Team} - {ObjectManager.Player.Team} | {trap.BoundingRadius} | {Utils.GameTimeTickCount}");
+            }
+
+            SpellData data;
+
+            if (!Evade.OnTrapSpells.TryGetValue(name, out data))
+            {
+                return;
+            }
+
+            var trapPos = trap.ServerPosition.To2D();
+            var sender =
+                HeroManager.AllHeroes.First(i => i.ChampionName == data.ChampName && (i.IsEnemy || Configs.Debug));
+            var alreadyAdded = false;
+
+            foreach (var spell in
+                Evade.SpellsDetected.Values.Where(
+                    i =>
+                    i.Data.TrapName != "" && i.Data.TrapName == name && i.End.Distance(trapPos) < 100
+                    && i.Unit.NetworkId == sender.NetworkId))
+            {
+                if (spell.TrapObject != null)
+                {
+                    alreadyAdded = spell.TrapObject.NetworkId == trap.NetworkId;
+                }
+                else
+                {
+                    spell.TrapObject = trap;
+                    alreadyAdded = true;
+
+                    if (Configs.Debug)
+                    {
+                        Console.WriteLine($"=> Tr: {spell.SpellId} | {Utils.GameTimeTickCount}");
+                    }
+                }
+            }
+
+            if (alreadyAdded)
+            {
+                return;
+            }
+
+            var newSpell = new SpellInstance(
+                data,
+                Utils.GameTimeTickCount,
+                data.Delay,
+                trapPos,
+                trapPos,
+                sender,
+                data.Type) { SpellId = spellIdCount++, TrapObject = trap };
+            Evade.SpellsDetected.Add(newSpell.SpellId, newSpell);
+
+            if (Configs.Debug)
+            {
+                Console.WriteLine($"=> A-Tr: {newSpell.SpellId} | {Utils.GameTimeTickCount}");
             }
         }
 
@@ -418,7 +471,7 @@
 
                 if (Configs.Debug)
                 {
-                    Console.WriteLine($"=> D2: {spell.SpellId} | {Utils.GameTimeTickCount}");
+                    Console.WriteLine($"=> D-M: {spell.SpellId} | {Utils.GameTimeTickCount}");
                 }
             }
         }
@@ -432,12 +485,6 @@
                 return;
             }
 
-            if (Configs.Debug && Evade.PlayerPosition.Distance(toggle.Position) < 500)
-            {
-                Console.WriteLine(
-                    $"{toggle.Name}: {toggle.Team} - {ObjectManager.Player.Team} | {Utils.GameTimeTickCount}");
-            }
-
             foreach (var spell in
                 Evade.SpellsDetected.Values.Where(
                     i => i.ToggleObject != null && i.ToggleObject.NetworkId == toggle.NetworkId))
@@ -446,19 +493,31 @@
 
                 if (Configs.Debug)
                 {
-                    Console.WriteLine($"=> D3: {spell.SpellId} | {Utils.GameTimeTickCount}");
+                    Console.WriteLine($"=> D-T: {spell.SpellId} | {Utils.GameTimeTickCount}");
                 }
             }
         }
 
-        private static void OnNewPath(Obj_AI_Base sender, GameObjectNewPathEventArgs args)
+        private static void OnDeleteTrap(GameObject sender, EventArgs args)
         {
-            if (!args.IsDash || sender.IsMe)
+            var trap = sender as Obj_AI_Minion;
+
+            if (trap == null || !trap.IsValid)
             {
                 return;
             }
 
-            Console.WriteLine($"{Utils.GameTimeTickCount} Dash => Speed: {args.Speed}");
+            foreach (var spell in
+                Evade.SpellsDetected.Values.Where(i => i.TrapObject != null && i.TrapObject.NetworkId == trap.NetworkId)
+                )
+            {
+                Utility.DelayAction.Add(1, () => Evade.SpellsDetected.Remove(spell.SpellId));
+
+                if (Configs.Debug)
+                {
+                    Console.WriteLine($"=> D-Tr: {spell.SpellId} | {Utils.GameTimeTickCount}");
+                }
+            }
         }
 
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
@@ -508,25 +567,6 @@
             }
 
             AddSpell(sender, sender.ServerPosition, args.End, data);
-
-            /*var dir = (args.End - sender.ServerPosition).To2D().Normalized();
-            var alreadyAdded =
-                Evade.SpellsDetected.Values.Any(
-                    i =>
-                    i.MissileObject != null
-                    && (i.Data.SpellName == args.SData.Name || i.Data.ExtraSpellNames.Contains(args.SData.Name))
-                    && i.Unit.NetworkId == sender.NetworkId && dir.AngleBetween(i.Direction) < 5
-                    && sender.Distance(i.Start) < 100);
-
-            if (!alreadyAdded || data.DontCheckForDuplicates)
-            {
-                AddSpell(sender, sender.ServerPosition, args.End, data);
-
-                if (Configs.Debug)
-                {
-                    Console.WriteLine("=> A1");
-                }
-            }*/
         }
 
         #endregion

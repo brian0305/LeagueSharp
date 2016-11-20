@@ -114,6 +114,8 @@
 
         public SpellType Type;
 
+        public GameObject TrapObject = null;
+
         public Obj_AI_Base Unit;
 
         private bool cachedValue;
@@ -169,10 +171,7 @@
                     this.Ring = new Polygons.Ring(this.CollisionEnd, this.Radius, data.RadiusEx);
                     break;
                 case SpellType.Arc:
-                    this.Arc = new Polygons.Arc(
-                        start,
-                        end,
-                        Configs.SpellExtraRadius + (int)ObjectManager.Player.BoundingRadius);
+                    this.Arc = new Polygons.Arc(start, end, this.Radius);
                     break;
             }
 
@@ -229,34 +228,30 @@
                 this.cachedValue = this.GetValue<bool>("Enabled");
                 this.cachedValueTick = Utils.GameTimeTickCount;
 
-                switch (this.Type)
+                if (this.cachedValue)
                 {
-                    case SpellType.Line:
-                    case SpellType.MissileLine:
-                        if (!Configs.Menu.Item("DodgeLine").GetValue<bool>())
-                        {
-                            this.cachedValue = false;
-                        }
-                        break;
-                    case SpellType.Circle:
-                        if (!Configs.Menu.Item("DodgeCircle").GetValue<bool>())
-                        {
-                            this.cachedValue = false;
-                        }
-                        break;
-                    case SpellType.Cone:
-                    case SpellType.MissileCone:
-                        if (!Configs.Menu.Item("DodgeCone").GetValue<bool>())
-                        {
-                            this.cachedValue = false;
-                        }
-                        break;
-                }
+                    switch (this.Type)
+                    {
+                        case SpellType.Line:
+                        case SpellType.MissileLine:
+                            this.cachedValue = Configs.Menu.Item("DodgeLine").GetValue<bool>();
+                            break;
+                        case SpellType.Circle:
+                            this.cachedValue =
+                                Configs.Menu.Item("Dodge" + (this.Data.TrapName != "" ? "Trap" : "Circle"))
+                                    .GetValue<bool>();
+                            break;
+                        case SpellType.Cone:
+                        case SpellType.MissileCone:
+                            this.cachedValue = Configs.Menu.Item("DodgeCone").GetValue<bool>();
+                            break;
+                    }
 
-                if (Configs.Menu.Item("CheckHp").GetValue<bool>()
-                    && ObjectManager.Player.HealthPercent >= this.GetValue<Slider>("IgnoreHp").Value)
-                {
-                    this.cachedValue = false;
+                    if (Configs.Menu.Item("CheckHp").GetValue<bool>()
+                        && ObjectManager.Player.HealthPercent >= this.GetValue<Slider>("IgnoreHp").Value)
+                    {
+                        this.cachedValue = false;
+                    }
                 }
 
                 return this.cachedValue;
@@ -289,12 +284,17 @@
 
             this.DrawingPolygon.Draw(color);
 
+            if (Configs.Debug && this.Type == SpellType.Circle)
+            {
+                Render.Circle.DrawCircle(Evade.PlayerPosition.To3D(), this.Data.Range, Color.Red);
+            }
+
             if (this.Data.Type == SpellType.MissileLine && this.MissileObject != null && this.MissileObject.IsVisible)
             {
                 var position = this.MissileObject.Position.To2D();
                 Util.DrawLine(
-                    (position + this.Radius * this.Direction.Perpendicular()).To3D(),
-                    (position - this.Radius * this.Direction.Perpendicular()).To3D(),
+                    (position + this.Radius * this.Direction.Perpendicular()).To3D2(),
+                    (position - this.Radius * this.Direction.Perpendicular()).To3D2(),
                     missileColor);
             }
         }
@@ -558,11 +558,6 @@
             {
                 this.End = this.Unit.ServerPosition.To2D();
 
-                if (this.Type == SpellType.Circle)
-                {
-                    this.Start = this.End;
-                }
-
                 if (this.Type == SpellType.Ring)
                 {
                     this.Ring.Center = this.End;
@@ -613,12 +608,12 @@
             {
                 case SpellType.Circle:
                     this.Polygon = this.Circle.ToPolygon();
-                    this.EvadePolygon = this.Circle.ToPolygon(Configs.ExtraEvadeDistance);
-                    this.PathFindingPolygon = this.Circle.ToPolygon(Configs.PathFindingDistance);
-                    this.PathFindingInnerPolygon = this.Circle.ToPolygon(Configs.PathFindingDistance2);
                     this.DrawingPolygon = this.Circle.ToPolygon(
                         0,
                         this.Radius - (!this.Data.AddHitbox ? 0 : ObjectManager.Player.BoundingRadius));
+                    this.EvadePolygon = this.Circle.ToPolygon(Configs.ExtraEvadeDistance);
+                    this.PathFindingPolygon = this.Circle.ToPolygon(Configs.PathFindingDistance);
+                    this.PathFindingInnerPolygon = this.Circle.ToPolygon(Configs.PathFindingDistance2);
                     break;
                 case SpellType.Line:
                     this.Polygon = this.Rectangle.ToPolygon();

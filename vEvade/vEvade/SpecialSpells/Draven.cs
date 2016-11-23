@@ -2,17 +2,18 @@
 {
     #region
 
-    using LeagueSharp;
-    using LeagueSharp.Common;
+    using System.Linq;
 
-    using vEvade.Helpers;
+    using LeagueSharp;
+
+    using vEvade.Core;
     using vEvade.Spells;
 
     using SpellData = vEvade.Spells.SpellData;
 
     #endregion
 
-    public class Lucian : IChampionManager
+    public class Draven : IChampionManager
     {
         #region Static Fields
 
@@ -30,38 +31,34 @@
             }
 
             init = true;
-            SpellDetector.OnProcessSpell += LucianQ;
+            SpellDetector.OnProcessSpell += DravenR;
         }
 
         #endregion
 
         #region Methods
 
-        private static void LucianQ(
+        private static void DravenR(
             Obj_AI_Base sender,
             GameObjectProcessSpellCastEventArgs args,
             SpellData data,
             SpellArgs spellArgs)
         {
-            if (data.MenuName != "LucianQ")
+            if (data.MenuName != "DravenR" || !args.SData.Name.Contains("Double"))
             {
                 return;
             }
 
-            var target = args.Target as Obj_AI_Base;
+            var spell =
+                Evade.SpellsDetected.Values.FirstOrDefault(
+                    i =>
+                    i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId && i.MissileObject != null);
 
-            if (target == null || !target.IsValid || (!target.IsMe && !Configs.Debug))
+            if (spell != null)
             {
-                return;
+                Evade.SpellsDetected.Remove(spell.SpellId);
             }
 
-            SpellDetector.AddSpell(
-                sender,
-                sender.ServerPosition,
-                target.Position
-                + (target.ServerPosition - target.Position).Normalized() * target.MoveSpeed
-                * ((data.Delay - Game.Ping) / 1000f),
-                data);
             spellArgs.NoProcess = true;
         }
 

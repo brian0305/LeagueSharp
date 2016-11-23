@@ -54,12 +54,16 @@ namespace vEvade.Helpers
 
         #region Static Fields
 
-        public static bool Debug = false;
-
         public static Menu Menu;
 
         private static readonly Dictionary<string, IChampionManager> ChampionManagers =
             new Dictionary<string, IChampionManager>();
+
+        #endregion
+
+        #region Public Properties
+
+        public static bool Debug => Menu.Item("DevMode").GetValue<bool>();
 
         #endregion
 
@@ -68,6 +72,8 @@ namespace vEvade.Helpers
         public static void CreateMenu()
         {
             Menu = new Menu("vEvade", "vEvade", true);
+            Menu.AddToMainMenu();
+            Menu.AddItem(new MenuItem("DevMode", "Dev Mode (F5)").SetValue(false));
             LoadSpecialSpellPlugins();
 
             var spells = new Menu("Spells", "Spells");
@@ -179,8 +185,6 @@ namespace vEvade.Helpers
             Menu.AddItem(
                 new MenuItem("DodgeDangerous", "Dodge Only Dangerous").SetValue(new KeyBind(32, KeyBindType.Press)))
                 .Permashow();
-
-            Menu.AddToMainMenu();
         }
 
         #endregion

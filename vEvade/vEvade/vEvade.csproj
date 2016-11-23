@@ -72,7 +72,12 @@
     <Compile Include="PathFinding\PathFollow.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SpecialSpells\Olaf.cs" />
+    <Compile Include="SpecialSpells\Draven.cs" />
     <Compile Include="SpecialSpells\Aatrox.cs" />
+    <Compile Include="SpecialSpells\Galio.cs" />
+    <Compile Include="SpecialSpells\Riven.cs" />
+    <Compile Include="SpecialSpells\Poppy.cs" />
     <Compile Include="SpecialSpells\Syndra.cs" />
     <Compile Include="SpecialSpells\Velkoz.cs" />
     <Compile Include="SpecialSpells\Azir.cs" />

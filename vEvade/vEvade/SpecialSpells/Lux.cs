@@ -3,6 +3,7 @@
     #region
 
     using System.Linq;
+    using System.Text.RegularExpressions;
 
     using LeagueSharp;
     using LeagueSharp.Common;
@@ -29,7 +30,7 @@
 
             var hero =
                 HeroManager.AllHeroes.FirstOrDefault(
-                    i => i.ChampionName == spellData.ChampName && (Configs.Debug || i.IsEnemy));
+                    i => i.ChampionName == spellData.ChampName && (i.IsEnemy || Configs.Debug));
 
             if (hero == null)
             {
@@ -43,32 +44,34 @@
 
         #region Methods
 
-        private static void LuxR(GameObject sender, Obj_AI_Hero hero, SpellData spellData)
+        private static void LuxR(GameObject sender, Obj_AI_Hero hero, SpellData data)
         {
-            if (!sender.Name.Contains("Lux") || !sender.Name.Contains("R_mis_beam_middle"))
+            var obj = sender as Obj_GeneralParticleEmitter;
+
+            if (obj == null || !obj.IsValid || !new Regex("Lux_.+_R_mis_beam_middle").IsMatch(obj.Name))
             {
                 return;
             }
 
-            var hiuDir = HiuManager.GetLastHiuOrientation();
+            var startT = Utils.GameTimeTickCount;
+            var alreadyAdd =
+                Evade.SpellsDetected.Values.Any(
+                    i => i.Data.MenuName == data.MenuName && i.Unit.NetworkId == hero.NetworkId);
 
-            if (!hiuDir.IsValid())
+            if (alreadyAdd)
             {
                 return;
             }
 
-            var startPos = sender.Position.To2D() - hiuDir * spellData.Range / 2;
-            var endPos = sender.Position.To2D() + hiuDir * spellData.Range / 2;
-            var dir = (endPos - startPos).Normalized();
+            var dir = HiuManager.GetLastHiuOrientation(startT);
 
-            if (
-                !Evade.SpellsDetected.Values.Any(
-                    i =>
-                    i.Data.MenuName == spellData.MenuName && i.Unit.NetworkId == hero.NetworkId
-                    && dir.AngleBetween(i.Direction) < 3 && startPos.Distance(i.Start) < 100)
-                && Configs.Menu.Item("DodgeFoW").GetValue<bool>())
+            if (dir.IsValid())
             {
-                SpellDetector.AddSpell(hero, startPos.To3D(), endPos.To3D(), spellData);
+                SpellDetector.AddSpell(
+                    hero,
+                    obj.Position.To2D() - dir * (data.Range / 2f),
+                    obj.Position.To2D() + dir * (data.Range / 2f),
+                    data);
             }
         }
 

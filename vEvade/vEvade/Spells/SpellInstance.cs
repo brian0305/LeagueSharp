@@ -168,7 +168,7 @@
                         data.Range);
                     break;
                 case SpellType.Ring:
-                    this.Ring = new Polygons.Ring(this.CollisionEnd, this.Radius, data.RadiusEx);
+                    this.Ring = new Polygons.Ring(this.CollisionEnd, data.RadiusEx, this.Radius);
                     break;
                 case SpellType.Arc:
                     this.Arc = new Polygons.Arc(start, end, this.Radius);
@@ -264,8 +264,7 @@
 
         private int GetRadius
             =>
-                this.Type == SpellType.Circle
-                && (this.Data.HasStartExplosion || this.Data.HasEndExplosion || this.Data.UseEndPosition)
+                this.Type == SpellType.Circle && (this.Data.HasStartExplosion || this.Data.HasEndExplosion)
                     ? this.Data.RadiusEx
                     : this.Data.Radius;
 
@@ -289,7 +288,8 @@
                 Render.Circle.DrawCircle(Evade.PlayerPosition.To3D(), this.Data.Range, Color.Red);
             }
 
-            if (this.Type == SpellType.MissileLine && this.MissileObject != null && this.MissileObject.IsVisible)
+            if (this.Type == SpellType.MissileLine && this.MissileObject != null && this.MissileObject.IsValid
+                && this.MissileObject.IsVisible)
             {
                 var position = this.MissileObject.Position.To2D();
                 Util.DrawLine(
@@ -347,8 +347,7 @@
 
         public bool IsAboutToHit(int time, Obj_AI_Base unit)
         {
-            if (this.Type == SpellType.MissileLine
-                || (this.Type == SpellType.Circle && this.Data.SpellName.EndsWith("_EndExp")))
+            if (this.Type == SpellType.MissileLine)
             {
                 var missilePos = this.GetMissilePosition(0);
                 var missilePosAfterT = this.GetMissilePosition(time);
@@ -530,11 +529,17 @@
         public void OnUpdate()
         {
             if (this.Data.CollisionObjects != null && this.Data.CollisionObjects.Length > 0
-                && Utils.GameTimeTickCount - this.lastCollisionCalc > 50
                 && Configs.Menu.Item("CheckCollision").GetValue<bool>())
             {
-                this.lastCollisionCalc = Utils.GameTimeTickCount;
-                this.collisionEnd = Collisions.GetCollision(this);
+                if (Utils.GameTimeTickCount - this.lastCollisionCalc > 50)
+                {
+                    this.lastCollisionCalc = Utils.GameTimeTickCount;
+                    this.collisionEnd = Collisions.GetCollision(this);
+                }
+            }
+            else if (this.collisionEnd.IsValid())
+            {
+                this.collisionEnd = Vector2.Zero;
             }
 
             if (this.Type == SpellType.Line || this.Type == SpellType.MissileLine)
@@ -545,22 +550,6 @@
 
             if (this.Type == SpellType.Circle)
             {
-                if (this.Data.MenuName == "FizzR" && this.ToggleObject != null)
-                {
-                    if (this.ToggleObject.Name.Contains("small"))
-                    {
-                        this.Radius = 200;
-                    }
-                    else if (this.ToggleObject.Name.Contains("big"))
-                    {
-                        this.Radius = 450;
-                    }
-                    else
-                    {
-                        this.Radius = 320;
-                    }
-                }
-
                 this.Circle = new Polygons.Circle(this.CollisionEnd, this.Radius);
                 this.UpdatePolygon();
             }
@@ -587,8 +576,13 @@
             {
                 this.Start = this.Unit.ServerPosition.To2D();
                 this.End = this.Start + this.Direction * this.Data.Range;
-                this.Rectangle = new Polygons.Line(this.Start, this.CollisionEnd, this.Radius);
                 this.UpdatePolygon();
+            }
+
+            if (this.Data.MenuName == "GalioR" && !this.Unit.HasBuff("GalioIdolOfDurand")
+                && Utils.GameTimeTickCount - this.StartTick > this.Data.Delay + 300)
+            {
+                this.EndTick = 0;
             }
 
             if (this.Data.MenuName == "SionR" && this.Unit.HasBuff("SionR"))

@@ -5,14 +5,13 @@
     using LeagueSharp;
     using LeagueSharp.Common;
 
-    using vEvade.Helpers;
     using vEvade.Spells;
 
     using SpellData = vEvade.Spells.SpellData;
 
     #endregion
 
-    public class Lucian : IChampionManager
+    public class Olaf : IChampionManager
     {
         #region Static Fields
 
@@ -30,38 +29,27 @@
             }
 
             init = true;
-            SpellDetector.OnProcessSpell += LucianQ;
+            SpellDetector.OnProcessSpell += OlafQ;
         }
 
         #endregion
 
         #region Methods
 
-        private static void LucianQ(
+        private static void OlafQ(
             Obj_AI_Base sender,
             GameObjectProcessSpellCastEventArgs args,
             SpellData data,
             SpellArgs spellArgs)
         {
-            if (data.MenuName != "LucianQ")
+            if (data.MenuName != "OlafQ")
             {
                 return;
             }
 
-            var target = args.Target as Obj_AI_Base;
-
-            if (target == null || !target.IsValid || (!target.IsMe && !Configs.Debug))
-            {
-                return;
-            }
-
-            SpellDetector.AddSpell(
-                sender,
-                sender.ServerPosition,
-                target.Position
-                + (target.ServerPosition - target.Position).Normalized() * target.MoveSpeed
-                * ((data.Delay - Game.Ping) / 1000f),
-                data);
+            var startPos = sender.ServerPosition.To2D();
+            var endPos = args.End.To2D().Extend(startPos, -50);
+            SpellDetector.AddSpell(sender, startPos, endPos, data);
             spellArgs.NoProcess = true;
         }
 

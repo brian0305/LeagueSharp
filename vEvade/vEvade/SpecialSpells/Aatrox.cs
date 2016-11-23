@@ -47,10 +47,11 @@
                 return;
             }
 
-            var startPos = sender.ServerPosition;
-            var pDir = (args.End - startPos).To2D().Normalized().Perpendicular().To3D();
-            SpellDetector.AddSpell(sender, startPos + pDir * data.Radius, args.End, data);
-            SpellDetector.AddSpell(sender, startPos - pDir * data.Radius, args.End, data);
+            var startPos = sender.ServerPosition.To2D();
+            var endPos = args.End.To2D();
+            var dir = (endPos - startPos).Normalized().Perpendicular();
+            SpellDetector.AddSpell(sender, startPos + dir * data.Radius, endPos, data);
+            SpellDetector.AddSpell(sender, startPos - dir * data.Radius, endPos, data);
             spellArgs.NoProcess = true;
         }
 

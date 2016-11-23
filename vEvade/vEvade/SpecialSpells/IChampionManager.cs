@@ -89,8 +89,7 @@
             Evade.SpellsDetected[oldSpell.SpellId] = new SpellInstance(
                 newData,
                 oldSpell.StartTick,
-                newData.Delay + (int)(oldSpell.Start.Distance(oldSpell.End) / newData.MissileSpeed * 1000)
-                + newData.DelayEx,
+                newData.Delay + (int)(oldSpell.Start.Distance(oldSpell.End) / newData.MissileSpeed * 1000),
                 oldSpell.Start,
                 oldSpell.End,
                 oldSpell.Unit,
@@ -104,35 +103,46 @@
             SpellData data,
             SpellArgs spellArgs)
         {
-            var newData = (SpellData)data.Clone();
-
             switch (data.MenuName)
             {
                 case "MalphiteR":
-                    newData.MissileSpeed = 1500 + (int)sender.MoveSpeed;
-                    spellArgs.NewData = newData;
+                    {
+                        var newData = (SpellData)data.Clone();
+                        newData.MissileSpeed += (int)sender.MoveSpeed;
+                        spellArgs.NewData = newData;
+                    }
                     break;
                 case "SionR":
-                    newData.MissileSpeed = (int)sender.MoveSpeed;
-                    spellArgs.NewData = newData;
+                    {
+                        var newData = (SpellData)data.Clone();
+                        newData.MissileSpeed = (int)sender.MoveSpeed;
+                        spellArgs.NewData = newData;
+                    }
                     break;
             }
 
-            if (data.MultipleNumber == -1 || (data.MenuName == "KhazixW" && args.SData.Name == data.SpellName))
+            if (data.MultipleNumber == -1 || (data.MenuName == "KhazixW" && !args.SData.Name.EndsWith("Long")))
             {
                 return;
             }
 
-            var startPos = sender.ServerPosition;
-            var dir = (args.End - startPos).To2D().Normalized();
+            var startPos = sender.ServerPosition.To2D();
+            var endPos = args.End.To2D();
+
+            if (data.InfrontStart > 0)
+            {
+                startPos = startPos.Extend(endPos, data.InfrontStart);
+            }
+
+            var dir = (endPos - startPos).Normalized();
             var startTick = Utils.GameTimeTickCount;
 
             for (var i = -(data.MultipleNumber - 1) / 2; i <= (data.MultipleNumber - 1) / 2; i++)
             {
                 SpellDetector.AddSpell(
                     sender,
-                    startPos,
-                    startPos + data.Range / 2f * dir.Rotated(data.MultipleAngle * i).To3D(),
+                    sender.ServerPosition.To2D(),
+                    startPos + dir.Rotated(data.MultipleAngle * i) * (data.Range / 2f),
                     data,
                     null,
                     SpellType.None,

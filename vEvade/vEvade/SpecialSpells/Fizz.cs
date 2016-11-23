@@ -2,8 +2,12 @@
 {
     #region
 
-    using LeagueSharp;
+    using System.Linq;
 
+    using LeagueSharp;
+    using LeagueSharp.Common;
+
+    using vEvade.Core;
     using vEvade.Helpers;
     using vEvade.Spells;
 
@@ -30,6 +34,7 @@
 
             init = true;
             SpellDetector.OnProcessSpell += FizzQ;
+            SpellDetector.OnCreateSpell += FizzR;
         }
 
         #endregion
@@ -55,6 +60,39 @@
             }
 
             spellArgs.NoProcess = true;
+        }
+
+        private static void FizzR(Obj_AI_Base sender, MissileClient missile, SpellData data, SpellArgs spellArgs)
+        {
+            if (data.MenuName != "FizzR")
+            {
+                return;
+            }
+
+            var dist = missile.StartPosition.Distance(missile.EndPosition);
+            var radius = dist > 910 ? 440 : (dist >= 455 ? 340 : 0);
+
+            if (radius == 0)
+            {
+                return;
+            }
+
+            var spell =
+                Evade.SpellsDetected.Values.FirstOrDefault(
+                    i =>
+                    i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId
+                    && i.Type == SpellType.Circle);
+
+            if (spell != null)
+            {
+                Evade.SpellsDetected[spell.SpellId].Radius = radius + (!Configs.Debug ? Configs.SpellExtraRadius : 0);
+
+                return;
+            }
+
+            var newData = (SpellData)data.Clone();
+            newData.RadiusEx = radius;
+            spellArgs.NewData = newData;
         }
 
         #endregion

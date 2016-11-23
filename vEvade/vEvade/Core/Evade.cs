@@ -136,13 +136,13 @@ namespace vEvade.Core
 
         public static void OnGameLoad(EventArgs args)
         {
+            SpellsDetected.OnAdd += (sender, eventArgs) => { Evading = false; };
             Configs.CreateMenu();
             Game.OnUpdate += OnUpdate;
             Obj_AI_Base.OnIssueOrder += OnIssueOrder;
             Drawing.OnDraw += OnDraw;
             CustomEvents.Unit.OnDash += OnDash;
             Orbwalking.BeforeAttack += BeforeAttack;
-            SpellsDetected.OnAdd += (sender, eventArgs) => { Evading = false; };
             Collisions.Init();
         }
 
@@ -164,6 +164,13 @@ namespace vEvade.Core
             {
                 if (spell.MissileObject == null && spell.ToggleObject == null && spell.TrapObject == null
                     && HeroManager.AllHeroes.Any(i => i.IsValid() && i.IsDead && i.NetworkId == spell.Unit.NetworkId))
+                {
+                    Utility.DelayAction.Add(1, () => SpellsDetected.Remove(spell.SpellId));
+                }
+
+                if (spell.Data.IsDash && Utils.GameTimeTickCount - spell.StartTick > spell.Data.Delay + 100
+                    && HeroManager.AllHeroes.Any(
+                        i => i.IsValid() && !i.IsDashing() && i.NetworkId == spell.Unit.NetworkId))
                 {
                     Utility.DelayAction.Add(1, () => SpellsDetected.Remove(spell.SpellId));
                 }

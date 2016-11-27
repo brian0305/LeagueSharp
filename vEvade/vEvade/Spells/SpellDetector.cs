@@ -17,7 +17,7 @@
 
     #endregion
 
-    internal static class SpellDetector
+    public static class SpellDetector
     {
         #region Static Fields
 
@@ -50,13 +50,13 @@
 
         #region Delegates
 
-        public delegate void OnCreateSpellEvent(
+        public delegate void OnCreateSpellH(
             Obj_AI_Base sender,
             MissileClient missile,
             SpellData data,
             SpellArgs spellArgs);
 
-        public delegate void OnProcessSpellEvent(
+        public delegate void OnProcessSpellH(
             Obj_AI_Base sender,
             GameObjectProcessSpellCastEventArgs args,
             SpellData data,
@@ -66,9 +66,9 @@
 
         #region Public Events
 
-        public static event OnCreateSpellEvent OnCreateSpell;
+        public static event OnCreateSpellH OnCreateSpell;
 
-        public static event OnProcessSpellEvent OnProcessSpell;
+        public static event OnProcessSpellH OnProcessSpell;
 
         #endregion
 
@@ -84,7 +84,7 @@
             bool checkExplosion = true,
             int startT = 0)
         {
-            if (missile != null && !sender.IsVisible && !Configs.Menu.Item("DodgeFoW").GetValue<bool>())
+            if (!Configs.Menu.Item("DodgeFoW").GetValue<bool>() && !sender.IsVisible)
             {
                 return;
             }
@@ -96,7 +96,7 @@
 
             var startPos = spellStart;
             var endPos = spellEnd;
-            var startTime = startT > 0 ? startT : Utils.GameTimeTickCount;
+            var startTime = startT > 0 ? startT : Utils.GameTimeTickCount - Game.Ping / 2;
             var endTime = data.Delay;
 
             if (missile == null)
@@ -111,9 +111,17 @@
                     startPos = startPos.Extend(endPos, data.InfrontStart);
                 }
             }
-            else if (!data.MissileDelayed && data.Delay > 0)
+            else
             {
-                startTime -= data.Delay;
+                if (!data.MissileDelayed)
+                {
+                    startTime -= data.Delay;
+                }
+
+                if (data.MissileSpeed != 0)
+                {
+                    startTime -= (int)(startPos.Distance(missile.Position) / data.MissileSpeed * 1000);
+                }
             }
 
             if (type == SpellType.None)
@@ -129,6 +137,11 @@
 
             if (missile == null)
             {
+                if (data.ExtraRange > 0)
+                {
+                    endPos = endPos.Extend(startPos, -Math.Min(data.ExtraRange, data.Range - endPos.Distance(startPos)));
+                }
+
                 if (data.Invert)
                 {
                     endPos = startPos.Extend(endPos, -startPos.Distance(endPos));
@@ -136,9 +149,9 @@
 
                 if (data.Perpendicular)
                 {
-                    var dirPerpendicular = (endPos - startPos).Normalized().Perpendicular();
-                    startPos = spellEnd - dirPerpendicular * data.RadiusEx;
-                    endPos = spellEnd + dirPerpendicular * data.RadiusEx;
+                    var pDir = (endPos - startPos).Normalized().Perpendicular();
+                    startPos = spellEnd - pDir * data.RadiusEx;
+                    endPos = spellEnd + pDir * data.RadiusEx;
                 }
             }
 
@@ -182,7 +195,7 @@
             if (missile == null ? !data.DontCheckForDuplicates : !data.MissileOnly)
             {
                 foreach (var spell in
-                    Evade.SpellsDetected.Values.Where(
+                    Evade.DetectedSpells.Values.Where(
                         i =>
                         i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId
                         && dir.AngleBetween(i.Direction) < 3 && i.Start.Distance(startPos) < 100))
@@ -222,9 +235,9 @@
                 AddSpell(sender, spellStart, spellEnd, newData, missile, SpellType.Circle, false, startT);
             }
 
-            var newSpell = new SpellInstance(data, startTime, endTime, startPos, endPos, sender, type)
+            var newSpell = new SpellInstance(data, startTime, endTime + data.ExtraDelay, startPos, endPos, sender, type)
                                { SpellId = spellIdCount++, MissileObject = missile };
-            Evade.SpellsDetected.Add(newSpell.SpellId, newSpell);
+            Evade.DetectedSpells.Add(newSpell.SpellId, newSpell);
 
             if (Configs.Debug)
             {
@@ -265,7 +278,8 @@
                 return;
             }
 
-            Console.WriteLine($"{Utils.GameTimeTickCount} Dash => Speed: {args.Speed}");
+            Console.WriteLine(
+                $"{Utils.GameTimeTickCount} {sender.CharData.BaseSkinName} [{sender.Team}] => Speed: {args.Speed}");
         }
 
         private static void OnCreateMissile(GameObject sender, EventArgs args)
@@ -335,7 +349,7 @@
             }
 
             foreach (var spell in
-                Evade.SpellsDetected.Values.Where(
+                Evade.DetectedSpells.Values.Where(
                     i =>
                     i.MissileObject != null && i.ToggleObject == null && i.Data.ToggleName != ""
                     && new Regex(i.Data.ToggleName).IsMatch(name) && i.End.Distance(toggle.Position) < 100))
@@ -386,7 +400,7 @@
                 HeroManager.AllHeroes.First(i => i.ChampionName == data.ChampName && (i.IsEnemy || Configs.Debug));
             var spell = new SpellInstance(data, Utils.GameTimeTickCount, 0, trapPos, trapPos, caster, data.Type)
                             { SpellId = spellIdCount++, TrapObject = trap };
-            Evade.SpellsDetected.Add(spell.SpellId, spell);
+            Evade.DetectedSpells.Add(spell.SpellId, spell);
 
             if (Configs.Debug)
             {
@@ -404,13 +418,13 @@
             }
 
             foreach (var spell in
-                Evade.SpellsDetected.Values.Where(
+                Evade.DetectedSpells.Values.Where(
                     i =>
                     i.MissileObject != null && i.MissileObject.NetworkId == missile.NetworkId && i.Data.CanBeRemoved))
             {
                 if (spell.Data.ToggleName == "" || spell.Type != SpellType.Circle)
                 {
-                    Utility.DelayAction.Add(1, () => Evade.SpellsDetected.Remove(spell.SpellId));
+                    Utility.DelayAction.Add(1, () => Evade.DetectedSpells.Remove(spell.SpellId));
                 }
                 else
                 {
@@ -425,7 +439,7 @@
                             {
                                 if (spell.ToggleObject == null)
                                 {
-                                    Evade.SpellsDetected.Remove(spell.SpellId);
+                                    Evade.DetectedSpells.Remove(spell.SpellId);
                                 }
                             });
                 }
@@ -447,10 +461,10 @@
             }
 
             foreach (var spell in
-                Evade.SpellsDetected.Values.Where(
+                Evade.DetectedSpells.Values.Where(
                     i => i.ToggleObject != null && i.ToggleObject.NetworkId == toggle.NetworkId))
             {
-                Utility.DelayAction.Add(1, () => Evade.SpellsDetected.Remove(spell.SpellId));
+                Utility.DelayAction.Add(1, () => Evade.DetectedSpells.Remove(spell.SpellId));
 
                 if (Configs.Debug)
                 {
@@ -469,10 +483,10 @@
             }
 
             foreach (var spell in
-                Evade.SpellsDetected.Values.Where(i => i.TrapObject != null && i.TrapObject.NetworkId == trap.NetworkId)
+                Evade.DetectedSpells.Values.Where(i => i.TrapObject != null && i.TrapObject.NetworkId == trap.NetworkId)
                 )
             {
-                Utility.DelayAction.Add(1, () => Evade.SpellsDetected.Remove(spell.SpellId));
+                Utility.DelayAction.Add(1, () => Evade.DetectedSpells.Remove(spell.SpellId));
 
                 if (Configs.Debug)
                 {

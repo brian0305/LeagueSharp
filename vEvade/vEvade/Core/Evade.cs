@@ -13,7 +13,6 @@ namespace vEvade.Core
 
     using vEvade.EvadeSpells;
     using vEvade.Helpers;
-    using vEvade.Managers;
     using vEvade.PathFinding;
     using vEvade.Spells;
 
@@ -32,11 +31,11 @@ namespace vEvade.Core
 
         public static readonly Dictionary<string, SpellData> OnTrapSpells = new Dictionary<string, SpellData>();
 
+        public static SpellList<int, SpellInstance> DetectedSpells = new SpellList<int, SpellInstance>();
+
         public static int LastWardJumpTick;
 
-        public static SpellList<int, SpellInstance> SpellsDetected = new SpellList<int, SpellInstance>();
-
-        private static Vector2 evadePos, evadeToPos;
+        private static Vector2 evadePoint1, evadePoint2;
 
         private static bool evading;
 
@@ -44,9 +43,9 @@ namespace vEvade.Core
 
         private static bool haveSolution;
 
-        private static int lastMoveTick, lastMoveTick2, lastEvadePosChangeTick;
+        private static int lastMoveTick1, lastMoveTick2, lastEvadePointChangeTick;
 
-        private static Vector2 previousPos;
+        private static Vector2 prevPos;
 
         #endregion
 
@@ -63,8 +62,8 @@ namespace vEvade.Core
                 if (value)
                 {
                     forceFollowPath = true;
-                    lastMoveTick = 0;
-                    evadePos.Move();
+                    lastMoveTick1 = 0;
+                    evadePoint1.Move();
                 }
 
                 evading = value;
@@ -86,22 +85,22 @@ namespace vEvade.Core
                 unit = ObjectManager.Player;
             }
 
-            return SpellsDetected.Values.Any(i => i.Enable && i.IsAboutToHit(time, unit));
+            return DetectedSpells.Values.Where(i => i.Enable).Any(i => i.IsAboutToHit(time, unit));
         }
 
-        public static SafePath IsSafePath(List<Vector2> path, int timeOffset, int speed = -1, int delay = 0)
+        public static SafePath IsSafePath(List<Vector2> path, int time, int speed = -1, int delay = 0)
         {
             var isSafe = true;
-            var intersects = new List<FindIntersect>();
+            var intersects = new List<Intersects>();
 
-            foreach (var spell in SpellsDetected.Values.Where(i => i.Enable))
+            foreach (var spell in DetectedSpells.Values.Where(i => i.Enable))
             {
-                var result = spell.IsSafePath(path, timeOffset, speed, delay);
-                isSafe = isSafe && result.IsSafe;
+                var checkPath = spell.IsSafePath(path, time, speed, delay);
+                isSafe = isSafe && checkPath.IsSafe;
 
-                if (result.Intersect.Valid)
+                if (checkPath.Intersect.Valid)
                 {
-                    intersects.Add(result.Intersect);
+                    intersects.Add(checkPath.Intersect);
                 }
             }
 
@@ -109,17 +108,17 @@ namespace vEvade.Core
             {
                 var intersect = intersects.MinOrDefault(i => i.Distance);
 
-                return new SafePath(false, intersect.Valid ? intersect : new FindIntersect());
+                return new SafePath(false, intersect.Valid ? intersect : new Intersects());
             }
 
-            return new SafePath(true, new FindIntersect());
+            return new SafePath(true, new Intersects());
         }
 
-        public static IsSafeResult IsSafePos(Vector2 pos)
+        public static SafePoint IsSafePoint(Vector2 pos)
         {
-            var result = new IsSafeResult { Spells = new List<SpellInstance>() };
+            var result = new SafePoint { Spells = new List<SpellInstance>() };
 
-            foreach (var spell in SpellsDetected.Values.Where(i => i.Enable && i.IsDanger(pos)))
+            foreach (var spell in DetectedSpells.Values.Where(i => i.Enable && i.IsDanger(pos)))
             {
                 result.Spells.Add(spell);
             }
@@ -129,17 +128,19 @@ namespace vEvade.Core
             return result;
         }
 
-        public static bool IsSafeToBlink(Vector2 pos, int timeOffset, int delay)
+        public static bool IsSafeToBlink(Vector2 pos, int time, int delay)
         {
-            return SpellsDetected.Values.Where(i => i.Enable).All(i => i.IsSafeToBlink(pos, timeOffset, delay));
+            return DetectedSpells.Values.Where(i => i.Enable).All(i => i.IsSafeToBlink(pos, time, delay));
         }
 
         public static void OnGameLoad(EventArgs args)
         {
-            SpellsDetected.OnAdd += (sender, eventArgs) => { Evading = false; };
+            Configs.Debug = false;
+            DetectedSpells.OnAdd += (sender, eventArgs) => { Evading = false; };
             Configs.CreateMenu();
             Game.OnUpdate += OnUpdate;
             Obj_AI_Base.OnIssueOrder += OnIssueOrder;
+            Spellbook.OnCastSpell += OnCastSpell;
             Drawing.OnDraw += OnDraw;
             CustomEvents.Unit.OnDash += OnDash;
             Orbwalking.BeforeAttack += BeforeAttack;
@@ -160,29 +161,28 @@ namespace vEvade.Core
 
         private static void CheckEndSpell()
         {
-            foreach (var spell in SpellsDetected.Values)
+            foreach (var spell in DetectedSpells.Values)
             {
                 if (spell.MissileObject == null && spell.ToggleObject == null && spell.TrapObject == null
-                    && HeroManager.AllHeroes.Any(i => i.IsValid() && i.IsDead && i.NetworkId == spell.Unit.NetworkId))
+                    && spell.Unit.IsDead)
                 {
-                    Utility.DelayAction.Add(1, () => SpellsDetected.Remove(spell.SpellId));
+                    Utility.DelayAction.Add(1, () => DetectedSpells.Remove(spell.SpellId));
                 }
 
                 if (spell.Data.IsDash && Utils.GameTimeTickCount - spell.StartTick > spell.Data.Delay + 100
-                    && HeroManager.AllHeroes.Any(
-                        i => i.IsValid() && !i.IsDashing() && i.NetworkId == spell.Unit.NetworkId))
+                    && !spell.Unit.IsDashing())
                 {
-                    Utility.DelayAction.Add(1, () => SpellsDetected.Remove(spell.SpellId));
+                    Utility.DelayAction.Add(50, () => DetectedSpells.Remove(spell.SpellId));
                 }
 
                 if (spell.TrapObject != null && spell.TrapObject.IsDead)
                 {
-                    Utility.DelayAction.Add(1, () => SpellsDetected.Remove(spell.SpellId));
+                    Utility.DelayAction.Add(1, () => DetectedSpells.Remove(spell.SpellId));
                 }
 
                 if (spell.EndTick + spell.Data.ExtraDuration <= Utils.GameTimeTickCount)
                 {
-                    Utility.DelayAction.Add(1, () => SpellsDetected.Remove(spell.SpellId));
+                    Utility.DelayAction.Add(1, () => DetectedSpells.Remove(spell.SpellId));
 
                     if (Configs.Debug)
                     {
@@ -190,6 +190,50 @@ namespace vEvade.Core
                     }
                 }
             }
+        }
+
+        private static void OnCastSpell(Spellbook sender, SpellbookCastSpellEventArgs args)
+        {
+            if (!sender.Owner.IsMe)
+            {
+                return;
+            }
+
+            if (args.Slot == SpellSlot.Recall)
+            {
+                evadePoint2 = Vector2.Zero;
+            }
+
+            if (!Evading)
+            {
+                return;
+            }
+
+            var blockLvl = Configs.Menu.Item("CheckBlock").GetValue<StringList>().SelectedIndex;
+
+            if (blockLvl == 0)
+            {
+                return;
+            }
+
+            var isDangerous = false;
+
+            foreach (var spell in DetectedSpells.Values.Where(i => i.Enable && i.IsDanger(PlayerPosition)))
+            {
+                isDangerous = spell.GetValue<bool>("IsDangerous");
+
+                if (isDangerous)
+                {
+                    break;
+                }
+            }
+
+            if (blockLvl == 1 && !isDangerous)
+            {
+                return;
+            }
+
+            args.Process = !SpellBlocker.CanBlock(args.Slot);
         }
 
         private static void OnDash(Obj_AI_Base sender, Dash.DashItem args)
@@ -205,7 +249,7 @@ namespace vEvade.Core
                     $"{Utils.GameTimeTickCount} Dash => Speed: {args.Speed}, Dist: {args.EndPos.Distance(args.StartPos)}");
             }
 
-            evadeToPos = args.EndPos;
+            evadePoint2 = args.EndPos;
         }
 
         private static void OnDraw(EventArgs args)
@@ -229,10 +273,30 @@ namespace vEvade.Core
 
             if (Configs.Menu.Item("DrawSpells").GetValue<bool>())
             {
-                foreach (var spell in SpellsDetected.Values)
+                foreach (var spell in DetectedSpells.Values)
                 {
-                    spell.Draw(Color.White, Color.LimeGreen);
+                    spell.Draw(Color.White);
                 }
+            }
+
+            if (Configs.Debug)
+            {
+                var curPaths = ObjectManager.Player.GetWaypoints();
+
+                for (var i = 0; i < curPaths.Count - 1; i++)
+                {
+                    Util.DrawLine(curPaths[i].To3D2(), curPaths[i + 1].To3D2(), Color.White);
+                }
+
+                var evadePaths = Core.FindPaths(PlayerPosition, Game.CursorPos.To2D());
+
+                for (var i = 0; i < evadePaths.Count - 1; i++)
+                {
+                    Util.DrawLine(evadePaths[i].To3D2(), evadePaths[i + 1].To3D2(), Color.Red);
+                }
+
+                Render.Circle.DrawCircle(evadePoint1.To3D2(), 100, Color.White);
+                Render.Circle.DrawCircle(evadePoint2.To3D2(), 100, Color.Red);
             }
         }
 
@@ -243,17 +307,11 @@ namespace vEvade.Core
                 return;
             }
 
-            if (args.Order == GameObjectOrder.MoveTo || args.Order == GameObjectOrder.AttackTo)
-            {
-                evadeToPos.X = args.TargetPosition.X;
-                evadeToPos.Y = args.TargetPosition.Y;
-            }
-            else
-            {
-                evadeToPos = Vector2.Zero;
-            }
+            evadePoint2 = args.Order == GameObjectOrder.MoveTo || args.Order == GameObjectOrder.AttackTo
+                              ? args.TargetPosition.To2D()
+                              : Vector2.Zero;
 
-            if (SpellsDetected.Count == 0)
+            if (DetectedSpells.Count == 0)
             {
                 forceFollowPath = false;
             }
@@ -269,31 +327,31 @@ namespace vEvade.Core
                 return;
             }
 
-            var path = ObjectManager.Player.GetPath(args.TargetPosition).ToList().To2D();
+            var paths = ObjectManager.Player.GetPath(args.TargetPosition).ToList().To2D();
 
-            if (Evading || !IsSafePos(PlayerPosition).IsSafe)
+            if (Evading || !IsSafePoint(PlayerPosition).IsSafe)
             {
                 if (args.Order == GameObjectOrder.MoveTo)
                 {
                     var willMove = false;
 
-                    if (Evading && Utils.GameTimeTickCount - lastEvadePosChangeTick > Configs.EvadePointChangeInterval)
+                    if (Evading && Utils.GameTimeTickCount - lastEvadePointChangeTick > Configs.EvadePointChangeTime)
                     {
                         var points = Evader.GetEvadePoints(-1, 0, false, true);
 
                         if (points.Count > 0)
                         {
-                            evadePos = args.TargetPosition.To2D().Closest(points);
+                            evadePoint1 = args.TargetPosition.To2D().Closest(points);
                             Evading = true;
-                            lastEvadePosChangeTick = Utils.GameTimeTickCount;
                             willMove = true;
+                            lastEvadePointChangeTick = Utils.GameTimeTickCount;
                         }
                     }
 
-                    if (IsSafePath(path, Configs.EvadingRouteChangeTimeOffset).IsSafe
-                        && IsSafePos(path[path.Count - 1]).IsSafe)
+                    if (IsSafePath(paths, Configs.EvadingRouteChangeTime).IsSafe
+                        && IsSafePoint(paths[paths.Count - 1]).IsSafe)
                     {
-                        evadePos = path[path.Count - 1];
+                        evadePoint1 = paths[paths.Count - 1];
                         Evading = true;
                         willMove = true;
                     }
@@ -309,27 +367,49 @@ namespace vEvade.Core
                 return;
             }
 
-            if (IsSafePath(path, Configs.CrossingTimeOffset).IsSafe || args.Order == GameObjectOrder.AttackUnit)
+            var checkPath = IsSafePath(paths, Configs.CrossingTime);
+
+            if (checkPath.IsSafe)
             {
                 return;
             }
 
-            forceFollowPath = true;
-            args.Process = false;
+            if (args.Order != GameObjectOrder.AttackUnit)
+            {
+                forceFollowPath = true;
+                args.Process = false;
+            }
+            else
+            {
+                var target = args.Target as AttackableUnit;
+
+                if (target == null || !target.IsValid || !target.IsVisible
+                    || PlayerPosition.Distance(target.Position) <= Orbwalking.GetRealAutoAttackRange(target))
+                {
+                    return;
+                }
+
+                if (checkPath.Intersect.Valid)
+                {
+                    checkPath.Intersect.Point.Move();
+                }
+
+                args.Process = false;
+            }
         }
 
         private static void OnUpdate(EventArgs args)
         {
-            if (previousPos.IsValid() && PlayerPosition.Distance(previousPos) > 200)
+            if (prevPos.IsValid() && PlayerPosition.Distance(prevPos) > 200)
             {
                 Evading = false;
-                evadeToPos = Vector2.Zero;
+                evadePoint2 = Vector2.Zero;
             }
 
-            previousPos = PlayerPosition;
+            prevPos = PlayerPosition;
             CheckEndSpell();
 
-            foreach (var spell in SpellsDetected.Values)
+            foreach (var spell in DetectedSpells.Values)
             {
                 spell.OnUpdate();
             }
@@ -337,7 +417,7 @@ namespace vEvade.Core
             if (!Configs.Menu.Item("Enabled").GetValue<KeyBind>().Active || Util.CommonCheck)
             {
                 Evading = false;
-                evadeToPos = Vector2.Zero;
+                evadePoint2 = Vector2.Zero;
 
                 return;
             }
@@ -355,7 +435,7 @@ namespace vEvade.Core
                     !i.IsMe && i.IsValidTarget(1000, false)
                     && Configs.Menu.Item("SA_" + i.ChampionName).GetValue<bool>()))
             {
-                var checkSafe = IsSafePos(ally.ServerPosition.To2D());
+                var checkSafe = IsSafePoint(ally.ServerPosition.To2D());
 
                 if (checkSafe.IsSafe)
                 {
@@ -375,12 +455,12 @@ namespace vEvade.Core
                 }
             }
 
-            var curPath = ObjectManager.Player.GetWaypoints();
-            var checkPos = IsSafePos(PlayerPosition);
-            var checkPath = IsSafePath(curPath, 100);
+            var curPaths = ObjectManager.Player.GetWaypoints();
+            var checkPos = IsSafePoint(PlayerPosition);
+            var checkPath = IsSafePath(curPaths, 100);
             haveSolution = false;
 
-            if (Evading && IsSafePos(evadePos).IsSafe)
+            if (Evading && IsSafePoint(evadePoint1).IsSafe)
             {
                 if (checkPos.IsSafe)
                 {
@@ -388,10 +468,10 @@ namespace vEvade.Core
                 }
                 else
                 {
-                    if (Utils.GameTimeTickCount - lastMoveTick > 1000 / 15)
+                    if (Utils.GameTimeTickCount - lastMoveTick1 > 1000 / 15)
                     {
-                        lastMoveTick = Utils.GameTimeTickCount;
-                        evadePos.Move();
+                        lastMoveTick1 = Utils.GameTimeTickCount;
+                        evadePoint1.Move();
                     }
 
                     return;
@@ -404,10 +484,10 @@ namespace vEvade.Core
 
             if (!checkPath.IsSafe && !checkPos.IsSafe)
             {
-                TryToEvade(checkPos.Spells, evadeToPos.IsValid() ? evadeToPos : Game.CursorPos.To2D());
+                TryToEvade(checkPos.Spells, evadePoint2.IsValid() ? evadePoint2 : Game.CursorPos.To2D());
             }
 
-            if (haveSolution || Evading || !evadeToPos.IsValid() || !checkPos.IsSafe
+            if (haveSolution || Evading || !evadePoint2.IsValid() || !checkPos.IsSafe
                 || !EvadeSpellDatabase.Spells.Any(i => i.MenuName == "Walking" && i.Enabled)
                 || (checkPath.IsSafe && !forceFollowPath)
                 || (Utils.GameTimeTickCount - lastMoveTick2 <= 1000 / 15 && PathFollow.IsFollowing))
@@ -417,35 +497,35 @@ namespace vEvade.Core
 
             lastMoveTick2 = Utils.GameTimeTickCount;
 
-            if (SpellsDetected.Count == 0)
+            if (DetectedSpells.Count == 0)
             {
-                if (evadeToPos.Distance(PlayerPosition) > 75)
+                if (evadePoint2.Distance(PlayerPosition) > 75)
                 {
-                    evadeToPos.Move();
+                    evadePoint2.Move();
                 }
 
                 return;
             }
 
-            var newPath = ObjectManager.Player.GetPath(evadeToPos.To3D()).ToList().To2D();
+            var paths = ObjectManager.Player.GetPath(evadePoint2.To3D()).ToList().To2D();
 
-            if (IsSafePath(newPath, 100).IsSafe)
+            if (IsSafePath(paths, 100).IsSafe)
             {
-                if (evadeToPos.Distance(PlayerPosition) > 75)
+                if (evadePoint2.Distance(PlayerPosition) > 75)
                 {
-                    evadeToPos.Move();
+                    evadePoint2.Move();
                 }
 
                 return;
             }
 
-            var paths = Core.FindPaths(PlayerPosition, evadeToPos);
+            var newPaths = Core.FindPaths(PlayerPosition, evadePoint2);
 
-            if (paths.Count == 0)
+            if (newPaths.Count == 0)
             {
-                if (!checkPath.Intersect.Valid && curPath.Count <= 1)
+                if (!checkPath.Intersect.Valid && curPaths.Count <= 1)
                 {
-                    checkPath = IsSafePath(newPath, 100);
+                    checkPath = IsSafePath(paths, 100);
                 }
 
                 if (checkPath.Intersect.Valid && checkPath.Intersect.Point.Distance(PlayerPosition) > 75)
@@ -456,13 +536,13 @@ namespace vEvade.Core
                 }
             }
 
-            PathFollow.Start(paths);
+            PathFollow.Start(newPaths);
             PathFollow.KeepFollowPath();
         }
 
-        private static void TryToEvade(List<SpellInstance> hits, Vector2 to)
+        private static void TryToEvade(List<SpellInstance> spells, Vector2 to)
         {
-            var dangerLvl = hits.Select(i => i.GetValue<Slider>("DangerLvl").Value).Concat(new[] { 0 }).Max();
+            var dangerLvl = spells.Select(i => i.GetValue<Slider>("DangerLvl").Value).Concat(new[] { 0 }).Max();
 
             foreach (var evadeSpell in EvadeSpellDatabase.Spells.Where(i => i.Enabled && dangerLvl >= i.DangerLevel))
             {
@@ -484,19 +564,20 @@ namespace vEvade.Core
 
                     if (points.Count > 0)
                     {
-                        evadePos = to.Closest(points);
-                        Evading = true;
-                        var pos = evadePos.Extend(PlayerPosition, -100);
+                        evadePoint1 = to.Closest(points);
+                        var pos = evadePoint1.Extend(PlayerPosition, -100);
 
                         if (
                             IsSafePath(
                                 ObjectManager.Player.GetPath(pos.To3D()).ToList().To2D(),
-                                Configs.EvadingSecondTimeOffset,
+                                Configs.EvadingSecondTime,
                                 (int)ObjectManager.Player.MoveSpeed,
                                 100).IsSafe)
                         {
-                            evadePos = pos;
+                            evadePoint1 = pos;
                         }
+
+                        Evading = true;
 
                         return;
                     }
@@ -510,7 +591,7 @@ namespace vEvade.Core
 
                         if (points.Count > 0)
                         {
-                            evadePos = to.Closest(points);
+                            evadePoint1 = to.Closest(points);
                             Evading = true;
                             ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, ObjectManager.Player);
 
@@ -531,7 +612,7 @@ namespace vEvade.Core
                             if (targets.Count > 0)
                             {
                                 var target = targets.MinOrDefault(i => i.Distance(to));
-                                evadePos = target.ServerPosition.To2D();
+                                evadePoint1 = target.ServerPosition.To2D();
                                 Evading = true;
                                 ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, target);
 
@@ -560,12 +641,12 @@ namespace vEvade.Core
                                         for (var i = 0; i < points.Count; i++)
                                         {
                                             var k = (int)(600 - PlayerPosition.Distance(points[i]));
-                                            k = k - Util.Random.Next(k);
-                                            var extended = points[i] + k * (points[i] - PlayerPosition).Normalized();
+                                            k -= Util.Random.Next(k);
+                                            var extend = points[i] + k * (points[i] - PlayerPosition).Normalized();
 
-                                            if (IsSafePos(extended).IsSafe)
+                                            if (IsSafePoint(extend).IsSafe)
                                             {
-                                                points[i] = extended;
+                                                points[i] = extend;
                                             }
                                         }
 
@@ -594,7 +675,7 @@ namespace vEvade.Core
 
                                 for (var i = points.Count - 1; i > 0; i--)
                                 {
-                                    if (!IsSafePos(points[i]).IsSafe)
+                                    if (!IsSafePoint(points[i]).IsSafe)
                                     {
                                         points.RemoveAt(i);
                                     }
@@ -606,40 +687,42 @@ namespace vEvade.Core
                                 {
                                     var k = (int)(evadeSpell.MaxRange - PlayerPosition.Distance(points[i]));
                                     k -= Math.Max(Util.Random.Next(k) - 100, 0);
-                                    var extended = points[i] + k * (points[i] - PlayerPosition).Normalized();
+                                    var extend = points[i] + k * (points[i] - PlayerPosition).Normalized();
 
-                                    if (IsSafePos(extended).IsSafe)
+                                    if (IsSafePoint(extend).IsSafe)
                                     {
-                                        points[i] = extended;
+                                        points[i] = extend;
                                     }
                                 }
                             }
 
                             if (points.Count > 0)
                             {
-                                evadePos = to.Closest(points);
+                                evadePoint1 = to.Closest(points);
                                 Evading = true;
 
                                 if (!evadeSpell.Invert)
                                 {
                                     if (evadeSpell.RequiresPreMove)
                                     {
-                                        evadePos.Move();
+                                        evadePoint1.Move();
                                         Utility.DelayAction.Add(
                                             Game.Ping / 2 + 100,
                                             () =>
-                                            ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, evadePos.To3D()));
+                                            ObjectManager.Player.Spellbook.CastSpell(
+                                                evadeSpell.Slot,
+                                                evadePoint1.To3D()));
                                     }
                                     else
                                     {
-                                        ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, evadePos.To3D());
+                                        ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, evadePoint1.To3D());
                                     }
                                 }
                                 else
                                 {
                                     ObjectManager.Player.Spellbook.CastSpell(
                                         evadeSpell.Slot,
-                                        (PlayerPosition - (evadePos - PlayerPosition)).To3D());
+                                        (PlayerPosition - (evadePoint1 - PlayerPosition)).To3D());
                                 }
 
                                 return;
@@ -663,7 +746,7 @@ namespace vEvade.Core
                                 if (IsAboutToHit(evadeSpell.Delay))
                                 {
                                     var target = targets.MinOrDefault(i => i.Distance(to));
-                                    evadePos = target.ServerPosition.To2D();
+                                    evadePoint1 = target.ServerPosition.To2D();
                                     Evading = true;
                                     ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, target);
                                 }
@@ -695,17 +778,18 @@ namespace vEvade.Core
                                         for (var i = 0; i < points.Count; i++)
                                         {
                                             var k = (int)(600 - PlayerPosition.Distance(points[i]));
-                                            k = k - Util.Random.Next(k);
-                                            var extended = points[i] + k * (points[i] - PlayerPosition).Normalized();
+                                            k -= Util.Random.Next(k);
+                                            var extend = points[i] + k * (points[i] - PlayerPosition).Normalized();
 
-                                            if (IsSafePos(extended).IsSafe)
+                                            if (IsSafePoint(extend).IsSafe)
                                             {
-                                                points[i] = extended;
+                                                points[i] = extend;
                                             }
                                         }
 
-                                        var pos = to.Closest(points);
-                                        ObjectManager.Player.Spellbook.CastSpell(ward.SpellSlot, pos.To3D());
+                                        ObjectManager.Player.Spellbook.CastSpell(
+                                            ward.SpellSlot,
+                                            to.Closest(points).To3D());
                                         LastWardJumpTick = Utils.GameTimeTickCount;
                                         haveSolution = true;
 
@@ -716,18 +800,18 @@ namespace vEvade.Core
                         }
                         else
                         {
-                            var points = Evader.GetEvadePoints(int.MaxValue, evadeSpell.Delay, true);
+                            var points = Evader.GetEvadePoints(0, evadeSpell.Delay, true);
                             points.RemoveAll(i => i.Distance(PlayerPosition) > evadeSpell.MaxRange);
 
                             for (var i = 0; i < points.Count; i++)
                             {
                                 var k = (int)(evadeSpell.MaxRange - PlayerPosition.Distance(points[i]));
-                                k = k - Util.Random.Next(k);
-                                var extended = points[i] + k * (points[i] - PlayerPosition).Normalized();
+                                k -= Util.Random.Next(k);
+                                var extend = points[i] + k * (points[i] - PlayerPosition).Normalized();
 
-                                if (IsSafePos(extended).IsSafe)
+                                if (IsSafePoint(extend).IsSafe)
                                 {
-                                    points[i] = extended;
+                                    points[i] = extend;
                                 }
                             }
 
@@ -735,9 +819,9 @@ namespace vEvade.Core
                             {
                                 if (IsAboutToHit(evadeSpell.Delay))
                                 {
-                                    evadePos = to.Closest(points);
+                                    evadePoint1 = to.Closest(points);
                                     Evading = true;
-                                    ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, evadePos.To3D());
+                                    ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, evadePoint1.To3D());
                                 }
 
                                 haveSolution = true;
@@ -753,7 +837,7 @@ namespace vEvade.Core
                         {
                             var targets = Evader.GetEvadeTargets(
                                 evadeSpell.ValidTargets,
-                                int.MaxValue,
+                                0,
                                 0,
                                 evadeSpell.MaxRange,
                                 true,
@@ -765,7 +849,7 @@ namespace vEvade.Core
                                 if (IsAboutToHit(evadeSpell.Delay))
                                 {
                                     var target = targets.MinOrDefault(i => i.Distance(to));
-                                    evadePos = target.ServerPosition.To2D();
+                                    evadePoint1 = target.ServerPosition.To2D();
                                     Evading = true;
                                     ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, target);
                                 }
@@ -775,18 +859,15 @@ namespace vEvade.Core
                                 return;
                             }
                         }
-                        else
+                        else if (IsAboutToHit(evadeSpell.Delay))
                         {
-                            if (IsAboutToHit(evadeSpell.Delay))
+                            if (evadeSpell.SelfCast)
                             {
-                                if (evadeSpell.SelfCast)
-                                {
-                                    ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot);
-                                }
-                                else
-                                {
-                                    ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, PlayerPosition.To3D());
-                                }
+                                ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot);
+                            }
+                            else
+                            {
+                                ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, PlayerPosition.To3D());
                             }
                         }
 
@@ -826,7 +907,7 @@ namespace vEvade.Core
 
         #endregion
 
-        public struct IsSafeResult
+        public struct SafePoint
         {
             #region Fields
 

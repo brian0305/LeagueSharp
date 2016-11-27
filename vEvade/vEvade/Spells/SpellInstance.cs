@@ -22,7 +22,7 @@
     {
         #region Fields
 
-        public FindIntersect Intersect;
+        public Intersects Intersect;
 
         public bool IsSafe;
 
@@ -30,7 +30,7 @@
 
         #region Constructors and Destructors
 
-        public SafePath(bool isSafe, FindIntersect intersect)
+        public SafePath(bool isSafe, Intersects intersect)
         {
             this.IsSafe = isSafe;
             this.Intersect = intersect;
@@ -39,7 +39,7 @@
         #endregion
     }
 
-    public struct FindIntersect
+    public struct Intersects
     {
         #region Fields
 
@@ -55,7 +55,7 @@
 
         #region Constructors and Destructors
 
-        public FindIntersect(float distance, int time, Vector2 point, Vector2 comingFrom)
+        public Intersects(float distance, int time, Vector2 point, Vector2 comingFrom)
         {
             this.Distance = distance;
             this.Valid = point.IsValid();
@@ -80,7 +80,7 @@
 
         public Vector2 Direction;
 
-        public Geometry.Polygon DrawingPolygon;
+        public Geometry.Polygon DrawPolygon;
 
         public Vector2 End;
 
@@ -90,17 +90,17 @@
 
         public bool ForceDisabled;
 
+        public Polygons.Line Line;
+
         public GameObject MissileObject = null;
 
         public Geometry.Polygon PathFindingInnerPolygon;
 
-        public Geometry.Polygon PathFindingPolygon;
+        public Geometry.Polygon PathFindingOuterPolygon;
 
         public Geometry.Polygon Polygon;
 
         public int Radius;
-
-        public Polygons.Line Rectangle;
 
         public Polygons.Ring Ring;
 
@@ -122,9 +122,9 @@
 
         private int cachedValueTick;
 
-        private Vector2 collisionEnd;
+        private int lastCalcColTick;
 
-        private int lastCollisionCalc;
+        private Vector2 predEnd;
 
         #endregion
 
@@ -151,27 +151,22 @@
 
             switch (this.Type)
             {
-                case SpellType.Circle:
-                    this.Circle = new Polygons.Circle(this.CollisionEnd, this.Radius);
-                    break;
                 case SpellType.Line:
-                    this.Rectangle = new Polygons.Line(this.Start, this.CollisionEnd, this.Radius);
-                    break;
                 case SpellType.MissileLine:
-                    this.Rectangle = new Polygons.Line(this.Start, this.CollisionEnd, this.Radius);
+                    this.Line = new Polygons.Line(this.Start, this.PredictEnd, this.Radius);
                     break;
                 case SpellType.Cone:
-                    this.Cone = new Polygons.Cone(
-                        start,
-                        (this.CollisionEnd - start).Normalized(),
-                        this.Radius,
-                        data.Range);
+                case SpellType.MissileCone:
+                    this.Cone = new Polygons.Cone(this.Start, this.Direction, this.Radius, data.Range);
+                    break;
+                case SpellType.Circle:
+                    this.Circle = new Polygons.Circle(this.PredictEnd, this.Radius);
                     break;
                 case SpellType.Ring:
-                    this.Ring = new Polygons.Ring(this.CollisionEnd, data.RadiusEx, this.Radius);
+                    this.Ring = new Polygons.Ring(this.End, data.RadiusEx, this.Radius);
                     break;
                 case SpellType.Arc:
-                    this.Arc = new Polygons.Arc(start, end, this.Radius);
+                    this.Arc = new Polygons.Arc(this.Start, this.End, this.Radius);
                     break;
             }
 
@@ -181,26 +176,6 @@
         #endregion
 
         #region Public Properties
-
-        public Vector2 CollisionEnd
-        {
-            get
-            {
-                if (this.collisionEnd.IsValid())
-                {
-                    return this.collisionEnd;
-                }
-
-                if (this.IsGlobal)
-                {
-                    return this.GlobalGetMissilePosition(0)
-                           + this.Direction * this.Data.MissileSpeed
-                           * (0.5f + this.Radius * 2 / ObjectManager.Player.MoveSpeed);
-                }
-
-                return this.End;
-            }
-        }
 
         public bool Enable
         {
@@ -236,14 +211,14 @@
                         case SpellType.MissileLine:
                             this.cachedValue = Configs.Menu.Item("DodgeLine").GetValue<bool>();
                             break;
+                        case SpellType.Cone:
+                        case SpellType.MissileCone:
+                            this.cachedValue = Configs.Menu.Item("DodgeCone").GetValue<bool>();
+                            break;
                         case SpellType.Circle:
                             this.cachedValue =
                                 Configs.Menu.Item("Dodge" + (this.Data.TrapName != "" ? "Trap" : "Circle"))
                                     .GetValue<bool>();
-                            break;
-                        case SpellType.Cone:
-                        case SpellType.MissileCone:
-                            this.cachedValue = Configs.Menu.Item("DodgeCone").GetValue<bool>();
                             break;
                     }
 
@@ -265,25 +240,45 @@
         private int GetRadius
             =>
                 this.Type == SpellType.Circle && (this.Data.HasStartExplosion || this.Data.HasEndExplosion)
-                    ? this.Data.RadiusEx
+                    ? this.Data.RadiusEx + (!Configs.Debug ? Configs.ExtraSpellRadius : 0)
                     : this.Data.Radius;
 
         private bool IsGlobal => this.Data.RawRange == 25000;
+
+        private Vector2 PredictEnd
+        {
+            get
+            {
+                if (this.predEnd.IsValid())
+                {
+                    return this.predEnd;
+                }
+
+                if (this.IsGlobal)
+                {
+                    return this.GlobalGetMissilePosition(0)
+                           + this.Direction * this.Data.MissileSpeed
+                           * (0.5f + this.Radius * 2 / ObjectManager.Player.MoveSpeed);
+                }
+
+                return this.End;
+            }
+        }
 
         #endregion
 
         #region Public Methods and Operators
 
-        public void Draw(Color color, Color missileColor)
+        public void Draw(Color color)
         {
             if (!this.GetValue<bool>("Draw"))
             {
                 return;
             }
 
-            this.DrawingPolygon.Draw(color);
+            this.DrawPolygon.Draw(color);
 
-            if (Configs.Debug && this.Type == SpellType.Circle)
+            if (Configs.Debug && (this.Type == SpellType.Circle || this.Type == SpellType.Ring) && this.Data.Range > 0)
             {
                 Render.Circle.DrawCircle(Evade.PlayerPosition.To3D(), this.Data.Range, Color.Red);
             }
@@ -291,11 +286,11 @@
             if (this.Type == SpellType.MissileLine && this.MissileObject != null && this.MissileObject.IsValid
                 && this.MissileObject.IsVisible)
             {
-                var position = this.MissileObject.Position.To2D();
+                var pos = this.MissileObject.Position.To2D();
                 Util.DrawLine(
-                    (position + this.Radius * this.Direction.Perpendicular()).To3D2(),
-                    (position - this.Radius * this.Direction.Perpendicular()).To3D2(),
-                    missileColor);
+                    (pos + this.Radius * this.Direction.Perpendicular()).To3D2(),
+                    (pos - this.Radius * this.Direction.Perpendicular()).To3D2(),
+                    Color.LimeGreen);
             }
         }
 
@@ -327,7 +322,7 @@
                            * (this.Data.MissileAccel < 0 ? this.Data.MissileMaxSpeed : this.Data.MissileMinSpeed));
             }
 
-            t = (int)Math.Max(0, Math.Min(this.CollisionEnd.Distance(this.Start), x));
+            t = (int)Math.Max(0, Math.Min(this.PredictEnd.Distance(this.Start), x));
 
             return this.Start + this.Direction * t;
         }
@@ -349,67 +344,61 @@
         {
             if (this.Type == SpellType.MissileLine)
             {
-                var missilePos = this.GetMissilePosition(0);
-                var missilePosAfterT = this.GetMissilePosition(time);
-
-                return unit.ServerPosition.To2D().Distance(missilePos, missilePosAfterT, true) < this.Radius;
+                return unit.ServerPosition.To2D()
+                           .Distance(this.GetMissilePosition(0), this.GetMissilePosition(time), true) <= this.Radius;
             }
 
-            if (!this.IsSafe(unit.ServerPosition.To2D()))
+            if (this.IsSafe(unit.ServerPosition.To2D()))
             {
-                var timeToExplode = this.Data.ExtraDuration + (this.EndTick - this.StartTick)
-                                    - (Utils.GameTimeTickCount - this.StartTick);
-
-                if (timeToExplode <= time)
-                {
-                    return true;
-                }
+                return false;
             }
 
-            return false;
+            return this.Data.ExtraDuration + (this.EndTick - this.StartTick)
+                   - (Utils.GameTimeTickCount - this.StartTick) <= time;
         }
 
-        public bool IsDanger(Vector2 point)
+        public bool IsDanger(Vector2 pos)
         {
-            return !this.IsSafe(point);
+            return !this.IsSafe(pos);
         }
 
-        public bool IsSafe(Vector2 point)
+        public bool IsSafe(Vector2 pos)
         {
-            return this.Polygon.IsOutside(point);
+            return this.Polygon.IsOutside(pos);
         }
 
-        public SafePath IsSafePath(List<Vector2> path, int timeOffset, int speed = -1, int delay = 0)
+        public SafePath IsSafePath(List<Vector2> paths, int time, int speed = -1, int delay = 0)
         {
             var dist = 0f;
-            timeOffset += Game.Ping / 2;
+            time += Game.Ping / 2;
             speed = speed == -1 ? (int)ObjectManager.Player.MoveSpeed : speed;
-            var allIntersects = new List<FindIntersect>();
+            var intersects = new List<Intersects>();
 
-            for (var i = 0; i <= path.Count - 2; i++)
+            for (var i = 0; i <= paths.Count - 2; i++)
             {
-                var from = path[i];
-                var to = path[i + 1];
-                var segmentIntersects = new List<FindIntersect>();
+                var from = paths[i];
+                var to = paths[i + 1];
+                var segments = new List<Intersects>();
 
                 for (var j = 0; j <= this.Polygon.Points.Count - 1; j++)
                 {
-                    var sideStart = this.Polygon.Points[j];
-                    var sideEnd = this.Polygon.Points[j == this.Polygon.Points.Count - 1 ? 0 : j + 1];
-                    var intersect = from.Intersection(to, sideStart, sideEnd);
+                    var intersect = from.Intersection(
+                        to,
+                        this.Polygon.Points[j],
+                        this.Polygon.Points[j == this.Polygon.Points.Count - 1 ? 0 : j + 1]);
 
                     if (intersect.Intersects)
                     {
-                        segmentIntersects.Add(
-                            new FindIntersect(
+                        segments.Add(
+                            new Intersects(
                                 dist + intersect.Point.Distance(from),
-                                (int)((dist + intersect.Point.Distance(from)) * 1000 / speed),
+                                (int)((dist + intersect.Point.Distance(from)) / speed * 1000),
                                 intersect.Point,
                                 from));
                     }
                 }
 
-                allIntersects.AddRange(segmentIntersects.OrderBy(a => a.Distance));
+                intersects.AddRange(segments.OrderBy(a => a.Distance));
                 dist += from.Distance(to);
             }
 
@@ -417,94 +406,88 @@
             {
                 if (this.IsSafe(Evade.PlayerPosition))
                 {
-                    if (allIntersects.Count == 0)
+                    if (intersects.Count == 0)
                     {
-                        return new SafePath(true, new FindIntersect());
+                        return new SafePath(true, new Intersects());
                     }
 
                     if (this.Data.DontCross)
                     {
-                        return new SafePath(false, allIntersects[0]);
+                        return new SafePath(false, intersects[0]);
                     }
 
-                    for (var i = 0; i <= allIntersects.Count - 1; i = i + 2)
+                    for (var i = 0; i <= intersects.Count - 1; i = i + 2)
                     {
-                        var enterIntersect = allIntersects[i];
-                        var enterIntersectPoint = enterIntersect.Point.ProjectOn(this.Start, this.End).SegmentPoint;
+                        var enterInter = intersects[i];
+                        var enterInterSegment = enterInter.Point.ProjectOn(this.Start, this.End).SegmentPoint;
 
-                        if (i == allIntersects.Count - 1)
+                        if (i == intersects.Count - 1)
                         {
                             return
                                 new SafePath(
-                                    (this.End.Distance(this.GetMissilePosition(enterIntersect.Time - timeOffset)) + 50
-                                     <= this.End.Distance(enterIntersectPoint))
+                                    this.End.Distance(this.GetMissilePosition(enterInter.Time - time)) + 50
+                                    <= this.End.Distance(enterInterSegment)
                                     && ObjectManager.Player.MoveSpeed < this.Data.MissileSpeed,
-                                    allIntersects[0]);
+                                    intersects[0]);
                         }
 
-                        var exitIntersect = allIntersects[i + 1];
-                        var exitIntersectPoint = exitIntersect.Point.ProjectOn(this.Start, this.End).SegmentPoint;
+                        var exitInter = intersects[i + 1];
+                        var exitInterSegment = exitInter.Point.ProjectOn(this.Start, this.End).SegmentPoint;
 
-                        if (this.GetMissilePosition(enterIntersect.Time - timeOffset).Distance(this.End) + 50
-                            > enterIntersectPoint.Distance(this.End)
-                            && this.GetMissilePosition(exitIntersect.Time + timeOffset).Distance(this.End)
-                            <= exitIntersectPoint.Distance(this.End))
+                        if (this.GetMissilePosition(enterInter.Time - time).Distance(this.End) + 50
+                            > enterInterSegment.Distance(this.End)
+                            && this.GetMissilePosition(exitInter.Time + time).Distance(this.End)
+                            <= exitInterSegment.Distance(this.End))
                         {
-                            return new SafePath(false, allIntersects[0]);
+                            return new SafePath(false, intersects[0]);
                         }
                     }
 
-                    return new SafePath(true, allIntersects[0]);
+                    return new SafePath(true, intersects[0]);
                 }
 
-                if (allIntersects.Count == 0)
+                if (intersects.Count == 0)
                 {
-                    return new SafePath(false, new FindIntersect());
+                    return new SafePath(false, new Intersects());
                 }
 
-                if (allIntersects.Count > 0)
-                {
-                    var exitIntersect = allIntersects[0];
-                    var exitIntersectPoint = exitIntersect.Point.ProjectOn(this.Start, this.End).SegmentPoint;
+                var exit = intersects[0];
+                var exitSegment = exit.Point.ProjectOn(this.Start, this.End).SegmentPoint;
 
-                    if (this.GetMissilePosition(exitIntersect.Time + timeOffset).Distance(this.End)
-                        <= exitIntersectPoint.Distance(this.End))
-                    {
-                        return new SafePath(false, allIntersects[0]);
-                    }
+                if (this.GetMissilePosition(exit.Time + time).Distance(this.End) <= exitSegment.Distance(this.End))
+                {
+                    return new SafePath(false, intersects[0]);
                 }
             }
 
             if (this.IsSafe(Evade.PlayerPosition))
             {
-                if (allIntersects.Count == 0)
+                if (intersects.Count == 0)
                 {
-                    return new SafePath(true, new FindIntersect());
+                    return new SafePath(true, new Intersects());
                 }
 
                 if (this.Data.DontCross)
                 {
-                    return new SafePath(false, allIntersects[0]);
+                    return new SafePath(false, intersects[0]);
                 }
             }
-            else if (allIntersects.Count == 0)
+            else if (intersects.Count == 0)
             {
-                return new SafePath(false, new FindIntersect());
+                return new SafePath(false, new Intersects());
             }
 
-            var timeToExplode = (this.Data.DontAddExtraDuration ? 0 : this.Data.ExtraDuration)
-                                + (this.EndTick - this.StartTick) - (Utils.GameTimeTickCount - this.StartTick);
+            var endT = (this.Data.DontAddExtraDuration ? 0 : this.Data.ExtraDuration) + (this.EndTick - this.StartTick)
+                       - (Utils.GameTimeTickCount - this.StartTick);
 
-            return !this.IsSafe(path.PositionAfter(timeToExplode, speed, delay))
-                       ? new SafePath(false, allIntersects[0])
-                       : new SafePath(
-                             this.IsSafe(path.PositionAfter(timeToExplode, speed, timeOffset)),
-                             allIntersects[0]);
+            return !this.IsSafe(paths.PositionAfter(endT, speed, delay))
+                       ? new SafePath(false, intersects[0])
+                       : new SafePath(this.IsSafe(paths.PositionAfter(endT, speed, time)), intersects[0]);
         }
 
-        public bool IsSafeToBlink(Vector2 point, int timeOffset, int delay = 0)
+        public bool IsSafeToBlink(Vector2 point, int time, int delay = 0)
         {
-            timeOffset /= 2;
+            time /= 2;
 
             if (this.IsSafe(Evade.PlayerPosition))
             {
@@ -513,17 +496,12 @@
 
             if (this.Type == SpellType.MissileLine)
             {
-                var missilePositionAfterBlink = this.GetMissilePosition(delay + timeOffset);
-                var myPositionProjection = Evade.PlayerPosition.ProjectOn(this.Start, this.End);
-
-                return missilePositionAfterBlink.Distance(this.End)
-                       >= myPositionProjection.SegmentPoint.Distance(this.End);
+                return this.GetMissilePosition(delay + time).Distance(this.End)
+                       >= Evade.PlayerPosition.ProjectOn(this.Start, this.End).SegmentPoint.Distance(this.End);
             }
 
-            var timeToExplode = this.Data.ExtraDuration + (this.EndTick - this.StartTick)
-                                - (Utils.GameTimeTickCount - this.StartTick);
-
-            return timeToExplode > timeOffset + delay;
+            return this.Data.ExtraDuration + (this.EndTick - this.StartTick)
+                   - (Utils.GameTimeTickCount - this.StartTick) > time + delay;
         }
 
         public void OnUpdate()
@@ -531,26 +509,26 @@
             if (this.Data.CollisionObjects != null && this.Data.CollisionObjects.Length > 0
                 && Configs.Menu.Item("CheckCollision").GetValue<bool>())
             {
-                if (Utils.GameTimeTickCount - this.lastCollisionCalc > 50)
+                if (Utils.GameTimeTickCount - this.lastCalcColTick > 50)
                 {
-                    this.lastCollisionCalc = Utils.GameTimeTickCount;
-                    this.collisionEnd = Collisions.GetCollision(this);
+                    this.lastCalcColTick = Utils.GameTimeTickCount;
+                    this.predEnd = Collisions.GetCollision(this);
                 }
             }
-            else if (this.collisionEnd.IsValid())
+            else if (this.predEnd.IsValid())
             {
-                this.collisionEnd = Vector2.Zero;
+                this.predEnd = Vector2.Zero;
             }
 
             if (this.Type == SpellType.Line || this.Type == SpellType.MissileLine)
             {
-                this.Rectangle = new Polygons.Line(this.GetMissilePosition(0), this.CollisionEnd, this.Radius);
+                this.Line = new Polygons.Line(this.GetMissilePosition(0), this.PredictEnd, this.Radius);
                 this.UpdatePolygon();
             }
 
-            if (this.Type == SpellType.Circle)
+            if (this.Type == SpellType.Circle && this.Data.TrapName == "")
             {
-                this.Circle = new Polygons.Circle(this.CollisionEnd, this.Radius);
+                this.Circle = new Polygons.Circle(this.PredictEnd, this.Radius);
                 this.UpdatePolygon();
             }
 
@@ -562,21 +540,19 @@
             if (this.Data.MissileToUnit)
             {
                 this.End = this.Unit.ServerPosition.To2D();
+                this.Direction = (this.End - this.Start).Normalized();
 
                 if (this.Type == SpellType.Ring)
                 {
                     this.Ring.Center = this.End;
+                    this.UpdatePolygon();
                 }
-
-                this.Direction = (this.End - this.Start).Normalized();
-                this.UpdatePolygon();
             }
 
             if (this.Data.MissileFromUnit)
             {
                 this.Start = this.Unit.ServerPosition.To2D();
                 this.End = this.Start + this.Direction * this.Data.Range;
-                this.UpdatePolygon();
             }
 
             if (this.Data.MenuName == "GalioR" && !this.Unit.HasBuff("GalioIdolOfDurand")
@@ -585,29 +561,32 @@
                 this.EndTick = 0;
             }
 
-            if (this.Data.MenuName == "SionR" && this.Unit.HasBuff("SionR"))
+            if (this.Data.MenuName == "SionR")
             {
-                this.Start = this.Unit.ServerPosition.To2D();
-                this.End = this.Start + this.Unit.Direction.To2D().Perpendicular() * this.Data.Range;
-                this.Direction = (this.End - this.Start).Normalized();
-                this.Data.MissileSpeed = (int)this.Unit.MoveSpeed;
-                this.StartTick = Utils.GameTimeTickCount;
-                this.EndTick = this.StartTick + (int)(this.Start.Distance(this.End) / this.Data.MissileSpeed * 1000);
-                this.UpdatePolygon();
+                if (this.Unit.HasBuff("SionR"))
+                {
+                    this.Start = this.Unit.ServerPosition.To2D();
+                    this.End = this.Start + this.Unit.Direction.To2D().Perpendicular() * this.Data.Range;
+                    this.Direction = (this.End - this.Start).Normalized();
+                    this.Data.MissileSpeed = (int)this.Unit.MoveSpeed;
+                    this.StartTick = Utils.GameTimeTickCount;
+                    this.EndTick = this.StartTick + (int)(this.Start.Distance(this.End) / this.Data.MissileSpeed * 1000);
+                }
+                else
+                {
+                    this.EndTick = Utils.GameTimeTickCount - this.StartTick > 500 ? 0 : Utils.GameTimeTickCount + 100;
+                }
             }
 
             if (this.Data.MenuName == "MonkeyKingR")
             {
                 if (this.Unit.HasBuff("MonkeyKingSpinToWin"))
                 {
-                    this.EndTick = Utils.GameTimeTickCount + 10;
-                    this.Start = this.End = this.Circle.Center = this.Unit.ServerPosition.To2D();
-                    this.Direction = (this.End - this.Start).Normalized();
-                    this.UpdatePolygon();
+                    this.EndTick = Utils.GameTimeTickCount + 100;
                 }
                 else
                 {
-                    this.EndTick = Utils.GameTimeTickCount - this.StartTick > 500 ? 0 : Utils.GameTimeTickCount + 10;
+                    this.EndTick = Utils.GameTimeTickCount - this.StartTick > 500 ? 0 : Utils.GameTimeTickCount + 100;
                 }
             }
         }
@@ -616,53 +595,46 @@
         {
             switch (this.Type)
             {
+                case SpellType.Line:
+                case SpellType.MissileLine:
+                    this.Polygon = this.Line.ToPolygon();
+                    this.DrawPolygon = this.Line.ToPolygon(
+                        0,
+                        this.Radius - (!this.Data.AddHitbox ? 0 : ObjectManager.Player.BoundingRadius));
+                    this.EvadePolygon = this.Line.ToPolygon(Configs.ExtraEvadeDistance);
+                    this.PathFindingOuterPolygon = this.Line.ToPolygon(Configs.PathFindingOuterDistance);
+                    this.PathFindingInnerPolygon = this.Line.ToPolygon(Configs.PathFindingInnerDistance);
+                    break;
+                case SpellType.Cone:
+                case SpellType.MissileCone:
+                    this.Polygon = this.Cone.ToPolygon();
+                    this.DrawPolygon = this.Polygon;
+                    this.EvadePolygon = this.Cone.ToPolygon(Configs.ExtraEvadeDistance);
+                    this.PathFindingOuterPolygon = this.Cone.ToPolygon(Configs.PathFindingOuterDistance);
+                    this.PathFindingInnerPolygon = this.Cone.ToPolygon(Configs.PathFindingInnerDistance);
+                    break;
                 case SpellType.Circle:
                     this.Polygon = this.Circle.ToPolygon();
-                    this.DrawingPolygon = this.Circle.ToPolygon(
+                    this.DrawPolygon = this.Circle.ToPolygon(
                         0,
                         this.Radius - (!this.Data.AddHitbox ? 0 : ObjectManager.Player.BoundingRadius));
                     this.EvadePolygon = this.Circle.ToPolygon(Configs.ExtraEvadeDistance);
-                    this.PathFindingPolygon = this.Circle.ToPolygon(Configs.PathFindingDistance);
-                    this.PathFindingInnerPolygon = this.Circle.ToPolygon(Configs.PathFindingDistance2);
-                    break;
-                case SpellType.Line:
-                    this.Polygon = this.Rectangle.ToPolygon();
-                    this.DrawingPolygon = this.Rectangle.ToPolygon(
-                        0,
-                        this.Radius - (!this.Data.AddHitbox ? 0 : ObjectManager.Player.BoundingRadius));
-                    this.EvadePolygon = this.Rectangle.ToPolygon(Configs.ExtraEvadeDistance);
-                    this.PathFindingPolygon = this.Rectangle.ToPolygon(Configs.PathFindingDistance);
-                    this.PathFindingInnerPolygon = this.Rectangle.ToPolygon(Configs.PathFindingDistance2);
-                    break;
-                case SpellType.MissileLine:
-                    this.Polygon = this.Rectangle.ToPolygon();
-                    this.DrawingPolygon = this.Rectangle.ToPolygon(
-                        0,
-                        this.Radius - (!this.Data.AddHitbox ? 0 : ObjectManager.Player.BoundingRadius));
-                    this.EvadePolygon = this.Rectangle.ToPolygon(Configs.ExtraEvadeDistance);
-                    this.PathFindingPolygon = this.Rectangle.ToPolygon(Configs.PathFindingDistance);
-                    this.PathFindingInnerPolygon = this.Rectangle.ToPolygon(Configs.PathFindingDistance2);
-                    break;
-                case SpellType.Cone:
-                    this.Polygon = this.Cone.ToPolygon();
-                    this.DrawingPolygon = this.Polygon;
-                    this.EvadePolygon = this.Cone.ToPolygon(Configs.ExtraEvadeDistance);
-                    this.PathFindingPolygon = this.Cone.ToPolygon(Configs.PathFindingDistance);
-                    this.PathFindingInnerPolygon = this.Cone.ToPolygon(Configs.PathFindingDistance2);
+                    this.PathFindingOuterPolygon = this.Circle.ToPolygon(Configs.PathFindingOuterDistance);
+                    this.PathFindingInnerPolygon = this.Circle.ToPolygon(Configs.PathFindingInnerDistance);
                     break;
                 case SpellType.Ring:
                     this.Polygon = this.Ring.ToPolygon();
-                    this.DrawingPolygon = this.Polygon;
+                    this.DrawPolygon = this.Polygon;
                     this.EvadePolygon = this.Ring.ToPolygon(Configs.ExtraEvadeDistance);
-                    this.PathFindingPolygon = this.Ring.ToPolygon(Configs.PathFindingDistance);
-                    this.PathFindingInnerPolygon = this.Ring.ToPolygon(Configs.PathFindingDistance2);
+                    this.PathFindingOuterPolygon = this.Ring.ToPolygon(Configs.PathFindingOuterDistance);
+                    this.PathFindingInnerPolygon = this.Ring.ToPolygon(Configs.PathFindingInnerDistance);
                     break;
                 case SpellType.Arc:
                     this.Polygon = this.Arc.ToPolygon();
-                    this.DrawingPolygon = this.Polygon;
+                    this.DrawPolygon = this.Polygon;
                     this.EvadePolygon = this.Arc.ToPolygon(Configs.ExtraEvadeDistance);
-                    this.PathFindingPolygon = this.Arc.ToPolygon(Configs.PathFindingDistance);
-                    this.PathFindingInnerPolygon = this.Arc.ToPolygon(Configs.PathFindingDistance2);
+                    this.PathFindingOuterPolygon = this.Arc.ToPolygon(Configs.PathFindingOuterDistance);
+                    this.PathFindingInnerPolygon = this.Arc.ToPolygon(Configs.PathFindingInnerDistance);
                     break;
             }
         }

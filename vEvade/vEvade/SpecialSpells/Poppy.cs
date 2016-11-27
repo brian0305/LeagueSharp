@@ -31,15 +31,15 @@
             }
 
             init = true;
-            SpellDetector.OnProcessSpell += PoppyR;
-            SpellDetector.OnCreateSpell += PoppyRMissile;
+            SpellDetector.OnProcessSpell += PoppyR1;
+            SpellDetector.OnCreateSpell += PoppyR2;
         }
 
         #endregion
 
         #region Methods
 
-        private static void PoppyR(
+        private static void PoppyR1(
             Obj_AI_Base sender,
             GameObjectProcessSpellCastEventArgs args,
             SpellData data,
@@ -55,11 +55,7 @@
             spellArgs.NewData = newData;
         }
 
-        private static void PoppyRMissile(
-            Obj_AI_Base sender,
-            MissileClient missile,
-            SpellData data,
-            SpellArgs spellArgs)
+        private static void PoppyR2(Obj_AI_Base sender, MissileClient missile, SpellData data, SpellArgs spellArgs)
         {
             if (data.MenuName != "PoppyRCharge")
             {
@@ -67,17 +63,13 @@
             }
 
             var spell =
-                Evade.SpellsDetected.Values.FirstOrDefault(
+                Evade.DetectedSpells.Values.FirstOrDefault(
                     i => i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId);
 
             if (spell != null)
             {
-                Evade.SpellsDetected.Remove(spell.SpellId);
+                Evade.DetectedSpells.Remove(spell.SpellId);
             }
-
-            var newData = (SpellData)data.Clone();
-            newData.Delay = 0;
-            spellArgs.NewData = newData;
         }
 
         #endregion

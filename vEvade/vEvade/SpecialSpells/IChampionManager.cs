@@ -2,12 +2,9 @@
 {
     #region
 
-    using System.Linq;
-
     using LeagueSharp;
     using LeagueSharp.Common;
 
-    using vEvade.Core;
     using vEvade.Spells;
 
     using SpellData = vEvade.Spells.SpellData;
@@ -42,60 +39,11 @@
 
             init = true;
             SpellDetector.OnProcessSpell += OnProcessSpell;
-            SpellDetector.OnCreateSpell += OnCreateSpell;
         }
 
         #endregion
 
         #region Methods
-
-        private static void OnCreateSpell(
-            Obj_AI_Base sender,
-            MissileClient missile,
-            SpellData data,
-            SpellArgs spellArgs)
-        {
-            var canCheck = false;
-            var newData = (SpellData)data.Clone();
-
-            switch (data.MenuName)
-            {
-                case "BardR":
-                    if (missile.SData.Name.Contains("Fixed"))
-                    {
-                        canCheck = true;
-                        newData.MissileSpeed = 500;
-                    }
-                    break;
-            }
-
-            if (!canCheck)
-            {
-                return;
-            }
-
-            var oldSpell =
-                Evade.SpellsDetected.Values.FirstOrDefault(
-                    i =>
-                    i.MissileObject == null && i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId);
-
-            if (oldSpell == null)
-            {
-                spellArgs.NewData = newData;
-
-                return;
-            }
-
-            Evade.SpellsDetected[oldSpell.SpellId] = new SpellInstance(
-                newData,
-                oldSpell.StartTick,
-                newData.Delay + (int)(oldSpell.Start.Distance(oldSpell.End) / newData.MissileSpeed * 1000),
-                oldSpell.Start,
-                oldSpell.End,
-                oldSpell.Unit,
-                oldSpell.Type) { SpellId = oldSpell.SpellId, MissileObject = missile };
-            spellArgs.NoProcess = true;
-        }
 
         private static void OnProcessSpell(
             Obj_AI_Base sender,
@@ -135,7 +83,7 @@
             }
 
             var dir = (endPos - startPos).Normalized();
-            var startTick = Utils.GameTimeTickCount;
+            var startT = Utils.GameTimeTickCount - Game.Ping / 2;
 
             for (var i = -(data.MultipleNumber - 1) / 2; i <= (data.MultipleNumber - 1) / 2; i++)
             {
@@ -147,7 +95,7 @@
                     null,
                     SpellType.None,
                     true,
-                    startTick);
+                    startT);
             }
 
             spellArgs.NoProcess = true;

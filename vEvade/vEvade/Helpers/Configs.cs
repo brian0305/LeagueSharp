@@ -24,46 +24,42 @@ namespace vEvade.Helpers
     {
         #region Constants
 
-        public const int CrossingTimeOffset = 250;
+        public const int CrossingTime = 250;
 
-        public const int DiagonalEvadePointsCount = 7;
+        public const int EvadePointChangeTime = 300;
 
-        public const int DiagonalEvadePointsStep = 20;
+        public const int EvadePointsCount = 7;
 
-        public const int EvadePointChangeInterval = 300;
+        public const int EvadePointsStep = 20;
 
-        public const int EvadingFirstTimeOffset = 250;
+        public const int EvadingFirstTime = 250;
 
-        public const int EvadingRouteChangeTimeOffset = 250;
+        public const int EvadingRouteChangeTime = 250;
 
-        public const int EvadingSecondTimeOffset = 80;
+        public const int EvadingSecondTime = 80;
 
         public const int ExtraEvadeDistance = 15;
 
+        public const int ExtraSpellRadius = 9;
+
+        public const int ExtraSpellRange = 20;
+
         public const int GridSize = 10;
 
-        public const int PathFindingDistance = 60;
+        public const int PathFindingInnerDistance = 35;
 
-        public const int PathFindingDistance2 = 35;
-
-        public const int SpellExtraRadius = 9;
-
-        public const int SpellExtraRange = 20;
+        public const int PathFindingOuterDistance = 60;
 
         #endregion
 
         #region Static Fields
 
+        public static bool Debug;
+
         public static Menu Menu;
 
         private static readonly Dictionary<string, IChampionManager> ChampionManagers =
             new Dictionary<string, IChampionManager>();
-
-        #endregion
-
-        #region Public Properties
-
-        public static bool Debug => Menu.Item("DevMode").GetValue<bool>();
 
         #endregion
 
@@ -73,7 +69,6 @@ namespace vEvade.Helpers
         {
             Menu = new Menu("vEvade", "vEvade", true);
             Menu.AddToMainMenu();
-            Menu.AddItem(new MenuItem("DevMode", "Dev Mode (F5)").SetValue(false));
             LoadSpecialSpellPlugins();
 
             var spells = new Menu("Spells", "Spells");
@@ -128,7 +123,8 @@ namespace vEvade.Helpers
                     subMenu.AddItem(new MenuItem("S_" + spell.MenuName + "_IgnoreHp", "Ignore If Hp >="))
                         .SetValue(new Slider(!spell.IsDangerous ? 65 : 80, 1));
                     subMenu.AddItem(new MenuItem("S_" + spell.MenuName + "_Draw", "Draw").SetValue(true));
-                    subMenu.AddItem(new MenuItem("S_" + spell.MenuName + "_Enabled", "Enabled").SetValue(true))
+                    subMenu.AddItem(
+                        new MenuItem("S_" + spell.MenuName + "_Enabled", "Enabled").SetValue(!spell.DisabledByDefault))
                         .SetTooltip(spell.MenuName);
                     spells.AddSubMenu(subMenu);
                 }
@@ -168,6 +164,9 @@ namespace vEvade.Helpers
             var misc = new Menu("Misc", "Misc");
             misc.AddItem(new MenuItem("CheckCollision", "Check Collision").SetValue(true));
             misc.AddItem(new MenuItem("CheckHp", "Check Player Hp").SetValue(true));
+            misc.AddItem(
+                new MenuItem("CheckBlock", "Block Cast While Dodge").SetValue(
+                    new StringList(new[] { "No", "Only Dangerous", "Always" }, 1)));
             misc.AddItem(new MenuItem("DodgeFoW", "Dodge FoW Spells").SetValue(true));
             misc.AddItem(new MenuItem("DodgeLine", "Dodge Line Spells").SetValue(true));
             misc.AddItem(new MenuItem("DodgeCircle", "Dodge Circle Spells").SetValue(true));

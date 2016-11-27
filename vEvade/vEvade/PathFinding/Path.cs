@@ -13,9 +13,9 @@
 
         public TNode LastStep;
 
-        public Path<TNode> PreviousSteps;
-
         public double TotalCost;
+
+        private readonly Path<TNode> prevSteps;
 
         #endregion
 
@@ -26,10 +26,10 @@
         {
         }
 
-        private Path(TNode lastStep, Path<TNode> previousSteps, double totalCost)
+        private Path(TNode lastStep, Path<TNode> prevSteps, double totalCost)
         {
             this.LastStep = lastStep;
-            this.PreviousSteps = previousSteps;
+            this.prevSteps = prevSteps;
             this.TotalCost = totalCost;
         }
 
@@ -44,7 +44,7 @@
 
         public IEnumerator<TNode> GetEnumerator()
         {
-            for (var p = this; p != null; p = p.PreviousSteps)
+            for (var p = this; p != null; p = p.prevSteps)
             {
                 yield return p.LastStep;
             }

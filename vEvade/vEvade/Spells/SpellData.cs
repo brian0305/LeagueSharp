@@ -29,8 +29,6 @@
 
         public int Delay = 250;
 
-        public int DelayEx;
-
         public bool DisabledByDefault;
 
         public bool DontAddExtraDuration;
@@ -39,9 +37,13 @@
 
         public bool DontCheckForDuplicates;
 
+        public int ExtraDelay;
+
         public int ExtraDuration;
 
         public string[] ExtraMissileNames = { };
+
+        public int ExtraRange;
 
         public string[] ExtraSpellNames = { };
 
@@ -109,7 +111,7 @@
         {
             get
             {
-                return this.RawRadius + (!Configs.Debug ? Configs.SpellExtraRadius : 0)
+                return this.RawRadius + (!Configs.Debug ? Configs.ExtraSpellRadius : 0)
                        + (this.AddHitbox && this.Type != SpellType.Ring && this.Type != SpellType.Cone
                           && this.Type != SpellType.MissileCone
                               ? (int)ObjectManager.Player.BoundingRadius
@@ -127,7 +129,7 @@
             {
                 return this.RawRange
                        + (!Configs.Debug && (this.Type == SpellType.Line || this.Type == SpellType.MissileLine)
-                              ? Configs.SpellExtraRange
+                              ? Configs.ExtraSpellRange
                               : 0);
             }
             set
@@ -154,8 +156,6 @@
 
     public enum SpellType
     {
-        Circle,
-
         Line,
 
         MissileLine,
@@ -163,6 +163,8 @@
         Cone,
 
         MissileCone,
+
+        Circle,
 
         Ring,
 

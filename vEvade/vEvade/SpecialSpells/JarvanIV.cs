@@ -60,38 +60,37 @@
                 return;
             }
 
-            var startPosQ = sender.ServerPosition.To2D();
-            var endPosQ = startPosQ.Extend(args.End.To2D(), qeData.Range);
+            var startPos = sender.ServerPosition.To2D();
             var endPos = Vector2.Zero;
+            var qeEnd = startPos.Extend(args.End.To2D(), qeData.RawRange);
 
             foreach (var spell in
-                Evade.SpellsDetected.Values.Where(
+                Evade.DetectedSpells.Values.Where(
                     i =>
                     i.Data.MenuName == "JarvanIVE" && i.Unit.NetworkId == sender.NetworkId
-                    && i.End.Distance(startPosQ, endPosQ, true) <= qeData.RadiusEx))
+                    && i.End.Distance(startPos, qeEnd, true) <= qeData.RadiusEx))
             {
                 endPos = spell.End;
                 break;
             }
 
-            if (!endPos.IsValid())
+            foreach (var flag in
+                ObjectManager.Get<Obj_AI_Minion>()
+                    .Where(
+                        i =>
+                        i.IsValid() && !i.IsDead && i.IsVisible && i.CharData.BaseSkinName == "jarvanivstandard"
+                        && i.Team == sender.Team)
+                    .Select(i => i.ServerPosition.To2D())
+                    .Where(i => i.Distance(startPos, qeEnd, true) <= qeData.RadiusEx)
+                    .OrderBy(i => i.Distance(startPos)))
             {
-                foreach (var flag in
-                    ObjectManager.Get<Obj_AI_Minion>()
-                        .Where(
-                            i =>
-                            i.IsValid() && !i.IsDead && i.IsVisible && i.CharData.BaseSkinName == "jarvanivstandard"
-                            && i.Team == sender.Team
-                            && i.ServerPosition.To2D().Distance(startPosQ, endPosQ, true) <= qeData.RadiusEx))
-                {
-                    endPos = flag.ServerPosition.To2D();
-                    break;
-                }
+                endPos = flag;
+                break;
             }
 
             if (endPos.IsValid())
             {
-                SpellDetector.AddSpell(sender, startPosQ, endPos.Extend(startPosQ, -110), qeData);
+                SpellDetector.AddSpell(sender, startPos, endPos, qeData);
             }
         }
 

@@ -11,7 +11,7 @@
 
     #endregion
 
-    public class Olaf : IChampionManager
+    public class Yorick : IChampionManager
     {
         #region Static Fields
 
@@ -29,27 +29,30 @@
             }
 
             init = true;
-            SpellDetector.OnProcessSpell += OlafQ;
+            SpellDetector.OnProcessSpell += YorickE;
         }
 
         #endregion
 
         #region Methods
 
-        private static void OlafQ(
+        private static void YorickE(
             Obj_AI_Base sender,
             GameObjectProcessSpellCastEventArgs args,
             SpellData data,
             SpellArgs spellArgs)
         {
-            if (data.MenuName != "OlafQ")
+            if (data.MenuName != "YorickE")
             {
                 return;
             }
 
-            var startPos = sender.ServerPosition.To2D();
-            var endPos = args.End.To2D().Extend(startPos, -50);
-            SpellDetector.AddSpell(sender, startPos, endPos, data);
+            var start = sender.ServerPosition.To2D();
+            var end = args.End.To2D();
+            var startPos = end.Extend(start, 120);
+            var endPos = startPos.Extend(start, -1);
+            var startT = Utils.GameTimeTickCount - Game.Ping / 2 + 350 + (int)(start.Distance(startPos) / 1800 * 1000);
+            SpellDetector.AddSpell(sender, startPos, endPos, data, null, SpellType.None, true, startT);
             spellArgs.NoProcess = true;
         }
 

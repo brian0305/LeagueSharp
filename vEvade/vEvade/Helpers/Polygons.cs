@@ -14,7 +14,7 @@
     {
         #region Constants
 
-        private const int Quality = 28;
+        private const int Quality = 20;
 
         #endregion
 

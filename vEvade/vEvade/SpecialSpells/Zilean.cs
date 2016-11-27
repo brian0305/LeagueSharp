@@ -2,18 +2,19 @@
 {
     #region
 
+    using System;
     using System.Linq;
 
     using LeagueSharp;
+    using LeagueSharp.Common;
 
     using vEvade.Core;
-    using vEvade.Spells;
 
     using SpellData = vEvade.Spells.SpellData;
 
     #endregion
 
-    public class Karma : IChampionManager
+    public class Zilean : IChampionManager
     {
         #region Static Fields
 
@@ -31,27 +32,22 @@
             }
 
             init = true;
-            SpellDetector.OnCreateSpell += KarmaQ;
+            Game.OnUpdate += ZileanQ;
         }
 
         #endregion
 
         #region Methods
 
-        private static void KarmaQ(Obj_AI_Base sender, MissileClient missile, SpellData data, SpellArgs spellArgs)
+        private static void ZileanQ(EventArgs args)
         {
-            if (data.MenuName != "KarmaQMantra")
+            foreach (var spell in
+                Evade.DetectedSpells.Values.Where(
+                    i =>
+                    i.Data.MenuName == "ZileanQ" && i.EndTick <= Utils.GameTimeTickCount && i.MissileObject == null
+                    && i.ToggleObject == null))
             {
-                return;
-            }
-
-            var spell =
-                Evade.DetectedSpells.Values.FirstOrDefault(
-                    i => i.Data.MenuName == "KarmaQ" && i.Unit.NetworkId == sender.NetworkId);
-
-            if (spell != null)
-            {
-                Evade.DetectedSpells.Remove(spell.SpellId);
+                Utility.DelayAction.Add(1, () => Evade.DetectedSpells.Remove(spell.SpellId));
             }
         }
 

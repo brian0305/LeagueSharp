@@ -54,14 +54,14 @@
             if (hero != null)
             {
                 var spell =
-                    Evade.SpellsDetected.Values.FirstOrDefault(
+                    Evade.DetectedSpells.Values.FirstOrDefault(
                         i =>
                         i.Data.MenuName == data.MenuName && i.Unit.NetworkId == hero.NetworkId
                         && i.MissileObject == null);
 
                 if (spell != null)
                 {
-                    Evade.SpellsDetected.Remove(spell.SpellId);
+                    Evade.DetectedSpells.Remove(spell.SpellId);
                 }
 
                 SpellDetector.AddSpell(hero, missile.StartPosition, missile.EndPosition, data, missile);

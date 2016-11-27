@@ -95,8 +95,8 @@ namespace vEvade.Helpers
                                       || buff.Type == BuffType.Snare)
                               select buff.EndTime).Concat(new[] { 0f }).Max();
 
-                return (result.Equals(0) ? -1 : (int)(Utils.GameTimeTickCount + (result - Game.Time) * 1000))
-                       - Utils.GameTimeTickCount > Game.Ping / 2 + 70;
+                return (result.Equals(0f) ? -1 : (int)(Utils.GameTimeTickCount + (result - Game.Time) * 1000))
+                       - Utils.GameTimeTickCount > Game.Ping / 2f + 70;
             }
         }
 
@@ -106,7 +106,7 @@ namespace vEvade.Helpers
 
         public static void DrawLine(Vector3 start, Vector3 end, Color color)
         {
-            Drawing.DrawLine(Drawing.WorldToScreen(start), Drawing.WorldToScreen(end), 2, color);
+            Drawing.DrawLine(Drawing.WorldToScreen(start), Drawing.WorldToScreen(end), 1, color);
         }
 
         public static void Move(this Vector2 pos)

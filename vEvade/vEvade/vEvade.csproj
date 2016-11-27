@@ -64,6 +64,7 @@
     <Compile Include="Helpers\Collision.cs" />
     <Compile Include="Helpers\Configs.cs" />
     <Compile Include="Helpers\Polygons.cs" />
+    <Compile Include="Helpers\SpellBlocker.cs" />
     <Compile Include="Helpers\Util.cs" />
     <Compile Include="Managers\HiuManager.cs" />
     <Compile Include="Managers\ObjManager.cs" />
@@ -72,14 +73,17 @@
     <Compile Include="PathFinding\PathFollow.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SpecialSpells\Olaf.cs" />
+    <Compile Include="SpecialSpells\Bard.cs" />
+    <Compile Include="SpecialSpells\Zac.cs" />
+    <Compile Include="SpecialSpells\Viktor.cs" />
+    <Compile Include="SpecialSpells\Sion.cs" />
     <Compile Include="SpecialSpells\Draven.cs" />
     <Compile Include="SpecialSpells\Aatrox.cs" />
     <Compile Include="SpecialSpells\Galio.cs" />
+    <Compile Include="SpecialSpells\RekSai.cs" />
     <Compile Include="SpecialSpells\Riven.cs" />
     <Compile Include="SpecialSpells\Poppy.cs" />
     <Compile Include="SpecialSpells\Syndra.cs" />
-    <Compile Include="SpecialSpells\Velkoz.cs" />
     <Compile Include="SpecialSpells\Azir.cs" />
     <Compile Include="SpecialSpells\Malzahar.cs" />
     <Compile Include="SpecialSpells\Ekko.cs" />
@@ -93,6 +97,8 @@
     <Compile Include="SpecialSpells\Orianna.cs" />
     <Compile Include="SpecialSpells\Taric.cs" />
     <Compile Include="SpecialSpells\Yasuo.cs" />
+    <Compile Include="SpecialSpells\Yorick.cs" />
+    <Compile Include="SpecialSpells\Zilean.cs" />
     <Compile Include="SpecialSpells\Zed.cs" />
     <Compile Include="Spells\SpellInstance.cs" />
     <Compile Include="Spells\SpellDetector.cs" />

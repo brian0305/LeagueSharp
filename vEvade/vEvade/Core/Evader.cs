@@ -27,98 +27,88 @@ namespace vEvade.Core
             bool onlyGood = false)
         {
             speed = speed == -1 ? (int)ObjectManager.Player.MoveSpeed : speed;
-            var goodCandidates = new List<Vector2>();
-            var badCandidates = new List<Vector2>();
-            var polygonList = new List<Geometry.Polygon>();
-            var takeClosestPath = false;
+            var goods = new List<Vector2>();
+            var bads = new List<Vector2>();
+            var polygons = new List<Geometry.Polygon>();
+            var closestPath = false;
 
-            foreach (var spell in Evade.SpellsDetected.Values.Where(i => i.Enable))
+            foreach (var spell in Evade.DetectedSpells.Values.Where(i => i.Enable))
             {
                 if (spell.Data.TakeClosestPath && spell.IsDanger(Evade.PlayerPosition))
                 {
-                    takeClosestPath = true;
+                    closestPath = true;
                 }
 
-                polygonList.Add(spell.EvadePolygon);
+                polygons.Add(spell.EvadePolygon);
             }
 
-            var dangerPolygons = Geometry.ClipPolygons(polygonList).ToPolygons();
-            var myPosition = Evade.PlayerPosition;
+            var dangerPolygons = Geometry.ClipPolygons(polygons).ToPolygons();
+            var myPos = Evade.PlayerPosition;
 
             foreach (var poly in dangerPolygons)
             {
                 for (var i = 0; i <= poly.Points.Count - 1; i++)
                 {
-                    var sideStart = poly.Points[i];
-                    var sideEnd = poly.Points[i == poly.Points.Count - 1 ? 0 : i + 1];
-                    var dir = (sideEnd - sideStart).Normalized();
-                    var originalCandidate = myPosition.ProjectOn(sideStart, sideEnd).SegmentPoint;
-                    var distToEvadePoint = originalCandidate.Distance(myPosition, true);
+                    var start = poly.Points[i];
+                    var end = poly.Points[i == poly.Points.Count - 1 ? 0 : i + 1];
+                    var segment = myPos.ProjectOn(start, end).SegmentPoint;
+                    var dist = segment.Distance(myPos, true);
 
-                    if (distToEvadePoint >= 600 * 600)
+                    if (dist >= 600 * 600)
                     {
                         continue;
                     }
 
-                    var s = distToEvadePoint < 200 * 200 && sideEnd.Distance(sideStart, true) > 90 * 90
-                                ? Configs.DiagonalEvadePointsCount
-                                : 0;
+                    var s = dist < 200 * 200 && end.Distance(start, true) > 90 * 90 ? Configs.EvadePointsCount : 0;
+                    var dir = (end - start).Normalized();
 
                     for (var j = -s; j <= s; j++)
                     {
-                        var candidate = originalCandidate + j * Configs.DiagonalEvadePointsStep * dir;
-                        var pathToPoint = ObjectManager.Player.GetPath(candidate.To3D()).ToList().To2D();
+                        var pos = segment + j * Configs.EvadePointsStep * dir;
+                        var paths = ObjectManager.Player.GetPath(pos.To3D()).ToList().To2D();
 
                         if (!isBlink)
                         {
-                            if (Evade.IsSafePath(pathToPoint, Configs.EvadingFirstTimeOffset, speed, delay).IsSafe)
+                            if (Evade.IsSafePath(paths, Configs.EvadingFirstTime, speed, delay).IsSafe)
                             {
-                                goodCandidates.Add(candidate);
+                                goods.Add(pos);
                             }
 
-                            if (Evade.IsSafePath(pathToPoint, Configs.EvadingSecondTimeOffset, speed, delay).IsSafe
-                                && j == 0)
+                            if (Evade.IsSafePath(paths, Configs.EvadingSecondTime, speed, delay).IsSafe && j == 0)
                             {
-                                badCandidates.Add(candidate);
+                                bads.Add(pos);
                             }
                         }
                         else
                         {
-                            if (Evade.IsSafeToBlink(
-                                pathToPoint[pathToPoint.Count - 1],
-                                Configs.EvadingFirstTimeOffset,
-                                delay))
+                            if (Evade.IsSafeToBlink(paths[paths.Count - 1], Configs.EvadingFirstTime, delay))
                             {
-                                goodCandidates.Add(candidate);
+                                goods.Add(pos);
                             }
 
-                            if (Evade.IsSafeToBlink(
-                                pathToPoint[pathToPoint.Count - 1],
-                                Configs.EvadingSecondTimeOffset,
-                                delay))
+                            if (Evade.IsSafeToBlink(paths[paths.Count - 1], Configs.EvadingSecondTime, delay))
                             {
-                                badCandidates.Add(candidate);
+                                bads.Add(pos);
                             }
                         }
                     }
                 }
             }
 
-            if (takeClosestPath)
+            if (closestPath)
             {
-                if (goodCandidates.Count > 0)
+                if (goods.Count > 0)
                 {
-                    goodCandidates = new List<Vector2>
-                                         { goodCandidates.MinOrDefault(i => myPosition.Distance(i, true)) };
+                    goods = new List<Vector2> { goods.MinOrDefault(i => myPos.Distance(i, true)) };
                 }
 
-                if (badCandidates.Count > 0)
+                if (bads.Count > 0)
                 {
-                    badCandidates = new List<Vector2> { badCandidates.MinOrDefault(i => myPosition.Distance(i, true)) };
+                    bads = new List<Vector2> { bads.MinOrDefault(i => myPos.Distance(i, true)) };
                 }
             }
 
-            return goodCandidates.Count > 0 ? goodCandidates : (onlyGood ? new List<Vector2>() : badCandidates);
+            return goods.Count > 0 ? goods : (onlyGood ? new List<Vector2>() : bads);
         }
 
         public static List<Obj_AI_Base> GetEvadeTargets(
@@ -130,45 +120,45 @@ namespace vEvade.Core
             bool onlyGood = false,
             bool dontCheckForSafety = false)
         {
-            var badTargets = new List<Obj_AI_Base>();
-            var goodTargets = new List<Obj_AI_Base>();
-            var allTargets = new List<Obj_AI_Base>();
+            var bads = new List<Obj_AI_Base>();
+            var goods = new List<Obj_AI_Base>();
+            var alls = new List<Obj_AI_Base>();
 
             foreach (var type in validTargets)
             {
                 switch (type)
                 {
                     case SpellValidTargets.AllyChampions:
-                        allTargets.AddRange(HeroManager.Allies.Where(i => !i.IsMe && i.IsValidTarget(range, false)));
+                        alls.AddRange(HeroManager.Allies.Where(i => !i.IsMe && i.IsValidTarget(range, false)));
                         break;
                     case SpellValidTargets.AllyMinions:
-                        allTargets.AddRange(
+                        alls.AddRange(
                             ObjectManager.Get<Obj_AI_Minion>()
                                 .Where(i => i.IsValidTarget(range, false) && i.IsAlly && (i.IsMinion() || i.IsPet())));
                         break;
                     case SpellValidTargets.AllyWards:
-                        allTargets.AddRange(
+                        alls.AddRange(
                             ObjectManager.Get<Obj_AI_Minion>()
                                 .Where(i => i.IsValidTarget(range, false) && i.IsAlly && i.IsWard()));
                         break;
                     case SpellValidTargets.EnemyChampions:
-                        allTargets.AddRange(HeroManager.Enemies.Where(i => i.IsValidTarget(range)));
+                        alls.AddRange(HeroManager.Enemies.Where(i => i.IsValidTarget(range)));
                         break;
                     case SpellValidTargets.EnemyMinions:
-                        allTargets.AddRange(
+                        alls.AddRange(
                             ObjectManager.Get<Obj_AI_Minion>()
                                 .Where(i => i.IsValidTarget(range) && (i.IsJungle() || i.IsMinion() || i.IsPet())));
                         break;
                     case SpellValidTargets.EnemyWards:
-                        allTargets.AddRange(
+                        alls.AddRange(
                             ObjectManager.Get<Obj_AI_Minion>().Where(i => i.IsValidTarget(range) && i.IsWard()));
                         break;
                 }
             }
 
-            foreach (var target in allTargets)
+            foreach (var target in alls)
             {
-                if (!dontCheckForSafety && !Evade.IsSafePos(target.ServerPosition.To2D()).IsSafe)
+                if (!dontCheckForSafety && !Evade.IsSafePoint(target.ServerPosition.To2D()).IsSafe)
                 {
                     continue;
                 }
@@ -176,36 +166,36 @@ namespace vEvade.Core
                 if (isBlink)
                 {
                     if (Utils.GameTimeTickCount - Evade.LastWardJumpTick < 250
-                        || Evade.IsSafeToBlink(target.ServerPosition.To2D(), Configs.EvadingFirstTimeOffset, delay))
+                        || Evade.IsSafeToBlink(target.ServerPosition.To2D(), Configs.EvadingFirstTime, delay))
                     {
-                        goodTargets.Add(target);
+                        goods.Add(target);
                     }
 
                     if (Utils.GameTimeTickCount - Evade.LastWardJumpTick < 250
-                        || Evade.IsSafeToBlink(target.ServerPosition.To2D(), Configs.EvadingSecondTimeOffset, delay))
+                        || Evade.IsSafeToBlink(target.ServerPosition.To2D(), Configs.EvadingSecondTime, delay))
                     {
-                        badTargets.Add(target);
+                        bads.Add(target);
                     }
                 }
                 else
                 {
-                    var pathToTarget = new List<Vector2> { Evade.PlayerPosition, target.ServerPosition.To2D() };
+                    var paths = new List<Vector2> { Evade.PlayerPosition, target.ServerPosition.To2D() };
 
                     if (Utils.GameTimeTickCount - Evade.LastWardJumpTick < 250
-                        || Evade.IsSafePath(pathToTarget, Configs.EvadingFirstTimeOffset, speed, delay).IsSafe)
+                        || Evade.IsSafePath(paths, Configs.EvadingFirstTime, speed, delay).IsSafe)
                     {
-                        goodTargets.Add(target);
+                        goods.Add(target);
                     }
 
                     if (Utils.GameTimeTickCount - Evade.LastWardJumpTick < 250
-                        || Evade.IsSafePath(pathToTarget, Configs.EvadingSecondTimeOffset, speed, delay).IsSafe)
+                        || Evade.IsSafePath(paths, Configs.EvadingSecondTime, speed, delay).IsSafe)
                     {
-                        badTargets.Add(target);
+                        bads.Add(target);
                     }
                 }
             }
 
-            return goodTargets.Count > 0 ? goodTargets : (onlyGood ? new List<Obj_AI_Base>() : badTargets);
+            return goods.Count > 0 ? goods : (onlyGood ? new List<Obj_AI_Base>() : bads);
         }
 
         #endregion

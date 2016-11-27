@@ -35,8 +35,9 @@
             }
 
             init = true;
+            SpellDetector.OnCreateSpell += EkkoW;
             SpellDetector.OnProcessSpell += EkkoR;
-            GameObject.OnCreate += EkkoWDetonate;
+            GameObject.OnCreate += EkkoW2;
         }
 
         #endregion
@@ -64,7 +65,26 @@
             spellArgs.NoProcess = true;
         }
 
-        private static void EkkoWDetonate(GameObject sender, EventArgs args)
+        private static void EkkoW(Obj_AI_Base sender, MissileClient missile, SpellData data, SpellArgs spellArgs)
+        {
+            if (data.MenuName != "EkkoW")
+            {
+                return;
+            }
+
+            var spell =
+                Evade.DetectedSpells.Values.FirstOrDefault(
+                    i =>
+                    i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId && i.MissileObject == null
+                    && i.End.Distance(missile.EndPosition) < 100);
+
+            if (spell != null)
+            {
+                Evade.DetectedSpells.Remove(spell.SpellId);
+            }
+        }
+
+        private static void EkkoW2(GameObject sender, EventArgs args)
         {
             var toggle = sender as Obj_GeneralParticleEmitter;
 
@@ -75,12 +95,12 @@
             }
 
             var spell =
-                Evade.SpellsDetected.Values.FirstOrDefault(
+                Evade.DetectedSpells.Values.FirstOrDefault(
                     i => i.Data.MenuName == "EkkoW" && i.End.Distance(toggle.Position) < 100);
 
             if (spell != null)
             {
-                Evade.SpellsDetected.Remove(spell.SpellId);
+                Evade.DetectedSpells.Remove(spell.SpellId);
             }
         }
 

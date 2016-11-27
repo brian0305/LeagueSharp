@@ -10,20 +10,19 @@
 
     using vEvade.Core;
     using vEvade.Helpers;
-    using vEvade.Managers;
     using vEvade.Spells;
 
     using SpellData = vEvade.Spells.SpellData;
 
     #endregion
 
-    public class Lux : IChampionManager
+    public class Sion : IChampionManager
     {
         #region Public Methods and Operators
 
         public void LoadSpecialSpell(SpellData spellData)
         {
-            if (spellData.MenuName != "LuxR")
+            if (spellData.MenuName != "SionEMinion")
             {
                 return;
             }
@@ -37,42 +36,34 @@
                 return;
             }
 
-            GameObject.OnCreate += (sender, args) => LuxR(sender, hero, spellData);
+            GameObject.OnCreate += (sender, args) => SionE(sender, hero, spellData);
         }
 
         #endregion
 
         #region Methods
 
-        private static void LuxR(GameObject sender, Obj_AI_Hero hero, SpellData data)
+        private static void SionE(GameObject sender, Obj_AI_Hero hero, SpellData data)
         {
             var obj = sender as Obj_GeneralParticleEmitter;
 
-            if (obj == null || !obj.IsValid || !new Regex("Lux_.+_R_mis_beam_middle").IsMatch(obj.Name))
+            if (obj == null || !obj.IsValid || !new Regex("Sion_.+_E_Minion").IsMatch(obj.Name))
             {
                 return;
             }
 
-            var startT = Utils.GameTimeTickCount;
-            var alreadyAdd =
-                Evade.DetectedSpells.Values.Any(
-                    i => i.Data.MenuName == data.MenuName && i.Unit.NetworkId == hero.NetworkId);
+            var spell =
+                Evade.DetectedSpells.Values.FirstOrDefault(
+                    i => i.Data.MenuName == "SionE" && i.Unit.NetworkId == hero.NetworkId && i.MissileObject != null);
 
-            if (alreadyAdd)
+            if (spell == null)
             {
                 return;
             }
 
-            var dir = HiuManager.GetLastHiuOrientation(startT);
-
-            if (dir.IsValid())
-            {
-                SpellDetector.AddSpell(
-                    hero,
-                    obj.Position.To2D() - dir * (data.Range / 2f),
-                    obj.Position.To2D() + dir * (data.Range / 2f),
-                    data);
-            }
+            var startPos = obj.Position.To2D();
+            var endPos = spell.Start + spell.Direction * data.Range;
+            SpellDetector.AddSpell(spell.Unit, startPos, endPos, data);
         }
 
         #endregion

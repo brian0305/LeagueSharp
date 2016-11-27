@@ -50,13 +50,13 @@
             }
 
             var spell =
-                Evade.SpellsDetected.Values.FirstOrDefault(
+                Evade.DetectedSpells.Values.FirstOrDefault(
                     i =>
                     i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId && i.MissileObject != null);
 
             if (spell != null)
             {
-                Evade.SpellsDetected.Remove(spell.SpellId);
+                Evade.DetectedSpells.Remove(spell.SpellId);
             }
 
             spellArgs.NoProcess = true;

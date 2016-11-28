@@ -35,6 +35,8 @@ namespace vEvade.Core
 
         public static int LastWardJumpTick;
 
+        public static Vector2 PlayerPosition;
+
         private static Vector2 evadePoint1, evadePoint2;
 
         private static bool evading;
@@ -69,8 +71,6 @@ namespace vEvade.Core
                 evading = value;
             }
         }
-
-        public static Vector2 PlayerPosition => ObjectManager.Player.ServerPosition.To2D();
 
         #endregion
 
@@ -135,7 +135,6 @@ namespace vEvade.Core
 
         public static void OnGameLoad(EventArgs args)
         {
-            Configs.Debug = false;
             DetectedSpells.OnAdd += (sender, eventArgs) => { Evading = false; };
             Configs.CreateMenu();
             Game.OnUpdate += OnUpdate;
@@ -163,11 +162,11 @@ namespace vEvade.Core
         {
             foreach (var spell in DetectedSpells.Values)
             {
-                if (spell.MissileObject == null && spell.ToggleObject == null && spell.TrapObject == null
+                /*if (spell.MissileObject == null && spell.ToggleObject == null && spell.TrapObject == null
                     && spell.Unit.IsDead)
                 {
                     Utility.DelayAction.Add(1, () => DetectedSpells.Remove(spell.SpellId));
-                }
+                }*/
 
                 if (spell.Data.IsDash && Utils.GameTimeTickCount - spell.StartTick > spell.Data.Delay + 100
                     && !spell.Unit.IsDashing())
@@ -254,6 +253,11 @@ namespace vEvade.Core
 
         private static void OnDraw(EventArgs args)
         {
+            if (ObjectManager.Player.IsDead)
+            {
+                return;
+            }
+
             if (Configs.Menu.Item("DrawStatus").GetValue<bool>())
             {
                 var pos = Drawing.WorldToScreen(ObjectManager.Player.Position);
@@ -275,7 +279,7 @@ namespace vEvade.Core
             {
                 foreach (var spell in DetectedSpells.Values)
                 {
-                    spell.Draw(Color.White);
+                    spell.Draw(spell.Enable ? Color.White : Color.Red);
                 }
             }
 
@@ -285,18 +289,18 @@ namespace vEvade.Core
 
                 for (var i = 0; i < curPaths.Count - 1; i++)
                 {
-                    Util.DrawLine(curPaths[i].To3D2(), curPaths[i + 1].To3D2(), Color.White);
+                    Util.DrawLine(curPaths[i], curPaths[i + 1], Color.White);
                 }
 
                 var evadePaths = Core.FindPaths(PlayerPosition, Game.CursorPos.To2D());
 
                 for (var i = 0; i < evadePaths.Count - 1; i++)
                 {
-                    Util.DrawLine(evadePaths[i].To3D2(), evadePaths[i + 1].To3D2(), Color.Red);
+                    Util.DrawLine(evadePaths[i], evadePaths[i + 1], Color.Red);
                 }
 
-                Render.Circle.DrawCircle(evadePoint1.To3D2(), 100, Color.White);
-                Render.Circle.DrawCircle(evadePoint2.To3D2(), 100, Color.Red);
+                Render.Circle.DrawCircle(evadePoint1.To3D(), 100, Color.White);
+                Render.Circle.DrawCircle(evadePoint2.To3D(), 100, Color.Red);
             }
         }
 
@@ -400,6 +404,8 @@ namespace vEvade.Core
 
         private static void OnUpdate(EventArgs args)
         {
+            PlayerPosition = ObjectManager.Player.ServerPosition.To2D();
+
             if (prevPos.IsValid() && PlayerPosition.Distance(prevPos) > 200)
             {
                 Evading = false;

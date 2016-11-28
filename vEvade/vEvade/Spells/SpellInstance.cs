@@ -153,14 +153,14 @@
             {
                 case SpellType.Line:
                 case SpellType.MissileLine:
-                    this.Line = new Polygons.Line(this.Start, this.PredictEnd, this.Radius);
+                    this.Line = new Polygons.Line(this.Start, this.End, this.Radius);
                     break;
                 case SpellType.Cone:
                 case SpellType.MissileCone:
                     this.Cone = new Polygons.Cone(this.Start, this.Direction, this.Radius, data.Range);
                     break;
                 case SpellType.Circle:
-                    this.Circle = new Polygons.Circle(this.PredictEnd, this.Radius);
+                    this.Circle = new Polygons.Circle(this.End, this.Radius);
                     break;
                 case SpellType.Ring:
                     this.Ring = new Polygons.Ring(this.End, data.RadiusEx, this.Radius);
@@ -186,22 +186,22 @@
                     return false;
                 }
 
-                if (Utils.GameTimeTickCount - this.cachedValueTick < 100)
+                if (Utils.GameTimeTickCount - this.cachedValueTick <= 100)
                 {
                     return this.cachedValue;
                 }
+
+                this.cachedValueTick = Utils.GameTimeTickCount;
 
                 if (!this.GetValue<bool>("IsDangerous")
                     && Configs.Menu.Item("DodgeDangerous").GetValue<KeyBind>().Active)
                 {
                     this.cachedValue = false;
-                    this.cachedValueTick = Utils.GameTimeTickCount;
 
                     return this.cachedValue;
                 }
 
                 this.cachedValue = this.GetValue<bool>("Enabled");
-                this.cachedValueTick = Utils.GameTimeTickCount;
 
                 if (this.cachedValue)
                 {
@@ -256,7 +256,7 @@
 
                 if (this.IsGlobal)
                 {
-                    return this.GlobalGetMissilePosition(0)
+                    return this.GetGlobalMissilePosition(0)
                            + this.Direction * this.Data.MissileSpeed
                            * (0.5f + this.Radius * 2 / ObjectManager.Player.MoveSpeed);
                 }
@@ -280,18 +280,27 @@
 
             if (Configs.Debug && (this.Type == SpellType.Circle || this.Type == SpellType.Ring) && this.Data.Range > 0)
             {
-                Render.Circle.DrawCircle(Evade.PlayerPosition.To3D(), this.Data.Range, Color.Red);
+                Render.Circle.DrawCircle(this.Start.To3D(), this.Data.Range, Color.White);
             }
 
-            if (this.Type == SpellType.MissileLine && this.MissileObject != null && this.MissileObject.IsValid
-                && this.MissileObject.IsVisible)
+            if (this.Type == SpellType.MissileLine
+                && (!Configs.Debug
+                    || (this.MissileObject != null && this.MissileObject.IsValid && this.MissileObject.IsVisible)))
             {
-                var pos = this.MissileObject.Position.To2D();
+                var pos = !Configs.Debug ? this.GetMissilePosition(0) : this.MissileObject.Position.To2D();
                 Util.DrawLine(
-                    (pos + this.Radius * this.Direction.Perpendicular()).To3D2(),
-                    (pos - this.Radius * this.Direction.Perpendicular()).To3D2(),
+                    pos + this.Radius * this.Direction.Perpendicular(),
+                    pos - this.Radius * this.Direction.Perpendicular(),
                     Color.LimeGreen);
             }
+        }
+
+        public Vector2 GetGlobalMissilePosition(int time)
+        {
+            var t = Math.Max(0, Utils.GameTimeTickCount + time - this.StartTick - this.Data.Delay);
+            t = (int)Math.Max(0, Math.Min(this.End.Distance(this.Start), t * this.Data.MissileSpeed / 1000f));
+
+            return this.Start + this.Direction * t;
         }
 
         public Vector2 GetMissilePosition(int time)
@@ -332,20 +341,12 @@
             return Configs.Menu.Item("S_" + this.Data.MenuName + "_" + name).GetValue<T>();
         }
 
-        public Vector2 GlobalGetMissilePosition(int time)
-        {
-            var t = Math.Max(0, Utils.GameTimeTickCount + time - this.StartTick - this.Data.Delay);
-            t = (int)Math.Max(0, Math.Min(this.End.Distance(this.Start), t * this.Data.MissileSpeed / 1000f));
-
-            return this.Start + this.Direction * t;
-        }
-
         public bool IsAboutToHit(int time, Obj_AI_Base unit)
         {
             if (this.Type == SpellType.MissileLine)
             {
                 return unit.ServerPosition.To2D()
-                           .Distance(this.GetMissilePosition(0), this.GetMissilePosition(time), true) <= this.Radius;
+                           .Distance(this.GetMissilePosition(0), this.GetMissilePosition(time), true) < this.Radius;
             }
 
             if (this.IsSafe(unit.ServerPosition.To2D()))
@@ -382,20 +383,18 @@
 
                 for (var j = 0; j <= this.Polygon.Points.Count - 1; j++)
                 {
-                    var intersect = from.Intersection(
+                    var inter = from.Intersection(
                         to,
                         this.Polygon.Points[j],
                         this.Polygon.Points[j == this.Polygon.Points.Count - 1 ? 0 : j + 1]);
 
-                    if (intersect.Intersects)
+                    if (!inter.Intersects)
                     {
-                        segments.Add(
-                            new Intersects(
-                                dist + intersect.Point.Distance(from),
-                                (int)((dist + intersect.Point.Distance(from)) / speed * 1000),
-                                intersect.Point,
-                                from));
+                        continue;
                     }
+
+                    var d = dist + inter.Point.Distance(from);
+                    segments.Add(new Intersects(d, (int)(d / speed * 1000), inter.Point, from));
                 }
 
                 intersects.AddRange(segments.OrderBy(a => a.Distance));
@@ -506,10 +505,10 @@
 
         public void OnUpdate()
         {
-            if (this.Data.CollisionObjects != null && this.Data.CollisionObjects.Length > 0
-                && Configs.Menu.Item("CheckCollision").GetValue<bool>())
+            if (this.Data.CollisionObjects != null && this.Data.CollisionObjects.Length > 0)
             {
-                if (Utils.GameTimeTickCount - this.lastCalcColTick > 50)
+                if (Utils.GameTimeTickCount - this.lastCalcColTick > 50
+                    && Configs.Menu.Item("CheckCollision").GetValue<bool>())
                 {
                     this.lastCalcColTick = Utils.GameTimeTickCount;
                     this.predEnd = Collisions.GetCollision(this);
@@ -582,7 +581,8 @@
             {
                 if (this.Unit.HasBuff("MonkeyKingSpinToWin"))
                 {
-                    this.EndTick = Utils.GameTimeTickCount + 100;
+                    this.StartTick = Utils.GameTimeTickCount;
+                    this.EndTick = this.StartTick + 10;
                 }
                 else
                 {

@@ -529,12 +529,27 @@ namespace vEvade.Spells
             #region Diana
 
             Spells.Add(
-                //Todo: Arc
                 new SpellData
                     {
-                        ChampName = "Diana", MenuName = "DianaQ", SpellName = "DianaArc", DangerValue = 3, Range = 900,
-                        Radius = 195, MissileSpeed = 1400, Type = SpellType.Circle,
+                        ChampName = "Diana", MenuName = "DianaQCircle", SpellName = "DianaArc", DangerValue = 3,
+                        Range = 850, Radius = 195, MissileSpeed = 1400, Type = SpellType.Circle,
                         CollisionObjects = new[] { CollisionableObjects.YasuoWall }, IsDangerous = true
+                    });
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampName = "Diana", MenuName = "DianaQArc", SpellName = "DianaQArc", DangerValue = 3, Range = 850,
+                        Radius = 70, MissileSpeed = 1400, Type = SpellType.Arc,
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }, IsDangerous = true, DontCross = true,
+                        TakeClosestPath = true
+                    });
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampName = "Diana", MenuName = "DianaE", SpellName = "DianaVortex", DangerValue = 2, Radius = 450,
+                        Type = SpellType.Circle, DisabledByDefault = true
                     });
 
             #endregion Diana

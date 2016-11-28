@@ -12,8 +12,7 @@
     {
         #region Static Fields
 
-        public static List<SpellSlot> Spells = new List<SpellSlot>
-                                                   { SpellSlot.Q, SpellSlot.W, SpellSlot.E, SpellSlot.R };
+        public static List<SpellSlot> Spells;
 
         #endregion
 
@@ -400,6 +399,9 @@
                     break;
                 case "Zyra":
                     Spells = new List<SpellSlot> { SpellSlot.W };
+                    break;
+                default:
+                    Spells = new List<SpellSlot> { SpellSlot.Q, SpellSlot.W, SpellSlot.E, SpellSlot.R };
                     break;
             }
         }

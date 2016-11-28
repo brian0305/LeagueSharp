@@ -18,30 +18,29 @@
     {
         #region Public Methods and Operators
 
-        public static Vector2 GetLastHiuOrientation(int time)
+        public static Vector2 GetHiuDirection(int time)
         {
-            var objs =
+            var hius =
                 ObjManager.ObjCache.Values.Where(i => i.Name == "Hiu" && time - i.Time >= 0 && time - i.Time <= 100)
                     .OrderByDescending(i => i.Time);
 
-            return objs.Count() >= 2
-                       ? (objs.ElementAt(1).Obj.Position - objs.First().Obj.Position).To2D().Normalized()
+            return hius.Count() >= 2
+                       ? (hius.ElementAt(1).Obj.Position - hius.First().Obj.Position).To2D().Normalized()
                        : Vector2.Zero;
         }
 
         public static void OnCreate(GameObject sender, EventArgs args)
         {
-            var minion = sender as Obj_AI_Minion;
+            var hiu = sender as Obj_AI_Minion;
 
-            if (minion == null || !minion.IsValid || (!Configs.Debug && !minion.IsEnemy)
-                || !minion.CharData.BaseSkinName.Contains("TestCube")
-                || ObjManager.ObjCache.ContainsKey(minion.NetworkId))
+            if (hiu == null || !hiu.IsValid || (!Configs.Debug && !hiu.IsEnemy)
+                || !hiu.CharData.BaseSkinName.Contains("TestCube") || ObjManager.ObjCache.ContainsKey(hiu.NetworkId))
             {
                 return;
             }
 
-            ObjManager.ObjCache.Add(minion.NetworkId, new ObjManagerInfo(minion, "Hiu"));
-            Utility.DelayAction.Add(250, () => ObjManager.ObjCache.Remove(minion.NetworkId));
+            ObjManager.ObjCache.Add(hiu.NetworkId, new ObjManagerInfo(hiu, "Hiu"));
+            Utility.DelayAction.Add(250, () => ObjManager.ObjCache.Remove(hiu.NetworkId));
         }
 
         #endregion

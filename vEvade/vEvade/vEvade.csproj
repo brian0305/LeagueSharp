@@ -73,6 +73,7 @@
     <Compile Include="PathFinding\PathFollow.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SpecialSpells\Diana.cs" />
     <Compile Include="SpecialSpells\Bard.cs" />
     <Compile Include="SpecialSpells\Zac.cs" />
     <Compile Include="SpecialSpells\Viktor.cs" />

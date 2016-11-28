@@ -21,9 +21,11 @@
     {
         #region Static Fields
 
-        private static Vector2 wallCastPos;
+        private static bool haveYasuo;
 
-        private static int wallCastTime;
+        private static Vector2 yasuoWallPos;
+
+        private static int yasuoWallTick;
 
         #endregion
 
@@ -45,7 +47,7 @@
                                 ObjectManager.Get<Obj_AI_Minion>()
                                 .Where(
                                     i =>
-                                    i.IsValidTarget(1200, false)
+                                    i.IsValidTarget(1200, false, @from.To3D())
                                     && (i.IsJungle() || (i.IsAlly && (i.IsMinion() || i.IsPet()))))
                             let pred =
                                 FastPrediction(
@@ -82,7 +84,7 @@
                                     });
                         break;
                     case CollisionableObjects.YasuoWall:
-                        if (HeroManager.Allies.All(i => i.ChampionName != "Yasuo"))
+                        if (!haveYasuo || spell.Data.MissileSpeed == 0)
                         {
                             continue;
                         }
@@ -100,7 +102,7 @@
                         }
 
                         var wallWidth = 300 + 50 * Convert.ToInt32(wall.Name.Substring(wall.Name.Length - 6, 1));
-                        var wallDirection = (wall.Position.To2D() - wallCastPos).Normalized().Perpendicular();
+                        var wallDirection = (wall.Position.To2D() - yasuoWallPos).Normalized().Perpendicular();
                         var wallStart = wall.Position.To2D() + wallWidth / 2f * wallDirection;
                         var wallEnd = wallStart - wallWidth * wallDirection;
                         var wallPolygon = new Polygons.Line(wallStart, wallEnd, 75).ToPolygon();
@@ -122,12 +124,12 @@
 
                         if (intersects.Count > 0)
                         {
-                            var intersect = intersects.OrderBy(i => i.Distance(from)).ToList()[0];
+                            var intersect = intersects.OrderBy(i => i.Distance(from)).First();
                             var time = Utils.GameTimeTickCount
                                        + Math.Max(0, spell.Data.Delay - (Utils.GameTimeTickCount - spell.StartTick))
-                                       + 100 + 1000 * intersect.Distance(from) / spell.Data.MissileSpeed;
+                                       + 100 + intersect.Distance(from) / spell.Data.MissileSpeed * 1000;
 
-                            if (time - wallCastTime <= 4000)
+                            if (time - yasuoWallTick < 4000)
                             {
                                 if (spell.Type != SpellType.MissileLine)
                                 {
@@ -141,11 +143,17 @@
                 }
             }
 
-            return result.Count > 0 ? result.OrderBy(i => i.Distance).ToList()[0].Position : new Vector2();
+            return result.Count > 0 ? result.OrderBy(i => i.Distance).First().Position : Vector2.Zero;
         }
 
         public static void Init()
         {
+            if (HeroManager.Allies.All(i => i.ChampionName != "Yasuo"))
+            {
+                return;
+            }
+
+            haveYasuo = true;
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
         }
 
@@ -165,13 +173,13 @@
 
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            if (!sender.IsValid || sender.IsEnemy || args.SData.Name != "YasuoWMovingWall")
+            if (!sender.IsValid || !sender.IsAlly || args.SData.Name != "YasuoWMovingWall")
             {
                 return;
             }
 
-            wallCastTime = Utils.GameTimeTickCount;
-            wallCastPos = sender.ServerPosition.To2D();
+            yasuoWallTick = Utils.GameTimeTickCount;
+            yasuoWallPos = sender.ServerPosition.To2D();
         }
 
         #endregion

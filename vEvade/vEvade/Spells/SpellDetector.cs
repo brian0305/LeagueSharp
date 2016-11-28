@@ -39,11 +39,13 @@
             GameObject.OnDelete += OnDeleteMissile;
             Obj_AI_Base.OnProcessSpellCast += OnProcessSpellCast;
 
-            if (Configs.Debug)
+            if (!Configs.Debug)
             {
-                Obj_AI_Base.OnNewPath += DebugOnNewPath;
-                GameObject.OnCreate += DebugOnCreate;
+                return;
             }
+
+            Obj_AI_Base.OnNewPath += DebugOnNewPath;
+            GameObject.OnCreate += DebugOnCreate;
         }
 
         #endregion
@@ -84,14 +86,19 @@
             bool checkExplosion = true,
             int startT = 0)
         {
-            if (!Configs.Menu.Item("DodgeFoW").GetValue<bool>() && !sender.IsVisible)
+            if (!sender.IsVisible && !Configs.Menu.Item("DodgeFoW").GetValue<bool>())
             {
                 return;
             }
 
-            if (Evade.PlayerPosition.Distance(spellStart) > (data.Range + data.Radius + 1000) * 1.5 && !Configs.Debug)
+            if (!Configs.Debug && Evade.PlayerPosition.Distance(spellStart) > (data.Range + data.Radius + 1000) * 1.5)
             {
                 return;
+            }
+
+            if (type == SpellType.None)
+            {
+                type = data.Type;
             }
 
             var startPos = spellStart;
@@ -124,11 +131,6 @@
                 }
             }
 
-            if (type == SpellType.None)
-            {
-                type = data.Type;
-            }
-
             if (type == SpellType.Cone || type == SpellType.MissileCone || data.FixedRange
                 || (data.Range > 0 && endPos.Distance(startPos) > data.Range))
             {
@@ -158,14 +160,9 @@
             switch (type)
             {
                 case SpellType.MissileLine:
-                    if (data.MissileAccel != 0)
-                    {
-                        endTime += 5000;
-                    }
-                    else
-                    {
-                        endTime += (int)(startPos.Distance(endPos) / data.MissileSpeed * 1000);
-                    }
+                    endTime += data.MissileAccel != 0
+                                   ? 5000
+                                   : (int)(startPos.Distance(endPos) / data.MissileSpeed * 1000);
                     break;
                 case SpellType.Circle:
                     if (data.MissileSpeed != 0)
@@ -192,29 +189,44 @@
             var dir = (endPos - startPos).Normalized();
             var alreadyAdded = false;
 
-            if (missile == null ? !data.DontCheckForDuplicates : !data.MissileOnly)
+            if (missile == null)
+            {
+                if (!data.DontCheckForDuplicates)
+                {
+                    foreach (var spell in
+                        Evade.DetectedSpells.Values.Where(
+                            i =>
+                            i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId
+                            && dir.AngleBetween(i.Direction) < 3 && i.Start.Distance(startPos) < 100))
+                    {
+                        alreadyAdded = spell.MissileObject != null && spell.MissileObject.IsValid;
+
+                        if (alreadyAdded)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+            else if (!data.MissileOnly)
             {
                 foreach (var spell in
                     Evade.DetectedSpells.Values.Where(
                         i =>
                         i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId
-                        && dir.AngleBetween(i.Direction) < 3 && i.Start.Distance(startPos) < 100))
+                        && dir.AngleBetween(i.Direction) < 3 && i.Start.Distance(startPos) < 100
+                        && i.MissileObject == null))
                 {
-                    if (missile == null)
-                    {
-                        alreadyAdded = spell.MissileObject != null && spell.MissileObject.IsValid;
-                    }
-                    else if (spell.MissileObject == null)
-                    {
-                        spell.MissileObject = missile;
-                        spell.Start = missile.StartPosition.To2D();
-                        alreadyAdded = true;
+                    spell.MissileObject = missile;
+                    spell.Start = missile.StartPosition.To2D();
+                    alreadyAdded = true;
 
-                        if (Configs.Debug)
-                        {
-                            Console.WriteLine($"=> M: {spell.SpellId} | {Utils.GameTimeTickCount}");
-                        }
+                    if (Configs.Debug)
+                    {
+                        Console.WriteLine($"=> M: {spell.SpellId} | {Utils.GameTimeTickCount}");
                     }
+
+                    break;
                 }
             }
 
@@ -273,13 +285,11 @@
 
         private static void DebugOnNewPath(Obj_AI_Base sender, GameObjectNewPathEventArgs args)
         {
-            if (!args.IsDash || sender.IsMe)
+            if (args.IsDash && !sender.IsMe)
             {
-                return;
+                Console.WriteLine(
+                    $"{Utils.GameTimeTickCount} {sender.CharData.BaseSkinName} [{sender.Team}] => Speed: {args.Speed}");
             }
-
-            Console.WriteLine(
-                $"{Utils.GameTimeTickCount} {sender.CharData.BaseSkinName} [{sender.Team}] => Speed: {args.Speed}");
         }
 
         private static void OnCreateMissile(GameObject sender, EventArgs args)
@@ -293,27 +303,29 @@
 
             var caster = missile.SpellCaster;
 
-            if (caster.IsValid() && (caster.IsEnemy || Configs.Debug))
-            {
-                Utility.DelayAction.Add(0, () => OnCreateMissileDelay(caster, missile, missile.SData.Name));
-            }
-        }
-
-        private static void OnCreateMissileDelay(Obj_AI_Base caster, MissileClient missile, string name)
-        {
-            if (Configs.Debug && caster.IsMe)
-            {
-                Console.WriteLine(
-                    $"{name}: {missile.SData.CastRange} | {missile.SData.CastRangeDisplayOverride} | {Utils.GameTimeTickCount - lastCast} | {missile.SData.LineWidth} | {missile.SData.MissileSpeed} | {missile.SData.MissileAccel} | {missile.SData.MissileMinSpeed} | {missile.SData.MissileMaxSpeed} | {missile.SData.CastRadius} | {missile.SData.CastRadiusSecondary}");
-            }
-
-            SpellData data;
-
-            if (!Evade.OnMissileSpells.TryGetValue(name, out data))
+            if (!caster.IsValid() || (!caster.IsEnemy && !Configs.Debug))
             {
                 return;
             }
 
+            if (Configs.Debug && caster.IsMe)
+            {
+                Console.WriteLine(
+                    $"{missile.SData.Name}: {missile.SData.CastRange} | {missile.SData.CastRangeDisplayOverride} | {Utils.GameTimeTickCount - lastCast} | {missile.SData.LineWidth} | {missile.SData.MissileSpeed} | {missile.SData.MissileAccel} | {missile.SData.MissileMinSpeed} | {missile.SData.MissileMaxSpeed} | {missile.SData.CastRadius} | {missile.SData.CastRadiusSecondary}");
+            }
+
+            SpellData data;
+
+            if (!Evade.OnMissileSpells.TryGetValue(missile.SData.Name, out data))
+            {
+                return;
+            }
+
+            Utility.DelayAction.Add(0, () => OnCreateMissileDelay(missile, caster, data));
+        }
+
+        private static void OnCreateMissileDelay(MissileClient missile, Obj_AI_Base caster, SpellData data)
+        {
             var spellArgs = new SpellArgs();
             OnCreateSpell?.Invoke(caster, missile, data, spellArgs);
 
@@ -334,15 +346,14 @@
         {
             var toggle = sender as Obj_GeneralParticleEmitter;
 
-            if (toggle != null && toggle.IsValid)
+            if (toggle == null || !toggle.IsValid)
             {
-                Utility.DelayAction.Add(0, () => OnCreateToggleDelay(toggle, toggle.Name));
+                return;
             }
-        }
 
-        private static void OnCreateToggleDelay(Obj_GeneralParticleEmitter toggle, string name)
-        {
-            if (Configs.Debug && Evade.PlayerPosition.Distance(toggle.Position) < 500)
+            var pos = toggle.Position.To2D();
+
+            if (Configs.Debug && Evade.PlayerPosition.Distance(pos) < 500)
             {
                 Console.WriteLine(
                     $"{toggle.Name}: {toggle.Team} - {ObjectManager.Player.Team} | {Utils.GameTimeTickCount}");
@@ -351,12 +362,12 @@
             foreach (var spell in
                 Evade.DetectedSpells.Values.Where(
                     i =>
-                    i.MissileObject != null && i.ToggleObject == null && i.Data.ToggleName != ""
-                    && new Regex(i.Data.ToggleName).IsMatch(name) && i.End.Distance(toggle.Position) < 100))
+                    i.Data.ToggleName != "" && i.MissileObject != null && i.ToggleObject == null
+                    && new Regex(i.Data.ToggleName).IsMatch(toggle.Name) && i.End.Distance(pos) < 100))
             {
-                spell.ToggleObject = toggle;
                 spell.MissileObject = null;
-                spell.End = toggle.Position.To2D();
+                spell.ToggleObject = toggle;
+                spell.End = pos;
 
                 if (Configs.Debug)
                 {
@@ -374,31 +385,31 @@
                 return;
             }
 
-            if (trap.IsEnemy || Configs.Debug)
-            {
-                Utility.DelayAction.Add(0, () => OnCreateTrapDelay(trap, trap.CharData.BaseSkinName));
-            }
-        }
-
-        private static void OnCreateTrapDelay(Obj_AI_Minion trap, string name)
-        {
-            if (Configs.Debug && Evade.PlayerPosition.Distance(trap) < 500)
-            {
-                Console.WriteLine(
-                    $"{name}: {trap.Team} - {ObjectManager.Player.Team} | {trap.BoundingRadius} | {Utils.GameTimeTickCount}");
-            }
-
-            SpellData data;
-
-            if (!Evade.OnTrapSpells.TryGetValue(name, out data))
+            if (!trap.IsEnemy && !Configs.Debug)
             {
                 return;
             }
 
-            var trapPos = trap.ServerPosition.To2D();
+            if (Configs.Debug && Evade.PlayerPosition.Distance(trap) < 500)
+            {
+                Console.WriteLine(
+                    $"{trap.CharData.BaseSkinName}: {trap.Team} - {ObjectManager.Player.Team} | {trap.BoundingRadius} | {Utils.GameTimeTickCount}");
+            }
+
+            SpellData data;
+
+            if (Evade.OnTrapSpells.TryGetValue(trap.CharData.BaseSkinName, out data))
+            {
+                Utility.DelayAction.Add(0, () => OnCreateTrapDelay(trap, data));
+            }
+        }
+
+        private static void OnCreateTrapDelay(Obj_AI_Minion trap, SpellData data)
+        {
+            var pos = trap.ServerPosition.To2D();
             var caster =
                 HeroManager.AllHeroes.First(i => i.ChampionName == data.ChampName && (i.IsEnemy || Configs.Debug));
-            var spell = new SpellInstance(data, Utils.GameTimeTickCount, 0, trapPos, trapPos, caster, data.Type)
+            var spell = new SpellInstance(data, Utils.GameTimeTickCount - Game.Ping / 2, 0, pos, pos, caster, data.Type)
                             { SpellId = spellIdCount++, TrapObject = trap };
             Evade.DetectedSpells.Add(spell.SpellId, spell);
 
@@ -417,20 +428,30 @@
                 return;
             }
 
+            var caster = missile.SpellCaster;
+
+            if (!caster.IsValid() || (!caster.IsEnemy && !Configs.Debug))
+            {
+                return;
+            }
+
             foreach (var spell in
                 Evade.DetectedSpells.Values.Where(
                     i =>
-                    i.MissileObject != null && i.MissileObject.NetworkId == missile.NetworkId && i.Data.CanBeRemoved))
+                    i.Data.CanBeRemoved && i.MissileObject != null && i.MissileObject.NetworkId == missile.NetworkId))
             {
                 if (spell.Data.ToggleName == "" || spell.Type != SpellType.Circle)
                 {
                     Utility.DelayAction.Add(1, () => Evade.DetectedSpells.Remove(spell.SpellId));
+
+                    if (Configs.Debug)
+                    {
+                        Console.WriteLine($"=> D-M: {spell.SpellId} | {Utils.GameTimeTickCount}");
+                    }
                 }
                 else
                 {
-                    var newData = (SpellData)spell.Data.Clone();
-                    newData.CollisionObjects = null;
-                    spell.Data = newData;
+                    spell.Data.CollisionObjects = null;
                     spell.End = missile.Position.To2D();
 
                     Utility.DelayAction.Add(
@@ -442,11 +463,6 @@
                                     Evade.DetectedSpells.Remove(spell.SpellId);
                                 }
                             });
-                }
-
-                if (Configs.Debug)
-                {
-                    Console.WriteLine($"=> D-M: {spell.SpellId} | {Utils.GameTimeTickCount}");
                 }
             }
         }
@@ -462,7 +478,8 @@
 
             foreach (var spell in
                 Evade.DetectedSpells.Values.Where(
-                    i => i.ToggleObject != null && i.ToggleObject.NetworkId == toggle.NetworkId))
+                    i =>
+                    i.Data.ToggleName != "" && i.ToggleObject != null && i.ToggleObject.NetworkId == toggle.NetworkId))
             {
                 Utility.DelayAction.Add(1, () => Evade.DetectedSpells.Remove(spell.SpellId));
 
@@ -477,14 +494,14 @@
         {
             var trap = sender as Obj_AI_Minion;
 
-            if (trap == null || !trap.IsValid)
+            if (trap == null || !trap.IsValid || (!trap.IsEnemy && !Configs.Debug))
             {
                 return;
             }
 
             foreach (var spell in
-                Evade.DetectedSpells.Values.Where(i => i.TrapObject != null && i.TrapObject.NetworkId == trap.NetworkId)
-                )
+                Evade.DetectedSpells.Values.Where(
+                    i => i.Data.TrapName != "" && i.TrapObject != null && i.TrapObject.NetworkId == trap.NetworkId))
             {
                 Utility.DelayAction.Add(1, () => Evade.DetectedSpells.Remove(spell.SpellId));
 
@@ -497,16 +514,16 @@
 
         private static void OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
+            if (!sender.IsEnemy && !Configs.Debug)
+            {
+                return;
+            }
+
             if (Configs.Debug && sender.IsMe)
             {
                 Console.WriteLine(
                     $"{args.SData.Name}: {Utils.GameTimeTickCount - lastCast} | {args.SData.CastRange} | {args.SData.CastRangeDisplayOverride} | {args.SData.LineWidth} | {args.SData.MissileSpeed} | {args.SData.CastRadius} | {args.SData.CastRadiusSecondary}");
                 lastCast = Utils.GameTimeTickCount;
-            }
-
-            if (!sender.IsEnemy && !Configs.Debug)
-            {
-                return;
             }
 
             SpellData data;

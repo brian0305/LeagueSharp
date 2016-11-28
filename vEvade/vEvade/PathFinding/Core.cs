@@ -24,17 +24,17 @@
 
             try
             {
-                var innerPolys = new List<Geometry.Polygon>();
                 var outerPolys = new List<Geometry.Polygon>();
+                var innerPolys = new List<Geometry.Polygon>();
 
                 foreach (var spell in Evade.DetectedSpells.Values.Where(i => i.Enable))
                 {
-                    innerPolys.Add(spell.PathFindingInnerPolygon);
                     outerPolys.Add(spell.PathFindingOuterPolygon);
+                    innerPolys.Add(spell.PathFindingInnerPolygon);
                 }
 
-                var innerPolygons = Geometry.ClipPolygons(innerPolys).ToPolygons();
                 var outerPolygons = Geometry.ClipPolygons(outerPolys).ToPolygons();
+                var innerPolygons = Geometry.ClipPolygons(innerPolys).ToPolygons();
 
                 if (outerPolygons.Aggregate(false, (cur, poly) => cur || !poly.IsOutside(end)))
                 {
@@ -122,12 +122,11 @@
                 return false;
             }
 
-            var step = start.Distance(end) / 2;
-            var dir = (end - start).Normalized();
+            var step = start.Distance(end) / 2 * (end - start).Normalized();
 
             for (var i = 0; i <= 2; i++)
             {
-                if ((start + i * step * dir).IsWall())
+                if ((start + i * step).IsWall())
                 {
                     return false;
                 }
@@ -196,7 +195,7 @@
                 }
             }
 
-            return result.MinOrDefault(i => i.Distance(from));
+            return result.Count > 0 ? result.OrderBy(i => i.Distance(from)).First() : Vector2.Zero;
         }
 
         private static bool IsConcave(this List<Vector2> v, int id)
@@ -212,9 +211,9 @@
 
         private static bool IsCross(this Vector2 a, Vector2 b, Vector2 c, Vector2 d)
         {
-            var denominator = (b.X - a.X) * (d.Y - c.Y) - (b.Y - a.Y) * (d.X - c.X);
+            var f = (b.X - a.X) * (d.Y - c.Y) - (b.Y - a.Y) * (d.X - c.X);
 
-            if (denominator.Equals(0))
+            if (f.Equals(0f))
             {
                 return false;
             }
@@ -222,13 +221,13 @@
             var num1 = (a.Y - c.Y) * (d.X - c.X) - (a.X - c.X) * (d.Y - c.Y);
             var num2 = (a.Y - c.Y) * (b.X - a.X) - (a.X - c.X) * (b.Y - a.Y);
 
-            if (num1.Equals(0) || num2.Equals(0))
+            if (num1.Equals(0f) || num2.Equals(0f))
             {
                 return false;
             }
 
-            var r = num1 / denominator;
-            var s = num2 / denominator;
+            var r = num1 / f;
+            var s = num2 / f;
 
             return r > 0 && r < 1 && s > 0 && s < 1;
         }

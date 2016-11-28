@@ -59,7 +59,15 @@
                 newData.Radius += 75;
             }
 
-            SpellDetector.AddSpell(caster, args.EndPos, args.EndPos, newData, null, SpellType.None, true, lastQTick);
+            SpellDetector.AddSpell(
+                caster,
+                args.EndPos,
+                args.EndPos,
+                newData,
+                null,
+                SpellType.None,
+                true,
+                lastQTick - Game.Ping / 2);
         }
 
         private static void OnPlayAnimation(Obj_AI_Base sender, GameObjectPlayAnimationEventArgs args, SpellData data)

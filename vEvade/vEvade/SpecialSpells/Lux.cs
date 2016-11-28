@@ -37,6 +37,7 @@
                 return;
             }
 
+            GameObject.OnCreate += HiuManager.OnCreate;
             GameObject.OnCreate += (sender, args) => LuxR(sender, hero, spellData);
         }
 
@@ -63,16 +64,23 @@
                 return;
             }
 
-            var dir = HiuManager.GetLastHiuOrientation(startT);
+            var dir = HiuManager.GetHiuDirection(startT);
 
-            if (dir.IsValid())
+            if (!dir.IsValid())
             {
-                SpellDetector.AddSpell(
-                    hero,
-                    obj.Position.To2D() - dir * (data.Range / 2f),
-                    obj.Position.To2D() + dir * (data.Range / 2f),
-                    data);
+                return;
             }
+
+            var pos = obj.Position.To2D();
+            SpellDetector.AddSpell(
+                hero,
+                pos - dir * (data.Range / 2f),
+                pos + dir * (data.Range / 2f),
+                data,
+                null,
+                SpellType.None,
+                true,
+                startT - Game.Ping / 2);
         }
 
         #endregion

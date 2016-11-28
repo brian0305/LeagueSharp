@@ -89,15 +89,6 @@
 
         #endregion
 
-        #region Constructors and Destructors
-
-        static ObjManager()
-        {
-            GameObject.OnCreate += HiuManager.OnCreate;
-        }
-
-        #endregion
-
         #region Enums
 
         public enum JungleType

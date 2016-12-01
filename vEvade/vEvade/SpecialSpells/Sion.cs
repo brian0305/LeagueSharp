@@ -54,16 +54,16 @@
 
             var spell =
                 Evade.DetectedSpells.Values.FirstOrDefault(
-                    i => i.Data.MenuName == "SionE" && i.Unit.NetworkId == hero.NetworkId && i.MissileObject != null);
+                    i => i.Data.MenuName == "SionE" && i.Unit.NetworkId == hero.NetworkId);
 
-            if (spell == null)
+            if (spell != null)
             {
-                return;
+                SpellDetector.AddSpell(
+                    spell.Unit,
+                    obj.Position.To2D(),
+                    spell.Start + spell.Direction * data.Range,
+                    data);
             }
-
-            var startPos = obj.Position.To2D();
-            var endPos = spell.Start + spell.Direction * data.Range;
-            SpellDetector.AddSpell(spell.Unit, startPos, endPos, data);
         }
 
         #endregion

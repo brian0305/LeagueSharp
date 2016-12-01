@@ -85,7 +85,7 @@
 
             if (spell != null)
             {
-                Evade.DetectedSpells[spell.SpellId].Radius = radius + (!Configs.Debug ? Configs.ExtraSpellRadius : 0);
+                Evade.DetectedSpells[spell.SpellId].Radius = radius;
 
                 return;
             }

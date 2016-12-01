@@ -111,7 +111,7 @@
         {
             get
             {
-                return this.RawRadius + (!Configs.Debug ? Configs.ExtraSpellRadius : 0)
+                return this.RawRadius
                        + (this.AddHitbox && this.Type != SpellType.Ring && this.Type != SpellType.Cone
                           && this.Type != SpellType.MissileCone && this.Type != SpellType.Arc
                               ? (int)ObjectManager.Player.BoundingRadius

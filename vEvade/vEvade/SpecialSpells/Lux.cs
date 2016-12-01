@@ -64,23 +64,16 @@
                 return;
             }
 
-            var dir = HiuManager.GetHiuDirection(startT);
+            var pos = obj.Position.To2D();
+            var dir = HiuManager.GetHiuDirection(startT, pos);
 
             if (!dir.IsValid())
             {
                 return;
             }
 
-            var pos = obj.Position.To2D();
-            SpellDetector.AddSpell(
-                hero,
-                pos - dir * (data.Range / 2f),
-                pos + dir * (data.Range / 2f),
-                data,
-                null,
-                SpellType.None,
-                true,
-                startT - Game.Ping / 2);
+            dir *= data.Range / 2f;
+            SpellDetector.AddSpell(hero, pos - dir, pos + dir, data, null, SpellType.None, true, startT);
         }
 
         #endregion

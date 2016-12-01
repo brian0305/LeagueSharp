@@ -49,15 +49,7 @@
 
             if (Utils.GameTimeTickCount - lastETick <= 100)
             {
-                SpellDetector.AddSpell(
-                    caster,
-                    args.StartPos,
-                    args.EndPos,
-                    data,
-                    null,
-                    SpellType.None,
-                    true,
-                    lastETick - Game.Ping / 2);
+                SpellDetector.AddSpell(caster, args.StartPos, args.EndPos, data, null, SpellType.None, true, lastETick);
             }
         }
 

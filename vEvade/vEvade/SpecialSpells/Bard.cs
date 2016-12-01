@@ -49,8 +49,7 @@
             newData.MissileSpeed = newData.MissileMinSpeed;
             var spell =
                 Evade.DetectedSpells.Values.FirstOrDefault(
-                    i =>
-                    i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId && i.MissileObject == null);
+                    i => i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId);
 
             if (spell == null)
             {
@@ -59,10 +58,8 @@
                 return;
             }
 
-            var startPos = spell.Start;
-            var endPos = spell.End;
             Evade.DetectedSpells.Remove(spell.SpellId);
-            SpellDetector.AddSpell(sender, startPos, endPos, newData, missile);
+            SpellDetector.AddSpell(sender, missile.StartPosition, missile.EndPosition, newData, missile);
         }
 
         #endregion

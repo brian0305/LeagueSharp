@@ -243,8 +243,7 @@ namespace vEvade.Spells
                     {
                         ChampName = "AurelionSol", MenuName = "AurelionSolR", SpellName = "AurelionSolR",
                         MissileName = "AurelionSolRBeamMissile", DangerValue = 3, Slot = SpellSlot.R, Range = 1500,
-                        Delay = 350, Radius = 120, MissileSpeed = 4500,
-                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }, FixedRange = true, IsDangerous = true
+                        Delay = 350, Radius = 120, MissileSpeed = 4500, FixedRange = true, IsDangerous = true
                     });
 
             #endregion Aurelion Sol
@@ -256,7 +255,8 @@ namespace vEvade.Spells
                     {
                         ChampName = "Azir", MenuName = "AzirQ", SpellName = "AzirQWrapper",
                         MissileName = "AzirSoldierMissile", DangerValue = 2, Range = 20000, Delay = 0, Radius = 70,
-                        MissileSpeed = 1600, MissileOnly = true
+                        MissileSpeed = 1600, CollisionObjects = new[] { CollisionableObjects.YasuoWall },
+                        MissileOnly = true
                     });
 
             Spells.Add(
@@ -432,8 +432,9 @@ namespace vEvade.Spells
                     {
                         ChampName = "Cassiopeia", MenuName = "CassiopeiaW", SpellName = "CassiopeiaW",
                         MissileName = "CassiopeiaWMissile", DangerValue = 2, Slot = SpellSlot.W, Range = 20000,
-                        Radius = 180, MissileSpeed = 3000, Type = SpellType.Circle, MissileOnly = true,
-                        CanBeRemoved = false, ExtraDuration = 5000, AddHitbox = false
+                        Radius = 180, MissileSpeed = 3000, CollisionObjects = new[] { CollisionableObjects.YasuoWall },
+                        Type = SpellType.Circle, MissileOnly = true, CanBeRemoved = false, ExtraDuration = 5000,
+                        AddHitbox = false
                     });
 
             Spells.Add(
@@ -620,8 +621,8 @@ namespace vEvade.Spells
                 new SpellData
                     {
                         ChampName = "Ekko", MenuName = "EkkoW", SpellName = "EkkoW", MissileName = "EkkoWMis",
-                        DangerValue = 3, Slot = SpellSlot.W, Range = 20000, Delay = 2300, Radius = 375,
-                        Type = SpellType.Circle, CanBeRemoved = false, DisabledByDefault = true, ExtraDuration = 1600,
+                        DangerValue = 3, Slot = SpellSlot.W, Range = 20000, Delay = 2250, Radius = 375,
+                        Type = SpellType.Circle, CanBeRemoved = false, DisabledByDefault = true, ExtraDuration = 1500,
                         ExtraDelay = 1050
                     });
 
@@ -840,7 +841,8 @@ namespace vEvade.Spells
                     {
                         ChampName = "Gragas", MenuName = "GragasQ", SpellName = "GragasQ", MissileName = "GragasQMissile",
                         ToggleName = "Gragas_.+_Q_(Enemy|Ally)", DangerValue = 2, Range = 850, Radius = 280,
-                        MissileSpeed = 1000, Type = SpellType.Circle, ExtraDuration = 4300, DontCross = true
+                        MissileSpeed = 1000, CollisionObjects = new[] { CollisionableObjects.YasuoWall },
+                        Type = SpellType.Circle, ExtraDuration = 4300, DontCross = true
                     });
 
             Spells.Add(
@@ -889,7 +891,8 @@ namespace vEvade.Spells
                     {
                         ChampName = "Graves", MenuName = "GravesW", SpellName = "GravesSmokeGrenade",
                         MissileName = "GravesSmokeGrenadeBoom", ToggleName = "Graves_SmokeGrenade_.+_Team_(Green|Red)",
-                        Slot = SpellSlot.W, Range = 950, Radius = 225, MissileSpeed = 1500, Type = SpellType.Circle,
+                        Slot = SpellSlot.W, Range = 950, Radius = 225, MissileSpeed = 1500,
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }, Type = SpellType.Circle,
                         ExtraDuration = 4250
                     });
 
@@ -927,7 +930,8 @@ namespace vEvade.Spells
                     {
                         ChampName = "Hecarim", MenuName = "HecarimR", SpellName = "HecarimRMissile",
                         MissileName = "HecarimUltMissile", DangerValue = 3, Slot = SpellSlot.R, Range = 1500, Delay = 0,
-                        Radius = 40, MissileSpeed = 1100, FixedRange = true, MissileOnly = true
+                        Radius = 40, MissileSpeed = 1100, CollisionObjects = new[] { CollisionableObjects.YasuoWall },
+                        FixedRange = true, MissileOnly = true
                     });
 
             #endregion Hecarim
@@ -939,7 +943,8 @@ namespace vEvade.Spells
                     {
                         ChampName = "Heimerdinger", MenuName = "HeimerdingerQTurretBlast",
                         SpellName = "HeimerdingerQTurretBlast", MissileName = "HeimerdingerTurretEnergyBlast",
-                        DangerValue = 2, Range = 1000, Delay = 0, Radius = 50, MissileSpeed = 1650, FixedRange = true,
+                        DangerValue = 2, Range = 1000, Delay = 0, Radius = 50, MissileSpeed = 1650,
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }, FixedRange = true,
                         MissileAccel = -1000, MissileMinSpeed = 1200, MissileMaxSpeed = 1650, MissileOnly = true
                     });
 
@@ -949,8 +954,9 @@ namespace vEvade.Spells
                         ChampName = "Heimerdinger", MenuName = "HeimerdingerQTurretBigBlast",
                         SpellName = "HeimerdingerQTurretBigBlast", MissileName = "HeimerdingerTurretBigEnergyBlast",
                         DangerValue = 2, Range = 1000, Delay = 0, Radius = 75, MissileSpeed = 1650,
-                        CollisionObjects = new[] { CollisionableObjects.Minions }, FixedRange = true, MissileAccel = -1000,
-                        MissileMinSpeed = 1200, MissileMaxSpeed = 1650, MissileOnly = true
+                        CollisionObjects = new[] { CollisionableObjects.Minions, CollisionableObjects.YasuoWall },
+                        FixedRange = true, MissileAccel = -1000, MissileMinSpeed = 1200, MissileMaxSpeed = 1650,
+                        MissileOnly = true
                     });
 
             Spells.Add(
@@ -1006,8 +1012,7 @@ namespace vEvade.Spells
                 new SpellData
                     {
                         ChampName = "Illaoi", MenuName = "IllaoiQ", SpellName = "IllaoiQ", DangerValue = 2, Range = 850,
-                        Delay = 750, Radius = 100, Type = SpellType.Line,
-                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }, FixedRange = true, IsDangerous = true,
+                        Delay = 750, Radius = 100, Type = SpellType.Line, FixedRange = true, IsDangerous = true,
                         BehindStart = 50
                     });
 
@@ -1715,7 +1720,7 @@ namespace vEvade.Spells
                 new SpellData
                     {
                         ChampName = "Nautilus", MenuName = "NautilusQ", SpellName = "NautilusAnchorDragMissile",
-                        MissileName = "NautilusAnchorDragMissile", DangerValue = 3, Range = 1130, Radius = 90,
+                        MissileName = "NautilusAnchorDragMissile", DangerValue = 3, Range = 1150, Radius = 90,
                         MissileSpeed = 2000,
                         CollisionObjects =
                             new[]
@@ -2197,7 +2202,8 @@ namespace vEvade.Spells
                 new SpellData
                     {
                         ChampName = "Syndra", MenuName = "SyndraE", SpellName = "SyndraE", DangerValue = 2,
-                        Slot = SpellSlot.E, Range = 650, Radius = 40, MissileSpeed = 2500, Type = SpellType.MissileCone,
+                        Slot = SpellSlot.E, Range = 650, Radius = 40, MissileSpeed = 2500,
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }, Type = SpellType.MissileCone,
                         DontCross = true
                     });
 
@@ -2205,7 +2211,8 @@ namespace vEvade.Spells
                 new SpellData
                     {
                         ChampName = "Syndra", MenuName = "SyndraEMax", SpellName = "SyndraE5", DangerValue = 2,
-                        Slot = SpellSlot.E, Range = 650, Radius = 60, MissileSpeed = 2500, Type = SpellType.MissileCone,
+                        Slot = SpellSlot.E, Range = 650, Radius = 60, MissileSpeed = 2500,
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }, Type = SpellType.MissileCone,
                         DontCross = true
                     });
 
@@ -2214,7 +2221,7 @@ namespace vEvade.Spells
                     {
                         ChampName = "Syndra", MenuName = "SyndraEQ", SpellName = "SyndraEQ", DangerValue = 2,
                         Slot = SpellSlot.E, Range = 1300, Delay = 0, Radius = 55, MissileSpeed = 2000,
-                        DontCheckForDuplicates = true
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }, DontCheckForDuplicates = true
                     });
 
             #endregion Syndra
@@ -2535,7 +2542,7 @@ namespace vEvade.Spells
                     {
                         ChampName = "Velkoz", MenuName = "VelkozW", SpellName = "VelkozW", MissileName = "VelkozWMissile",
                         DangerValue = 2, Slot = SpellSlot.W, Range = 1200, Radius = 88, MissileSpeed = 1700,
-                        BehindStart = 100, FixedRange = true
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }, BehindStart = 100, FixedRange = true
                     });
 
             Spells.Add(
@@ -2589,6 +2596,21 @@ namespace vEvade.Spells
             #endregion Viktor
 
             #region Vladimir
+
+            Spells.Add(
+                new SpellData
+                    {
+                        ChampName = "Vladimir", MenuName = "VladimirE", SpellName = "VladimirE",
+                        MissileName = "VladimirEMissile", DangerValue = 2, Slot = SpellSlot.E, Range = 550, Delay = 0,
+                        Radius = 60, MissileSpeed = 4000,
+                        CollisionObjects =
+                            new[]
+                                {
+                                    CollisionableObjects.Heroes, CollisionableObjects.Minions,
+                                    CollisionableObjects.YasuoWall
+                                },
+                        FixedRange = true, MissileOnly = true
+                    });
 
             Spells.Add(
                 new SpellData
@@ -2738,7 +2760,8 @@ namespace vEvade.Spells
                 new SpellData
                     {
                         ChampName = "Ziggs", MenuName = "ZiggsQ", SpellName = "ZiggsQ", MissileName = "ZiggsQSpell",
-                        DangerValue = 2, Range = 850, Radius = 125, MissileSpeed = 1700, Type = SpellType.Circle
+                        DangerValue = 2, Range = 850, Radius = 125, MissileSpeed = 1700,
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }, Type = SpellType.Circle
                     });
 
             Spells.Add(
@@ -2746,7 +2769,8 @@ namespace vEvade.Spells
                     {
                         ChampName = "Ziggs", MenuName = "ZiggsQBounce", SpellName = "ZiggsQBounce",
                         MissileName = "ZiggsQSpell2", ExtraMissileNames = new[] { "ZiggsQSpell3" }, DangerValue = 2,
-                        Range = 1100, Delay = 400, Radius = 125, MissileSpeed = 1600, Type = SpellType.Circle,
+                        Range = 1100, Delay = 400, Radius = 125, MissileSpeed = 1600,
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }, Type = SpellType.Circle,
                         MissileDelayed = true
                     });
 
@@ -2755,7 +2779,7 @@ namespace vEvade.Spells
                     {
                         ChampName = "Ziggs", MenuName = "ZiggsW", SpellName = "ZiggsW", MissileName = "ZiggsW",
                         DangerValue = 2, Slot = SpellSlot.W, Range = 1000, Radius = 275, MissileSpeed = 1750,
-                        Type = SpellType.Circle
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }, Type = SpellType.Circle
                     });
 
             Spells.Add(
@@ -2763,7 +2787,7 @@ namespace vEvade.Spells
                     {
                         ChampName = "Ziggs", MenuName = "ZiggsE", SpellName = "ZiggsE", MissileName = "ZiggsE2",
                         DangerValue = 2, Slot = SpellSlot.E, Range = 900, Radius = 235, MissileSpeed = 1550,
-                        Type = SpellType.Circle
+                        CollisionObjects = new[] { CollisionableObjects.YasuoWall }, Type = SpellType.Circle
                     });
 
             Spells.Add(

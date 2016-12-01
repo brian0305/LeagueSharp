@@ -75,7 +75,7 @@
             var spell =
                 Evade.DetectedSpells.Values.FirstOrDefault(
                     i =>
-                    i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId && i.MissileObject == null
+                    i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId
                     && i.End.Distance(missile.EndPosition) < 100);
 
             if (spell != null)
@@ -86,17 +86,16 @@
 
         private static void EkkoW2(GameObject sender, EventArgs args)
         {
-            var toggle = sender as Obj_GeneralParticleEmitter;
+            var obj = sender as Obj_GeneralParticleEmitter;
 
-            if (toggle == null || !toggle.IsValid || !new Regex("Ekko_.+_W_Detonate").IsMatch(toggle.Name)
-                || toggle.Name.Contains("Slow"))
+            if (obj == null || !obj.IsValid || !new Regex("Ekko_.+_W_Detonate.troy").IsMatch(obj.Name))
             {
                 return;
             }
 
             var spell =
                 Evade.DetectedSpells.Values.FirstOrDefault(
-                    i => i.Data.MenuName == "EkkoW" && i.End.Distance(toggle.Position) < 100);
+                    i => i.Data.MenuName == "EkkoW" && i.End.Distance(obj.Position) < 100);
 
             if (spell != null)
             {

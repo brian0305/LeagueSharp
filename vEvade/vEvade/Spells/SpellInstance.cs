@@ -100,8 +100,6 @@
 
         public Geometry.Polygon Polygon;
 
-        public int Radius;
-
         public Polygons.Ring Ring;
 
         public int SpellId;
@@ -125,6 +123,8 @@
         private int lastCalcColTick;
 
         private Vector2 predEnd;
+
+        private int radius;
 
         #endregion
 
@@ -217,7 +217,8 @@
                             break;
                         case SpellType.Circle:
                             this.cachedValue =
-                                Configs.Menu.Item("Dodge" + (this.Data.TrapName != "" ? "Trap" : "Circle"))
+                                Configs.Menu.Item(
+                                    "Dodge" + (!string.IsNullOrEmpty(this.Data.TrapName) ? "Trap" : "Circle"))
                                     .GetValue<bool>();
                             break;
                     }
@@ -233,6 +234,18 @@
             }
         }
 
+        public int Radius
+        {
+            get
+            {
+                return this.radius + (!Configs.Debug ? Configs.ExtraSpellRadius : 0);
+            }
+            set
+            {
+                this.radius = value;
+            }
+        }
+
         #endregion
 
         #region Properties
@@ -240,7 +253,7 @@
         private int GetRadius
             =>
                 this.Type == SpellType.Circle && (this.Data.HasStartExplosion || this.Data.HasEndExplosion)
-                    ? this.Data.RadiusEx + (!Configs.Debug ? Configs.ExtraSpellRadius : 0)
+                    ? this.Data.RadiusEx
                     : this.Data.Radius;
 
         private bool IsGlobal => this.Data.RawRange == 25000;
@@ -525,7 +538,7 @@
                 this.UpdatePolygon();
             }
 
-            if (this.Type == SpellType.Circle && this.Data.TrapName == "")
+            if (this.Type == SpellType.Circle && string.IsNullOrEmpty(this.Data.TrapName))
             {
                 this.Circle = new Polygons.Circle(this.PredictEnd, this.Radius);
                 this.UpdatePolygon();

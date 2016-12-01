@@ -3,6 +3,7 @@
     #region
 
     using LeagueSharp;
+    using LeagueSharp.Common;
 
     using vEvade.Helpers;
     using vEvade.Spells;
@@ -39,11 +40,14 @@
                 return;
             }
 
-            if ((args.Animation == "c0362dea" || args.Animation == "c6352f63")
-                && !ObjectManager.Player.HasBuff("reksaiknockupimmune"))
+            if ((args.Animation != "c0362dea" && args.Animation != "c6352f63")
+                || ObjectManager.Player.HasBuff("reksaiknockupimmune"))
             {
-                SpellDetector.AddSpell(caster, caster.ServerPosition, caster.ServerPosition, data);
+                return;
             }
+
+            var pos = caster.ServerPosition.To2D();
+            SpellDetector.AddSpell(caster, pos, pos, data);
         }
 
         #endregion

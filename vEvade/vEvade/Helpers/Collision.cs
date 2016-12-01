@@ -90,18 +90,16 @@
                         }
 
                         var wall =
-                            ObjectManager.Get<GameObject>()
+                            ObjectManager.Get<Obj_GeneralParticleEmitter>()
                                 .FirstOrDefault(
-                                    i =>
-                                    i.IsValid
-                                    && new Regex("_w_windwall.\\.troy", RegexOptions.IgnoreCase).IsMatch(i.Name));
+                                    i => i.IsValid && new Regex("Yasuo_.+_W_windwall.\\.troy").IsMatch(i.Name));
 
                         if (wall == null)
                         {
                             continue;
                         }
 
-                        var wallWidth = 300 + 50 * Convert.ToInt32(wall.Name.Substring(wall.Name.Length - 6, 1));
+                        var wallWidth = 250 + 50 * Convert.ToInt32(wall.Name.Substring(wall.Name.Length - 6, 1));
                         var wallDirection = (wall.Position.To2D() - yasuoWallPos).Normalized().Perpendicular();
                         var wallStart = wall.Position.To2D() + wallWidth / 2f * wallDirection;
                         var wallEnd = wallStart - wallWidth * wallDirection;

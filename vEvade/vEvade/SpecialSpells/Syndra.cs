@@ -53,25 +53,23 @@
             }
 
             SpellDetector.AddSpell(sender, sender.ServerPosition, args.End, data);
-            var eSpell =
+            var spell =
                 Evade.DetectedSpells.Values.FirstOrDefault(
-                    i =>
-                    i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId
-                    && sender.Distance(i.Start) < 100);
+                    i => i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId);
             SpellData eqData;
 
-            if (Evade.OnProcessSpells.TryGetValue("SyndraEQ", out eqData) && eSpell != null)
+            if (spell != null && Evade.OnProcessSpells.TryGetValue("SyndraEQ", out eqData))
             {
                 var cone =
                     new Polygons.Cone(
-                        eSpell.Cone.Center,
-                        eSpell.Cone.Direction,
-                        eSpell.Data.RawRadius + 30,
-                        eSpell.Data.RawRange + 200).ToPolygon();
+                        spell.Cone.Center,
+                        spell.Cone.Direction,
+                        spell.Data.RawRadius + 30,
+                        spell.Data.RawRange + 200).ToPolygon();
                 var orbs =
                     Evade.DetectedSpells.Values.Where(
                         i =>
-                        i.Data.MenuName == "SyndraQ" && i.Unit.NetworkId == eSpell.Unit.NetworkId
+                        i.Data.MenuName == "SyndraQ" && i.Unit.NetworkId == spell.Unit.NetworkId
                         && Utils.GameTimeTickCount - i.StartTick < 400).Select(i => i.End).ToList();
                 orbs.AddRange(
                     ObjectManager.Get<Obj_AI_Minion>()
@@ -83,10 +81,10 @@
 
                 foreach (var orb in orbs.Where(i => !cone.IsOutside(i)))
                 {
-                    var startPos = orb.Extend(eSpell.Start, 100);
-                    var endPos = eSpell.Start.Extend(orb, eSpell.Start.Distance(orb) > 200 ? 1300 : 1100);
-                    var startT = eSpell.StartTick + data.Delay
-                                 + (int)(eSpell.Start.Distance(orb) / data.MissileSpeed * 1000);
+                    var startPos = orb.Extend(spell.Start, 100);
+                    var endPos = spell.Start.Extend(orb, spell.Start.Distance(orb) > 200 ? 1300 : 1100);
+                    var startT = spell.StartTick + data.Delay
+                                 + (int)(spell.Start.Distance(orb) / data.MissileSpeed * 1000);
                     SpellDetector.AddSpell(sender, startPos, endPos, eqData, null, SpellType.None, true, startT);
                 }
             }

@@ -552,18 +552,6 @@ namespace vEvade.Core
 
             foreach (var evadeSpell in EvadeSpellDatabase.Spells.Where(i => i.Enabled && dangerLvl >= i.DangerLevel))
             {
-                if (evadeSpell.IsSpellShield && evadeSpell.Slot.IsReady())
-                {
-                    if (IsAboutToHit(evadeSpell.Delay))
-                    {
-                        ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, ObjectManager.Player);
-                    }
-
-                    haveSolution = true;
-
-                    return;
-                }
-
                 if (evadeSpell.MenuName == "Walking")
                 {
                     var points = Evader.GetEvadePoints();
@@ -591,9 +579,21 @@ namespace vEvade.Core
 
                 if (evadeSpell.IsReady)
                 {
+                    if (evadeSpell.IsSpellShield)
+                    {
+                        if (IsAboutToHit(evadeSpell.Delay))
+                        {
+                            ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, ObjectManager.Player);
+                        }
+
+                        haveSolution = true;
+
+                        return;
+                    }
+
                     if (evadeSpell.IsMovementSpeedBuff)
                     {
-                        var points = Evader.GetEvadePoints((int)evadeSpell.MoveSpeedTotalAmount());
+                        var points = Evader.GetEvadePoints((int)evadeSpell.MoveSpeedTotalAmount(), evadeSpell.Delay);
 
                         if (points.Count > 0)
                         {
@@ -895,7 +895,7 @@ namespace vEvade.Core
                     return;
                 }
 
-                if (evadeSpell.IsShield && evadeSpell.Slot.IsReady())
+                if (evadeSpell.IsReady && evadeSpell.IsShield)
                 {
                     if (IsAboutToHit(evadeSpell.Delay))
                     {

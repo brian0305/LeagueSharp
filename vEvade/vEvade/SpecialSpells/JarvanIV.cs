@@ -7,8 +7,6 @@
     using LeagueSharp;
     using LeagueSharp.Common;
 
-    using SharpDX;
-
     using vEvade.Core;
     using vEvade.Managers;
     using vEvade.Spells;
@@ -61,36 +59,24 @@
             }
 
             var startPos = sender.ServerPosition.To2D();
-            var endPos = Vector2.Zero;
             var qeEnd = startPos.Extend(args.End.To2D(), qeData.RawRange);
-
-            foreach (var spell in
+            var endPos =
                 Evade.DetectedSpells.Values.Where(
                     i =>
                     i.Data.MenuName == "JarvanIVE" && i.Unit.NetworkId == sender.NetworkId
-                    && i.End.Distance(startPos, qeEnd, true) <= qeData.RadiusEx))
-            {
-                endPos = spell.End;
-                break;
-            }
-
-            foreach (var flag in
+                    && i.End.Distance(startPos, qeEnd, true) < qeData.RadiusEx).Select(i => i.End).ToList();
+            endPos.AddRange(
                 ObjectManager.Get<Obj_AI_Minion>()
                     .Where(
                         i =>
-                        i.IsValid() && !i.IsDead && i.IsVisible && i.CharData.BaseSkinName == "jarvanivstandard"
-                        && i.Team == sender.Team)
-                    .Select(i => i.ServerPosition.To2D())
-                    .Where(i => i.Distance(startPos, qeEnd, true) <= qeData.RadiusEx)
-                    .OrderBy(i => i.Distance(startPos)))
-            {
-                endPos = flag;
-                break;
-            }
+                        i.IsValid() && !i.IsDead && i.CharData.BaseSkinName == "jarvanivstandard"
+                        && i.Team == sender.Team
+                        && i.ServerPosition.To2D().Distance(startPos, qeEnd, true) < qeData.RadiusEx)
+                    .Select(i => i.ServerPosition.To2D()));
 
-            if (endPos.IsValid())
+            if (endPos.Count > 0)
             {
-                SpellDetector.AddSpell(sender, startPos, endPos, qeData);
+                SpellDetector.AddSpell(sender, startPos, endPos.OrderBy(i => i.Distance(startPos)).First(), qeData);
             }
         }
 

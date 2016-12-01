@@ -362,7 +362,7 @@
             foreach (var spell in
                 Evade.DetectedSpells.Values.Where(
                     i =>
-                    i.Data.ToggleName != "" && i.MissileObject != null && i.ToggleObject == null
+                    !string.IsNullOrEmpty(i.Data.ToggleName) && i.MissileObject != null && i.ToggleObject == null
                     && new Regex(i.Data.ToggleName).IsMatch(toggle.Name) && i.End.Distance(pos) < 100))
             {
                 spell.MissileObject = null;
@@ -440,7 +440,7 @@
                     i =>
                     i.Data.CanBeRemoved && i.MissileObject != null && i.MissileObject.NetworkId == missile.NetworkId))
             {
-                if (spell.Data.ToggleName == "" || spell.Type != SpellType.Circle)
+                if (string.IsNullOrEmpty(spell.Data.ToggleName) || spell.Type != SpellType.Circle)
                 {
                     Utility.DelayAction.Add(1, () => Evade.DetectedSpells.Remove(spell.SpellId));
 
@@ -479,7 +479,8 @@
             foreach (var spell in
                 Evade.DetectedSpells.Values.Where(
                     i =>
-                    i.Data.ToggleName != "" && i.ToggleObject != null && i.ToggleObject.NetworkId == toggle.NetworkId))
+                    !string.IsNullOrEmpty(i.Data.ToggleName) && i.ToggleObject != null
+                    && i.ToggleObject.NetworkId == toggle.NetworkId))
             {
                 Utility.DelayAction.Add(1, () => Evade.DetectedSpells.Remove(spell.SpellId));
 
@@ -501,7 +502,9 @@
 
             foreach (var spell in
                 Evade.DetectedSpells.Values.Where(
-                    i => i.Data.TrapName != "" && i.TrapObject != null && i.TrapObject.NetworkId == trap.NetworkId))
+                    i =>
+                    !string.IsNullOrEmpty(i.Data.TrapName) && i.TrapObject != null
+                    && i.TrapObject.NetworkId == trap.NetworkId))
             {
                 Utility.DelayAction.Add(1, () => Evade.DetectedSpells.Remove(spell.SpellId));
 

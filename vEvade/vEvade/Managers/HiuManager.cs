@@ -18,10 +18,12 @@
     {
         #region Public Methods and Operators
 
-        public static Vector2 GetHiuDirection(int time)
+        public static Vector2 GetHiuDirection(int time, Vector2 pos)
         {
             var hius =
-                ObjManager.ObjCache.Values.Where(i => i.Name == "Hiu" && time - i.Time >= 0 && time - i.Time <= 100)
+                ObjManager.ObjCache.Values.Where(
+                    i =>
+                    i.Name == "Hiu" && time - i.Time >= 0 && time - i.Time < 20 && pos.Distance(i.Obj.Position) < 750)
                     .OrderByDescending(i => i.Time);
 
             return hius.Count() >= 2

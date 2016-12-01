@@ -94,7 +94,7 @@ namespace vEvade.Helpers
                         Evade.OnProcessSpells.Add(name, spell);
                     }
 
-                    if (spell.MissileName != "")
+                    if (!string.IsNullOrEmpty(spell.MissileName))
                     {
                         Evade.OnMissileSpells.Add(spell.MissileName, spell);
                     }
@@ -104,7 +104,7 @@ namespace vEvade.Helpers
                         Evade.OnMissileSpells.Add(name, spell);
                     }
 
-                    if (spell.TrapName != "")
+                    if (!string.IsNullOrEmpty(spell.TrapName))
                     {
                         Evade.OnTrapSpells.Add(spell.TrapName, spell);
                     }
@@ -136,7 +136,7 @@ namespace vEvade.Helpers
 
             foreach (var spell in EvadeSpellDatabase.Spells)
             {
-                var subMenu = new Menu(spell.MenuName, "ES_" + spell.MenuName);
+                var subMenu = new Menu(spell.MenuName.Insert(spell.MenuName.Length - 1, " "), "ES_" + spell.MenuName);
                 subMenu.AddItem(
                     new MenuItem("ES_" + spell.MenuName + "_DangerLvl", "Danger Level").SetValue(
                         new Slider(spell.DangerLevel, 1, 5)));

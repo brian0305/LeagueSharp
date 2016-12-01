@@ -49,9 +49,9 @@
 
             var startPos = sender.ServerPosition.To2D();
             var endPos = args.End.To2D();
-            var dir = (endPos - startPos).Normalized().Perpendicular();
-            SpellDetector.AddSpell(sender, startPos + dir * data.Radius, endPos, data);
-            SpellDetector.AddSpell(sender, startPos - dir * data.Radius, endPos, data);
+            var dir = (endPos - startPos).Normalized().Perpendicular() * data.Radius;
+            SpellDetector.AddSpell(sender, startPos + dir, endPos, data);
+            SpellDetector.AddSpell(sender, startPos - dir, endPos, data);
             spellArgs.NoProcess = true;
         }
 

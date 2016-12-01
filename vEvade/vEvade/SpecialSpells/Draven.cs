@@ -51,8 +51,7 @@
 
             var spell =
                 Evade.DetectedSpells.Values.FirstOrDefault(
-                    i =>
-                    i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId && i.MissileObject != null);
+                    i => i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId);
 
             if (spell != null)
             {

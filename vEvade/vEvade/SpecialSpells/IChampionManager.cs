@@ -69,33 +69,29 @@
                     break;
             }
 
-            if (data.MultipleNumber == -1 || (data.MenuName == "KhazixW" && !args.SData.Name.EndsWith("Long")))
+            if (data.MultipleNumber == -1 || (data.MenuName == "KhazixW" && args.SData.Name == data.SpellName))
             {
                 return;
             }
 
             var startPos = sender.ServerPosition.To2D();
+            var start = startPos;
             var endPos = args.End.To2D();
 
             if (data.InfrontStart > 0)
             {
-                startPos = startPos.Extend(endPos, data.InfrontStart);
+                start = start.Extend(endPos, data.InfrontStart);
             }
 
-            var dir = (endPos - startPos).Normalized();
-            var startT = Utils.GameTimeTickCount - Game.Ping / 2;
+            var dir = (endPos - start).Normalized();
 
             for (var i = -(data.MultipleNumber - 1) / 2; i <= (data.MultipleNumber - 1) / 2; i++)
             {
                 SpellDetector.AddSpell(
                     sender,
-                    sender.ServerPosition.To2D(),
-                    startPos + dir.Rotated(data.MultipleAngle * i) * (data.Range / 2f),
-                    data,
-                    null,
-                    SpellType.None,
-                    true,
-                    startT);
+                    startPos,
+                    start + dir.Rotated(data.MultipleAngle * i) * (data.Range / 2f),
+                    data);
             }
 
             spellArgs.NoProcess = true;

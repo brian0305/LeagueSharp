@@ -47,9 +47,10 @@
                 return;
             }
 
-            var dir = (args.End - sender.ServerPosition).To2D().Normalized().Perpendicular();
-            var startPos = args.End.To2D() - dir * (data.Range / 2f);
-            var endPos = args.End.To2D() + dir * (data.Range / 2f);
+            var end = args.End.To2D();
+            var dir = (end - sender.ServerPosition.To2D()).Normalized().Perpendicular() * (data.Range / 2f);
+            var startPos = end - dir;
+            var endPos = end + dir;
             SpellDetector.AddSpell(sender, startPos, endPos, data);
             SpellDetector.AddSpell(sender, endPos, startPos, data);
             spellArgs.NoProcess = true;

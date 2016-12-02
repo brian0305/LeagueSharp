@@ -143,6 +143,7 @@ namespace vEvade.Core
             Drawing.OnDraw += OnDraw;
             CustomEvents.Unit.OnDash += OnDash;
             Orbwalking.BeforeAttack += BeforeAttack;
+            Spellbook.OnStopCast += OnStopCast;
             Collisions.Init();
         }
 
@@ -162,12 +163,6 @@ namespace vEvade.Core
         {
             foreach (var spell in DetectedSpells.Values)
             {
-                /*if (spell.MissileObject == null && spell.ToggleObject == null && spell.TrapObject == null
-                    && spell.Unit.IsDead)
-                {
-                    Utility.DelayAction.Add(1, () => DetectedSpells.Remove(spell.SpellId));
-                }*/
-
                 if (spell.Data.IsDash && Utils.GameTimeTickCount - spell.StartTick > spell.Data.Delay + 100
                     && !spell.Unit.IsDashing())
                 {
@@ -402,6 +397,35 @@ namespace vEvade.Core
             }
         }
 
+        private static void OnStopCast(Spellbook sender, SpellbookStopCastEventArgs args)
+        {
+            var caster = sender.Owner as Obj_AI_Hero;
+
+            if (caster == null || !caster.IsValid || (!caster.IsEnemy && !Configs.Debug))
+            {
+                return;
+            }
+
+            if (!args.ForceStop && !args.StopAnimation)
+            {
+                return;
+            }
+
+            foreach (var spell in
+                DetectedSpells.Values.Where(
+                    i =>
+                    i.MissileObject == null && i.ToggleObject == null && i.TrapObject == null
+                    && i.Unit.NetworkId == caster.NetworkId))
+            {
+                Utility.DelayAction.Add(1, () => DetectedSpells.Remove(spell.SpellId));
+
+                if (Configs.Debug)
+                {
+                    Console.WriteLine($"=> D-Stop: {spell.SpellId} | {Utils.GameTimeTickCount}");
+                }
+            }
+        }
+
         private static void OnUpdate(EventArgs args)
         {
             PlayerPosition = ObjectManager.Player.ServerPosition.To2D();
@@ -454,8 +478,8 @@ namespace vEvade.Core
                 foreach (var evadeSpell in
                     EvadeSpellDatabase.Spells.Where(
                         i =>
-                        i.IsShield && i.CanShieldAllies && ally.Distance(PlayerPosition) < i.MaxRange
-                        && dangerLvl >= i.DangerLevel && i.Slot.IsReady() && IsAboutToHit(i.Delay, ally)))
+                        i.IsReady && i.IsShield && i.CanShieldAllies && dangerLvl >= i.DangerLevel
+                        && ally.Distance(PlayerPosition) < i.MaxRange && IsAboutToHit(i.Delay, ally)))
                 {
                     ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, ally);
                 }
@@ -466,26 +490,29 @@ namespace vEvade.Core
             var checkPath = IsSafePath(curPaths, 100);
             haveSolution = false;
 
-            if (Evading && IsSafePoint(evadePoint1).IsSafe)
+            if (Evading)
             {
-                if (checkPos.IsSafe)
+                if (IsSafePoint(evadePoint1).IsSafe)
                 {
-                    Evading = false;
+                    if (checkPos.IsSafe)
+                    {
+                        Evading = false;
+                    }
+                    else
+                    {
+                        if (Utils.GameTimeTickCount - lastMoveTick1 > 1000 / 15)
+                        {
+                            lastMoveTick1 = Utils.GameTimeTickCount;
+                            evadePoint1.Move();
+                        }
+
+                        return;
+                    }
                 }
                 else
                 {
-                    if (Utils.GameTimeTickCount - lastMoveTick1 > 1000 / 15)
-                    {
-                        lastMoveTick1 = Utils.GameTimeTickCount;
-                        evadePoint1.Move();
-                    }
-
-                    return;
+                    Evading = false;
                 }
-            }
-            else if (Evading)
-            {
-                Evading = false;
             }
 
             if (!checkPath.IsSafe && !checkPos.IsSafe)
@@ -565,7 +592,7 @@ namespace vEvade.Core
                             IsSafePath(
                                 ObjectManager.Player.GetPath(pos.To3D()).ToList().To2D(),
                                 Configs.EvadingSecondTime,
-                                (int)ObjectManager.Player.MoveSpeed,
+                                -1,
                                 100).IsSafe)
                         {
                             evadePoint1 = pos;
@@ -809,22 +836,22 @@ namespace vEvade.Core
                             var points = Evader.GetEvadePoints(0, evadeSpell.Delay, true);
                             points.RemoveAll(i => i.Distance(PlayerPosition) > evadeSpell.MaxRange);
 
-                            for (var i = 0; i < points.Count; i++)
-                            {
-                                var k = (int)(evadeSpell.MaxRange - PlayerPosition.Distance(points[i]));
-                                k -= Util.Random.Next(k);
-                                var extend = points[i] + k * (points[i] - PlayerPosition).Normalized();
-
-                                if (IsSafePoint(extend).IsSafe)
-                                {
-                                    points[i] = extend;
-                                }
-                            }
-
                             if (points.Count > 0)
                             {
                                 if (IsAboutToHit(evadeSpell.Delay))
                                 {
+                                    for (var i = 0; i < points.Count; i++)
+                                    {
+                                        var k = (int)(evadeSpell.MaxRange - PlayerPosition.Distance(points[i]));
+                                        k -= Util.Random.Next(k);
+                                        var extend = points[i] + k * (points[i] - PlayerPosition).Normalized();
+
+                                        if (IsSafePoint(extend).IsSafe)
+                                        {
+                                            points[i] = extend;
+                                        }
+                                    }
+
                                     evadePoint1 = to.Closest(points);
                                     Evading = true;
                                     ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, evadePoint1.To3D());
@@ -865,21 +892,24 @@ namespace vEvade.Core
                                 return;
                             }
                         }
-                        else if (IsAboutToHit(evadeSpell.Delay))
+                        else
                         {
-                            if (evadeSpell.SelfCast)
+                            if (IsAboutToHit(evadeSpell.Delay))
                             {
-                                ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot);
+                                if (evadeSpell.SelfCast)
+                                {
+                                    ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot);
+                                }
+                                else
+                                {
+                                    ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, PlayerPosition.To3D());
+                                }
                             }
-                            else
-                            {
-                                ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, PlayerPosition.To3D());
-                            }
+
+                            haveSolution = true;
+
+                            return;
                         }
-
-                        haveSolution = true;
-
-                        return;
                     }
                 }
 
@@ -908,7 +938,7 @@ namespace vEvade.Core
                 }
             }
 
-            haveSolution = true;
+            //haveSolution = true;
         }
 
         #endregion

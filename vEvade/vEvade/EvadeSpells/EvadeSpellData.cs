@@ -54,6 +54,8 @@
 
         public float MaxRange;
 
+        public string MenuName;
+
         public MoveSpeedAmount MoveSpeedTotalAmount;
 
         public bool RequiresPreMove;
@@ -67,8 +69,6 @@
         public SpellValidTargets[] ValidTargets = { };
 
         private int dangerLevel;
-
-        private string menuName;
 
         #endregion
 
@@ -120,18 +120,6 @@
                     || ObjectManager.Player.GetSpell(this.Slot).Name == this.CheckSpellName) && this.Slot.IsReady();
 
         public bool IsTargetted => this.ValidTargets != null && this.ValidTargets.Length > 0;
-
-        public string MenuName
-        {
-            get
-            {
-                return this.menuName;
-            }
-            set
-            {
-                this.menuName = value.Replace(" ", string.Empty);
-            }
-        }
 
         #endregion
     }

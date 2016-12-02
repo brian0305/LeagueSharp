@@ -136,7 +136,7 @@ namespace vEvade.Helpers
 
             foreach (var spell in EvadeSpellDatabase.Spells)
             {
-                var subMenu = new Menu(spell.MenuName.Insert(spell.MenuName.Length - 1, " "), "ES_" + spell.MenuName);
+                var subMenu = new Menu(spell.MenuName, "ES_" + spell.MenuName);
                 subMenu.AddItem(
                     new MenuItem("ES_" + spell.MenuName + "_DangerLvl", "Danger Level").SetValue(
                         new Slider(spell.DangerLevel, 1, 5)));

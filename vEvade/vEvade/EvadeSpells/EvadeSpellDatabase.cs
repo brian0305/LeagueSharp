@@ -30,7 +30,7 @@
 
             if (champName == "Sivir")
             {
-                Spells.Add(new ShieldData("Sivir E", SpellSlot.E, 50, 1, true));
+                Spells.Add(new ShieldData("SivirE", SpellSlot.E, 50, 1, true));
             }
 
             #endregion Sivir
@@ -39,7 +39,7 @@
 
             if (champName == "Nocturne")
             {
-                Spells.Add(new ShieldData("Nocturne W", SpellSlot.W, 50, 1, true));
+                Spells.Add(new ShieldData("NocturneW", SpellSlot.W, 50, 1, true));
             }
 
             #endregion Nocturne
@@ -52,7 +52,7 @@
 
             if (champName == "Bard")
             {
-                Spells.Add(new MoveBuffData("Bard W", SpellSlot.W, 150, 3, () => ObjectManager.Player.MoveSpeed * 1.5f));
+                Spells.Add(new MoveBuffData("BardW", SpellSlot.W, 150, 3, () => ObjectManager.Player.MoveSpeed * 1.5f));
             }
 
             #endregion Bard
@@ -63,7 +63,7 @@
             {
                 Spells.Add(
                     new MoveBuffData(
-                        "Blitzcrank W",
+                        "BlitzcrankW",
                         SpellSlot.W,
                         0,
                         3,
@@ -82,7 +82,7 @@
             {
                 Spells.Add(
                     new MoveBuffData(
-                        "Draven W",
+                        "DravenW",
                         SpellSlot.W,
                         0,
                         3,
@@ -101,7 +101,7 @@
             {
                 Spells.Add(
                     new MoveBuffData(
-                        "Evelynn W",
+                        "EvelynnW",
                         SpellSlot.W,
                         0,
                         3,
@@ -118,7 +118,7 @@
 
             if (champName == "Garen")
             {
-                Spells.Add(new MoveBuffData("Garen Q", SpellSlot.Q, 0, 3, () => ObjectManager.Player.MoveSpeed * 1.3f));
+                Spells.Add(new MoveBuffData("GarenQ", SpellSlot.Q, 0, 3, () => ObjectManager.Player.MoveSpeed * 1.3f));
             }
 
             #endregion Garen
@@ -128,7 +128,7 @@
             if (champName == "Hecarim")
             {
                 Spells.Add(
-                    new MoveBuffData("Hecarim E", SpellSlot.E, 0, 3, () => ObjectManager.Player.MoveSpeed * 1.25f));
+                    new MoveBuffData("HecarimE", SpellSlot.E, 0, 3, () => ObjectManager.Player.MoveSpeed * 1.25f));
             }
 
             #endregion Hecarim
@@ -137,7 +137,7 @@
 
             if (champName == "Jayce")
             {
-                Spells.Add(new MoveBuffData("Jayce R", SpellSlot.R, 0, 3, () => ObjectManager.Player.MoveSpeed + 40));
+                Spells.Add(new MoveBuffData("JayceR", SpellSlot.R, 0, 3, () => ObjectManager.Player.MoveSpeed + 40));
             }
 
             #endregion Jayce
@@ -148,7 +148,7 @@
             {
                 Spells.Add(
                     new MoveBuffData(
-                        "Karma E",
+                        "KarmaE",
                         SpellSlot.E,
                         0,
                         3,
@@ -161,13 +161,32 @@
 
             #endregion Karma
 
+            #region Katarina
+
+            if (champName == "Katarina")
+            {
+                Spells.Add(
+                    new MoveBuffData(
+                        "KatarinaW",
+                        SpellSlot.W,
+                        0,
+                        3,
+                        () =>
+                        ObjectManager.Player.MoveSpeed
+                        * (1
+                           + new[] { 0.5f, 0.6f, 0.7f, 0.8f, 0.9f }[ObjectManager.Player.GetSpell(SpellSlot.W).Level - 1
+                                 ])));
+            }
+
+            #endregion Katarina
+
             #region Kayle
 
             if (champName == "Kayle")
             {
                 Spells.Add(
                     new MoveBuffData(
-                        "Kayle W",
+                        "KayleW",
                         SpellSlot.W,
                         0,
                         3,
@@ -185,8 +204,7 @@
 
             if (champName == "Kennen")
             {
-                //Todo: test
-                Spells.Add(new MoveBuffData("Kennen E", SpellSlot.E, 0, 3, () => 200 + ObjectManager.Player.MoveSpeed));
+                Spells.Add(new MoveBuffData("KennenE", SpellSlot.E, 0, 3, () => 225 + ObjectManager.Player.MoveSpeed));
             }
 
             #endregion Kennen
@@ -195,7 +213,7 @@
 
             if (champName == "Khazix")
             {
-                Spells.Add(new MoveBuffData("Khazix R", SpellSlot.R, 0, 5, () => ObjectManager.Player.MoveSpeed * 1.4f));
+                Spells.Add(new MoveBuffData("KhazixR", SpellSlot.R, 0, 5, () => ObjectManager.Player.MoveSpeed * 1.4f));
             }
 
             #endregion Khazix
@@ -206,7 +224,7 @@
             {
                 Spells.Add(
                     new MoveBuffData(
-                        "Lulu W",
+                        "LuluW",
                         SpellSlot.W,
                         0,
                         5,
@@ -223,7 +241,7 @@
             {
                 Spells.Add(
                     new MoveBuffData(
-                        "Nunu W",
+                        "NunuW",
                         SpellSlot.W,
                         0,
                         3,
@@ -242,7 +260,7 @@
             {
                 Spells.Add(
                     new MoveBuffData(
-                        "Rumble W",
+                        "RumbleW",
                         SpellSlot.W,
                         0,
                         5,
@@ -262,7 +280,7 @@
             {
                 Spells.Add(
                     new MoveBuffData(
-                        "Shyvana W",
+                        "ShyvanaW",
                         SpellSlot.W,
                         0,
                         4,
@@ -281,7 +299,7 @@
             {
                 Spells.Add(
                     new MoveBuffData(
-                        "Sivir R",
+                        "SivirR",
                         SpellSlot.R,
                         0,
                         5,
@@ -298,7 +316,7 @@
             {
                 Spells.Add(
                     new MoveBuffData(
-                        "Sona E",
+                        "SonaE",
                         SpellSlot.E,
                         0,
                         3,
@@ -318,7 +336,7 @@
             {
                 Spells.Add(
                     new MoveBuffData(
-                        "Teemo W",
+                        "TeemoW",
                         SpellSlot.W,
                         0,
                         3,
@@ -337,7 +355,7 @@
             {
                 Spells.Add(
                     new MoveBuffData(
-                        "Udyr E",
+                        "UdyrE",
                         SpellSlot.E,
                         0,
                         3,
@@ -354,8 +372,7 @@
 
             if (champName == "Zilean")
             {
-                Spells.Add(
-                    new MoveBuffData("Zilean E", SpellSlot.E, 0, 3, () => ObjectManager.Player.MoveSpeed * 1.55f));
+                Spells.Add(new MoveBuffData("ZileanE", SpellSlot.E, 0, 3, () => ObjectManager.Player.MoveSpeed * 1.55f));
             }
 
             #endregion Zilean
@@ -609,120 +626,120 @@
 
             #endregion Dash
 
-            /*
-            #region Champion Blinks
+            #region Blink
 
             #region Ezreal
 
             if (champName == "Ezreal")
             {
-                spell = new BlinkData("Ezreal E", SpellSlot.E, 450, 350, 3);
-                Spells.Add(spell);
+                Spells.Add(new BlinkData("EzrealE", SpellSlot.E, 475, 250, 3));
             }
 
-            #endregion
+            #endregion Ezreal
 
             #region Kassadin
 
             if (champName == "Kassadin")
             {
-                spell = new BlinkData("Kassadin R", SpellSlot.R, 700, 200, 5);
-                Spells.Add(spell);
+                Spells.Add(new BlinkData("KassadinR", SpellSlot.R, 500, 250, 5));
             }
 
-            #endregion
+            #endregion Kassadin
 
             #region Katarina
 
             if (champName == "Katarina")
             {
-                spell = new BlinkData("Katarina E", SpellSlot.E, 700, 200, 3);
-                spell.ValidTargets = new[]
-                                         {
-                                             SpellValidTargets.AllyChampions, SpellValidTargets.AllyMinions,
-                                             SpellValidTargets.AllyWards, SpellValidTargets.EnemyChampions,
-                                             SpellValidTargets.EnemyMinions, SpellValidTargets.EnemyWards
-                                         };
-                Spells.Add(spell);
+                Spells.Add(
+                    new BlinkData("KatarinaE", SpellSlot.E, 800, 100, 3)
+                        {
+                            ValidTargets =
+                                new[]
+                                    {
+                                        SpellValidTargets.AllyChampions, SpellValidTargets.AllyMinions,
+                                        SpellValidTargets.AllyWards, SpellValidTargets.EnemyChampions,
+                                        SpellValidTargets.EnemyMinions, SpellValidTargets.EnemyWards
+                                    }
+                        });
             }
 
-            #endregion
+            #endregion Katarina
 
             #region Shaco
 
             if (champName == "Shaco")
             {
-                spell = new BlinkData("Shaco Q", SpellSlot.Q, 400, 350, 3);
-                Spells.Add(spell);
+                Spells.Add(new BlinkData("ShacoQ", SpellSlot.Q, 400, 100, 3));
             }
 
-            #endregion
+            #endregion Shaco
 
-            #region Talon
+            #endregion Blink
 
-            if (champName == "Talon")
-            {
-                spell = new BlinkData("Talon E", SpellSlot.E, 700, 100, 3);
-                spell.ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions };
-                Spells.Add(spell);
-            }
-
-            #endregion
-
-            #endregion
-
-            #region Champion Invulnerabilities
+            #region Invulnerability
 
             #region Elise
 
             if (champName == "Elise")
             {
-                spell = new InvulnerabilityData("Elise E", SpellSlot.E, 250, 3);
-                spell.CheckSpellName = "EliseSpiderEInitial";
-                spell.SelfCast = true;
-                Spells.Add(spell);
+                Spells.Add(
+                    new InvulnerabilityData("EliseE", SpellSlot.E, 50, 3)
+                        { CheckSpellName = "EliseSpiderEInitial", SelfCast = true });
             }
 
-            #endregion
-
-            #region Vladimir
-
-            if (champName == "Vladimir")
-            {
-                spell = new InvulnerabilityData("Vladimir W", SpellSlot.W, 250, 3);
-                spell.SelfCast = true;
-                Spells.Add(spell);
-            }
-
-            #endregion
+            #endregion Elise
 
             #region Fizz
 
             if (champName == "Fizz")
             {
-                spell = new InvulnerabilityData("Fizz E", SpellSlot.E, 250, 3);
-                Spells.Add(spell);
+                Spells.Add(new InvulnerabilityData("FizzE", SpellSlot.E, 50, 3));
             }
 
-            #endregion
+            #endregion Fizz
+
+            #region Maokai
+
+            if (champName == "Maokai")
+            {
+                Spells.Add(
+                    new InvulnerabilityData("MaokaiW", SpellSlot.W, 100, 3)
+                        {
+                            ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions },
+                            MaxRange = 525
+                        });
+            }
+
+            #endregion Maokai
 
             #region MasterYi
 
             if (champName == "MasterYi")
             {
-                spell = new InvulnerabilityData("MasterYi Q", SpellSlot.Q, 250, 3);
-                spell.MaxRange = 600;
-                spell.ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions };
-                Spells.Add(spell);
+                Spells.Add(
+                    new InvulnerabilityData("MasterYiQ", SpellSlot.Q, 100, 3)
+                        {
+                            ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions },
+                            MaxRange = 600
+                        });
             }
 
-            #endregion
+            #endregion MasterYi
 
-            #endregion
-            */
+            #region Vladimir
+
+            if (champName == "Vladimir")
+            {
+                Spells.Add(new InvulnerabilityData("VladimirW", SpellSlot.W, 50, 3) { SelfCast = true });
+            }
+
+            #endregion Vladimir
+
+            #endregion Invulnerability
+
             if (ObjectManager.Player.GetSpellSlot("SummonerFlash") != SpellSlot.Unknown)
             {
-                Spells.Add(new BlinkData("Flash", ObjectManager.Player.GetSpellSlot("SummonerFlash"), 425, 100, 5));
+                Spells.Add(new BlinkData("Flash", ObjectManager.Player.GetSpellSlot("SummonerFlash"), 425, 50, 5));
             }
 
             Spells.Add(new EvadeSpellData("Zhonyas", 5) { IsItem = true });
@@ -733,7 +750,7 @@
 
             if (champName == "Janna")
             {
-                Spells.Add(new ShieldData("Janna E", SpellSlot.E, 50, 1) { CanShieldAllies = true, MaxRange = 800 });
+                Spells.Add(new ShieldData("JannaE", SpellSlot.E, 50, 1) { CanShieldAllies = true, MaxRange = 800 });
             }
 
             #endregion Janna
@@ -742,7 +759,7 @@
 
             if (champName == "Karma")
             {
-                Spells.Add(new ShieldData("Karma E", SpellSlot.E, 50, 2) { CanShieldAllies = true, MaxRange = 800 });
+                Spells.Add(new ShieldData("KarmaE", SpellSlot.E, 50, 2) { CanShieldAllies = true, MaxRange = 800 });
             }
 
             #endregion Karma
@@ -751,7 +768,7 @@
 
             if (champName == "Morgana")
             {
-                Spells.Add(new ShieldData("Morgana E", SpellSlot.E, 50, 3) { CanShieldAllies = true, MaxRange = 800 });
+                Spells.Add(new ShieldData("MorganaE", SpellSlot.E, 50, 3) { CanShieldAllies = true, MaxRange = 800 });
             }
 
             #endregion Morgana

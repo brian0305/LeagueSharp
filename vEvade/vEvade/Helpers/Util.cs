@@ -3,7 +3,6 @@ namespace vEvade.Helpers
     #region
 
     using System;
-    using System.Collections.Generic;
     using System.Linq;
 
     using LeagueSharp;
@@ -103,6 +102,11 @@ namespace vEvade.Helpers
 
         #region Public Methods and Operators
 
+        public static bool CompareId(this GameObject obj1, GameObject obj2)
+        {
+            return obj1.NetworkId == obj2.NetworkId;
+        }
+
         public static void DrawLine(Vector2 start, Vector2 end, Color color)
         {
             Drawing.DrawLine(Drawing.WorldToScreen(start.To3D()), Drawing.WorldToScreen(end.To3D()), 1, color);
@@ -111,25 +115,6 @@ namespace vEvade.Helpers
         public static void Move(this Vector2 pos)
         {
             ObjectManager.Player.IssueOrder(GameObjectOrder.MoveTo, pos.To3D(), false);
-        }
-
-        #endregion
-    }
-
-    public class SpellList<TK, TV> : Dictionary<TK, TV>
-    {
-        #region Public Events
-
-        public event EventHandler OnAdd;
-
-        #endregion
-
-        #region Public Methods and Operators
-
-        public new void Add(TK key, TV value)
-        {
-            this.OnAdd?.Invoke(this, null);
-            base.Add(key, value);
         }
 
         #endregion

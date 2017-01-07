@@ -193,8 +193,7 @@
 
                 this.cachedValueTick = Utils.GameTimeTickCount;
 
-                if (!this.GetValue<bool>("IsDangerous")
-                    && Configs.Menu.Item("DodgeDangerous").GetValue<KeyBind>().Active)
+                if (!this.GetValue<bool>("IsDangerous") && Configs.DodgeDangerous)
                 {
                     this.cachedValue = false;
 
@@ -203,31 +202,26 @@
 
                 this.cachedValue = this.GetValue<bool>("Enabled");
 
-                if (this.cachedValue)
+                switch (this.Type)
                 {
-                    switch (this.Type)
-                    {
-                        case SpellType.Line:
-                        case SpellType.MissileLine:
-                            this.cachedValue = Configs.Menu.Item("DodgeLine").GetValue<bool>();
-                            break;
-                        case SpellType.Cone:
-                        case SpellType.MissileCone:
-                            this.cachedValue = Configs.Menu.Item("DodgeCone").GetValue<bool>();
-                            break;
-                        case SpellType.Circle:
-                            this.cachedValue =
-                                Configs.Menu.Item(
-                                    "Dodge" + (!string.IsNullOrEmpty(this.Data.TrapName) ? "Trap" : "Circle"))
-                                    .GetValue<bool>();
-                            break;
-                    }
+                    case SpellType.Line:
+                    case SpellType.MissileLine:
+                        this.cachedValue = Configs.DodgeLine;
+                        break;
+                    case SpellType.Cone:
+                    case SpellType.MissileCone:
+                        this.cachedValue = Configs.DodgeCone;
+                        break;
+                    case SpellType.Circle:
+                        this.cachedValue = !string.IsNullOrEmpty(this.Data.TrapName)
+                                               ? Configs.DodgeTrap
+                                               : Configs.DodgeCircle;
+                        break;
+                }
 
-                    if (Configs.Menu.Item("CheckHp").GetValue<bool>()
-                        && ObjectManager.Player.HealthPercent >= this.GetValue<Slider>("IgnoreHp").Value)
-                    {
-                        this.cachedValue = false;
-                    }
+                if (Configs.CheckHp && ObjectManager.Player.HealthPercent > this.GetValue<Slider>("IgnoreHp").Value)
+                {
+                    this.cachedValue = false;
                 }
 
                 return this.cachedValue;
@@ -296,11 +290,12 @@
                 Render.Circle.DrawCircle(this.Start.To3D(), this.Data.Range, Color.White);
             }
 
-            if (this.Type == SpellType.MissileLine
-                && (!Configs.Debug
-                    || (this.MissileObject != null && this.MissileObject.IsValid && this.MissileObject.IsVisible)))
+            if (this.Type == SpellType.MissileLine)
             {
-                var pos = !Configs.Debug ? this.GetMissilePosition(0) : this.MissileObject.Position.To2D();
+                var pos = Configs.Debug && this.MissileObject != null && this.MissileObject.IsValid
+                          && this.MissileObject.IsVisible
+                              ? this.MissileObject.Position.To2D()
+                              : this.GetMissilePosition(0);
                 Util.DrawLine(
                     pos + this.Radius * this.Direction.Perpendicular(),
                     pos - this.Radius * this.Direction.Perpendicular(),
@@ -381,7 +376,7 @@
             return this.Polygon.IsOutside(pos);
         }
 
-        public SafePath IsSafePath(List<Vector2> paths, int time, int speed = -1, int delay = 0)
+        public SafePath IsSafePath(List<Vector2> paths, int time, int speed, int delay)
         {
             var dist = 0f;
             time += Game.Ping / 2;
@@ -394,24 +389,36 @@
                 var to = paths[i + 1];
                 var segments = new List<Intersects>();
 
-                for (var j = 0; j <= this.Polygon.Points.Count - 1; j++)
+                if (this.Type == SpellType.Circle)
                 {
-                    var inter = from.Intersection(
-                        to,
-                        this.Polygon.Points[j],
-                        this.Polygon.Points[j == this.Polygon.Points.Count - 1 ? 0 : j + 1]);
-
-                    if (!inter.Intersects)
+                    foreach (var inter in this.PredictEnd.GetLineCircleIntersectPoints(this.Radius, from, to))
                     {
-                        continue;
+                        var d = inter.Distance(from);
+                        segments.Add(new Intersects(d, (int)(d / speed * 1000), inter, from));
+                    }
+                }
+                else
+                {
+                    for (var j = 0; j <= this.Polygon.Points.Count - 1; j++)
+                    {
+                        var inter = from.Intersection(
+                            to,
+                            this.Polygon.Points[j],
+                            this.Polygon.Points[j == this.Polygon.Points.Count - 1 ? 0 : j + 1]);
+
+                        if (!inter.Intersects)
+                        {
+                            continue;
+                        }
+
+                        var d = dist + inter.Point.Distance(from);
+                        segments.Add(new Intersects(d, (int)(d / speed * 1000), inter.Point, from));
                     }
 
-                    var d = dist + inter.Point.Distance(from);
-                    segments.Add(new Intersects(d, (int)(d / speed * 1000), inter.Point, from));
+                    dist += from.Distance(to);
                 }
 
                 intersects.AddRange(segments.OrderBy(a => a.Distance));
-                dist += from.Distance(to);
             }
 
             if (this.Type == SpellType.MissileLine || this.Type == SpellType.MissileCone || this.Type == SpellType.Arc)
@@ -446,7 +453,7 @@
                         var exitInter = intersects[i + 1];
                         var exitInterSegment = exitInter.Point.ProjectOn(this.Start, this.End).SegmentPoint;
 
-                        if (this.GetMissilePosition(enterInter.Time - time).Distance(this.End) + 50
+                        if (this.GetMissilePosition(enterInter.Time - time).Distance(this.End)
                             > enterInterSegment.Distance(this.End)
                             && this.GetMissilePosition(exitInter.Time + time).Distance(this.End)
                             <= exitInterSegment.Distance(this.End))
@@ -466,27 +473,20 @@
                 var exit = intersects[0];
                 var exitSegment = exit.Point.ProjectOn(this.Start, this.End).SegmentPoint;
 
-                if (this.GetMissilePosition(exit.Time + time).Distance(this.End) <= exitSegment.Distance(this.End))
-                {
-                    return new SafePath(false, intersects[0]);
-                }
+                return
+                    new SafePath(
+                        this.GetMissilePosition(exit.Time + time).Distance(this.End) > exitSegment.Distance(this.End),
+                        intersects[0]);
             }
 
-            if (this.IsSafe(Evade.PlayerPosition))
+            if (intersects.Count == 0)
             {
-                if (intersects.Count == 0)
-                {
-                    return new SafePath(true, new Intersects());
-                }
-
-                if (this.Data.DontCross)
-                {
-                    return new SafePath(false, intersects[0]);
-                }
+                return new SafePath(this.IsSafe(Evade.PlayerPosition), new Intersects());
             }
-            else if (intersects.Count == 0)
+
+            if (this.IsSafe(Evade.PlayerPosition) && this.Data.DontCross)
             {
-                return new SafePath(false, new Intersects());
+                return new SafePath(false, intersects[0]);
             }
 
             var endT = (this.Data.DontAddExtraDuration ? 0 : this.Data.ExtraDuration) + (this.EndTick - this.StartTick)
@@ -520,8 +520,7 @@
         {
             if (this.Data.CollisionObjects != null && this.Data.CollisionObjects.Length > 0)
             {
-                if (Utils.GameTimeTickCount - this.lastCalcColTick > 50
-                    && Configs.Menu.Item("CheckCollision").GetValue<bool>())
+                if (Utils.GameTimeTickCount - this.lastCalcColTick > 50 && Configs.CheckCollision)
                 {
                     this.lastCalcColTick = Utils.GameTimeTickCount;
                     this.predEnd = Collisions.GetCollision(this);

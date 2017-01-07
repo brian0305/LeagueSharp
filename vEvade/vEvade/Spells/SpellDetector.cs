@@ -17,7 +17,7 @@
 
     #endregion
 
-    public static class SpellDetector
+    public class SpellDetector
     {
         #region Static Fields
 
@@ -29,7 +29,7 @@
 
         #region Constructors and Destructors
 
-        static SpellDetector()
+        public SpellDetector()
         {
             GameObject.OnCreate += OnCreateTrap;
             GameObject.OnDelete += OnDeleteTrap;
@@ -86,7 +86,7 @@
             bool checkExplosion = true,
             int startT = 0)
         {
-            if (!sender.IsVisible && !Configs.Menu.Item("DodgeFoW").GetValue<bool>())
+            if (!sender.IsVisible && !Configs.DodgeFoW)
             {
                 return;
             }

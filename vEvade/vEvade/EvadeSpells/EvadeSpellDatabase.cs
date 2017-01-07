@@ -606,7 +606,7 @@
 
             if (champName == "Vayne")
             {
-                Spells.Add(new DashData("Vayne Q", SpellSlot.Q, 300, true, 100, 860, 2));
+                Spells.Add(new DashData("VayneQ", SpellSlot.Q, 300, true, 100, 860, 2));
             }
 
             #endregion Vayne

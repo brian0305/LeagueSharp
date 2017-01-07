@@ -31,7 +31,7 @@ namespace vEvade.Core
 
         public static readonly Dictionary<string, SpellData> OnTrapSpells = new Dictionary<string, SpellData>();
 
-        public static SpellList<int, SpellInstance> DetectedSpells = new SpellList<int, SpellInstance>();
+        public static Dictionary<int, SpellInstance> DetectedSpells = new Dictionary<int, SpellInstance>();
 
         public static int LastWardJumpTick;
 
@@ -135,8 +135,8 @@ namespace vEvade.Core
 
         public static void OnGameLoad(EventArgs args)
         {
-            DetectedSpells.OnAdd += (sender, eventArgs) => { Evading = false; };
             Configs.CreateMenu();
+            new SpellDetector();
             Game.OnUpdate += OnUpdate;
             Obj_AI_Base.OnIssueOrder += OnIssueOrder;
             Spellbook.OnCastSpell += OnCastSpell;
@@ -203,7 +203,7 @@ namespace vEvade.Core
                 return;
             }
 
-            var blockLvl = Configs.Menu.Item("CheckBlock").GetValue<StringList>().SelectedIndex;
+            var blockLvl = Configs.CheckBlock;
 
             if (blockLvl == 0)
             {
@@ -253,24 +253,20 @@ namespace vEvade.Core
                 return;
             }
 
-            if (Configs.Menu.Item("DrawStatus").GetValue<bool>())
+            if (Configs.DrawStatus)
             {
                 var pos = Drawing.WorldToScreen(ObjectManager.Player.Position);
-                var text = "vEvade: " + (Configs.Menu.Item("Enabled").GetValue<KeyBind>().Active ? "On" : "Off");
+                var text = "vEvade: " + (Configs.Enabled ? "On" : "Off");
                 Drawing.DrawText(
                     pos.X - Drawing.GetTextExtent(text).Width / 2f,
                     pos.Y,
                     text.EndsWith("On")
-                        ? (Evading
-                               ? Color.Red
-                               : (Configs.Menu.Item("DodgeDangerous").GetValue<KeyBind>().Active
-                                      ? Color.Yellow
-                                      : Color.White))
+                        ? (Evading ? Color.Red : (Configs.DodgeDangerous ? Color.Yellow : Color.White))
                         : Color.Gray,
                     text);
             }
 
-            if (Configs.Menu.Item("DrawSpells").GetValue<bool>())
+            if (Configs.DrawSpells)
             {
                 foreach (var spell in DetectedSpells.Values)
                 {
@@ -320,8 +316,8 @@ namespace vEvade.Core
                 return;
             }
 
-            if (!Configs.Menu.Item("Enabled").GetValue<KeyBind>().Active
-                || !EvadeSpellDatabase.Spells.Any(i => i.MenuName == "Walking" && i.Enabled) || Util.ShieldCheck)
+            if (!Configs.Enabled || !EvadeSpellDatabase.Spells.Any(i => i.MenuName == "Walking" && i.Enabled)
+                || Util.ShieldCheck)
             {
                 return;
             }
@@ -444,7 +440,7 @@ namespace vEvade.Core
                 spell.OnUpdate();
             }
 
-            if (!Configs.Menu.Item("Enabled").GetValue<KeyBind>().Active || Util.CommonCheck)
+            if (!Configs.Enabled || Util.CommonCheck)
             {
                 Evading = false;
                 evadePoint2 = Vector2.Zero;
@@ -938,7 +934,7 @@ namespace vEvade.Core
                 }
             }
 
-            //haveSolution = true;
+            haveSolution = true;
         }
 
         #endregion

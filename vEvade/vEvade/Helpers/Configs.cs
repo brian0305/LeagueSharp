@@ -63,6 +63,34 @@ namespace vEvade.Helpers
 
         #endregion
 
+        #region Public Properties
+
+        public static int CheckBlock => Menu.Item("CheckBlock").GetValue<StringList>().SelectedIndex;
+
+        public static bool CheckCollision => Menu.Item("CheckCollision").GetValue<bool>();
+
+        public static bool CheckHp => Menu.Item("CheckHp").GetValue<bool>();
+
+        public static bool DodgeCircle => Menu.Item("DodgeCircle").GetValue<bool>();
+
+        public static bool DodgeCone => Menu.Item("DodgeCone").GetValue<bool>();
+
+        public static bool DodgeDangerous => Menu.Item("DodgeDangerous").GetValue<KeyBind>().Active;
+
+        public static bool DodgeFoW => Menu.Item("DodgeFoW").GetValue<bool>();
+
+        public static bool DodgeLine => Menu.Item("DodgeLine").GetValue<bool>();
+
+        public static bool DodgeTrap => Menu.Item("DodgeTrap").GetValue<bool>();
+
+        public static bool DrawSpells => Menu.Item("DrawSpells").GetValue<bool>();
+
+        public static bool DrawStatus => Menu.Item("DrawStatus").GetValue<bool>();
+
+        public static bool Enabled => Menu.Item("Enabled").GetValue<KeyBind>().Active;
+
+        #endregion
+
         #region Public Methods and Operators
 
         public static void CreateMenu()
@@ -79,7 +107,7 @@ namespace vEvade.Helpers
                     SpellDatabase.Spells.Where(
                         i =>
                         !Evade.OnProcessSpells.ContainsKey(i.SpellName)
-                        && (i.ChampName == hero.ChampionName || i.IsSummoner)))
+                        && (i.IsSummoner || i.ChampName == hero.ChampionName)))
                 {
                     if (spell.IsSummoner && hero.GetSpellSlot(spell.SpellName) != SpellSlot.Summoner1
                         && hero.GetSpellSlot(spell.SpellName) != SpellSlot.Summoner2)
@@ -111,20 +139,16 @@ namespace vEvade.Helpers
 
                     LoadSpecialSpell(spell);
 
+                    var txt = "S_" + spell.MenuName;
                     var subMenu =
-                        new Menu(
-                            spell.IsSummoner ? spell.SpellName : spell.ChampName + " (" + spell.Slot + ")",
-                            "S_" + spell.MenuName);
+                        new Menu(spell.IsSummoner ? spell.SpellName : spell.ChampName + " (" + spell.Slot + ")", txt);
                     subMenu.AddItem(
-                        new MenuItem("S_" + spell.MenuName + "_DangerLvl", "Danger Level").SetValue(
-                            new Slider(spell.DangerValue, 1, 5)));
-                    subMenu.AddItem(
-                        new MenuItem("S_" + spell.MenuName + "_IsDangerous", "Is Dangerous").SetValue(spell.IsDangerous));
-                    subMenu.AddItem(new MenuItem("S_" + spell.MenuName + "_IgnoreHp", "Ignore If Hp >="))
+                        new MenuItem(txt + "_DangerLvl", "Danger Level").SetValue(new Slider(spell.DangerValue, 1, 5)));
+                    subMenu.AddItem(new MenuItem(txt + "_IsDangerous", "Is Dangerous").SetValue(spell.IsDangerous));
+                    subMenu.AddItem(new MenuItem(txt + "_IgnoreHp", "Ignore If Hp >"))
                         .SetValue(new Slider(!spell.IsDangerous ? 65 : 80, 1));
-                    subMenu.AddItem(new MenuItem("S_" + spell.MenuName + "_Draw", "Draw").SetValue(true));
-                    subMenu.AddItem(
-                        new MenuItem("S_" + spell.MenuName + "_Enabled", "Enabled").SetValue(!spell.DisabledByDefault))
+                    subMenu.AddItem(new MenuItem(txt + "_Draw", "Draw").SetValue(true));
+                    subMenu.AddItem(new MenuItem(txt + "_Enabled", "Enabled").SetValue(!spell.DisabledByDefault))
                         .SetTooltip(spell.MenuName);
                     spells.AddSubMenu(subMenu);
                 }
@@ -136,17 +160,17 @@ namespace vEvade.Helpers
 
             foreach (var spell in EvadeSpellDatabase.Spells)
             {
-                var subMenu = new Menu(spell.MenuName, "ES_" + spell.MenuName);
+                var txt = "ES_" + spell.MenuName;
+                var subMenu = new Menu(spell.MenuName, txt);
                 subMenu.AddItem(
-                    new MenuItem("ES_" + spell.MenuName + "_DangerLvl", "Danger Level").SetValue(
-                        new Slider(spell.DangerLevel, 1, 5)));
+                    new MenuItem(txt + "_DangerLvl", "Danger Level").SetValue(new Slider(spell.DangerLevel, 1, 5)));
 
                 if (spell.IsTargetted && spell.ValidTargets.Contains(SpellValidTargets.AllyWards))
                 {
-                    subMenu.AddItem(new MenuItem("ES_" + spell.MenuName + "_WardJump", "Ward Jump").SetValue(true));
+                    subMenu.AddItem(new MenuItem(txt + "_WardJump", "Ward Jump").SetValue(true));
                 }
 
-                subMenu.AddItem(new MenuItem("ES_" + spell.MenuName + "_Enabled", "Enabled").SetValue(true));
+                subMenu.AddItem(new MenuItem(txt + "_Enabled", "Enabled").SetValue(true));
                 evadeSpells.AddSubMenu(subMenu);
             }
 

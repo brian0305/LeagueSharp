@@ -27,7 +27,7 @@
                 var outerPolys = new List<Geometry.Polygon>();
                 var innerPolys = new List<Geometry.Polygon>();
 
-                foreach (var spell in Evade.DetectedSpells.Values.Where(i => i.Enable))
+                foreach (var spell in Evade.Spells)
                 {
                     outerPolys.Add(spell.PathFindingOuterPolygon);
                     innerPolys.Add(spell.PathFindingInnerPolygon);
@@ -36,12 +36,12 @@
                 var outerPolygons = Geometry.ClipPolygons(outerPolys).ToPolygons();
                 var innerPolygons = Geometry.ClipPolygons(innerPolys).ToPolygons();
 
-                if (outerPolygons.Aggregate(false, (cur, poly) => cur || !poly.IsOutside(end)))
+                if (outerPolygons.Aggregate(false, (cur, poly) => cur || poly.IsInside(end)))
                 {
                     end = end.GetClosestOutsidePoint(outerPolygons);
                 }
 
-                if (outerPolygons.Aggregate(false, (cur, poly) => cur || !poly.IsOutside(start)))
+                if (outerPolygons.Aggregate(false, (cur, poly) => cur || poly.IsInside(start)))
                 {
                     start = start.GetClosestOutsidePoint(outerPolygons);
                 }
@@ -115,7 +115,7 @@
 
         #region Methods
 
-        private static bool CanReach(this Vector2 start, Vector2 end, List<Geometry.Polygon> polygons)
+        private static bool CanReach(this Vector2 start, Vector2 end, List<Geometry.Polygon> polys)
         {
             if (start == end)
             {
@@ -132,11 +132,11 @@
                 }
             }
 
-            foreach (var polygon in polygons)
+            foreach (var poly in polys)
             {
-                for (var i = 0; i < polygon.Points.Count; i++)
+                for (var i = 0; i < poly.Points.Count; i++)
                 {
-                    if (start.IsCross(end, polygon.Points[i], polygon.Points[i == polygon.Points.Count - 1 ? 0 : i + 1]))
+                    if (start.IsCross(end, poly.Points[i], poly.Points[i == poly.Points.Count - 1 ? 0 : i + 1]))
                     {
                         return false;
                     }
@@ -182,11 +182,11 @@
             return null;
         }
 
-        private static Vector2 GetClosestOutsidePoint(this Vector2 from, List<Geometry.Polygon> polygons)
+        private static Vector2 GetClosestOutsidePoint(this Vector2 from, List<Geometry.Polygon> polys)
         {
             var result = new List<Vector2>();
 
-            foreach (var poly in polygons)
+            foreach (var poly in polys)
             {
                 for (var i = 0; i <= poly.Points.Count - 1; i++)
                 {

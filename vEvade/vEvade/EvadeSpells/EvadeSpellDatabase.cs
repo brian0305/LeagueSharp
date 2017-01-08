@@ -30,7 +30,7 @@
 
             if (champName == "Sivir")
             {
-                Spells.Add(new ShieldData("SivirE", SpellSlot.E, 50, 1, true));
+                Spells.Add(new ShieldData("SivirE", SpellSlot.E, 100, 1, true));
             }
 
             #endregion Sivir
@@ -39,7 +39,7 @@
 
             if (champName == "Nocturne")
             {
-                Spells.Add(new ShieldData("NocturneW", SpellSlot.W, 50, 1, true));
+                Spells.Add(new ShieldData("NocturneW", SpellSlot.W, 100, 1, true));
             }
 
             #endregion Nocturne
@@ -683,7 +683,7 @@
             if (champName == "Elise")
             {
                 Spells.Add(
-                    new InvulnerabilityData("EliseE", SpellSlot.E, 50, 3)
+                    new InvulnerabilityData("EliseE", SpellSlot.E, 100, 3)
                         { CheckSpellName = "EliseSpiderEInitial", SelfCast = true });
             }
 
@@ -693,7 +693,7 @@
 
             if (champName == "Fizz")
             {
-                Spells.Add(new InvulnerabilityData("FizzE", SpellSlot.E, 50, 3));
+                Spells.Add(new InvulnerabilityData("FizzE", SpellSlot.E, 100, 3));
             }
 
             #endregion Fizz
@@ -730,7 +730,7 @@
 
             if (champName == "Vladimir")
             {
-                Spells.Add(new InvulnerabilityData("VladimirW", SpellSlot.W, 50, 3) { SelfCast = true });
+                Spells.Add(new InvulnerabilityData("VladimirW", SpellSlot.W, 100, 3) { SelfCast = true });
             }
 
             #endregion Vladimir
@@ -739,7 +739,7 @@
 
             if (ObjectManager.Player.GetSpellSlot("SummonerFlash") != SpellSlot.Unknown)
             {
-                Spells.Add(new BlinkData("Flash", ObjectManager.Player.GetSpellSlot("SummonerFlash"), 425, 50, 5));
+                Spells.Add(new BlinkData("Flash", ObjectManager.Player.GetSpellSlot("SummonerFlash"), 425, 100, 5));
             }
 
             Spells.Add(new EvadeSpellData("Zhonyas", 5) { IsItem = true });
@@ -750,7 +750,7 @@
 
             if (champName == "Janna")
             {
-                Spells.Add(new ShieldData("JannaE", SpellSlot.E, 50, 1) { CanShieldAllies = true, MaxRange = 800 });
+                Spells.Add(new ShieldData("JannaE", SpellSlot.E, 100, 1) { CanShieldAllies = true, MaxRange = 800 });
             }
 
             #endregion Janna
@@ -759,7 +759,7 @@
 
             if (champName == "Karma")
             {
-                Spells.Add(new ShieldData("KarmaE", SpellSlot.E, 50, 2) { CanShieldAllies = true, MaxRange = 800 });
+                Spells.Add(new ShieldData("KarmaE", SpellSlot.E, 100, 2) { CanShieldAllies = true, MaxRange = 800 });
             }
 
             #endregion Karma
@@ -768,7 +768,7 @@
 
             if (champName == "Morgana")
             {
-                Spells.Add(new ShieldData("MorganaE", SpellSlot.E, 50, 3) { CanShieldAllies = true, MaxRange = 800 });
+                Spells.Add(new ShieldData("MorganaE", SpellSlot.E, 100, 3) { CanShieldAllies = true, MaxRange = 800 });
             }
 
             #endregion Morgana

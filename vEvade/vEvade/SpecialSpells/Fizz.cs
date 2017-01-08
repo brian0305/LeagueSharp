@@ -79,9 +79,7 @@
 
             var spell =
                 Evade.DetectedSpells.Values.FirstOrDefault(
-                    i =>
-                    i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId
-                    && i.Type == SpellType.Circle);
+                    i => i.Data.MenuName == data.MenuName && i.Unit.CompareId(sender) && i.Type == SpellType.Circle);
 
             if (spell != null)
             {

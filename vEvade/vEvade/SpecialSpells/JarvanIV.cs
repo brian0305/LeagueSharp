@@ -8,6 +8,7 @@
     using LeagueSharp.Common;
 
     using vEvade.Core;
+    using vEvade.Helpers;
     using vEvade.Managers;
     using vEvade.Spells;
 
@@ -63,7 +64,7 @@
             var endPos =
                 Evade.DetectedSpells.Values.Where(
                     i =>
-                    i.Data.MenuName == "JarvanIVE" && i.Unit.NetworkId == sender.NetworkId
+                    i.Data.MenuName == "JarvanIVE" && i.Unit.CompareId(sender)
                     && i.End.Distance(startPos, qeEnd, true) < qeData.RadiusEx).Select(i => i.End).ToList();
             endPos.AddRange(
                 ObjectManager.Get<Obj_AI_Minion>()

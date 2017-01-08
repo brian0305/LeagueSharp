@@ -39,6 +39,27 @@
         #endregion
     }
 
+    public struct SafePoint
+    {
+        #region Fields
+
+        public bool IsSafe;
+
+        public List<SpellInstance> Spells;
+
+        #endregion
+
+        #region Constructors and Destructors
+
+        public SafePoint(List<SpellInstance> spells)
+        {
+            this.Spells = spells;
+            this.IsSafe = this.Spells.Count == 0;
+        }
+
+        #endregion
+    }
+
     public struct Intersects
     {
         #region Fields
@@ -193,7 +214,7 @@
 
                 this.cachedValueTick = Utils.GameTimeTickCount;
 
-                if (!this.GetValue<bool>("IsDangerous") && Configs.DodgeDangerous)
+                if (Configs.DodgeDangerous && !this.GetValue<bool>("IsDangerous"))
                 {
                     this.cachedValue = false;
 
@@ -202,29 +223,52 @@
 
                 this.cachedValue = this.GetValue<bool>("Enabled");
 
-                switch (this.Type)
+                if (this.cachedValue)
                 {
-                    case SpellType.Line:
-                    case SpellType.MissileLine:
-                        this.cachedValue = Configs.DodgeLine;
-                        break;
-                    case SpellType.Cone:
-                    case SpellType.MissileCone:
-                        this.cachedValue = Configs.DodgeCone;
-                        break;
-                    case SpellType.Circle:
-                        this.cachedValue = !string.IsNullOrEmpty(this.Data.TrapName)
-                                               ? Configs.DodgeTrap
-                                               : Configs.DodgeCircle;
-                        break;
-                }
+                    switch (this.Type)
+                    {
+                        case SpellType.Line:
+                        case SpellType.MissileLine:
+                            this.cachedValue = Configs.DodgeLine;
+                            break;
+                        case SpellType.Cone:
+                        case SpellType.MissileCone:
+                            this.cachedValue = Configs.DodgeCone;
+                            break;
+                        case SpellType.Circle:
+                            this.cachedValue = !string.IsNullOrEmpty(this.Data.TrapName)
+                                                   ? Configs.DodgeTrap
+                                                   : Configs.DodgeCircle;
+                            break;
+                    }
 
-                if (Configs.CheckHp && ObjectManager.Player.HealthPercent > this.GetValue<Slider>("IgnoreHp").Value)
-                {
-                    this.cachedValue = false;
+                    if (Configs.CheckHp)
+                    {
+                        this.cachedValue = ObjectManager.Player.HealthPercent <= this.GetValue<Slider>("IgnoreHp").Value;
+                    }
                 }
 
                 return this.cachedValue;
+            }
+        }
+
+        public Vector2 PredictEnd
+        {
+            get
+            {
+                if (this.predEnd.IsValid())
+                {
+                    return this.predEnd;
+                }
+
+                if (this.IsGlobal)
+                {
+                    return this.GetGlobalMissilePosition(0)
+                           + this.Direction * this.Data.MissileSpeed
+                           * (0.5f + this.Radius * 2 / ObjectManager.Player.MoveSpeed);
+                }
+
+                return this.End;
             }
         }
 
@@ -251,26 +295,6 @@
                     : this.Data.Radius;
 
         private bool IsGlobal => this.Data.RawRange == 25000;
-
-        private Vector2 PredictEnd
-        {
-            get
-            {
-                if (this.predEnd.IsValid())
-                {
-                    return this.predEnd;
-                }
-
-                if (this.IsGlobal)
-                {
-                    return this.GetGlobalMissilePosition(0)
-                           + this.Direction * this.Data.MissileSpeed
-                           * (0.5f + this.Radius * 2 / ObjectManager.Player.MoveSpeed);
-                }
-
-                return this.End;
-            }
-        }
 
         #endregion
 
@@ -351,29 +375,19 @@
 
         public bool IsAboutToHit(int time, Obj_AI_Base unit)
         {
+            if (this.IsSafePoint(unit.ServerPosition.To2D()))
+            {
+                return false;
+            }
+
             if (this.Type == SpellType.MissileLine)
             {
                 return unit.ServerPosition.To2D()
                            .Distance(this.GetMissilePosition(0), this.GetMissilePosition(time), true) < this.Radius;
             }
 
-            if (this.IsSafe(unit.ServerPosition.To2D()))
-            {
-                return false;
-            }
-
             return this.Data.ExtraDuration + (this.EndTick - this.StartTick)
                    - (Utils.GameTimeTickCount - this.StartTick) <= time;
-        }
-
-        public bool IsDanger(Vector2 pos)
-        {
-            return !this.IsSafe(pos);
-        }
-
-        public bool IsSafe(Vector2 pos)
-        {
-            return this.Polygon.IsOutside(pos);
         }
 
         public SafePath IsSafePath(List<Vector2> paths, int time, int speed, int delay)
@@ -391,7 +405,7 @@
 
                 if (this.Type == SpellType.Circle)
                 {
-                    foreach (var inter in this.PredictEnd.GetLineCircleIntersectPoints(this.Radius, from, to))
+                    foreach (var inter in this.PredictEnd.GetIntersectPointsLineCircle(this.Radius, from, to))
                     {
                         var d = inter.Distance(from);
                         segments.Add(new Intersects(d, (int)(d / speed * 1000), inter, from));
@@ -423,7 +437,7 @@
 
             if (this.Type == SpellType.MissileLine || this.Type == SpellType.MissileCone || this.Type == SpellType.Arc)
             {
-                if (this.IsSafe(Evade.PlayerPosition))
+                if (this.IsSafePoint(Evade.PlayerPosition))
                 {
                     if (intersects.Count == 0)
                     {
@@ -481,10 +495,10 @@
 
             if (intersects.Count == 0)
             {
-                return new SafePath(this.IsSafe(Evade.PlayerPosition), new Intersects());
+                return new SafePath(this.IsSafePoint(Evade.PlayerPosition), new Intersects());
             }
 
-            if (this.IsSafe(Evade.PlayerPosition) && this.Data.DontCross)
+            if (this.IsSafePoint(Evade.PlayerPosition) && this.Data.DontCross)
             {
                 return new SafePath(false, intersects[0]);
             }
@@ -492,24 +506,29 @@
             var endT = (this.Data.DontAddExtraDuration ? 0 : this.Data.ExtraDuration) + (this.EndTick - this.StartTick)
                        - (Utils.GameTimeTickCount - this.StartTick);
 
-            return !this.IsSafe(paths.PositionAfter(endT, speed, delay))
+            return !this.IsSafePoint(paths.PositionAfter(endT, speed, delay))
                        ? new SafePath(false, intersects[0])
-                       : new SafePath(this.IsSafe(paths.PositionAfter(endT, speed, time)), intersects[0]);
+                       : new SafePath(this.IsSafePoint(paths.PositionAfter(endT, speed, time)), intersects[0]);
         }
 
-        public bool IsSafeToBlink(Vector2 point, int time, int delay = 0)
+        public bool IsSafePoint(Vector2 pos)
+        {
+            return this.Polygon.IsOutside(pos);
+        }
+
+        public bool IsSafeToBlink(Vector2 point, int time, int delay)
         {
             time /= 2;
 
-            if (this.IsSafe(Evade.PlayerPosition))
+            if (this.IsSafePoint(point))
             {
                 return true;
             }
 
             if (this.Type == SpellType.MissileLine)
             {
-                return this.GetMissilePosition(delay + time).Distance(this.End)
-                       >= Evade.PlayerPosition.ProjectOn(this.Start, this.End).SegmentPoint.Distance(this.End);
+                return point.Distance(this.GetMissilePosition(0), this.GetMissilePosition(delay + time), true)
+                       < this.Radius;
             }
 
             return this.Data.ExtraDuration + (this.EndTick - this.StartTick)

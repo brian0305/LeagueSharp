@@ -21,7 +21,7 @@
 
         #region Public Methods and Operators
 
-        public static List<Vector2> GetIntersectPointsWithLine(this Geometry.Polygon poly, Vector2 start, Vector2 end)
+        public static List<Vector2> GetIntersectPointsLine(this Geometry.Polygon poly, Vector2 start, Vector2 end)
         {
             var points = new List<Vector2>();
 
@@ -38,7 +38,7 @@
             return points;
         }
 
-        public static Vector2[] GetLineCircleIntersectPoints(this Vector2 pos, float radius, Vector2 start, Vector2 end)
+        public static Vector2[] GetIntersectPointsLineCircle(this Vector2 pos, float radius, Vector2 start, Vector2 end)
         {
             float t;
             var dx = end.X - start.X;

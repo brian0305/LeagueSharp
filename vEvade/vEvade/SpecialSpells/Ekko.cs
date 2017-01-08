@@ -10,6 +10,7 @@
     using LeagueSharp.Common;
 
     using vEvade.Core;
+    using vEvade.Helpers;
     using vEvade.Managers;
     using vEvade.Spells;
 
@@ -75,7 +76,7 @@
             var spell =
                 Evade.DetectedSpells.Values.FirstOrDefault(
                     i =>
-                    i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId
+                    i.Data.MenuName == data.MenuName && i.Unit.CompareId(sender)
                     && i.End.Distance(missile.EndPosition) < 100);
 
             if (spell != null)

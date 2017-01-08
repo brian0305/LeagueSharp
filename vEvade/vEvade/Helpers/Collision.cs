@@ -94,7 +94,7 @@
                         var wallStart = wall.Position.To2D() + wallWidth / 2f * wallDirection;
                         var wallEnd = wallStart - wallWidth * wallDirection;
                         var wallPolygon = new Geometry.Polygon.Rectangle(wallStart, wallEnd, 75);
-                        var intersects = wallPolygon.GetIntersectPointsWithLine(curPos, spell.End);
+                        var intersects = wallPolygon.GetIntersectPointsLine(curPos, spell.End);
 
                         if (intersects.Count > 0)
                         {

@@ -7,6 +7,7 @@
     using LeagueSharp;
 
     using vEvade.Core;
+    using vEvade.Helpers;
     using vEvade.Spells;
 
     using SpellData = vEvade.Spells.SpellData;
@@ -46,8 +47,7 @@
             }
 
             var spell =
-                Evade.DetectedSpells.Values.FirstOrDefault(
-                    i => i.Data.MenuName == "KarmaQ" && i.Unit.NetworkId == sender.NetworkId);
+                Evade.DetectedSpells.Values.FirstOrDefault(i => i.Data.MenuName == "KarmaQ" && i.Unit.CompareId(sender));
 
             if (spell != null)
             {

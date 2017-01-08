@@ -167,7 +167,7 @@ namespace vEvade.Helpers
 
                 if (spell.IsTargetted && spell.ValidTargets.Contains(SpellValidTargets.AllyWards))
                 {
-                    subMenu.AddItem(new MenuItem(txt + "_WardJump", "Ward Jump").SetValue(true));
+                    subMenu.AddItem(new MenuItem(txt + "_WardJump", "Ward Jump").SetValue(false));
                 }
 
                 subMenu.AddItem(new MenuItem(txt + "_Enabled", "Enabled").SetValue(true));
@@ -191,16 +191,16 @@ namespace vEvade.Helpers
             misc.AddItem(
                 new MenuItem("CheckBlock", "Block Cast While Dodge").SetValue(
                     new StringList(new[] { "No", "Only Dangerous", "Always" }, 1)));
-            misc.AddItem(new MenuItem("DodgeFoW", "Dodge FoW Spells").SetValue(true));
+            misc.AddItem(new MenuItem("DodgeFoW", "Dodge FoW Spells").SetValue(false));
             misc.AddItem(new MenuItem("DodgeLine", "Dodge Line Spells").SetValue(true));
-            misc.AddItem(new MenuItem("DodgeCircle", "Dodge Circle Spells").SetValue(true));
+            misc.AddItem(new MenuItem("DodgeCircle", "Dodge Circle Spells").SetValue(false));
             misc.AddItem(new MenuItem("DodgeCone", "Dodge Cone Spells").SetValue(true));
-            misc.AddItem(new MenuItem("DodgeTrap", "Dodge Traps").SetValue(true));
+            misc.AddItem(new MenuItem("DodgeTrap", "Dodge Traps").SetValue(false));
             Menu.AddSubMenu(misc);
 
             var draw = new Menu("Draw", "Draw");
-            draw.AddItem(new MenuItem("DrawSpells", "Draw Spells").SetValue(true));
-            draw.AddItem(new MenuItem("DrawStatus", "Draw Status").SetValue(true));
+            draw.AddItem(new MenuItem("DrawSpells", "Draw Spells").SetValue(false));
+            draw.AddItem(new MenuItem("DrawStatus", "Draw Status").SetValue(false));
             Menu.AddSubMenu(draw);
 
             Menu.AddItem(new MenuItem("Enabled", "Enabled").SetValue(new KeyBind('K', KeyBindType.Toggle, true)))

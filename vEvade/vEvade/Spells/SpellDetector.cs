@@ -32,7 +32,6 @@
         public SpellDetector()
         {
             GameObject.OnCreate += OnCreateTrap;
-            GameObject.OnDelete += OnDeleteTrap;
             GameObject.OnCreate += OnCreateToggle;
             GameObject.OnDelete += OnDeleteToggle;
             GameObject.OnCreate += OnCreateMissile;
@@ -196,7 +195,7 @@
                     foreach (var spell in
                         Evade.DetectedSpells.Values.Where(
                             i =>
-                            i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId
+                            i.Data.MenuName == data.MenuName && i.Unit.CompareId(sender)
                             && dir.AngleBetween(i.Direction) < 3 && i.Start.Distance(startPos) < 100))
                     {
                         alreadyAdded = spell.MissileObject != null && spell.MissileObject.IsValid;
@@ -213,7 +212,7 @@
                 foreach (var spell in
                     Evade.DetectedSpells.Values.Where(
                         i =>
-                        i.Data.MenuName == data.MenuName && i.Unit.NetworkId == sender.NetworkId
+                        i.Data.MenuName == data.MenuName && i.Unit.CompareId(sender)
                         && dir.AngleBetween(i.Direction) < 3 && i.Start.Distance(startPos) < 100
                         && i.MissileObject == null))
                 {
@@ -380,12 +379,7 @@
         {
             var trap = sender as Obj_AI_Minion;
 
-            if (trap == null || !trap.IsValid)
-            {
-                return;
-            }
-
-            if (!trap.IsEnemy && !Configs.Debug)
+            if (trap == null || !trap.IsValid || (!trap.IsEnemy && !Configs.Debug))
             {
                 return;
             }
@@ -406,7 +400,7 @@
 
         private static void OnCreateTrapDelay(Obj_AI_Minion trap, SpellData data)
         {
-            var pos = trap.ServerPosition.To2D();
+            var pos = trap.Position.To2D();
             var caster =
                 HeroManager.AllHeroes.First(i => i.ChampionName == data.ChampName && (i.IsEnemy || Configs.Debug));
             var spell = new SpellInstance(data, Utils.GameTimeTickCount - Game.Ping / 2, 0, pos, pos, caster, data.Type)
@@ -437,8 +431,7 @@
 
             foreach (var spell in
                 Evade.DetectedSpells.Values.Where(
-                    i =>
-                    i.Data.CanBeRemoved && i.MissileObject != null && i.MissileObject.NetworkId == missile.NetworkId))
+                    i => i.Data.CanBeRemoved && i.MissileObject != null && i.MissileObject.CompareId(missile)))
             {
                 if (string.IsNullOrEmpty(spell.Data.ToggleName) || spell.Type != SpellType.Circle)
                 {
@@ -480,37 +473,13 @@
                 Evade.DetectedSpells.Values.Where(
                     i =>
                     !string.IsNullOrEmpty(i.Data.ToggleName) && i.ToggleObject != null
-                    && i.ToggleObject.NetworkId == toggle.NetworkId))
+                    && i.ToggleObject.CompareId(toggle)))
             {
                 Utility.DelayAction.Add(1, () => Evade.DetectedSpells.Remove(spell.SpellId));
 
                 if (Configs.Debug)
                 {
                     Console.WriteLine($"=> D-T: {spell.SpellId} | {Utils.GameTimeTickCount}");
-                }
-            }
-        }
-
-        private static void OnDeleteTrap(GameObject sender, EventArgs args)
-        {
-            var trap = sender as Obj_AI_Minion;
-
-            if (trap == null || !trap.IsValid || (!trap.IsEnemy && !Configs.Debug))
-            {
-                return;
-            }
-
-            foreach (var spell in
-                Evade.DetectedSpells.Values.Where(
-                    i =>
-                    !string.IsNullOrEmpty(i.Data.TrapName) && i.TrapObject != null
-                    && i.TrapObject.NetworkId == trap.NetworkId))
-            {
-                Utility.DelayAction.Add(1, () => Evade.DetectedSpells.Remove(spell.SpellId));
-
-                if (Configs.Debug)
-                {
-                    Console.WriteLine($"=> D-Tr: {spell.SpellId} | {Utils.GameTimeTickCount}");
                 }
             }
         }

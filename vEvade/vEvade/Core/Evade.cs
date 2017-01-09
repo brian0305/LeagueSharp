@@ -153,33 +153,6 @@ namespace vEvade.Core
             }
         }
 
-        private static void CheckEndSpell()
-        {
-            foreach (var spell in DetectedSpells.Values)
-            {
-                if (spell.Data.IsDash && Utils.GameTimeTickCount - spell.StartTick > spell.Data.Delay + 100
-                    && !spell.Unit.IsDashing())
-                {
-                    Utility.DelayAction.Add(50, () => DetectedSpells.Remove(spell.SpellId));
-                }
-
-                if (spell.TrapObject != null && spell.TrapObject.IsDead)
-                {
-                    Utility.DelayAction.Add(1, () => DetectedSpells.Remove(spell.SpellId));
-                }
-
-                if (spell.EndTick + spell.Data.ExtraDuration <= Utils.GameTimeTickCount)
-                {
-                    Utility.DelayAction.Add(1, () => DetectedSpells.Remove(spell.SpellId));
-
-                    if (Configs.Debug)
-                    {
-                        Console.WriteLine($"=> D: {spell.SpellId} | {Utils.GameTimeTickCount}");
-                    }
-                }
-            }
-        }
-
         private static void OnCastSpell(Spellbook sender, SpellbookCastSpellEventArgs args)
         {
             if (!sender.Owner.IsMe)
@@ -1037,16 +1010,37 @@ namespace vEvade.Core
 
         private static void UpdateSpells()
         {
-            CheckEndSpell();
+            foreach (var spell in DetectedSpells.Values)
+            {
+                if (spell.Data.IsDash && Utils.GameTimeTickCount - spell.StartTick > spell.Data.Delay + 100
+                    && !spell.Unit.IsDashing())
+                {
+                    Utility.DelayAction.Add(50, () => DetectedSpells.Remove(spell.SpellId));
+                }
+
+                if (spell.TrapObject != null && spell.TrapObject.IsDead)
+                {
+                    Utility.DelayAction.Add(1, () => DetectedSpells.Remove(spell.SpellId));
+                }
+
+                if (spell.EndTick + spell.Data.ExtraDuration <= Utils.GameTimeTickCount)
+                {
+                    Utility.DelayAction.Add(1, () => DetectedSpells.Remove(spell.SpellId));
+
+                    if (Configs.Debug)
+                    {
+                        Console.WriteLine($"=> D: {spell.SpellId} | {Utils.GameTimeTickCount}");
+                    }
+                }
+            }
 
             foreach (var spell in DetectedSpells.Values)
             {
                 spell.OnUpdate();
             }
 
-            var spells = DetectedSpells.Values.Where(i => i.Enable).ToList();
-            Spells = spells;
-            Polygons = Geometry.ClipPolygons(spells.Select(i => i.EvadePolygon).ToList()).ToPolygons();
+            Spells = DetectedSpells.Values.Where(i => i.Enable).ToList();
+            Polygons = Geometry.ClipPolygons(Spells.Select(i => i.EvadePolygon).ToList()).ToPolygons();
         }
 
         #endregion

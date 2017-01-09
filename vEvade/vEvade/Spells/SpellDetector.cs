@@ -85,7 +85,7 @@
             bool checkExplosion = true,
             int startT = 0)
         {
-            var isFromFoW = !sender.IsVisible;
+            var isFromFoW = !sender.IsVisible && missile != null;
 
             if (isFromFoW && Configs.DodgeFoW == 0)
             {
@@ -227,7 +227,10 @@
                         Console.WriteLine($"=> M: {spell.SpellId} | {Utils.GameTimeTickCount}");
                     }
 
-                    break;
+                    if (string.IsNullOrEmpty(spell.Data.ToggleName) || spell.Type != SpellType.Circle)
+                    {
+                        break;
+                    }
                 }
             }
 
@@ -254,7 +257,7 @@
 
             if (Configs.Debug)
             {
-                Console.WriteLine($"=> A: {newSpell.SpellId} | {Utils.GameTimeTickCount}");
+                Console.WriteLine($"=> A: {newSpell.SpellId} | {Utils.GameTimeTickCount} | {type}");
             }
         }
 
@@ -363,8 +366,9 @@
             foreach (var spell in
                 Evade.DetectedSpells.Values.Where(
                     i =>
-                    !string.IsNullOrEmpty(i.Data.ToggleName) && i.MissileObject != null && i.ToggleObject == null
-                    && new Regex(i.Data.ToggleName).IsMatch(toggle.Name) && i.End.Distance(pos) < 100))
+                    !string.IsNullOrEmpty(i.Data.ToggleName) && i.Type == SpellType.Circle && i.MissileObject != null
+                    && i.ToggleObject == null && new Regex(i.Data.ToggleName).IsMatch(toggle.Name)
+                    && i.End.Distance(pos) < 100))
             {
                 spell.MissileObject = null;
                 spell.ToggleObject = toggle;
@@ -433,7 +437,9 @@
 
             foreach (var spell in
                 Evade.DetectedSpells.Values.Where(
-                    i => i.Data.CanBeRemoved && i.MissileObject != null && i.MissileObject.CompareId(missile)))
+                    i =>
+                    i.Data.CanBeRemoved && i.MissileObject != null && i.MissileObject.IsValid
+                    && i.MissileObject.CompareId(missile)))
             {
                 if (string.IsNullOrEmpty(spell.Data.ToggleName) || spell.Type != SpellType.Circle)
                 {
@@ -447,15 +453,23 @@
                 else
                 {
                     spell.Data.CollisionObjects = null;
+                    spell.PredEnd = Vector2.Zero;
                     spell.End = missile.Position.To2D();
 
                     Utility.DelayAction.Add(
                         100,
                         () =>
                             {
-                                if (spell.ToggleObject == null)
+                                if (spell.ToggleObject != null)
                                 {
-                                    Evade.DetectedSpells.Remove(spell.SpellId);
+                                    return;
+                                }
+
+                                Evade.DetectedSpells.Remove(spell.SpellId);
+
+                                if (Configs.Debug)
+                                {
+                                    Console.WriteLine($"=> D-M: {spell.SpellId} | {Utils.GameTimeTickCount}");
                                 }
                             });
                 }

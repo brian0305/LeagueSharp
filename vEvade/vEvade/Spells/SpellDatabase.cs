@@ -1259,15 +1259,15 @@ namespace vEvade.Spells
                     {
                         ChampName = "Karma", MenuName = "KarmaQMantra", SpellName = "KarmaQMantra",
                         MissileName = "KarmaQMissileMantra", ToggleName = "Karma_.+_Q_impact_R_01", DangerValue = 2,
-                        Range = 950, Delay = 0, Radius = 80, MissileSpeed = 1700,
+                        Range = 950, Radius = 80, MissileSpeed = 1700,
                         CollisionObjects =
                             new[]
                                 {
                                     CollisionableObjects.Heroes, CollisionableObjects.Minions,
                                     CollisionableObjects.YasuoWall
                                 },
-                        FixedRange = true, ExtraDuration = 1500,
-                        HasEndExplosion = true, RadiusEx = 330
+                        FixedRange = true, ExtraDuration = 1650,
+                        HasEndExplosion = true, RadiusEx = 280
                     });
 
             #endregion Karma

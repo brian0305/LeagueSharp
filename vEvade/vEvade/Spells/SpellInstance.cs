@@ -123,6 +123,8 @@
 
         public Geometry.Polygon Polygon;
 
+        public Vector2 PredEnd;
+
         public Polygons.Ring Ring;
 
         public int SpellId;
@@ -144,8 +146,6 @@
         private int cachedValueTick;
 
         private int lastCalcColTick;
-
-        private Vector2 predEnd;
 
         private int radius;
 
@@ -287,9 +287,9 @@
         {
             get
             {
-                if (this.predEnd.IsValid())
+                if (this.PredEnd.IsValid())
                 {
-                    return this.predEnd;
+                    return this.PredEnd;
                 }
 
                 if (this.IsGlobal)
@@ -549,12 +549,12 @@
                 if (Utils.GameTimeTickCount - this.lastCalcColTick > 50 && Configs.CheckCollision)
                 {
                     this.lastCalcColTick = Utils.GameTimeTickCount;
-                    this.predEnd = Collisions.GetCollision(this);
+                    this.PredEnd = Collisions.GetCollision(this);
                 }
             }
-            else if (this.predEnd.IsValid())
+            else if (this.PredEnd.IsValid())
             {
-                this.predEnd = Vector2.Zero;
+                this.PredEnd = Vector2.Zero;
             }
 
             if (this.Type == SpellType.Line || this.Type == SpellType.MissileLine)

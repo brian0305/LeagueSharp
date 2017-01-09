@@ -4,6 +4,9 @@ namespace vEvade.Helpers
 
     using System;
     using System.Linq;
+    using System.Net;
+    using System.Reflection;
+    using System.Text.RegularExpressions;
 
     using LeagueSharp;
     using LeagueSharp.Common;
@@ -11,6 +14,7 @@ namespace vEvade.Helpers
     using SharpDX;
 
     using Color = System.Drawing.Color;
+    using Version = System.Version;
 
     #endregion
 
@@ -105,6 +109,37 @@ namespace vEvade.Helpers
         public static bool CompareId(this GameObject obj1, GameObject obj2)
         {
             return obj1.NetworkId == obj2.NetworkId;
+        }
+
+        public static void CheckVersion()
+        {
+            try
+            {
+                using (var web = new WebClient())
+                {
+                    var rawFile =
+                        web.DownloadString(
+                            "https://raw.githubusercontent.com/brian0305/LeagueSharp/master/vEvade/vEvade/Properties/AssemblyInfo.cs");
+                    var checkFile =
+                        new Regex(@"\[assembly\: AssemblyVersion\(""(\d{1,})\.(\d{1,})\.(\d{1,})\.(\d{1,})""\)\]").Match
+                            (rawFile);
+                    if (!checkFile.Success)
+                    {
+                        return;
+                    }
+                    var gitVersion =
+                        new Version(
+                            $"{checkFile.Groups[1]}.{checkFile.Groups[2]}.{checkFile.Groups[3]}.{checkFile.Groups[4]}");
+                    if (gitVersion > Assembly.GetExecutingAssembly().GetName().Version)
+                    {
+                        Game.PrintChat("vEvade => Outdated! Newest Version: " + gitVersion);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
         }
 
         public static void DrawLine(Vector2 start, Vector2 end, Color color)

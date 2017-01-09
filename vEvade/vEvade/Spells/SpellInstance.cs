@@ -111,6 +111,8 @@
 
         public bool ForceDisabled;
 
+        public bool IsFromFoW;
+
         public Polygons.Line Line;
 
         public GameObject MissileObject = null;
@@ -246,29 +248,14 @@
                     {
                         this.cachedValue = ObjectManager.Player.HealthPercent <= this.GetValue<Slider>("IgnoreHp").Value;
                     }
+
+                    if (this.IsFromFoW && Configs.DodgeFoW == 1)
+                    {
+                        this.cachedValue = false;
+                    }
                 }
 
                 return this.cachedValue;
-            }
-        }
-
-        public Vector2 PredictEnd
-        {
-            get
-            {
-                if (this.predEnd.IsValid())
-                {
-                    return this.predEnd;
-                }
-
-                if (this.IsGlobal)
-                {
-                    return this.GetGlobalMissilePosition(0)
-                           + this.Direction * this.Data.MissileSpeed
-                           * (0.5f + this.Radius * 2 / ObjectManager.Player.MoveSpeed);
-                }
-
-                return this.End;
             }
         }
 
@@ -291,10 +278,30 @@
         private int GetRadius
             =>
                 this.Type == SpellType.Circle && (this.Data.HasStartExplosion || this.Data.HasEndExplosion)
-                    ? this.Data.RadiusEx
+                    ? this.Data.RadiusEx + (int)ObjectManager.Player.BoundingRadius
                     : this.Data.Radius;
 
         private bool IsGlobal => this.Data.RawRange == 25000;
+
+        private Vector2 PredictEnd
+        {
+            get
+            {
+                if (this.predEnd.IsValid())
+                {
+                    return this.predEnd;
+                }
+
+                if (this.IsGlobal)
+                {
+                    return this.GetGlobalMissilePosition(0)
+                           + this.Direction * this.Data.MissileSpeed
+                           * (0.5f + this.Radius * 2 / ObjectManager.Player.MoveSpeed);
+                }
+
+                return this.End;
+            }
+        }
 
         #endregion
 
@@ -403,15 +410,15 @@
                 var to = paths[i + 1];
                 var segments = new List<Intersects>();
 
-                if (this.Type == SpellType.Circle)
+                /*if (this.Type == SpellType.Circle)
                 {
-                    foreach (var inter in this.PredictEnd.GetIntersectPointsLineCircle(this.Radius, from, to))
+                    foreach (var inter in this.Circle.Center.GetIntersectPointsLineCircle(this.Circle.Radius, from, to))
                     {
                         var d = inter.Distance(from);
                         segments.Add(new Intersects(d, (int)(d / speed * 1000), inter, from));
                     }
                 }
-                else
+                else*/
                 {
                     for (var j = 0; j <= this.Polygon.Points.Count - 1; j++)
                     {
@@ -467,7 +474,7 @@
                         var exitInter = intersects[i + 1];
                         var exitInterSegment = exitInter.Point.ProjectOn(this.Start, this.End).SegmentPoint;
 
-                        if (this.GetMissilePosition(enterInter.Time - time).Distance(this.End)
+                        if (this.GetMissilePosition(enterInter.Time - time).Distance(this.End) + 50
                             > enterInterSegment.Distance(this.End)
                             && this.GetMissilePosition(exitInter.Time + time).Distance(this.End)
                             <= exitInterSegment.Distance(this.End))
@@ -487,10 +494,10 @@
                 var exit = intersects[0];
                 var exitSegment = exit.Point.ProjectOn(this.Start, this.End).SegmentPoint;
 
-                return
-                    new SafePath(
-                        this.GetMissilePosition(exit.Time + time).Distance(this.End) > exitSegment.Distance(this.End),
-                        intersects[0]);
+                if (this.GetMissilePosition(exit.Time + time).Distance(this.End) <= exitSegment.Distance(this.End))
+                {
+                    return new SafePath(false, intersects[0]);
+                }
             }
 
             if (intersects.Count == 0)
@@ -498,7 +505,7 @@
                 return new SafePath(this.IsSafePoint(Evade.PlayerPosition), new Intersects());
             }
 
-            if (this.IsSafePoint(Evade.PlayerPosition) && this.Data.DontCross)
+            if (this.Data.DontCross && this.IsSafePoint(Evade.PlayerPosition))
             {
                 return new SafePath(false, intersects[0]);
             }
@@ -646,9 +653,16 @@
                     break;
                 case SpellType.Circle:
                     this.Polygon = this.Circle.ToPolygon();
-                    this.DrawPolygon = this.Circle.ToPolygon(
-                        0,
-                        this.Radius - (!this.Data.AddHitbox ? 0 : ObjectManager.Player.BoundingRadius));
+                    if (this.Data.HasStartExplosion || this.Data.HasEndExplosion)
+                    {
+                        this.DrawPolygon = this.Circle.ToPolygon(0, this.Radius - ObjectManager.Player.BoundingRadius);
+                    }
+                    else
+                    {
+                        this.DrawPolygon = this.Circle.ToPolygon(
+                            0,
+                            this.Radius - (!this.Data.AddHitbox ? 0 : ObjectManager.Player.BoundingRadius));
+                    }
                     this.EvadePolygon = this.Circle.ToPolygon(Configs.ExtraEvadeDistance);
                     this.PathFindingOuterPolygon = this.Circle.ToPolygon(Configs.PathFindingOuterDistance);
                     this.PathFindingInnerPolygon = this.Circle.ToPolygon(Configs.PathFindingInnerDistance);

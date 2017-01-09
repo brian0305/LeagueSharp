@@ -77,7 +77,7 @@ namespace vEvade.Helpers
 
         public static bool DodgeDangerous => Menu.Item("DodgeDangerous").GetValue<KeyBind>().Active;
 
-        public static bool DodgeFoW => Menu.Item("DodgeFoW").GetValue<bool>();
+        public static int DodgeFoW => Menu.Item("DodgeFoW").GetValue<StringList>().SelectedIndex;
 
         public static bool DodgeLine => Menu.Item("DodgeLine").GetValue<bool>();
 
@@ -186,12 +186,14 @@ namespace vEvade.Helpers
             Menu.AddSubMenu(shieldAlly);
 
             var misc = new Menu("Misc", "Misc");
-            misc.AddItem(new MenuItem("CheckCollision", "Check Collision").SetValue(true));
-            misc.AddItem(new MenuItem("CheckHp", "Check Player Hp").SetValue(true));
+            misc.AddItem(new MenuItem("CheckCollision", "Check Collision").SetValue(false));
+            misc.AddItem(new MenuItem("CheckHp", "Check Player Hp").SetValue(false));
             misc.AddItem(
                 new MenuItem("CheckBlock", "Block Cast While Dodge").SetValue(
                     new StringList(new[] { "No", "Only Dangerous", "Always" }, 1)));
-            misc.AddItem(new MenuItem("DodgeFoW", "Dodge FoW Spells").SetValue(false));
+            misc.AddItem(
+                new MenuItem("DodgeFoW", "Dodge FoW Spells").SetValue(
+                    new StringList(new[] { "Off", "Track", "Dodge" }, 1)));
             misc.AddItem(new MenuItem("DodgeLine", "Dodge Line Spells").SetValue(true));
             misc.AddItem(new MenuItem("DodgeCircle", "Dodge Circle Spells").SetValue(false));
             misc.AddItem(new MenuItem("DodgeCone", "Dodge Cone Spells").SetValue(true));

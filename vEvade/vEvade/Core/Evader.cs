@@ -28,7 +28,7 @@ namespace vEvade.Core
             var posChecked = 0;
             var radiusIndex = 0;
             var myPos = Evade.PlayerPosition;
-            var points = GetFastestPoints();
+            var points = GetFastestPoints(myPos).Select(CheckClose).ToList();
 
             while (posChecked < 150)
             {
@@ -41,28 +41,20 @@ namespace vEvade.Core
                     posChecked++;
                     var cRadians = 2 * Math.PI / (curCircleChecks - 1) * i;
                     points.Add(
-                        new Vector2(
-                            (float)Math.Floor(myPos.X + curRadius * Math.Cos(cRadians)),
-                            (float)Math.Floor(myPos.Y + curRadius * Math.Sin(cRadians))));
+                        CheckClose(
+                            new Vector2(
+                                (float)Math.Floor(myPos.X + curRadius * Math.Cos(cRadians)),
+                                (float)Math.Floor(myPos.Y + curRadius * Math.Sin(cRadians)))));
                 }
             }
 
-            /*var closestPoint =
-                points.Where(i => i.IsPathSafe(Configs.EvadingFirstTime, speed, delay).IsSafe)
-                    .MinOrDefault(i => i.Distance(myPos));
-
-            if (closestPoint.IsValid())
-            {
-                points.AddRange(GetClosestPoints(closestPoint));
-            }*/
-
             return
-                points.Select(i => GetExtendedSafePoint(myPos, i))
+                points.Where(i => !CheckPath(i))
+                    .Select(i => GetExtendedSafePoint(myPos, i))
                     .Where(
                         i =>
-                        !CheckPath(i)
-                        && (i.IsPathSafe(Configs.EvadingFirstTime, speed, delay).IsSafe
-                            || i.IsPathSafe(Configs.EvadingSecondTime, speed, delay).IsSafe) && !i.IsWallBetween())
+                        (i.IsPathSafe(Configs.EvadingFirstTime, speed, delay).IsSafe
+                         || i.IsPathSafe(Configs.EvadingSecondTime, speed, delay).IsSafe) && !i.IsWallBetween())
                     .OrderBy(i => !i.To3D().UnderTurret(true))
                     .ThenBy(i => i.Distance(Game.CursorPos))
                     .FirstOrDefault();
@@ -86,22 +78,17 @@ namespace vEvade.Core
                     posChecked++;
                     var cRadians = 2 * Math.PI / (curCircleChecks - 1) * i;
                     points.Add(
-                        new Vector2(
-                            (float)Math.Floor(myPos.X + curRadius * Math.Cos(cRadians)),
-                            (float)Math.Floor(myPos.Y + curRadius * Math.Sin(cRadians))));
+                        CheckClose(
+                            new Vector2(
+                                (float)Math.Floor(myPos.X + curRadius * Math.Cos(cRadians)),
+                                (float)Math.Floor(myPos.Y + curRadius * Math.Sin(cRadians)))));
+                }
+
+                if (curRadius >= range)
+                {
+                    break;
                 }
             }
-
-            /*var closestPoint =
-                points.Where(i => i.IsPointBlinkSafe(Configs.EvadingFirstTime, delay))
-                    .MinOrDefault(i => i.Distance(myPos));
-
-            if (closestPoint.IsValid())
-            {
-                points.AddRange(GetClosestPoints(closestPoint));
-            }*/
-
-            points.RemoveAll(i => i.Distance(myPos) > range);
 
             for (var i = 0; i < points.Count; i++)
             {
@@ -144,24 +131,89 @@ namespace vEvade.Core
                     posChecked++;
                     var cRadians = 2 * Math.PI / (curCircleChecks - 1) * i;
                     points.Add(
-                        new Vector2(
-                            (float)Math.Floor(myPos.X + curRadius * Math.Cos(cRadians)),
-                            (float)Math.Floor(myPos.Y + curRadius * Math.Sin(cRadians))));
+                        CheckClose(
+                            new Vector2(
+                                (float)Math.Floor(myPos.X + curRadius * Math.Cos(cRadians)),
+                                (float)Math.Floor(myPos.Y + curRadius * Math.Sin(cRadians)))));
                 }
             }
-
-            /*var closestPoint =
-                points.Where(i => i.IsPathSafe(Configs.EvadingFirstTime).IsSafe).MinOrDefault(i => i.Distance(myPos));
-
-            if (closestPoint.IsValid())
-            {
-                points.AddRange(GetClosestPoints(closestPoint));
-            }*/
 
             return
                 points.Where(i => !CheckPath(i) && i.IsPathSafe(Configs.EvadingFirstTime).IsSafe && !i.IsWallBetween())
                     .OrderBy(i => !i.To3D().UnderTurret(true))
                     .ThenBy(i => i.Distance(pos))
+                    .FirstOrDefault();
+        }
+
+        public static Vector2 GetBestPointDash(int speed, int delay, float range, bool fixedRange = false)
+        {
+            var posChecked = 0;
+            var radiusIndex = 0;
+            var myPos = Evade.PlayerPosition;
+            var points = new List<Vector2>();
+            var minDist = fixedRange ? range : 50;
+
+            while (posChecked < 100)
+            {
+                radiusIndex++;
+                var curRadius = radiusIndex * 100 + (minDist - 100);
+                var curCircleChecks = (int)Math.Ceiling(2 * Math.PI * curRadius / 100);
+
+                for (var i = 1; i < curCircleChecks; i++)
+                {
+                    posChecked++;
+                    var cRadians = 2 * Math.PI / (curCircleChecks - 1) * i;
+                    points.Add(
+                        CheckClose(
+                            new Vector2(
+                                (float)Math.Floor(myPos.X + curRadius * Math.Cos(cRadians)),
+                                (float)Math.Floor(myPos.Y + curRadius * Math.Sin(cRadians)))));
+                }
+
+                if (curRadius >= range)
+                {
+                    break;
+                }
+            }
+
+            if (fixedRange)
+            {
+                for (var i = 0; i < points.Count; i++)
+                {
+                    points[i] = myPos.Extend(points[i], range);
+                }
+
+                for (var i = points.Count - 1; i > 0; i--)
+                {
+                    if (!points[i].IsPointSafe().IsSafe)
+                    {
+                        points.RemoveAt(i);
+                    }
+                }
+            }
+            else
+            {
+                for (var i = 0; i < points.Count; i++)
+                {
+                    var k = (int)(range - myPos.Distance(points[i]));
+                    k -= Math.Max(Util.Random.Next(k) - 100, 0);
+                    var extend = points[i] + k * (points[i] - myPos).Normalized();
+
+                    if (extend.IsPointSafe().IsSafe)
+                    {
+                        points[i] = extend;
+                    }
+                }
+            }
+
+            return
+                points.Where(
+                    i =>
+                    !CheckPath(i)
+                    && (i.IsPathSafe(Configs.EvadingFirstTime, speed, delay).IsSafe
+                        || i.IsPathSafe(Configs.EvadingSecondTime, speed, delay).IsSafe) && !i.IsWall())
+                    .OrderBy(i => !i.To3D().UnderTurret(true))
+                    .ThenBy(i => i.Distance(Game.CursorPos))
                     .FirstOrDefault();
         }
 
@@ -358,7 +410,7 @@ namespace vEvade.Core
             foreach (var spell in Evade.Spells)
             {
                 var checkPath = spell.IsSafePath(paths, time, speed, delay);
-                isSafe = checkPath.IsSafe;
+                isSafe = isSafe && checkPath.IsSafe;
 
                 if (checkPath.Intersect.Valid)
                 {
@@ -388,6 +440,13 @@ namespace vEvade.Core
 
         #region Methods
 
+        private static Vector2 CheckClose(Vector2 pos)
+        {
+            return !ObjectManager.Player.IsMoving && Evade.PlayerPosition.Distance(pos) <= 75
+                       ? Evade.PlayerPosition
+                       : pos;
+        }
+
         private static bool CheckPath(Vector2 pos)
         {
             var paths = ObjectManager.Player.GetPath(pos.To3D());
@@ -400,20 +459,6 @@ namespace vEvade.Core
             var paths = ObjectManager.Player.GetPath(pos.To3D());
 
             return paths.Length > 0 && pos.Distance(paths[paths.Length - 1]) > 5;
-        }
-
-        private static List<Vector2> GetClosestPoints(Vector2 point)
-        {
-            var myPos = Evade.PlayerPosition;
-            var dist = point.Distance(myPos);
-
-            return
-                Evade.Polygons.Where(i => i.IsInside(myPos))
-                    .Select(i => i.ToDetailedPolygon())
-                    .SelectMany(i => i.Points)
-                    .Where(i => i.Distance(myPos) < dist)
-                    .OrderByDescending(i => i.Distance(myPos))
-                    .ToList();
         }
 
         private static Vector2 GetExtendedSafePoint(Vector2 from, Vector2 to)
@@ -436,31 +481,29 @@ namespace vEvade.Core
             return lastPos;
         }
 
-        private static Vector2 GetFastestPoint(SpellInstance spell)
+        private static Vector2 GetFastestPoint(Vector2 from, SpellInstance spell)
         {
-            var myPos = Evade.PlayerPosition;
-
             switch (spell.Type)
             {
                 case SpellType.Line:
                 case SpellType.MissileLine:
-                    var segment = myPos.ProjectOn(spell.Start, spell.End);
+                    var segment = from.ProjectOn(spell.Line.Start, spell.Line.End);
 
                     if (segment.IsOnSegment)
                     {
-                        return segment.SegmentPoint.Extend(myPos, spell.Radius + 10);
+                        return segment.SegmentPoint.Extend(from, spell.Line.Radius + 10);
                     }
                     break;
                 case SpellType.Circle:
-                    return spell.PredictEnd.Extend(myPos, spell.Radius + 10);
+                    return spell.Circle.Center.Extend(from, spell.Circle.Radius + 10);
             }
 
             return Vector2.Zero;
         }
 
-        private static List<Vector2> GetFastestPoints()
+        private static List<Vector2> GetFastestPoints(Vector2 from)
         {
-            return Evade.DetectedSpells.Values.Select(GetFastestPoint).Where(i => i.IsValid()).ToList();
+            return Evade.Spells.Select(i => GetFastestPoint(from, i)).Where(i => i.IsValid()).ToList();
         }
 
         private static bool IsWallBetween(this Vector2 point)

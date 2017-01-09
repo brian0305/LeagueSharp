@@ -70,34 +70,6 @@
                        };
         }
 
-        public static Geometry.Polygon ToDetailedPolygon(this Geometry.Polygon poly)
-        {
-            var points = new List<Vector2>();
-
-            for (var i = 0; i < poly.Points.Count; i++)
-            {
-                var start = poly.Points[i];
-                var end = poly.Points[i != poly.Points.Count - 1 ? i + 1 : 0];
-
-                if (start.Distance(end, true) > 80 * 80)
-                {
-                    for (var x = 0; x < (int)start.Distance(end) / 80; x++)
-                    {
-                        points.Add(start.Extend(end, x * 80));
-                    }
-                }
-                else
-                {
-                    points.Add(start);
-                }
-            }
-
-            var newPoly = new Geometry.Polygon();
-            newPoly.Points.AddRange(points);
-
-            return newPoly;
-        }
-
         #endregion
 
         public class Arc

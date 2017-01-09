@@ -37,9 +37,9 @@ namespace vEvade.Core
 
         public static Vector2 PlayerPosition;
 
-        public static List<Geometry.Polygon> Polygons;
+        public static List<Geometry.Polygon> Polygons = new List<Geometry.Polygon>();
 
-        public static List<SpellInstance> Spells;
+        public static List<SpellInstance> Spells = new List<SpellInstance>();
 
         private static Vector2 evadePoint1, evadePoint2;
 
@@ -128,6 +128,7 @@ namespace vEvade.Core
 
         public static void OnGameLoad(EventArgs args)
         {
+            Util.CheckVersion();
             Configs.CreateMenu();
             new SpellDetector();
             Game.OnUpdate += OnUpdate;
@@ -136,7 +137,7 @@ namespace vEvade.Core
             Drawing.OnDraw += OnDraw;
             CustomEvents.Unit.OnDash += OnDash;
             Orbwalking.BeforeAttack += BeforeAttack;
-            Spellbook.OnStopCast += OnStopCast;
+            //Spellbook.OnStopCast += OnStopCast;
             Collisions.Init();
         }
 
@@ -602,12 +603,12 @@ namespace vEvade.Core
                     if (point.IsValid())
                     {
                         evadePoint1 = point;
-                        //var pos = evadePoint1.Extend(PlayerPosition, -100);
+                        var pos = evadePoint1.Extend(PlayerPosition, -100);
 
-                        //if (pos.IsPathSafe(Configs.EvadingSecondTime, -1, 100).IsSafe)
-                        //{
-                        //    evadePoint1 = pos;
-                        //}
+                        if (pos.IsPathSafe(Configs.EvadingSecondTime, -1, 100).IsSafe)
+                        {
+                            evadePoint1 = pos;
+                        }
 
                         Evading = true;
 
@@ -687,7 +688,7 @@ namespace vEvade.Core
 
                                 if (ward != null)
                                 {
-                                    var points = Evader.GetEvadePoints(evadeSpell.Speed, evadeSpell.Delay);
+                                    /*var points = Evader.GetEvadePoints(evadeSpell.Speed, evadeSpell.Delay);
                                     points.RemoveAll(i => i.Distance(PlayerPosition) > 600);
 
                                     if (points.Count > 0)
@@ -711,13 +712,23 @@ namespace vEvade.Core
                                         haveSolution = true;
 
                                         return;
+                                    }*/
+                                    var point = Evader.GetBestPointDash(evadeSpell.Speed, evadeSpell.Delay, 600);
+
+                                    if (point.IsValid())
+                                    {
+                                        ObjectManager.Player.Spellbook.CastSpell(ward.SpellSlot, point.To3D());
+                                        LastWardJumpTick = Utils.GameTimeTickCount;
+                                        haveSolution = true;
+
+                                        return;
                                     }
                                 }
                             }
                         }
                         else
                         {
-                            var points = Evader.GetEvadePoints(evadeSpell.Speed, evadeSpell.Delay);
+                            /*var points = Evader.GetEvadePoints(evadeSpell.Speed, evadeSpell.Delay);
                             points.RemoveAll(i => i.Distance(PlayerPosition) > evadeSpell.MaxRange);
 
                             if (evadeSpell.FixedRange)
@@ -753,6 +764,43 @@ namespace vEvade.Core
                             if (points.Count > 0)
                             {
                                 evadePoint1 = to.Closest(points);
+                                Evading = true;
+
+                                if (!evadeSpell.Invert)
+                                {
+                                    if (evadeSpell.RequiresPreMove)
+                                    {
+                                        evadePoint1.Move();
+                                        Utility.DelayAction.Add(
+                                            Game.Ping / 2 + 100,
+                                            () =>
+                                            ObjectManager.Player.Spellbook.CastSpell(
+                                                evadeSpell.Slot,
+                                                evadePoint1.To3D()));
+                                    }
+                                    else
+                                    {
+                                        ObjectManager.Player.Spellbook.CastSpell(evadeSpell.Slot, evadePoint1.To3D());
+                                    }
+                                }
+                                else
+                                {
+                                    ObjectManager.Player.Spellbook.CastSpell(
+                                        evadeSpell.Slot,
+                                        (PlayerPosition - (evadePoint1 - PlayerPosition)).To3D());
+                                }
+
+                                return;
+                            }*/
+                            var point = Evader.GetBestPointDash(
+                                evadeSpell.Speed,
+                                evadeSpell.Delay,
+                                evadeSpell.MaxRange,
+                                evadeSpell.FixedRange);
+
+                            if (point.IsValid())
+                            {
+                                evadePoint1 = point;
                                 Evading = true;
 
                                 if (!evadeSpell.Invert)

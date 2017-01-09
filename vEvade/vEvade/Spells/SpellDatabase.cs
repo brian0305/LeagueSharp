@@ -730,7 +730,7 @@ namespace vEvade.Spells
                         ToggleName = "Fizz_.+_R_OrbitFish", DangerValue = 5, Slot = SpellSlot.R, Range = 20000,
                         Radius = 80, MissileSpeed = 1300,
                         CollisionObjects = new[] { CollisionableObjects.Heroes, CollisionableObjects.YasuoWall },
-                        IsDangerous = true, ExtraDuration = 2300, HasEndExplosion = true, RadiusEx = 240
+                        IsDangerous = true, ExtraDuration = 2300, HasEndExplosion = true, RadiusEx = 200
                     });
 
             #endregion Fizz

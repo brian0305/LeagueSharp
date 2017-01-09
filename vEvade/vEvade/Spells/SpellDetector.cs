@@ -85,7 +85,9 @@
             bool checkExplosion = true,
             int startT = 0)
         {
-            if (!sender.IsVisible && !Configs.DodgeFoW)
+            var isFromFoW = !sender.IsVisible;
+
+            if (isFromFoW && Configs.DodgeFoW == 0)
             {
                 return;
             }
@@ -247,7 +249,7 @@
             }
 
             var newSpell = new SpellInstance(data, startTime, endTime + data.ExtraDelay, startPos, endPos, sender, type)
-                               { SpellId = spellIdCount++, MissileObject = missile };
+                               { SpellId = spellIdCount++, IsFromFoW = isFromFoW, MissileObject = missile };
             Evade.DetectedSpells.Add(newSpell.SpellId, newSpell);
 
             if (Configs.Debug)

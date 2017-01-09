@@ -70,7 +70,7 @@
             }
 
             var dist = missile.StartPosition.Distance(missile.EndPosition);
-            var radius = dist > 910 ? 440 : (dist >= 455 ? 340 : 0);
+            var radius = dist >= 910 ? 450 : (dist >= 455 ? 325 : 0);
 
             if (radius == 0)
             {
@@ -83,7 +83,7 @@
 
             if (spell != null)
             {
-                Evade.DetectedSpells[spell.SpellId].Radius = radius;
+                Evade.DetectedSpells[spell.SpellId].Radius = radius + (int)ObjectManager.Player.BoundingRadius;
 
                 return;
             }

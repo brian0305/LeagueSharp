@@ -107,8 +107,6 @@
 
         public int EndTick;
 
-        public Geometry.Polygon EvadePolygon;
-
         public bool ForceDisabled;
 
         public bool IsFromFoW;
@@ -639,7 +637,6 @@
                     this.DrawPolygon = this.Line.ToPolygon(
                         0,
                         this.Radius - (!this.Data.AddHitbox ? 0 : ObjectManager.Player.BoundingRadius));
-                    this.EvadePolygon = this.Line.ToPolygon(Configs.ExtraEvadeDistance);
                     this.PathFindingOuterPolygon = this.Line.ToPolygon(Configs.PathFindingOuterDistance);
                     this.PathFindingInnerPolygon = this.Line.ToPolygon(Configs.PathFindingInnerDistance);
                     break;
@@ -647,7 +644,6 @@
                 case SpellType.MissileCone:
                     this.Polygon = this.Cone.ToPolygon();
                     this.DrawPolygon = this.Polygon;
-                    this.EvadePolygon = this.Cone.ToPolygon(Configs.ExtraEvadeDistance);
                     this.PathFindingOuterPolygon = this.Cone.ToPolygon(Configs.PathFindingOuterDistance);
                     this.PathFindingInnerPolygon = this.Cone.ToPolygon(Configs.PathFindingInnerDistance);
                     break;
@@ -663,21 +659,18 @@
                             0,
                             this.Radius - (!this.Data.AddHitbox ? 0 : ObjectManager.Player.BoundingRadius));
                     }
-                    this.EvadePolygon = this.Circle.ToPolygon(Configs.ExtraEvadeDistance);
                     this.PathFindingOuterPolygon = this.Circle.ToPolygon(Configs.PathFindingOuterDistance);
                     this.PathFindingInnerPolygon = this.Circle.ToPolygon(Configs.PathFindingInnerDistance);
                     break;
                 case SpellType.Ring:
                     this.Polygon = this.Ring.ToPolygon();
                     this.DrawPolygon = this.Polygon;
-                    this.EvadePolygon = this.Ring.ToPolygon(Configs.ExtraEvadeDistance);
                     this.PathFindingOuterPolygon = this.Ring.ToPolygon(Configs.PathFindingOuterDistance);
                     this.PathFindingInnerPolygon = this.Ring.ToPolygon(Configs.PathFindingInnerDistance);
                     break;
                 case SpellType.Arc:
                     this.Polygon = this.Arc.ToPolygon();
                     this.DrawPolygon = this.Polygon;
-                    this.EvadePolygon = this.Arc.ToPolygon(Configs.ExtraEvadeDistance);
                     this.PathFindingOuterPolygon = this.Arc.ToPolygon(Configs.PathFindingOuterDistance);
                     this.PathFindingInnerPolygon = this.Arc.ToPolygon(Configs.PathFindingInnerDistance);
                     break;

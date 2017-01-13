@@ -381,12 +381,11 @@
 
             #region Dash
 
-            /*
             #region Aatrox
 
             if (champName == "Aatrox")
             {
-                Spells.Add(new DashData("Aatrox Q", SpellSlot.Q, 650, false, 600, 3050, 3) {Invert=true});
+                Spells.Add(new DashData("AatroxQ", SpellSlot.Q, 650, false, 600, 3050, 3) { Invert = true });
             }
 
             #endregion Aatrox
@@ -395,7 +394,9 @@
 
             if (champName == "Akali")
             {
-                Spells.Add(new DashData("Akali R", SpellSlot.R, 800, false, 100, 2461, 3) { ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions } });
+                Spells.Add(
+                    new DashData("AkaliR", SpellSlot.R, 800, false, 100, 2461, 3)
+                        { ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions } });
             }
 
             #endregion Akali
@@ -404,9 +405,9 @@
 
             if (champName == "Alistar")
             {
-                spell = new DashData("Alistar W", SpellSlot.W, 650, false, 100, 1900, 3);
-                spell.ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions };
-                Spells.Add(spell);
+                Spells.Add(
+                    new DashData("AlistarW", SpellSlot.W, 650, false, 100, 1900, 3)
+                        { ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions } });
             }
 
             #endregion Alistar
@@ -415,9 +416,7 @@
 
             if (champName == "Caitlyn")
             {
-                spell = new DashData("Caitlyn E", SpellSlot.E, 390, true, 250, 1000, 3);
-                spell.Invert = true;
-                Spells.Add(spell);
+                Spells.Add(new DashData("CaitlynE", SpellSlot.E, 390, true, 250, 1000, 3) { Invert = true });
             }
 
             #endregion
@@ -426,8 +425,7 @@
 
             if (champName == "Corki")
             {
-                spell = new DashData("Corki W", SpellSlot.W, 600, false, 250, 1044, 3);
-                Spells.Add(spell);
+                Spells.Add(new DashData("CorkiW", SpellSlot.W, 600, false, 250, 1044, 3));
             }
 
             #endregion
@@ -436,19 +434,9 @@
 
             if (champName == "Fizz")
             {
-                spell = new DashData("Fizz Q", SpellSlot.Q, 550, true, 100, 1400, 4);
-                spell.ValidTargets = new[] { SpellValidTargets.EnemyMinions, SpellValidTargets.EnemyChampions };
-                Spells.Add(spell);
-            }
-
-            #endregion
-
-            #region Gragas
-
-            if (champName == "Gragas")
-            {
-                spell = new DashData("Gragas E", SpellSlot.E, 600, true, 250, 911, 3);
-                Spells.Add(spell);
+                Spells.Add(
+                    new DashData("FizzQ", SpellSlot.Q, 550, true, 100, 1400, 4)
+                        { ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions } });
             }
 
             #endregion
@@ -457,9 +445,16 @@
 
             if (champName == "Gnar")
             {
-                spell = new DashData("Gnar E", SpellSlot.E, 50, false, 0, 900, 3);
-                spell.CheckSpellName = "GnarE";
-                Spells.Add(spell);
+                Spells.Add(new DashData("GnarE", SpellSlot.E, 475, false, 100, 900, 3) { CheckSpellName = "GnarE" });
+            }
+
+            #endregion
+
+            #region Gragas
+
+            if (champName == "Gragas")
+            {
+                Spells.Add(new DashData("GragasE", SpellSlot.E, 600, true, 100, 900, 3));
             }
 
             #endregion
@@ -468,8 +463,7 @@
 
             if (champName == "Graves")
             {
-                spell = new DashData("Graves E", SpellSlot.E, 425, true, 100, 1223, 3);
-                Spells.Add(spell);
+                Spells.Add(new DashData("GravesE", SpellSlot.E, 425, true, 100, 1223, 3));
             }
 
             #endregion
@@ -478,9 +472,9 @@
 
             if (champName == "Irelia")
             {
-                spell = new DashData("Irelia Q", SpellSlot.Q, 650, false, 100, 2200, 3);
-                spell.ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions };
-                Spells.Add(spell);
+                Spells.Add(
+                    new DashData("IreliaQ", SpellSlot.Q, 650, false, 100, 2200, 3)
+                        { ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions } });
             }
 
             #endregion
@@ -489,14 +483,17 @@
 
             if (champName == "Jax")
             {
-                spell = new DashData("Jax Q", SpellSlot.Q, 700, false, 100, 1400, 3);
-                spell.ValidTargets = new[]
-                                         {
-                                             SpellValidTargets.EnemyWards, SpellValidTargets.AllyWards,
-                                             SpellValidTargets.AllyMinions, SpellValidTargets.AllyChampions,
-                                             SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions
-                                         };
-                Spells.Add(spell);
+                Spells.Add(
+                    new DashData("JaxQ", SpellSlot.Q, 700, false, 100, 1400, 3)
+                        {
+                            ValidTargets =
+                                new[]
+                                    {
+                                        SpellValidTargets.AllyChampions, SpellValidTargets.AllyMinions,
+                                        SpellValidTargets.AllyWards, SpellValidTargets.EnemyChampions,
+                                        SpellValidTargets.EnemyMinions, SpellValidTargets.EnemyWards
+                                    }
+                        });
             }
 
             #endregion
@@ -505,16 +502,8 @@
 
             if (champName == "Leblanc")
             {
-                spell = new DashData("LeBlanc W1", SpellSlot.W, 600, false, 100, 1621, 3);
-                spell.CheckSpellName = "LeblancSlide";
-                Spells.Add(spell);
-            }
-
-            if (champName == "Leblanc")
-            {
-                spell = new DashData("LeBlanc RW", SpellSlot.R, 600, false, 100, 1621, 3);
-                spell.CheckSpellName = "LeblancSlideM";
-                Spells.Add(spell);
+                Spells.Add(
+                    new DashData("LeBlancW", SpellSlot.W, 600, false, 100, 1600, 3) { CheckSpellName = "LeblancSlide" });
             }
 
             #endregion
@@ -523,14 +512,17 @@
 
             if (champName == "LeeSin")
             {
-                spell = new DashData("LeeSin W", SpellSlot.W, 700, false, 250, 2000, 3);
-                spell.ValidTargets = new[]
-                                         {
-                                             SpellValidTargets.AllyChampions, SpellValidTargets.AllyMinions,
-                                             SpellValidTargets.AllyWards
-                                         };
-                spell.CheckSpellName = "BlindMonkWOne";
-                Spells.Add(spell);
+                Spells.Add(
+                    new DashData("LeeSinW", SpellSlot.W, 700, false, 100, 2000, 3)
+                        {
+                            ValidTargets =
+                                new[]
+                                    {
+                                        SpellValidTargets.AllyChampions, SpellValidTargets.AllyMinions,
+                                        SpellValidTargets.AllyWards
+                                    },
+                            CheckSpellName = "BlindMonkWOne"
+                        });
             }
 
             #endregion
@@ -539,8 +531,7 @@
 
             if (champName == "Lucian")
             {
-                spell = new DashData("Lucian E", SpellSlot.E, 425, false, 100, 1350, 2);
-                Spells.Add(spell);
+                Spells.Add(new DashData("LucianE", SpellSlot.E, 425, false, 100, 1350, 2));
             }
 
             #endregion
@@ -549,9 +540,7 @@
 
             if (champName == "Nidalee")
             {
-                spell = new DashData("Nidalee W", SpellSlot.W, 375, true, 250, 943, 3);
-                spell.CheckSpellName = "Pounce";
-                Spells.Add(spell);
+                Spells.Add(new DashData("NidaleeW", SpellSlot.W, 375, true, 250, 943, 3) { CheckSpellName = "Pounce" });
             }
 
             #endregion
@@ -560,9 +549,9 @@
 
             if (champName == "Pantheon")
             {
-                spell = new DashData("Pantheon W", SpellSlot.W, 600, false, 100, 1000, 3);
-                spell.ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions };
-                Spells.Add(spell);
+                Spells.Add(
+                    new DashData("PantheonW", SpellSlot.W, 600, false, 100, 1000, 3)
+                        { ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions } });
             }
 
             #endregion
@@ -571,12 +560,9 @@
 
             if (champName == "Riven")
             {
-                spell = new DashData("Riven Q", SpellSlot.Q, 222, true, 250, 560, 3);
-                spell.RequiresPreMove = true;
-                Spells.Add(spell);
+                Spells.Add(new DashData("RivenQ", SpellSlot.Q, 222, true, 100, 560, 3) { RequiresPreMove = true });
 
-                spell = new DashData("Riven E", SpellSlot.E, 250, false, 250, 1200, 3);
-                Spells.Add(spell);
+                Spells.Add(new DashData("RivenE", SpellSlot.E, 250, false, 100, 1200, 3));
             }
 
             #endregion
@@ -585,8 +571,7 @@
 
             if (champName == "Tristana")
             {
-                spell = new DashData("Tristana W", SpellSlot.W, 900, true, 300, 800, 5);
-                Spells.Add(spell);
+                Spells.Add(new DashData("TristanaW", SpellSlot.W, 900, false, 300, 1100, 5));
             }
 
             #endregion
@@ -595,12 +580,10 @@
 
             if (champName == "Tryndamere")
             {
-                spell = new DashData("Tryndamere E", SpellSlot.E, 650, true, 250, 900, 3);
-                Spells.Add(spell);
+                Spells.Add(new DashData("TryndamereE", SpellSlot.E, 650, false, 100, 900, 3));
             }
 
             #endregion
-            */
 
             #region Vayne
 
@@ -611,18 +594,27 @@
 
             #endregion Vayne
 
-            /*
             #region Wukong
 
             if (champName == "MonkeyKing")
             {
-                spell = new DashData("Wukong E", SpellSlot.E, 650, false, 100, 1400, 3);
-                spell.ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions };
-                Spells.Add(spell);
+                Spells.Add(
+                    new DashData("WukongE", SpellSlot.E, 650, false, 100, 1400, 3)
+                        { ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions } });
             }
 
             #endregion
-            */
+
+            #region Yasuo
+
+            if (champName == "Yasuo")
+            {
+                Spells.Add(
+                    new DashData("YasuoE", SpellSlot.E, 475, true, 100, 1200, 2)
+                        { ValidTargets = new[] { SpellValidTargets.EnemyChampions, SpellValidTargets.EnemyMinions } });
+            }
+
+            #endregion
 
             #endregion Dash
 

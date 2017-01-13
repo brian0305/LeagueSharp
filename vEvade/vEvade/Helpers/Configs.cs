@@ -28,17 +28,11 @@ namespace vEvade.Helpers
 
         public const int EvadePointChangeTime = 300;
 
-        public const int EvadePointsCount = 7;
-
-        public const int EvadePointsStep = 20;
-
         public const int EvadingFirstTime = 250;
 
         public const int EvadingRouteChangeTime = 250;
 
         public const int EvadingSecondTime = 80;
-
-        public const int ExtraEvadeDistance = 15;
 
         public const int ExtraSpellRadius = 9;
 
@@ -193,7 +187,7 @@ namespace vEvade.Helpers
                     new StringList(new[] { "No", "Only Dangerous", "Always" }, 1)));
             misc.AddItem(
                 new MenuItem("DodgeFoW", "Dodge FoW Spells").SetValue(
-                    new StringList(new[] { "Off", "Track", "Dodge" }, 1)));
+                    new StringList(new[] { "Off", "Track", "Dodge" }, 2)));
             misc.AddItem(new MenuItem("DodgeLine", "Dodge Line Spells").SetValue(true));
             misc.AddItem(new MenuItem("DodgeCircle", "Dodge Circle Spells").SetValue(false));
             misc.AddItem(new MenuItem("DodgeCone", "Dodge Cone Spells").SetValue(true));
@@ -201,8 +195,8 @@ namespace vEvade.Helpers
             Menu.AddSubMenu(misc);
 
             var draw = new Menu("Draw", "Draw");
-            draw.AddItem(new MenuItem("DrawSpells", "Draw Spells").SetValue(false));
-            draw.AddItem(new MenuItem("DrawStatus", "Draw Status").SetValue(false));
+            draw.AddItem(new MenuItem("DrawSpells", "Draw Spells").SetValue(true));
+            draw.AddItem(new MenuItem("DrawStatus", "Draw Status").SetValue(true));
             Menu.AddSubMenu(draw);
 
             Menu.AddItem(new MenuItem("Enabled", "Enabled").SetValue(new KeyBind('K', KeyBindType.Toggle, true)))

@@ -396,7 +396,7 @@ namespace vEvade.Spells
             Spells.Add(
                 new SpellData
                     {
-                        ChampName = "Caitlyn", MenuName = "CaitlynW", SpellName = "CaitlynW", TrapName = "caitlyntrap",
+                        ChampName = "Caitlyn", MenuName = "CaitlynW", SpellName = "CaitlynTrap", TrapName = "caitlyntrap",
                         Slot = SpellSlot.W, Delay = 0, Radius = 75, Type = SpellType.Circle, IsDangerous = true,
                         ExtraDuration = 90000, DontCross = true
                     });
